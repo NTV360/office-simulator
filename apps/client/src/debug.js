@@ -1,5 +1,4 @@
-import { drawCount } from '@office/shared';
-import { GC, GR, NAV } from './nav/grid.js';
+import { GC, GR, NAV, drawCount } from '@office/shared';
 import { meetings } from './sim/meetings.js';
 import { log, people, sim } from './sim/state.js';
 import { interactables } from './world/interactables.js';

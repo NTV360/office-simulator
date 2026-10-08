@@ -13,14 +13,12 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { fingerprint } from './debug.js';
-import { setSeed, toPx } from '@office/shared';
+import { GC, GR, NAV, findPath, setSeed, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
 import { ctl } from './player/control.js';
 import { tp } from './camera/modes/thirdPerson.js';
-import { findPath } from './nav/astar.js';
-import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { rageShake, updateRage } from './people/hazel.js';
 import { syncBody } from './people/sync.js';
 import { player } from './player/player.js';

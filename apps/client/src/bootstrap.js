@@ -1,6 +1,7 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initGrid } from './nav/grid.js';
+import { initGrid } from '@office/shared';
+import { OBS } from './world/helpers.js';
 import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
 import { initPeopleGroup } from './people/group.js';
@@ -57,7 +58,7 @@ export function bootstrap() {
   buildBake();
   initLabels();
   // navigation reads the obstacles registered by the world
-  initGrid();
+  initGrid(OBS);
   // simulation
   initPeopleGroup();
   initState();

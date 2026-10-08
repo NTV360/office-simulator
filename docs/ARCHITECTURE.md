@@ -14,7 +14,7 @@ An npm-workspaces monorepo (see [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#9-repo
 |---|---|
 | `apps/client/` | The browser app: Vite, JavaScript, Three.js. Everything below in "Folder map" lives in `apps/client/src/` |
 | `apps/server/` | The NestJS server (TypeScript). Today it only serves a health check; accounts and the game come in later phases |
-| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js. Today: `plan.ts` (the floor-plan data, the plan-to-metre conversion `W`/`wx`/`wz`/`toPx`, wall heights), `vec3.ts` (`Vec3`, the simulation's point type), `util.ts` (the seedable simulation random stream, the visual stream, `angDiff`, `TAU`) and the server defaults. The client imports it from source through a Vite alias |
+| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js. Today: `character/spec.ts` and `sim/data.ts` (the look of a person, names, roles, activity categories), `nav/` (walkable grid and A*), `sim/locomotion.ts` (`stepPlayer`, walking with collision), `plan.ts` (the floor-plan data, the plan-to-metre conversion `W`/`wx`/`wz`/`toPx`, wall heights), `vec3.ts` (`Vec3`, the simulation's point type), `util.ts` (the seedable simulation random stream, the visual stream, `angDiff`, `TAU`) and the server defaults. The client imports it from source through a Vite alias |
 | `docker/`, `docker-compose.yml` | The local stack: web (Caddy and the built client), server, database. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md) |
 | `scripts/` | Helper scripts, such as the stack smoke test |
 
@@ -27,7 +27,7 @@ Code is grouped by what it is. Dependencies point **downwards** in this list. A 
           \      |      /
         player/   people/   sim/                ← who is doing what
               \     |     /
-       character/   nav/   world/               ← the things in the world
+       character/   world/                     ← the things in the world
               \     |     /
           render/   shared/                  ← infrastructure and data
 ```
@@ -37,8 +37,8 @@ In practice:
 - `packages/shared` (imported as `@office/shared`; it holds the floor plan, `Vec3` and the utilities) imports nothing from either app.
 - `render/renderer.js` and `materials.js` are the base that everything that draws imports from.
 - `world/` builds static geometry and registers things people can use. It never imports from `sim/`, `ui/`, `people/`, `player/`, `camera/` or `fp/`. (This one holds today; keep it that way.)
-- `nav/` imports only `@office/shared` and `world/`.
-- `sim/` decides what people do. It reads `world/` (interactables) and `nav/` (paths) and writes to people objects. It does not import `ui/`, `camera/`, `player/` or `fp/`. (Also holds today.)
+- Navigation (the walkable grid and A*) lives in `packages/shared/src/nav/`. It takes the obstacle list as an argument (`initGrid(OBS)`), so it does not import `world/`.
+- `sim/` decides what people do. It reads `world/` (interactables) and the shared navigation (paths) and writes to people objects. It does not import `ui/`, `camera/`, `player/` or `fp/`. (Also holds today.)
 - `ui/`, `camera/`, `fp/` and `player/` are the input and presentation side. They read the sim and may call into it.
 
 **Known exceptions.** These exist today. They are debt, not precedent. Do not add more; if you need to, ask.
@@ -63,11 +63,10 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |
 | `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
 | `world/interactables.js` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')` |
-| `nav/` | `grid.js` (walkable grid built from the obstacles), `astar.js` (pathfinding) |
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
 | `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
-| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
+| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
 | `ui/` | HUD controls, the headcount ledger, the selected-person card |

@@ -74,8 +74,8 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 1051 to 1054 `EXIT`, `ENTRY` | `apps/client/src/world/entrance.js` |
 | 1056 to 1080 `bake` | `apps/client/src/world/bake.js` |
 | 1080 to 1111 labels | `apps/client/src/render/labels.js` |
-| 1113 to 1133 nav grid | `apps/client/src/nav/grid.js` |
-| 1134 to 1171 A* | `apps/client/src/nav/astar.js` |
+| 1113 to 1133 nav grid | `packages/shared/src/nav/grid.ts` (moved in phase 1, step 4) |
+| 1134 to 1171 A* | `packages/shared/src/nav/astar.ts` (moved in phase 1, step 4) |
 | 1173 to 1195 names, roles, activity categories | `packages/shared/src/sim/data.ts` (palettes in `packages/shared/src/character/spec.ts`; both moved in phase 1, step 3) |
 | 1196 to 1274 `buildBody` | `apps/client/src/character/rig.js`, `parts.js`, `gfx.js` |
 | 1276 to 1285 people list, sim clock, log | `apps/client/src/sim/state.js` |

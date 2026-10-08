@@ -1,10 +1,10 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H } from '@office/shared';
+import { FULL_H, LOW_H, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
+import { people } from '../sim/state.js';
 import { wall } from '../world/helpers.js';
-import { stepPlayer } from './locomotion.js';
 import { player } from './player.js';
 import { updatePrompts } from './prompts.js';
 import { standUp, toggleSit } from './seating.js';
@@ -76,7 +76,7 @@ function driveLocomotion(dt, p) {
     const sp = 1.5 * (keys.has('shift') ? 2 : 1) * Math.min(1, len) * dt;
     const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw);
     dx = (fx * f + rx * r) / len * sp; dz = (fz * f + rz * r) / len * sp;
-    moved = stepPlayer(p, dx, dz);
+    moved = stepPlayer(p, dx, dz, people);
   }
   player.moving = moved > 1e-4; p.walkPhase += moved * 4.6; p.animT += dt;
   return { moved, dx, dz };

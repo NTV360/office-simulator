@@ -1,5 +1,4 @@
-import { OX, OY, S, angDiff } from '@office/shared';
-import { walkPx } from '../nav/grid.js';
+import { OX, OY, S, angDiff, walkPx } from '@office/shared';
 import { SCREENS } from '../render/screens.js';
 import { arriveNow } from './day.js';
 import { people, sim } from './state.js';

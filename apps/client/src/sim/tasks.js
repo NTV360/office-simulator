@@ -1,6 +1,4 @@
-import { Vec3, random, rnd, shuffle, toPx } from '@office/shared';
-import { findPath } from '../nav/astar.js';
-import { walkPx } from '../nav/grid.js';
+import { Vec3, findPath, random, rnd, shuffle, toPx, walkPx } from '@office/shared';
 import { addLog, people, sim } from './state.js';
 import { EXIT } from '../world/entrance.js';
 import { interactables } from '../world/interactables.js';
