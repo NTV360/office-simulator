@@ -40,42 +40,46 @@ function splitForWindows(walls) {
   }
   return out;
 }
-splitForWindows(WALLS).forEach(s => wallSeg(...s));
-WINDOWS.forEach(([vert, line, a, b]) => {
-  const len = (b - a) * S, T = WALL_T * S;
-  if (vert) addObs(line - WALL_T / 2, a, line + WALL_T / 2, b); else addObs(a, line - WALL_T / 2, b, line + WALL_T / 2);
-  const c = vert ? W(line, (a + b) / 2) : W((a + b) / 2, line);
-  const grp = new THREE.Group(); grp.position.copy(c); grp.rotation.y = vert ? 0 : Math.PI / 2; scene.add(grp);
-  const sill = dynamic(new THREE.Mesh(boxGeo(T, .55, len), M.wall)); sill.position.y = .275; sill.castShadow = true; sill.receiveShadow = true; grp.add(sill);
-  const ledge = dynamic(new THREE.Mesh(boxGeo(T + .08, .04, len), M.mullion)); ledge.position.y = .57; grp.add(ledge);
-  const up = new THREE.Group(); up.position.y = .59; grp.add(up);
-  const glass = dynamic(new THREE.Mesh(boxGeo(.03, 1, len), M.glass)); up.add(glass);
-  const n = Math.max(2, Math.round(len / 1.2)), posts = [];
-  for (let i = 0; i <= n; i++) { const pm = dynamic(new THREE.Mesh(boxGeo(.07, 1, .05), M.mullion)); pm.position.z = -len / 2 + i * len / n; pm.castShadow = true; up.add(pm); posts.push(pm); }
-  const top = dynamic(new THREE.Mesh(boxGeo(T + .02, .05, len), M.cap)); up.add(top);
-  // Venetian blinds on the inside face, one per bay, each lowered a different amount
-  const inX = -(T / 2 + .06), bayW = len / n - .05;
-  const rail = dynamic(new THREE.Mesh(boxGeo(.07, .06, len - .02), M.blindRail)); rail.position.x = inX; up.add(rail);
-  const bays = [];
-  for (let i = 0; i < n; i++) {
-    const zc = -len / 2 + (i + .5) * len / n;
-    const mat = M.blind.clone(); mat.map = M.blind.map.clone(); mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping; mat.map.needsUpdate = true;
-    const panel = dynamic(new THREE.Mesh(new THREE.BoxGeometry(.012, 1, bayW), mat)); panel.position.set(inX, 0, zc); panel.castShadow = true; up.add(panel);
-    const bottom = dynamic(new THREE.Mesh(boxGeo(.03, .025, bayW), M.blindRail)); bottom.position.set(inX, 0, zc); up.add(bottom);
-    const cord = dynamic(new THREE.Mesh(boxGeo(.006, 1, .006), M.blindRail)); cord.position.set(inX - .015, 0, zc + bayW / 2 - .06); up.add(cord);
-    bays.push({ panel, bottom, cord, mat, drop: pick([.25, .35, .5, .5, .65, .8]) });
-  }
-  scalers.push(H => {
-    const hh = Math.max(.05, H - .59); glass.scale.y = hh; glass.position.y = hh / 2; posts.forEach(pm => { pm.scale.y = hh; pm.position.y = hh / 2; }); top.position.y = hh;
-    rail.position.y = hh - .05;
-    for (const bb of bays) {
-      const bh = Math.max(.02, (hh - .08) * bb.drop), y = hh - .08 - bh / 2;
-      bb.panel.scale.y = bh; bb.panel.position.y = y; bb.mat.map.repeat.set(1, Math.max(1, bh / .045));
-      bb.bottom.position.y = hh - .08 - bh; bb.cord.scale.y = Math.max(.02, hh * .55); bb.cord.position.y = hh - .08 - hh * .275;
-    }
-  });
-});
-solidBlock(383.3, 70.8, 400, 100.8, M.wall);                 // C2 corner block
-solidBlock(254.6, 294.6, 312.3, 348.5, M.featureWall, FULL_H, M.deskEdge);           // free-standing wall in the lounge
 
-export { wallSeg };
+
+function buildWalls() {
+  splitForWindows(WALLS).forEach(s => wallSeg(...s));
+  WINDOWS.forEach(([vert, line, a, b]) => {
+    const len = (b - a) * S, T = WALL_T * S;
+    if (vert) addObs(line - WALL_T / 2, a, line + WALL_T / 2, b); else addObs(a, line - WALL_T / 2, b, line + WALL_T / 2);
+    const c = vert ? W(line, (a + b) / 2) : W((a + b) / 2, line);
+    const grp = new THREE.Group(); grp.position.copy(c); grp.rotation.y = vert ? 0 : Math.PI / 2; scene.add(grp);
+    const sill = dynamic(new THREE.Mesh(boxGeo(T, .55, len), M.wall)); sill.position.y = .275; sill.castShadow = true; sill.receiveShadow = true; grp.add(sill);
+    const ledge = dynamic(new THREE.Mesh(boxGeo(T + .08, .04, len), M.mullion)); ledge.position.y = .57; grp.add(ledge);
+    const up = new THREE.Group(); up.position.y = .59; grp.add(up);
+    const glass = dynamic(new THREE.Mesh(boxGeo(.03, 1, len), M.glass)); up.add(glass);
+    const n = Math.max(2, Math.round(len / 1.2)), posts = [];
+    for (let i = 0; i <= n; i++) { const pm = dynamic(new THREE.Mesh(boxGeo(.07, 1, .05), M.mullion)); pm.position.z = -len / 2 + i * len / n; pm.castShadow = true; up.add(pm); posts.push(pm); }
+    const top = dynamic(new THREE.Mesh(boxGeo(T + .02, .05, len), M.cap)); up.add(top);
+    // Venetian blinds on the inside face, one per bay, each lowered a different amount
+    const inX = -(T / 2 + .06), bayW = len / n - .05;
+    const rail = dynamic(new THREE.Mesh(boxGeo(.07, .06, len - .02), M.blindRail)); rail.position.x = inX; up.add(rail);
+    const bays = [];
+    for (let i = 0; i < n; i++) {
+      const zc = -len / 2 + (i + .5) * len / n;
+      const mat = M.blind.clone(); mat.map = M.blind.map.clone(); mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping; mat.map.needsUpdate = true;
+      const panel = dynamic(new THREE.Mesh(new THREE.BoxGeometry(.012, 1, bayW), mat)); panel.position.set(inX, 0, zc); panel.castShadow = true; up.add(panel);
+      const bottom = dynamic(new THREE.Mesh(boxGeo(.03, .025, bayW), M.blindRail)); bottom.position.set(inX, 0, zc); up.add(bottom);
+      const cord = dynamic(new THREE.Mesh(boxGeo(.006, 1, .006), M.blindRail)); cord.position.set(inX - .015, 0, zc + bayW / 2 - .06); up.add(cord);
+      bays.push({ panel, bottom, cord, mat, drop: pick([.25, .35, .5, .5, .65, .8]) });
+    }
+    scalers.push(H => {
+      const hh = Math.max(.05, H - .59); glass.scale.y = hh; glass.position.y = hh / 2; posts.forEach(pm => { pm.scale.y = hh; pm.position.y = hh / 2; }); top.position.y = hh;
+      rail.position.y = hh - .05;
+      for (const bb of bays) {
+        const bh = Math.max(.02, (hh - .08) * bb.drop), y = hh - .08 - bh / 2;
+        bb.panel.scale.y = bh; bb.panel.position.y = y; bb.mat.map.repeat.set(1, Math.max(1, bh / .045));
+        bb.bottom.position.y = hh - .08 - bh; bb.cord.scale.y = Math.max(.02, hh * .55); bb.cord.position.y = hh - .08 - hh * .275;
+      }
+    });
+  });
+  solidBlock(383.3, 70.8, 400, 100.8, M.wall);
+  solidBlock(254.6, 294.6, 312.3, 348.5, M.featureWall, FULL_H, M.deskEdge);
+}
+
+export { wallSeg, buildWalls };

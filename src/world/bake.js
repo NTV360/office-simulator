@@ -27,4 +27,10 @@ function bake(root) {
     }
   }
 }
-bake(staticRoot);
+
+
+function buildBake() {
+  bake(staticRoot);
+}
+
+export { buildBake };

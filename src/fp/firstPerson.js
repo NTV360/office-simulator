@@ -16,7 +16,6 @@ import { setWallGoal, wallGoal } from '../world/helpers.js';
 
 /* ================= First person ================= */
 const fp = { on: false, p: null, yaw: 0, pitch: 0, sitting: null, moving: false, eye: 1.6, savedWall: LOW_H, stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0, acc: 0 };
-const coarse = matchMedia('(pointer: coarse)').matches;
 function enterFP() {
   let p = selected && selected.state !== 'away' ? selected : pick(people.filter(q => q.state !== 'away'));
   if (!p) { p = people[0]; if (!p) return; p.arrivedAt = p.arrivedAt || sim.t; p.pos.copy(ENTRY); }
@@ -83,8 +82,6 @@ function fpPrompts() {
   const who = h ? `<b>${esc(h.object.userData.person.name)}</b> · ${esc(statusText(h.object.userData.person))}` : '';
   if ($('fpLook').innerHTML !== who) $('fpLook').innerHTML = who;
 }
-$('fpAct').onclick = toggleSit;
-$('fpExit').onclick = () => setView('angle');
 function fpLook(dx, dy) { fp.yaw -= dx * .0035; fp.pitch = Math.max(-1.2, Math.min(1.2, fp.pitch - dy * .0035)); }
 function fpPointerDown(e) {
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -108,12 +105,6 @@ function fpPointerUp(e) {
   if (e.pointerId === fp.stickId) { fp.stickId = null; fp.stick.x = fp.stick.y = 0; $('knob').style.transform = ''; const st = $('stick'); st.style.left = ''; st.style.bottom = ''; }
   if (e.pointerId === fp.lookId) fp.lookId = null;
 }
-addEventListener('keydown', e => {
-  if (!fp.on || e.target.tagName === 'INPUT') return;
-  const k = e.key.toLowerCase();
-  if (k === 'e' && !e.repeat) toggleSit();
-  if (k === 'escape' && !document.pointerLockElement) setView('angle');
-});
 function fpUpdate(dt) {
   const p = fp.p; if (!p) return;
   let f = 0, r = 0, turn = 0;
@@ -148,4 +139,18 @@ function fpUpdate(dt) {
   fp.acc += dt; if (fp.acc > .2) { fp.acc = 0; fpPrompts(); }
 }
 
-export { enterFP, exitFP, fp, fpPointerDown, fpPointerMove, fpPointerUp, fpUpdate };
+let coarse;
+
+function initFirstPerson() {
+  coarse = matchMedia('(pointer: coarse)').matches;
+  $('fpAct').onclick = toggleSit;
+  $('fpExit').onclick = () => setView('angle');
+  addEventListener('keydown', e => {
+    if (!fp.on || e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if (k === 'e' && !e.repeat) toggleSit();
+    if (k === 'escape' && !document.pointerLockElement) setView('angle');
+  });
+}
+
+export { enterFP, exitFP, fp, fpPointerDown, fpPointerMove, fpPointerUp, fpUpdate, initFirstPerson };

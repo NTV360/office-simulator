@@ -5,27 +5,6 @@ import { scene } from '../../render/renderer.js';
 import { E, SEATS, mkSpot } from './basics.js';
 import { box, cyl, staticRoot } from '../helpers.js';
 
-// Mini golf: one simple straight putting strip along the east wall
-SEATS.golf = [];
-const GOLF_HOLE = W(667, 982), GOLF_BALLS = [];
-{
-  const x1 = 655, x2 = 679, y1 = 970, y2 = 1066;
-  const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
-  box(staticRoot, w, .025, d, M.turf, cx, .0125, cz, false);
-  box(staticRoot, w, .07, .05, M.diningWood2, cx, .035, wz(y1));
-  box(staticRoot, .05, .07, d, M.diningWood2, wx(x1), .035, cz);
-  box(staticRoot, .05, .07, d, M.diningWood2, wx(x2), .035, cz);
-  cyl(staticRoot, .055, .055, .006, M.chairBase, GOLF_HOLE.x, .029, GOLF_HOLE.z, 18, false);
-  cyl(staticRoot, .007, .007, 1.0, M.white, GOLF_HOLE.x, .52, GOLF_HOLE.z, 6);
-  const flag = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -.18, 0), new THREE.Vector3(.26, -.09, 0)]), M.flag);
-  flag.geometry.computeVertexNormals(); flag.position.set(GOLF_HOLE.x, 1.02, GOLF_HOLE.z); flag.userData.dynamic = true; scene.add(flag);
-  box(staticRoot, .3, .005, .3, M.turfDark, wx(667), .028, wz(1054), false);
-  SEATS.golf.push(mkSpot('golf', 659, 1054, E, { place: 'the putting strip' }));
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 10), M.white); ball.castShadow = true; scene.add(ball);
-  const start = W(667, 1054); ball.position.set(start.x, .05, start.z);
-  GOLF_BALLS.push({ ball, start, spot: SEATS.golf[0] });
-}
-
 function updateGolf() {
   for (const g of GOLF_BALLS) {
     const p = g.spot.occupant, b = g.ball;
@@ -37,4 +16,31 @@ function updateGolf() {
   }
 }
 
-export { updateGolf };
+let GOLF_HOLE, GOLF_BALLS;
+
+function buildGolf() {
+  
+  // Mini golf: one simple straight putting strip along the east wall
+  SEATS.golf = [];
+  GOLF_HOLE = W(667, 982);
+  GOLF_BALLS = [];
+  {
+    const x1 = 655, x2 = 679, y1 = 970, y2 = 1066;
+    const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
+    box(staticRoot, w, .025, d, M.turf, cx, .0125, cz, false);
+    box(staticRoot, w, .07, .05, M.diningWood2, cx, .035, wz(y1));
+    box(staticRoot, .05, .07, d, M.diningWood2, wx(x1), .035, cz);
+    box(staticRoot, .05, .07, d, M.diningWood2, wx(x2), .035, cz);
+    cyl(staticRoot, .055, .055, .006, M.chairBase, GOLF_HOLE.x, .029, GOLF_HOLE.z, 18, false);
+    cyl(staticRoot, .007, .007, 1.0, M.white, GOLF_HOLE.x, .52, GOLF_HOLE.z, 6);
+    const flag = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -.18, 0), new THREE.Vector3(.26, -.09, 0)]), M.flag);
+    flag.geometry.computeVertexNormals(); flag.position.set(GOLF_HOLE.x, 1.02, GOLF_HOLE.z); flag.userData.dynamic = true; scene.add(flag);
+    box(staticRoot, .3, .005, .3, M.turfDark, wx(667), .028, wz(1054), false);
+    SEATS.golf.push(mkSpot('golf', 659, 1054, E, { place: 'the putting strip' }));
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 10), M.white); ball.castShadow = true; scene.add(ball);
+    const start = W(667, 1054); ball.position.set(start.x, .05, start.z);
+    GOLF_BALLS.push({ ball, start, spot: SEATS.golf[0] });
+  }
+}
+
+export { updateGolf, buildGolf };

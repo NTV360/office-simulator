@@ -5,23 +5,6 @@ import { M } from '../../render/materials.js';
 import { E, SEATS } from './basics.js';
 import { tv } from './tv.js';
 import { addObs, box, boxGeo, frame } from '../helpers.js';
-
-const loungeTV = tv(317.9, 298.0, 329.0, 344.1, E, 'dash');
-const loungeTVDefault = loungeTV.material, LOUNGE_TV_POS = W(323.5, 321.05);
-SEATS.lounge.slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
-// Game console standing beside the TV
-{
-  const f = frame(331, 350, E); addObs(328, 346, 335, 354);
-  box(f, .26, .02, .14, M.chairBase, 0, .01, 0);
-  box(f, .1, .4, .25, M.white, -.03, .22, 0);
-  box(f, .1, .4, .25, M.white, .03, .22, 0);
-  box(f, .045, .39, .23, M.chairBase, 0, .22, 0);
-  const led = new THREE.Mesh(boxGeo(.004, .004, .2), new THREE.MeshBasicMaterial({ color: 0x5ab5ff })); led.position.set(0, .43, 0); f.add(led);
-}
-// Animated 1v1 fighting game for the lounge TV (original fighters, not any real game)
-const gameCanvas = document.createElement('canvas'); gameCanvas.width = 320; gameCanvas.height = 180;
-const gameTex = new THREE.CanvasTexture(gameCanvas); gameTex.colorSpace = THREE.SRGBColorSpace;
-const gameMat = new THREE.MeshBasicMaterial({ map: gameTex, toneMapped: false });
 let gameT = 0, gameAcc = 0;
 const FIGHTERS = [
   { name: 'KAI', skin: '#d9a27a', top: '#2f6fb3', pants: '#1d2733', hair: '#1b1817', belt: '#e2b65c' },
@@ -132,4 +115,29 @@ function drawGame(dt) {
   gameTex.needsUpdate = true;
 }
 
-export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault };
+let loungeTV, loungeTVDefault, LOUNGE_TV_POS, gameCanvas, gameTex, gameMat;
+
+function buildGame() {
+  loungeTV = tv(317.9, 298.0, 329.0, 344.1, E, 'dash');
+  loungeTVDefault = loungeTV.material;
+  LOUNGE_TV_POS = W(323.5, 321.05);
+  SEATS.lounge.slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
+  // Game console standing beside the TV
+  {
+    const f = frame(331, 350, E); addObs(328, 346, 335, 354);
+    box(f, .26, .02, .14, M.chairBase, 0, .01, 0);
+    box(f, .1, .4, .25, M.white, -.03, .22, 0);
+    box(f, .1, .4, .25, M.white, .03, .22, 0);
+    box(f, .045, .39, .23, M.chairBase, 0, .22, 0);
+    const led = new THREE.Mesh(boxGeo(.004, .004, .2), new THREE.MeshBasicMaterial({ color: 0x5ab5ff })); led.position.set(0, .43, 0); f.add(led);
+  }
+  // Animated 1v1 fighting game for the lounge TV (original fighters, not any real game)
+  gameCanvas = document.createElement('canvas');
+  gameCanvas.width = 320;
+  gameCanvas.height = 180;
+  gameTex = new THREE.CanvasTexture(gameCanvas);
+  gameTex.colorSpace = THREE.SRGBColorSpace;
+  gameMat = new THREE.MeshBasicMaterial({ map: gameTex, toneMapped: false });
+}
+
+export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault, buildGame };

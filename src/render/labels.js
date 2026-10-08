@@ -4,7 +4,7 @@ import { scene } from './renderer.js';
 import { ISLANDS } from '../world/furniture/desks.js';
 
 /* ================= Labels ================= */
-const labelGroup = new THREE.Group(); scene.add(labelGroup);
+const labelGroup = new THREE.Group();
 let labelsOn = true;
 function label(text, px, py, y = 3.0, scale = 1) {
   const c = document.createElement('canvas'); let g = c.getContext('2d');
@@ -36,4 +36,9 @@ function buildLabels() {
 
 function setLabelsOn(v) { labelsOn = v; }
 
-export { buildLabels, labelGroup, labelsOn, setLabelsOn };
+
+function initLabels() {
+  scene.add(labelGroup);
+}
+
+export { buildLabels, labelGroup, labelsOn, setLabelsOn, initLabels };

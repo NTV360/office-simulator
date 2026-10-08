@@ -3,9 +3,6 @@ import { phaseName } from '../sim/day.js';
 import { log, logDirty, people, setLogDirty, sim } from '../sim/state.js';
 import { $ } from './dom.js';
 import { fmt, renderPerson } from './person.js';
-
-const actsEl = $('acts');
-actsEl.innerHTML = Object.entries(CATS).map(([k, v]) => `<li data-k="${k}"><span class="dot" style="background:${v.color}"></span><span>${v.name}</span><span class="n">0</span><span class="bar"><i style="background:${v.color};width:0"></i></span></li>`).join('');
 function renderUI() {
   $('clock').textContent = fmt(sim.t);
   $('phase').innerHTML = `Day ${sim.day}<br>${phaseName(sim.t)}`;
@@ -18,4 +15,11 @@ function renderUI() {
   renderPerson();
 }
 
-export { renderUI };
+let actsEl;
+
+function initLedger() {
+  actsEl = $('acts');
+  actsEl.innerHTML = Object.entries(CATS).map(([k, v]) => `<li data-k="${k}"><span class="dot" style="background:${v.color}"></span><span>${v.name}</span><span class="n">0</span><span class="bar"><i style="background:${v.color};width:0"></i></span></li>`).join('');
+}
+
+export { renderUI, initLedger };

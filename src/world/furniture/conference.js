@@ -15,22 +15,31 @@ function confSeat(n, px, py, face) {
   SEATS.conf[n].push(mkSpot('conf', px, py, face, { sit: true, place: `Conference ${n}`, room: n }));
   officeChair(frame(px, py, face), M.chairSeat2);
 }
-// Conference 1: two tables, ten seats facing the TV on the west wall
-table(158, 96, 174, 168); table(205, 96, 221, 168);
-[107, 124, 141, 158].forEach(y => { confSeat(1, 183, y, WST); confSeat(1, 230, y, WST); });
-cabinet(119, 180, 158, 191.2);
-tv(116.5, 108, 127, 156, E, 'slides');
-// Conference 2: square table, four chairs plus a corner chair
-table(305, 105, 355, 160);
-confSeat(2, 294, 118, E); confSeat(2, 294, 147, E); confSeat(2, 366, 118, WST); confSeat(2, 366, 147, WST);
-confSeat(2, 366, 92, Math.atan2(330 - 366, 132 - 92));
-cabinet(384.5, 115, 397.6, 172);
-tv(267, 108, 277, 156, E, 'slides');
-// Conference 3: long table, ten seats
-table(150, 224, 186, 272);
-[233, 248, 263].forEach(y => { confSeat(3, 141, y, E); confSeat(3, 195, y, WST); });
-confSeat(3, 168, 213, SO); confSeat(3, 168, 283, N);
-cabinet(128, 295, 188, 302.4);
-tv(116, 222, 126, 270, E, 'dash');
 
-export { table };
+
+function buildConference() {
+  // Conference 1: two tables, ten seats facing the TV on the west wall
+  table(158, 96, 174, 168);
+  table(205, 96, 221, 168);
+  [107, 124, 141, 158].forEach(y => { confSeat(1, 183, y, WST); confSeat(1, 230, y, WST); });
+  cabinet(119, 180, 158, 191.2);
+  tv(116.5, 108, 127, 156, E, 'slides');
+  // Conference 2: square table, four chairs plus a corner chair
+  table(305, 105, 355, 160);
+  confSeat(2, 294, 118, E);
+  confSeat(2, 294, 147, E);
+  confSeat(2, 366, 118, WST);
+  confSeat(2, 366, 147, WST);
+  confSeat(2, 366, 92, Math.atan2(330 - 366, 132 - 92));
+  cabinet(384.5, 115, 397.6, 172);
+  tv(267, 108, 277, 156, E, 'slides');
+  // Conference 3: long table, ten seats
+  table(150, 224, 186, 272);
+  [233, 248, 263].forEach(y => { confSeat(3, 141, y, E); confSeat(3, 195, y, WST); });
+  confSeat(3, 168, 213, SO);
+  confSeat(3, 168, 283, N);
+  cabinet(128, 295, 188, 302.4);
+  tv(116, 222, 126, 270, E, 'dash');
+}
+
+export { table, buildConference };

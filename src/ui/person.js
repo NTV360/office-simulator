@@ -7,7 +7,6 @@ import { $ } from './dom.js';
 /* ================= Selection + UI ================= */
 let selected = null;
 const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }));
-selRing.rotation.x = -Math.PI / 2; selRing.visible = false; selRing.renderOrder = 3; scene.add(selRing);
 
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
@@ -49,7 +48,15 @@ function renderPerson() {
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = followP === p ? 'Following' : 'Follow';
 }
-$('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; setFollowP(selected); setViewPressed('follow'); setViewName('follow'); camGoal.dist = Math.min(camGoal.dist, 9); camGoal.pitch = Math.min(camGoal.pitch, .75); renderPerson(); };
-$('pClose').onclick = () => select(null);
 
-export { fmt, renderPerson, selRing, select, selected, statusText };
+
+function initPerson() {
+  selRing.rotation.x = -Math.PI / 2;
+  selRing.visible = false;
+  selRing.renderOrder = 3;
+  scene.add(selRing);
+  $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; setFollowP(selected); setViewPressed('follow'); setViewName('follow'); camGoal.dist = Math.min(camGoal.dist, 9); camGoal.pitch = Math.min(camGoal.pitch, .75); renderPerson(); };
+  $('pClose').onclick = () => select(null);
+}
+
+export { fmt, renderPerson, selRing, select, selected, statusText, initPerson };

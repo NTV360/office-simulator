@@ -6,19 +6,6 @@ import { renderer } from '../render/renderer.js';
 
 const el = renderer.domElement;
 const ptrs = new Map(); let downAt = null, lastPinch = 0, lastMid = null, lastAng = null;
-
-el.addEventListener('contextmenu', e => e.preventDefault());
-el.addEventListener('pointerdown', e => {
-  if (fp.on) { fpPointerDown(e); return; }
-  try { el.setPointerCapture(e.pointerId); } catch (_) {}
-  // A mouse or pen is a single pointer: drop anything left over from a missed pointerup
-  if (e.pointerType !== 'touch') ptrs.clear();
-  else for (const [id, q] of ptrs) if (q.type !== 'touch') ptrs.delete(id);
-  ptrs.set(e.pointerId, { type: e.pointerType, x: e.clientX, y: e.clientY, b: e.button, mod: e.shiftKey || e.ctrlKey || e.altKey || e.metaKey });
-  downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); lastMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; lastAng = Math.atan2(b.y - a.y, b.x - a.x); }
-  e.preventDefault();
-});
 const onMove = e => {
   if (fp.on) { fpPointerMove(e); return; }
   const p = ptrs.get(e.pointerId); if (!p) return;
@@ -35,33 +22,13 @@ const onMove = e => {
     lastPinch = d; lastMid = mid; lastAng = ang;
   }
 };
-el.addEventListener('pointermove', onMove);
-addEventListener('pointermove', e => { if (ptrs.has(e.pointerId) && e.target !== el) onMove(e); });
 const endPtr = e => {
   if (fp.on) { fpPointerUp(e); return; }
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (ptrs.size < 2) { lastPinch = 0; lastMid = null; lastAng = null; }
   if (p && downAt && ptrs.size === 0 && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6 && performance.now() - downAt.t < 500) pickAt(e.clientX, e.clientY);
 };
-el.addEventListener('pointerup', endPtr); addEventListener('pointerup', e => { if (ptrs.has(e.pointerId)) endPtr(e); });
-el.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); lastPinch = 0; lastMid = null; lastAng = null; });
-el.addEventListener('wheel', e => {
-  e.preventDefault();
-  if (fp.on) return;
-  const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
-  // Trackpad pinch arrives as ctrl+wheel: zoom. A notched mouse wheel: zoom.
-  // A two-finger trackpad swipe: move around the floor, like dragging.
-  const notched = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50) || (e.wheelDeltaY && Math.abs(e.wheelDeltaY) % 120 === 0 && !e.deltaX);
-  // Gentle zoom: each wheel notch or pinch step changes the distance by at most ~6%
-  const clampF = f => Math.max(.94, Math.min(1.06, f));
-  if (e.ctrlKey) { zoomAt(clampF(Math.exp(dy * .004)), e.clientX, e.clientY); return; }
-  if (!notched) { pan(-e.deltaX, -e.deltaY); return; }
-  zoomAt(clampF(Math.exp(dy * .0005)), e.clientX, e.clientY);
-}, { passive: false });
 // Keyboard: arrows / WASD move, Q E turn, + - zoom
 const keys = new Set();
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; const k = e.key.toLowerCase(); if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); } });
-addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
-addEventListener('blur', () => keys.clear());
 function keyCam(dt) {
   if (!keys.size || fp.on) return;
   const v = 600 * dt; let dx = 0, dy = 0;
@@ -72,4 +39,41 @@ function keyCam(dt) {
   if (keys.has('+') || keys.has('=')) zoomAt(Math.exp(-.8 * dt)); if (keys.has('-') || keys.has('_')) zoomAt(Math.exp(.8 * dt));
 }
 
-export { el, keyCam, keys };
+
+function initInput() {
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('pointerdown', e => {
+    if (fp.on) { fpPointerDown(e); return; }
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    // A mouse or pen is a single pointer: drop anything left over from a missed pointerup
+    if (e.pointerType !== 'touch') ptrs.clear();
+    else for (const [id, q] of ptrs) if (q.type !== 'touch') ptrs.delete(id);
+    ptrs.set(e.pointerId, { type: e.pointerType, x: e.clientX, y: e.clientY, b: e.button, mod: e.shiftKey || e.ctrlKey || e.altKey || e.metaKey });
+    downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); lastMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; lastAng = Math.atan2(b.y - a.y, b.x - a.x); }
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', onMove);
+  addEventListener('pointermove', e => { if (ptrs.has(e.pointerId) && e.target !== el) onMove(e); });
+  el.addEventListener('pointerup', endPtr);
+  addEventListener('pointerup', e => { if (ptrs.has(e.pointerId)) endPtr(e); });
+  el.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); lastPinch = 0; lastMid = null; lastAng = null; });
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (fp.on) return;
+    const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
+    // Trackpad pinch arrives as ctrl+wheel: zoom. A notched mouse wheel: zoom.
+    // A two-finger trackpad swipe: move around the floor, like dragging.
+    const notched = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50) || (e.wheelDeltaY && Math.abs(e.wheelDeltaY) % 120 === 0 && !e.deltaX);
+    // Gentle zoom: each wheel notch or pinch step changes the distance by at most ~6%
+    const clampF = f => Math.max(.94, Math.min(1.06, f));
+    if (e.ctrlKey) { zoomAt(clampF(Math.exp(dy * .004)), e.clientX, e.clientY); return; }
+    if (!notched) { pan(-e.deltaX, -e.deltaY); return; }
+    zoomAt(clampF(Math.exp(dy * .0005)), e.clientX, e.clientY);
+  }, { passive: false });
+  addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; const k = e.key.toLowerCase(); if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); } });
+  addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+  addEventListener('blur', () => keys.clear());
+}
+
+export { el, keyCam, keys, initInput };

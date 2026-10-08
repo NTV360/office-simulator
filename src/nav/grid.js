@@ -6,12 +6,6 @@ const GX0 = 109, GY0 = 66, CS = 4.5, GC = Math.ceil((687 - GX0) / CS), GR = Math
 const NAV = new Uint8Array(GC * GR);
 const MARGIN = 6;
 function inPoly(x, y, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
-for (let r = 0; r < GR; r++) for (let c = 0; c < GC; c++) {
-  const x = GX0 + (c + .5) * CS, y = GY0 + (r + .5) * CS;
-  let ok = inPoly(x, y, OUTER) || (x > 182 && x < 265 && y > 385 && y < 432);
-  if (ok) for (const o of OBS) if (x > o[0] - MARGIN && x < o[2] + MARGIN && y > o[1] - MARGIN && y < o[3] + MARGIN) { ok = false; break; }
-  NAV[r * GC + c] = ok ? 1 : 0;
-}
 const cellOf = (x, y) => [Math.floor((x - GX0) / CS), Math.floor((y - GY0) / CS)];
 const walkPx = (x, y) => { const [c, r] = cellOf(x, y); return c >= 0 && r >= 0 && c < GC && r < GR && NAV[r * GC + c] === 1; };
 function nearestWalk(c, r) {
@@ -23,4 +17,14 @@ function nearestWalk(c, r) {
   return null;
 }
 
-export { CS, GC, GR, GX0, GY0, NAV, cellOf, nearestWalk, walkPx };
+
+function initGrid() {
+  for (let r = 0; r < GR; r++) for (let c = 0; c < GC; c++) {
+    const x = GX0 + (c + .5) * CS, y = GY0 + (r + .5) * CS;
+    let ok = inPoly(x, y, OUTER) || (x > 182 && x < 265 && y > 385 && y < 432);
+    if (ok) for (const o of OBS) if (x > o[0] - MARGIN && x < o[2] + MARGIN && y > o[1] - MARGIN && y < o[3] + MARGIN) { ok = false; break; }
+    NAV[r * GC + c] = ok ? 1 : 0;
+  }
+}
+
+export { CS, GC, GR, GX0, GY0, NAV, cellOf, nearestWalk, walkPx, initGrid };

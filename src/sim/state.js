@@ -4,8 +4,7 @@ import { scene } from '../render/renderer.js';
 import { SEATS } from '../world/furniture/basics.js';
 
 const people = [];
-const peopleGroup = new THREE.Group(); scene.add(peopleGroup);
-const deskPool = shuffle(SEATS.desk.slice());
+const peopleGroup = new THREE.Group();
 
 const CLOCK = 0.4; // sim minutes per real second at 1×
 const sim = { t: 9 * 60 + 25, day: 1, speed: 1, paused: false, lastMinute: 0 };
@@ -15,4 +14,11 @@ let logDirty = true;
 
 function setLogDirty(v) { logDirty = v; }
 
-export { CLOCK, addLog, deskPool, log, logDirty, people, peopleGroup, sim, setLogDirty };
+let deskPool;
+
+function initState() {
+  scene.add(peopleGroup);
+  deskPool = shuffle(SEATS.desk.slice());
+}
+
+export { CLOCK, addLog, deskPool, log, logDirty, people, peopleGroup, sim, setLogDirty, initState };
