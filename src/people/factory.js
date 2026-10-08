@@ -1,5 +1,4 @@
 import { TAU, pick, rnd } from '../core/util.js';
-import { exitFP, fp } from '../fp/firstPerson.js';
 import { buildBody } from '../character/rig.js';
 import { randomSpec } from '../character/spec.js';
 import { FIRST, LAST, roleBag } from './data.js';
@@ -33,7 +32,6 @@ function makePerson() {
   return p;
 }
 function removePerson() {
-  if (fp.on && fp.p === people[people.length - 1]) exitFP();
   const p = people.pop(); if (!p) return;
   endTask(p); p.seat.owner = null; p.seat.screen.material = SCREENS.off;
   peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);

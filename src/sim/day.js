@@ -1,5 +1,4 @@
 import { rnd, shuffle } from '../core/util.js';
-import { exitFP, fp } from '../fp/firstPerson.js';
 import { makePerson, scheduleDay } from '../people/factory.js';
 import { meetings } from './meetings.js';
 import { addLog, people, sim } from './state.js';
@@ -13,7 +12,6 @@ function phaseName(t) {
   if (t < 17 * 60) return 'Afternoon work'; if (t < 18 * 60 + 50) return 'Wrapping up'; return 'Lights out';
 }
 function newDay() {
-  if (fp.on) exitFP();
   sim.day++; sim.t = 7 * 60 + 45;
   meetings.length = 0;
   people.forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.body.root.visible = false; p.body.ring.visible = false; scheduleDay(p); });

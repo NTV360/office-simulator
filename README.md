@@ -17,7 +17,9 @@ npm run build    # outputs dist/
 | `render/` | Renderer, scene, materials, screen textures, labels, day/night lighting |
 | `world/` | Floor, walls, doors, furniture (one file per area), `interactables.js` registry (desks, seats, counters...), static-mesh baking |
 | `nav/` | Navigation grid and A* pathfinding |
-| `people/` | Appearance data, body rig, animation, person factory |
+| `character/` | `spec.js` CharacterSpec (plain JSON appearance + parts catalog + validation, no Three.js), `rig.js` body rig, `parts.js` hair/accessories, `gfx.js` shared helpers |
+| `people/` | NPC data (names, roles, activity categories), factory, animation poses, per-frame body sync |
+| `player/` | The player entity: same rig as NPCs, not in the NPC list; `setPlayerSpec()` changes its look |
 | `sim/` | Shared sim state, tasks, meetings, day cycle, per-frame stepping |
 | `camera/` | `controller.js` switches camera modes (`modes/`: angle, top, follow, free, firstPerson); `state.js` orbit state; `orbit.js` + `input.js` pointer/keyboard input; `spots.js` jump-to |
 | `ui/` | HUD controls, ledger, selected-person card |

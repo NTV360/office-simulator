@@ -2,33 +2,29 @@ import * as THREE from 'three';
 import { el, keys } from '../camera/input.js';
 import { ray } from '../camera/spots.js';
 import { setView } from '../camera/controller.js';
+import { spawnPlayer } from '../player/player.js';
 import { camGoal, camState } from '../camera/state.js';
 import { FULL_H, LOW_H, OX, OY, S } from '../config/plan.js';
-import { pick } from '../core/util.js';
 import { walkPx } from '../nav/grid.js';
 import { camera } from '../render/renderer.js';
-import { people, sim } from '../sim/state.js';
-import { endTask } from '../sim/tasks.js';
+import { people } from '../sim/state.js';
 import { $ } from '../ui/dom.js';
-import { select, selected, statusText } from '../ui/person.js';
-import { ENTRY } from '../world/entrance.js';
+import { select, statusText } from '../ui/person.js';
 import { wall } from '../world/helpers.js';
 import { interactables } from '../world/interactables.js';
 
 /* ================= First person ================= */
 const fp = { on: false, p: null, yaw: 0, pitch: 0, sitting: null, moving: false, eye: 1.6, savedWall: LOW_H, stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0, acc: 0 };
 function enterFP() {
-  let p = selected && selected.state !== 'away' ? selected : pick(people.filter(q => q.state !== 'away'));
-  if (!p) { p = people[0]; if (!p) return; p.arrivedAt = p.arrivedAt || sim.t; p.pos.copy(ENTRY); }
+  const p = spawnPlayer();
   select(null);
-  endTask(p); p.queue = []; p.path = null; p.chatWith = null; p.task = null; p.state = 'player';
-  people.forEach(q => { if (q.chatWith === p) q.chatWith = null; });
+  p.task = null;
   Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.spec.scale, savedWall: wall.goal });
   wall.goal = FULL_H;
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; p.body.ring.visible = false;
   document.body.classList.add('fp'); $('fpBar').hidden = false; $('crosshair').hidden = false; $('stick').hidden = !coarse; $('fpPrompt').hidden = false;
-  $('fpWho').textContent = `Walking as ${p.name}`;
+  $('fpWho').textContent = 'Walking as you';
 }
 // Leave first-person mode (called by the camera controller when another mode takes over).
 function leaveFP() {
@@ -39,10 +35,9 @@ function leaveFP() {
   camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
   document.body.classList.remove('fp'); $('fpBar').hidden = true; $('crosshair').hidden = true; $('stick').hidden = true; $('fpPrompt').hidden = true;
   if (p) {
-    p.body.root.visible = true; p.body.ring.visible = true; p.state = 'idle'; p.task = null;
+    p.body.root.visible = true; p.task = null;
     camGoal.target.set(p.pos.x, 0, p.pos.z); camState.target.copy(camGoal.target);
     camGoal.dist = camState.dist = 12; camGoal.pitch = camState.pitch = .75; camGoal.yaw = camState.yaw = p.face + Math.PI;
-    select(p);
   }
 }
 // Public: drop out of first person; the camera stays free-orbiting around the person.
