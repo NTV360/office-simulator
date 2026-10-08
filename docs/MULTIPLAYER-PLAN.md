@@ -14,7 +14,7 @@ Questions that are still open are in [section 18](#18-open-questions).
 | The office | **Customisable and physical**: movable chairs, personalised stations, lifting, moving and throwing things, "like a real office" |
 | NPCs | The server runs them. **An account's character is an NPC while its player is offline and is controlled by the player while online** |
 | Voice | Coming soon (planned for, built after movement and chat) |
-| Hosting | **Local Docker first**: the whole stack runs from one compose file on a PC (a developer's, or one in the office). **Render and EC2 are dropped for now.** Once the local stack works, the same containers move to EC2 unchanged |
+| Hosting | **Local Docker first**: the whole stack runs from one compose file on a PC (a developer's, or one in the office). **Render and EC2 are dropped for now.** Once the local stack works, the same containers move to EC2 unchanged. **Host OS: a Windows PC for the local setup, Ubuntu on EC2 later** ([section 13.1](#131-the-host-machine)) |
 | Containers | Everything in Docker: web (frontend), server, database (and voice later) |
 | Repo | One monorepo ([section 9](#9-repository-layout)) |
 | World clock | Keep the **fast day** (about 28.5 real minutes), as a setting that can change later |
@@ -377,11 +377,35 @@ Voice is built after movement and chat but affects decisions now.
 
 **The path.** Render and EC2 are not used for now. The one thing to build and prove first is a **single `docker-compose.yml` that runs the whole stack on one PC**: web, server and database (voice later). When that works locally, putting it on EC2 is **the same compose file on a rented Linux machine**, with a domain name for HTTPS and the firewall opened. No redesign. So every choice below is made to be portable: configuration comes from environment variables, data lives in named volumes, and nothing assumes a particular PC.
 
-### 13.1 The host machine (any PC for now)
+### 13.1 The host machine
 
-- Always on, wired to the network, with a **fixed local address** (a DHCP reservation on the router) and a stable name.
+**Local setup: a Windows PC. Later on EC2: Ubuntu.** (Both decided.) The containers are Linux in both cases, so the same images and the same compose file run on both. Only the layer underneath differs:
+
+| | Windows PC (now) | Ubuntu on EC2 (later) |
+|---|---|---|
+| Docker | Docker Desktop with WSL2, or Docker Engine installed inside an Ubuntu WSL2 distribution (see below) | Docker Engine and the compose plugin from Docker's apt repository |
+| After a reboot | Docker Desktop starts when someone **signs in**, so set the PC to sign in automatically and start Docker Desktop with it (or use Engine in WSL2 and start it at boot with a scheduled task). `restart: unless-stopped` then brings the stack back | systemd starts Docker at boot, and `restart: unless-stopped` brings the stack back |
+| Firewall | Windows Defender Firewall: allow inbound 80 and 443 (and the voice ports later) | EC2 security group (and optionally `ufw`) |
+| HTTPS | Caddy's internal certificate authority for the local network ([13.3](#133-https-on-the-local-network)) | A real domain with automatic certificates |
+| Database storage | A **named Docker volume** (not a bind mount to a Windows folder: faster and no permission problems) | A named volume on an EBS disk, with snapshots |
+| CPU type | x86-64 | Pick an **x86-64** instance (not ARM/Graviton) so the images are identical |
+
+**Rules that keep Windows and Ubuntu identical:**
+
+- Everything the stack runs is **inside Linux containers**. Scripts (backups, container start-up) are shell scripts that run in a container, never PowerShell on the host.
+- `.gitattributes` keeps **LF line endings**, so shell scripts and Dockerfiles do not break in a Windows checkout (already set up in this repo).
+- Linux file names are **case-sensitive** and Windows ones are not, so a wrong-case import works on Windows and fails on Ubuntu. **Always build through Docker**: the build runs on Linux and catches it.
+- Configuration only through environment variables and the `.env` file; no hard-coded Windows paths.
+- Set the time zone explicitly in the containers (`TZ`), so logs and the clock agree on both machines.
+
+**Notes for the Windows host:**
+
+- **Docker Desktop licensing:** it is free for personal use, education and small businesses (under 250 employees and under $10 million annual revenue); larger companies need a paid plan. Check the company against Docker's current terms. A free alternative is Docker Engine installed inside an Ubuntu WSL2 distribution, which is also the closest match to EC2. We can switch to it without changing any project file.
+- The PC must not sleep, and Windows updates should restart it outside working hours.
+- Docker on Windows runs in a WSL2 virtual machine. Give it explicit limits in `.wslconfig` (memory and CPU count) so it does not starve Windows; about 8 GB for 100 players with voice is a starting guess for the load test to confirm.
+- A **fixed local address** for the PC (a DHCP reservation on the router).
+- For voice, WSL2's **mirrored networking** mode (Windows 11 22H2 or later) makes published ports appear on the PC's network adapter more directly. Check this in the voice prototype ([section 12](#12-voice-planned)).
 - A modern 4-core CPU, 16 GB RAM and an SSD are a comfortable target for about 100 players plus voice. The game loop uses one core lightly; the database and voice use the rest.
-- If it is a Windows PC: Docker Desktop with WSL2. Keep the PC from sleeping, and turn off automatic restarts for updates during working hours.
 - **The office Wi-Fi is the likely bottleneck, not the server.** About 100 clients need a proper access-point setup.
 
 ### 13.2 Containers
@@ -493,7 +517,7 @@ The order lets you **see progress after every phase**. Phases 5 and 6 can swap w
 
 ## 18. Open questions
 
-**Already decided** (for the record): the fast day stays (as a setting); an admin picks each account's desk; local Docker first with EC2 later; no Render. See [section 1](#1-decisions-so-far).
+**Already decided** (for the record): the fast day stays (as a setting); an admin picks each account's desk; local Docker first with EC2 later; no Render; the local host is a **Windows PC** and EC2 will be **Ubuntu**. See [section 1](#1-decisions-so-far).
 
 Still open. Defaults in brackets are what this plan assumes.
 
@@ -503,11 +527,8 @@ Still open. Defaults in brackets are what this plan assumes.
 4. **Rename "Desk 01" to "Desk 08" as Stations A to H** (in the status text and labels)? [Yes, in phase 1]
 5. **Other people's stuff:** may someone else move things at *your* station (monitor, mug, chair)? Throw things at you? [No at stations, yes in shared areas]
 6. **Can thrown objects hit people**, knock them back, or break? [No in v1]
-7. **The host PC for the final setup.** Which computer will run the stack day to day, and is it Windows or Linux? This only matters for **voice**. See the note below. [Windows with Docker Desktop; prototype voice early]
-8. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
-9. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only for now]
-
-**About question 7.** Docker on Windows does not run containers directly. It runs them inside a small hidden Linux virtual machine. Almost everything works the same either way, so you can develop and test on Windows without any issue. Voice is the exception: it sends audio over a different kind of network connection that is fiddly to pass through that hidden machine, and the container has to advertise the PC's real network address. It is solvable, but it is the one place where the choice of host machine could cost time. There is nothing to decide today. Voice is phase 7, and the plan is to try it early on whichever PC will be the host.
+7. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
+8. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only for now]
 
 ## 19. First gameplay interactions (proposal)
 
