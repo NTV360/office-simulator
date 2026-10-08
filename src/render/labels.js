@@ -5,7 +5,7 @@ import { ISLANDS } from '../world/furniture/desks.js';
 
 /* ================= Labels ================= */
 const labelGroup = new THREE.Group();
-let labelsOn = true;
+const labelState = { on: true };
 function label(text, px, py, y = 3.0, scale = 1) {
   const c = document.createElement('canvas'); let g = c.getContext('2d');
   const font = '600 38px Archivo, "Helvetica Neue", Arial, sans-serif', track = 5;
@@ -34,11 +34,9 @@ function buildLabels() {
   label('Counter top', 390, 1014, 1.8, .8); label('Sink', 395, 1072, 1.6, .8); label('Storage', 311, 1062, 2.4, .85); label('Locker 2', 508, 1103, 2.4, .8); label('Locker 1', 615, 1103, 2.4, .8);
 }
 
-function setLabelsOn(v) { labelsOn = v; }
-
 
 function initLabels() {
   scene.add(labelGroup);
 }
 
-export { buildLabels, labelGroup, labelsOn, setLabelsOn, initLabels };
+export { buildLabels, labelGroup, labelState, initLabels };

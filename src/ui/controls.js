@@ -5,12 +5,12 @@ import { camGoal } from '../camera/state.js';
 import { FULL_H, LOW_H } from '../config/plan.js';
 import { rnd } from '../core/util.js';
 import { makePerson, removePerson } from '../people/factory.js';
-import { labelsOn, setLabelsOn } from '../render/labels.js';
+import { labelState } from '../render/labels.js';
 import { camera, renderer } from '../render/renderer.js';
 import { people, sim } from '../sim/state.js';
 import { $ } from './dom.js';
 import { select } from './person.js';
-import { setWallGoal, wallGoal } from '../world/helpers.js';
+import { wall } from '../world/helpers.js';
 function setUiHidden(h) {
   document.body.classList.toggle('ui-hidden', h);
   const b = $('uiToggle'); b.textContent = h ? 'Show controls' : 'Hide controls'; b.setAttribute('aria-pressed', String(h)); b.title = (h ? 'Show' : 'Hide') + ' controls (H)';
@@ -30,8 +30,8 @@ function initControls() {
   $('play').onclick = () => { sim.paused = !sim.paused; $('play').textContent = sim.paused ? 'Play' : 'Pause'; };
   document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { sim.speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
-  $('tWalls').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); setWallGoal(on ? FULL_H : LOW_H); };
-  $('tLabels').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); setLabelsOn(on); };
+  $('tWalls').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); wall.goal = on ? FULL_H : LOW_H; };
+  $('tLabels').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); labelState.on = on; };
   $('staff').oninput = e => {
     const n = +e.target.value; $('staffVal').textContent = n;
     while (people.length < n) { const p = makePerson(); if (!p) break; if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50) { p.arriveAt = sim.t + rnd(.1, 4); } }

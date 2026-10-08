@@ -12,7 +12,7 @@ import { endTask } from '../sim/tasks.js';
 import { $ } from '../ui/dom.js';
 import { select, selected, statusText } from '../ui/person.js';
 import { ENTRY } from '../world/entrance.js';
-import { setWallGoal, wallGoal } from '../world/helpers.js';
+import { wall } from '../world/helpers.js';
 import { interactables } from '../world/interactables.js';
 
 /* ================= First person ================= */
@@ -23,8 +23,8 @@ function enterFP() {
   select(null);
   endTask(p); p.queue = []; p.path = null; p.chatWith = null; p.task = null; p.state = 'player';
   people.forEach(q => { if (q.chatWith === p) q.chatWith = null; });
-  Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.look.scale, savedWall: wallGoal });
-  setWallGoal(FULL_H);
+  Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.look.scale, savedWall: wall.goal });
+  wall.goal = FULL_H;
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; p.body.ring.visible = false;
   document.body.classList.add('fp'); $('fpBar').hidden = false; $('crosshair').hidden = false; $('stick').hidden = !coarse; $('fpPrompt').hidden = false;
@@ -34,7 +34,7 @@ function enterFP() {
 function leaveFP() {
   if (!fp.on) return; const p = fp.p;
   if (fp.sitting) standUp();
-  fp.on = false; fp.p = null; setWallGoal(fp.savedWall); fp.stickId = fp.lookId = null; fp.stick.x = fp.stick.y = 0;
+  fp.on = false; fp.p = null; wall.goal = fp.savedWall; fp.stickId = fp.lookId = null; fp.stick.x = fp.stick.y = 0;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
   document.body.classList.remove('fp'); $('fpBar').hidden = true; $('crosshair').hidden = true; $('stick').hidden = true; $('fpPrompt').hidden = true;

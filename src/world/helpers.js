@@ -26,10 +26,7 @@ const dynamic = m => { m.userData.dynamic = true; return m; };
 
 /* Things that grow with the wall-height toggle */
 const scalers = [];
-let wallH = LOW_H, wallGoal = LOW_H;
+// Wall height: `goal` is where the toggle wants it, `h` eases toward it each frame.
+const wall = { h: LOW_H, goal: LOW_H };
 
-function setWallH(v) { wallH = v; }
-
-function setWallGoal(v) { wallGoal = v; }
-
-export { OBS, addObs, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wallGoal, wallH, setWallH, setWallGoal };
+export { OBS, addObs, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wall };

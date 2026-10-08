@@ -20,7 +20,7 @@ import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { applyPose } from './people/animation.js';
 import { ringMats } from './people/body.js';
-import { buildLabels, labelGroup, labelsOn } from './render/labels.js';
+import { buildLabels, labelGroup, labelState } from './render/labels.js';
 import { updateLight } from './render/lighting.js';
 import { camera, renderer, scene } from './render/renderer.js';
 import { newDay } from './sim/day.js';
@@ -34,7 +34,7 @@ import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
-import { scalers, setWallH, wallGoal, wallH } from './world/helpers.js';
+import { scalers, wall } from './world/helpers.js';
 
 bootstrap();
 
@@ -59,15 +59,15 @@ function tick(now) {
     if (b.ring.material !== ringMats[cat]) b.ring.material = ringMats[cat];
   }
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
-  const showLabels = labelsOn && !fp.on && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
-  if (Math.abs(wallGoal - wallH) > .001) { setWallH(wallH + (wallGoal - wallH) * (1 - Math.exp(-dt * 6))); scalers.forEach(f => f(wallH)); }
+  const showLabels = labelState.on && !fp.on && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
+  if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
   keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (fp.on && fp.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
   requestAnimationFrame(tick);
 }
-scalers.forEach(f => f(wallH));
+scalers.forEach(f => f(wall.h));
 updateLight(); setView('angle');
 camState.target.copy(camGoal.target); camState.dist = camGoal.dist * 1.25; camState.yaw = camGoal.yaw + .5; camState.pitch = camGoal.pitch;
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(buildLabels, buildLabels);
@@ -75,6 +75,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { sim, people, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { sim, people, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
 }, log };
