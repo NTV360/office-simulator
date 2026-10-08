@@ -1,0 +1,2 @@
+#veil{position:fixed;inset:0;display:grid;place-items:center;z-index:5;background:var(--bg);font:500 12px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);transition:opacity .6s}
+#veil.gone{opacity:0;pointer-events:none}

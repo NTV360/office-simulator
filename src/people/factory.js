@@ -1,0 +1,50 @@
+import { TAU, pick, rnd } from '../core/util.js';
+import { exitFP, fp } from '../fp/firstPerson.js';
+import { buildBody } from './body.js';
+import { FIRST, HAIR, LAST, PANTS, SHIRT, SHOES, SKIN, STYLES, roleBag } from './data.js';
+import { SCREENS } from '../render/screens.js';
+import { deskPool, people, peopleGroup } from '../sim/state.js';
+import { endTask } from '../sim/tasks.js';
+import { select, selected } from '../ui/person.js';
+
+let nameIdx = 0;
+
+function makePerson() {
+  const seat = deskPool.find(s => !s.owner); if (!seat) return null;
+  const role = pick(roleBag);
+  const look = {
+    skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), shoes: pick(SHOES), style: pick(STYLES),
+    glasses: Math.random() < .28, headphones: Math.random() < (role === 'Developer' ? .3 : .1) ? pick(['#2b3138', '#e9ecef', '#c45f4b', '#3a7f86']) : null,
+    longSleeve: Math.random() < .4, jacket: Math.random() < .18 ? pick(['#2f3a45', '#6b5a4a', '#41505e', '#7d8a72']) : null, scale: rnd(.93, 1.04),
+  };
+  const first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length]; nameIdx++;
+  const body = buildBody(look);
+  const p = {
+    id: people.length, name: `${first} ${last}.`, role, look, body, seat,
+    pos: seat.pos.clone(), face: seat.face, faceGoal: seat.face, speed: rnd(1.15, 1.45),
+    state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
+    pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
+    screenKind: role === 'Designer' ? 'design' : role === 'DevOps' ? 'dash' : 'code',
+  };
+  p.screenMat = pick(SCREENS[p.screenKind]);
+  seat.owner = p;
+  body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
+  body.root.visible = false; body.ring.visible = false;
+  peopleGroup.add(body.root); peopleGroup.add(body.ring);
+  scheduleDay(p);
+  people.push(p);
+  return p;
+}
+function removePerson() {
+  if (fp.on && fp.p === people[people.length - 1]) exitFP();
+  const p = people.pop(); if (!p) return;
+  endTask(p); p.seat.owner = null; p.seat.screen.material = SCREENS.off;
+  peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);
+  if (selected === p) select(null);
+}
+function scheduleDay(p) {
+  p.arriveAt = rnd(7 * 60 + 50, 9 * 60 + 35); p.leaveAt = rnd(17 * 60 + 10, 18 * 60 + 50);
+  p.lunchAt = rnd(11 * 60 + 45, 12 * 60 + 40); p.hadLunch = false; p.arrivedAt = null; p.coffees = 0;
+}
+
+export { makePerson, removePerson, scheduleDay };

@@ -1,0 +1,12 @@
+@media (max-width:760px){
+  #ledger{display:none}
+  #hud{left:12px;right:12px;width:auto;padding:12px;gap:9px}
+  h1{font-size:17px}
+  #clock{font-size:26px}
+  .hint{display:none}
+  #moreBtn{display:block;align-self:flex-start}
+  #more:not(.open){display:none}
+  #more{gap:9px}
+  #person{left:12px;right:12px;width:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion: reduce){#veil,#acts .bar i{transition:none}}

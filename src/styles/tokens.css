@@ -1,0 +1,14 @@
+/* Layout: full-bleed 3D floor; a plan-sheet control card top-left, a live headcount ledger top-right, the selected person's card bottom-left. */
+:root{
+  --bg:#e6ecef; --panel:rgba(255,255,255,.9); --ink:#22313c; --muted:#5f6f7b; --line:#d2dbe2;
+  --accent:#2f8db3; --accent-ink:#ffffff; --chip:#eef3f6; --ground:#dbe3e8; --shadow:0 10px 30px rgba(30,50,65,.14);
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --panel:rgba(23,31,38,.9); --ink:#e3eaef; --muted:#93a3ae; --line:#2c3a45;
+  --accent:#5ab5d8; --accent-ink:#0d1820; --chip:#1f2a33; --ground:#1a242c; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --panel:rgba(23,31,38,.9); --ink:#e3eaef; --muted:#93a3ae; --line:#2c3a45;
+  --accent:#5ab5d8; --accent-ink:#0d1820; --chip:#1f2a33; --ground:#1a242c; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark;}

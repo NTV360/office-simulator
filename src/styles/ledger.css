@@ -1,0 +1,11 @@
+#ledger{top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:250px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.ledger-head{display:flex;justify-content:space-between;align-items:baseline}
+#present{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+#acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+#acts li{display:grid;grid-template-columns:10px 1fr 22px;align-items:center;gap:8px;font-size:12.5px}
+#acts .dot{width:10px;height:10px;border-radius:50%}
+#acts .n{font:500 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+#acts .bar{grid-column:2/4;height:3px;border-radius:2px;background:var(--chip);overflow:hidden;margin-top:-3px}
+#acts .bar i{display:block;height:100%;border-radius:2px;transition:width .4s}
+#log{list-style:none;margin:0;padding:10px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.35}
+#log time{font:500 11px var(--f-mono);color:var(--muted);margin-right:6px}
