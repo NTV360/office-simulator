@@ -1,11 +1,11 @@
 import { TAU, angDiff } from '../core/util.js';
-import { fp } from '../fp/firstPerson.js';
+import { player } from '../player/player.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
 /* ================= Animation ================= */
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
-  if (p.state === 'player') return fp.sitting ? (p.task?.anim || 'listenSit') : (fp.moving ? 'walk' : 'stand');
+  if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;

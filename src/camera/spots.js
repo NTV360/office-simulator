@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { follow, following, setView, viewId } from './controller.js';
 import { camGoal } from './state.js';
 import { W } from '../config/plan.js';
-import { fp } from '../fp/firstPerson.js';
+import { ctl } from '../player/control.js';
 import { camera } from '../render/renderer.js';
 import { people } from '../sim/state.js';
 import { select, selected } from '../ui/person.js';
@@ -23,7 +23,7 @@ function goTo(k) {
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function pickAt(x, y) {
-  if (fp.on) return;
+  if (ctl.active) return;
   ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(people.filter(p => p.state !== 'away').map(p => p.body.root), true);
   const hit = hits.find(h => h.object.userData.person);

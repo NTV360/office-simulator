@@ -1,11 +1,11 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initFirstPerson } from './fp/firstPerson.js';
 import { initGrid } from './nav/grid.js';
 import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
 import { initState } from './sim/state.js';
 import { initControls } from './ui/controls.js';
+import { initControl } from './player/control.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { buildBake } from './world/bake.js';
@@ -63,5 +63,5 @@ export function bootstrap() {
   initPerson();
   initLedger();
   initControls();
-  initFirstPerson();
+  initControl();
 }

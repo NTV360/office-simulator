@@ -7,7 +7,7 @@ import { N } from '../world/furniture/basics.js';
 // The player's character. Same rig and animation as the NPCs, but it is not in the NPC list:
 // no seat, no schedule, never picked by the simulation. It appears at the entrance the first
 // time it is needed and then stays where it was left.
-const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC) };
+const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC), sitting: null, moving: false };
 
 function makeBody(spec) {
   const body = buildBody(spec);

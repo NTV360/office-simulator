@@ -24,4 +24,10 @@ function orbitStep(dt, rate) {
   camera.lookAt(t);
 }
 
-export { camGoal, camState, fitDist, orbitStep };
+// Park the free orbit camera on a person (used when leaving first/third person).
+function settleOn(p) {
+  camGoal.target.set(p.pos.x, 0, p.pos.z); camState.target.copy(camGoal.target);
+  camGoal.dist = camState.dist = 12; camGoal.pitch = camState.pitch = .75; camGoal.yaw = camState.yaw = p.face + Math.PI;
+}
+
+export { camGoal, camState, fitDist, orbitStep, settleOn };

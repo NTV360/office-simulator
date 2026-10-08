@@ -3,13 +3,13 @@ import { freeCam } from './controller.js';
 import { pan, rotate, zoomAt } from './orbit.js';
 import { camGoal } from './state.js';
 import { angDiff } from '../core/util.js';
-import { fp, fpPointerDown, fpPointerMove, fpPointerUp } from '../fp/firstPerson.js';
+import { ctl, pointerDown, pointerMove, pointerUp } from '../player/control.js';
 import { renderer } from '../render/renderer.js';
 
 const el = renderer.domElement;
 const ptrs = new Map(); let downAt = null, lastPinch = 0, lastMid = null, lastAng = null;
 const onMove = e => {
-  if (fp.on) { fpPointerMove(e); return; }
+  if (ctl.active) { pointerMove(e); return; }
   const p = ptrs.get(e.pointerId); if (!p) return;
   if (e.pointerType === 'mouse' && e.buttons === 0) { ptrs.delete(e.pointerId); return; }
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
@@ -25,14 +25,14 @@ const onMove = e => {
   }
 };
 const endPtr = e => {
-  if (fp.on) { fpPointerUp(e); return; }
+  if (ctl.active) { pointerUp(e); return; }
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); if (ptrs.size < 2) { lastPinch = 0; lastMid = null; lastAng = null; }
   if (p && downAt && ptrs.size === 0 && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6 && performance.now() - downAt.t < 500) pickAt(e.clientX, e.clientY);
 };
 // Keyboard: arrows / WASD move, Q E turn, + - zoom
 const keys = new Set();
 function keyCam(dt) {
-  if (!keys.size || fp.on) return;
+  if (!keys.size || ctl.active) return;
   const v = 600 * dt; let dx = 0, dy = 0;
   if (keys.has('arrowleft') || keys.has('a')) dx += v; if (keys.has('arrowright') || keys.has('d')) dx -= v;
   if (keys.has('arrowup') || keys.has('w')) dy += v; if (keys.has('arrowdown') || keys.has('s')) dy -= v;
@@ -45,7 +45,7 @@ function keyCam(dt) {
 function initInput() {
   el.addEventListener('contextmenu', e => e.preventDefault());
   el.addEventListener('pointerdown', e => {
-    if (fp.on) { fpPointerDown(e); return; }
+    if (ctl.active) { pointerDown(e); return; }
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     // A mouse or pen is a single pointer: drop anything left over from a missed pointerup
     if (e.pointerType !== 'touch') ptrs.clear();
@@ -62,8 +62,8 @@ function initInput() {
   el.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); lastPinch = 0; lastMid = null; lastAng = null; });
   el.addEventListener('wheel', e => {
     e.preventDefault();
-    if (fp.on) return;
     const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
+    if (ctl.active) { if (ctl.wheelHook) ctl.wheelHook(dy); return; }
     // Trackpad pinch arrives as ctrl+wheel: zoom. A notched mouse wheel: zoom.
     // A two-finger trackpad swipe: move around the floor, like dragging.
     const notched = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50) || (e.wheelDeltaY && Math.abs(e.wheelDeltaY) % 120 === 0 && !e.deltaX);
