@@ -75,7 +75,7 @@ Questions that are still open are in [section 18](#18-open-questions).
 
 Yes: the Docker group is **frontend, server, database** (and voice later). The frontend is the built static files served by Caddy, which also provides HTTPS and forwards API and WebSocket traffic to the server.
 
-**One server container, not two.** Version 1 of this plan split accounts and game into separate processes to keep password hashing away from the game loop. For a company-only game on a local network with a few logins at a time, that is more than needed: password hashing runs off the main thread, and logins are rare. So there is **one server process**, built as clearly separated modules (auth, game, persistence, admin). If it ever needs splitting, the module boundaries are already there. The game loop is still plain TypeScript and the WebSocket still bypasses NestJS's per-message machinery (section 6.1).
+**One server container, not two.** Version 1 of this plan split accounts and game into separate processes to keep password hashing away from the game loop. For a company-only game on a local network with a few logins at a time, that is more than needed: password hashing runs off the main thread, and logins are rare. So there is **one server process**, built as clearly separated modules (auth, game, persistence, admin). If it ever needs splitting, the module boundaries are already there. The game loop is still a plain TypeScript class; the Nest gateway only hands inputs to it and broadcasts its snapshots (section 6.1).
 
 ## 5. The core model: persons, slots and takeover
 
@@ -120,8 +120,8 @@ All of these can be changed live by an admin. Reducing the count makes people wa
 |---|---|---|
 | Language | **TypeScript on Node.js** for `shared` and `server` | Same language as the client, so the simulation is genuinely shared. The client stays JavaScript for now |
 | Server framework | **NestJS** | Good structure for accounts, REST, validation, config, guards and tests |
-| Game loop and WebSocket | A plain **`ws`** server attached to Nest's HTTP server (`upgrade` handler on `/ws`), with the loop as a plain TypeScript class | Lowest overhead on the part that must not lag; Nest's decorators and interceptors are fine per request but wasteful per message at 20 Hz × 100 clients |
-| Messages | **Binary**, defined once in a shared `protocol` module | Small and fast. No JSON on the hot path |
+| Game loop and realtime transport | The loop is a plain TypeScript class. The network side is **Socket.IO through Nest's gateway** (`@nestjs/websockets` with `@nestjs/platform-socket.io`), configured with `transports: ['websocket']` (no HTTP long-polling), no per-message compression, binary payloads, and snapshots sent with `volatile` emits | Socket.IO gives automatic reconnection, heartbeats and timeouts, rooms and acknowledgements out of the box, and it is Nest's first-class option, which saves work. At 100 clients it will not be the bottleneck. A `volatile` emit drops a snapshot for a client that is behind instead of queueing it. The shared `protocol` module keeps the transport swappable: plain `ws` is the fallback if we ever need the last bit of speed |
+| Messages | **Binary payloads**, defined once in a shared `protocol` module | Small and fast. No JSON on the hot path. Socket.IO sends a binary payload as one extra frame next to its small header, which is negligible at this size |
 | Database | **PostgreSQL** with **Prisma** (TypeORM also works) | Typed queries and migrations; boring and reliable |
 | Passwords | **argon2id** | Modern and memory-hard; runs off the main thread |
 | Physics | **Rapier** (WebAssembly, runs in Node and the browser) | Rigid bodies for thrown and dropped objects. See section 8.5 |
@@ -143,9 +143,24 @@ The server is the single source of truth.
 
 ### 6.3 The tick
 
-- A fixed loop at **20 Hz** (50 ms), drift-corrected (compensating for late timers).
+- A fixed loop at **20 Hz** by default (50 ms), drift-corrected (compensating for late timers). The rate is the `TICK_RATE` setting. It is a choice about the simulation, **not a limit of the transport** (see "Why 20 Hz" below).
 - Each tick: apply queued inputs, step the sim, step physics for active bodies, build one snapshot, send it.
 - People who are players are sent every tick (20 Hz); AI people and objects that are moving are sent at 10 Hz.
+
+**Why 20 Hz, and can it be higher?** The WebSocket (or Socket.IO) is only the pipe; it does not have a rate. 20 Hz is how often the server steps the world and sends a snapshot, and it is a trade-off:
+
+- Your **own** movement does not wait for the server: the client moves your character instantly and the server only confirms it (prediction, section 6.4). So the tick rate does not change how responsive your controls feel.
+- The rate decides how fresh **other** people's positions are. They are drawn about two ticks in the past so their motion is smooth, so the delay is roughly 100 ms at 20 Hz.
+- Cost grows in a straight line with the rate. Using the estimate in [section 11](#11-network-protocol) (100 players, 70 AI people):
+
+| Tick rate | Snapshot data per client | Other people appear about | Fits the 40 KB/s budget? |
+|---|---|---|---|
+| 10 Hz | about 17 KB/s | 200 ms behind | yes |
+| **20 Hz (default)** | about 27 KB/s | 100 ms behind | yes |
+| 30 Hz | about 37 KB/s | 67 ms behind | just, and less once only changed people are sent |
+| 60 Hz | about 67 KB/s | 33 ms behind | no, without more savings |
+
+For an office social game 20 Hz is plenty: fast action games use 60 Hz or more because aiming needs precision, and this game does not. Changing it is a one-line setting, and the load test will say whether 30 Hz is affordable. Physics for thrown objects can run at its own, faster fixed step on the server independent of the send rate.
 - The server logs how long each tick takes: this is the key health number ([section 14](#14-performance-budget-and-load-testing)).
 
 ### 6.4 Player movement
@@ -337,7 +352,7 @@ The furniture-to-objects work in section 8.2 is a separate phase after the serve
 
 ## 11. Network protocol
 
-Binary WebSocket frames: a one-byte message type, then a compact body. The shared `protocol` module encodes and decodes both directions.
+Each message is a Socket.IO event carrying a **binary payload** (a Buffer) over the WebSocket transport: a one-byte message type, then a compact body. The shared `protocol` module encodes and decodes both directions, so the rest of the code never touches the transport.
 
 **Client to server**
 
@@ -455,7 +470,7 @@ Open on the host PC: `443` (and `80` for redirects) for the site and WebSocket; 
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Seed admin account, created on first start |
 | `SLOT_COUNT`, `OFFLINE_PLAYERS_AS_NPCS`, `MAX_AUTOPILOT` | People control (section 5) |
 | `MAX_PLAYERS` | Hard cap, default 100 |
-| `TICK_RATE` | Default 20 |
+| `TICK_RATE` | Default 20 (try 30 once the load test allows) |
 | `PUBLIC_URL` | The site's address |
 | `LIVEKIT_*` | Voice keys and address (later) |
 
@@ -475,7 +490,7 @@ Secrets live in an `.env` file on the host, never in git (a `.env.example` is co
 
 **Load test.** A small `bots` app logs in as N accounts, walks, sits, chats, picks things up and throws them, and records round-trip times. Run it at 50, 100 and 150 bots, then a one-hour soak. A client-side check matters too: **draw calls and frame time with a few hundred movable objects** (section 8.2).
 
-**Rules that keep the loop fast:** binary messages; encode each snapshot once and send the same buffer to everyone; no allocation inside the tick; saving off the hot path (batched, asynchronous); if a client's socket falls behind, skip frames for that client instead of queueing without limit.
+**Rules that keep the loop fast:** binary messages; encode each snapshot once and send the same buffer to everyone; no allocation inside the tick; saving off the hot path (batched, asynchronous); if a client falls behind, skip frames for that client (Socket.IO's `volatile` emit does exactly this) instead of queueing without limit.
 
 ## 15. Security (company-only)
 
