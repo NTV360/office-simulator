@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WALL_T, wx, wz } from '../../config/plan.js';
+import { S, WALL_T, wx, wz } from '../../config/plan.js';
 import { TAU } from '../../core/util.js';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
@@ -7,8 +7,14 @@ import { E, WST, mkSpot } from './basics.js';
 import { SERVER_LEDS } from './server.js';
 import { addObs, box, boxGeo, cyl, frame, staticRoot } from '../helpers.js';
 const DART_SETS = [];
+// Where the player may stand to throw: behind the throw line, in plan pixels.
+const DART_ZONE = { x0: 410, x1: 470, y0: 906, y1: 944 };
+// The board, and the three darts the player throws (flight animation lives here with the other dart meshes).
+const dartBoard = { c: new THREE.Vector3(), now: 0, pool: [] };
+const BOARD_C = dartBoard.c;
 
 function updateDarts(now) {
+  dartBoard.now = now;
   SERVER_LEDS.forEach((l, i) => { l.visible = Math.sin(now * .004 * (1 + (i % 5) * .37) + i * 1.7) > -.3; });
   for (const set of DART_SETS) {
     const p = set.spot.occupant;
@@ -27,14 +33,25 @@ function updateDarts(now) {
       d.rotation.set(0, 0, -.08);
     });
   }
+  for (const o of dartBoard.pool) {
+    if (!o.fl) continue;
+    const q = Math.min(1, (now - o.fl.t0) / o.fl.dur);
+    o.d.position.lerpVectors(o.fl.from, o.fl.to, q); o.d.position.y += Math.sin(q * Math.PI) * .08;
+    if (q >= 1) o.fl = null;
+  }
 }
 
-let BOARD_C;
+// Send the player's dart `slot` (0 to 2) from `from` to `to` over `dur` ms; it stays stuck in the board.
+function flyDart(slot, from, to, dur) {
+  const o = dartBoard.pool[slot]; if (!o) return;
+  o.d.visible = true; o.d.position.copy(from); o.d.rotation.set(0, .4 - slot * .35, -.08 + slot * .1); // slightly angled so each dart reads from the front
+  o.fl = { from, to, t0: dartBoard.now, dur };
+}
+function clearDarts() { for (const o of dartBoard.pool) { o.d.visible = false; o.fl = null; } }
 
 function buildDarts() {
-  
   // Dartboard on the column wall beside the counter top
-  BOARD_C = new THREE.Vector3(wx(351.8 + WALL_T / 2) + .1, 1.73, wz(925));
+  BOARD_C.set(wx(351.8 + WALL_T / 2) + .1, 1.73, wz(925));
   {
     const bx = 351.8 + WALL_T / 2;
     addObs(bx, 905, bx + 4, 945);
@@ -65,6 +82,14 @@ function buildDarts() {
     // score chalkboard and throw line
     box(f, .36, .5, .02, M.chalk, .66, 1.45, .03);
     box(staticRoot, .05, .004, .9, M.white, wx(410), .003, wz(925), false);
+    // the throwing area, faintly marked on the floor
+    box(staticRoot, (DART_ZONE.x1 - DART_ZONE.x0) * S, .004, (DART_ZONE.y1 - DART_ZONE.y0) * S, M.dartZone, wx((DART_ZONE.x0 + DART_ZONE.x1) / 2), .002, wz((DART_ZONE.y0 + DART_ZONE.y1) / 2), false);
+    for (let i = 0; i < 3; i++) {
+      const d = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.004, .004, .13, 6), M.steel); shaft.rotation.z = Math.PI / 2; d.add(shaft);
+      const flight = new THREE.Mesh(boxGeo(.04, .03, .002), M.golfBlue); flight.position.x = .07; d.add(flight);
+      d.scale.setScalar(1.6); d.visible = false; scene.add(d); dartBoard.pool.push({ d, fl: null });
+    }
     [[410, 914, 0], [414, 940, 3]].forEach(([px, py, off], i) => {
       const sp = mkSpot('darts', px, py, WST, { place: 'the dartboard' }); sp.dartOff = off;
       const darts = [0, 1, 2].map(() => {
@@ -78,4 +103,4 @@ function buildDarts() {
   }
 }
 
-export { updateDarts, buildDarts };
+export { DART_ZONE, buildDarts, clearDarts, dartBoard, flyDart, updateDarts };

@@ -7,7 +7,7 @@ import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
   if (p.rageK > .3) return 'rage';
-  if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
+  if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : (p.task?.anim || 'stand'));
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
@@ -56,6 +56,14 @@ function targetPose(p, k, T) {
       else if (ph < 1.15) { const q = (ph - .85) / .3; o.rShX = -1.75 + q * .3; o.rEl = -1.7 + q * 1.5; o.lean = .1; }
       else if (ph < 2.4) { o.rShX = -1.3; o.rEl = -.25; }
       else { o.rShX = -.2; o.rEl = -.5; o.headY = Math.sin(T) * .2; }
+      break;
+    }
+    case 'dartsPlay': {
+      const q = p.task?.throwT ?? 9;
+      o.lShX = -.3; o.lEl = -.6; o.headX = -.05; o.lean = .04;
+      if (q < .12) { const f = q / .12; o.rShX = -1.75 + f * .45; o.rEl = -1.7 + f * 1.45; o.lean = .1; }
+      else if (q < .5) { o.rShX = -1.3; o.rEl = -.25; o.lean = .08; }
+      else { o.rShX = -1.75; o.rEl = -1.85 + (p.task?.charge || 0) * .7; o.rShZ = -.1; }
       break;
     }
     case 'putt': {

@@ -4,7 +4,9 @@
 #fpPrompt{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;max-width:calc(100% - 32px)}
 #fpLook:empty{display:none}
 #fpLook{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12.5px;box-shadow:var(--shadow)}
-#fpAct{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+#fpAct,#fpThrow{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+#dartMeter{width:220px;height:12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}
+#dartMeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#55e07a,#f2c94c,#e5484d)}
 #crosshair{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(20,30,40,.55);z-index:3;pointer-events:none}
 #stick{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.6);z-index:3;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 2px 8px rgba(0,0,0,.2)}

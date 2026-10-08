@@ -1,5 +1,6 @@
 import { interactables } from '../world/interactables.js';
 import { ctl } from './control.js';
+import { dartsGame, inDartZone, startDarts, stopDarts } from './darts.js';
 import { player } from './player.js';
 import { updatePrompts } from './prompts.js';
 
@@ -29,7 +30,9 @@ function standUp(p) {
 }
 function toggleSit() {
   const p = player.person; if (!ctl.active || !p) return;
-  if (player.sitting) standUp(p); else { const sp = nearestSeat(p); if (sp) sitDown(p, sp); }
+  if (dartsGame.on) stopDarts();
+  else if (player.sitting) standUp(p);
+  else { const sp = nearestSeat(p); if (sp) sitDown(p, sp); else if (inDartZone(p)) startDarts(p); }
   updatePrompts();
 }
 

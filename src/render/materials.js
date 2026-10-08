@@ -78,6 +78,7 @@ const M = {
   golfBallY: new THREE.MeshStandardMaterial({ color: 0xf2d14a, roughness: .5 }),
   dartPanel: new THREE.MeshStandardMaterial({ color: 0x2b3a44, roughness: .9 }),
   dartSurround: new THREE.MeshStandardMaterial({ color: 0x15191d, roughness: .7 }),
+  dartZone: new THREE.MeshBasicMaterial({ color: 0x5ab5ff, transparent: true, opacity: .13, depthWrite: false }),
   chalk: new THREE.MeshStandardMaterial({ color: 0x24302a, roughness: 1 }),
   rack: new THREE.MeshStandardMaterial({ color: 0x1c2228, roughness: .5, metalness: .4 }),
   rackGlass: new THREE.MeshStandardMaterial({ color: 0x0d1418, transparent: true, opacity: .55, roughness: .1, metalness: .3 }),

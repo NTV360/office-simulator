@@ -16,6 +16,8 @@ const ctl = {
   active: false, mode: null, yaw: 0, pitch: 0, pitchMin: -1.2, pitchMax: 1.2, savedWall: LOW_H, coarse: false,
   stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
   keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
+  pressHook: null, releaseHook: null, moveHook: null, // an activity (darts) can claim the mouse button and watch movement
+  viewLocked: false, // an activity that needs the current view (darts) turns the V swap off
 };
 
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
@@ -32,7 +34,7 @@ const PLAY_VIEWS = new Set(['fp', 'third']);
 function endControl(nextId) {
   const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId)) standUp(p);
   document.body.classList.remove(ctl.mode);
-  Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
+  Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null, pressHook: null, releaseHook: null, moveHook: null, viewLocked: false });
   wall.goal = ctl.savedWall; ctl.stick.x = ctl.stick.y = 0;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   $('fpBar').hidden = true; $('stick').hidden = true; $('fpPrompt').hidden = true;
@@ -41,6 +43,7 @@ function endControl(nextId) {
 function look(dx, dy) { ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035)); }
 function pointerDown(e) {
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
+  if (ctl.pressHook && e.pointerType === 'mouse' && document.pointerLockElement === el) { ctl.pressHook(e.pointerId); e.preventDefault(); return; }
   if (e.pointerType === 'touch' && e.clientX < innerWidth * .45 && e.clientY > innerHeight * .45 && ctl.stickId === null) {
     ctl.stickId = e.pointerId; ctl.stickO = { x: e.clientX, y: e.clientY };
     const st = $('stick'); st.style.left = (e.clientX - 60) + 'px'; st.style.bottom = (innerHeight - e.clientY - 60) + 'px';
@@ -58,6 +61,7 @@ function pointerMove(e) {
   } else if (e.pointerId === ctl.lookId) { look(e.clientX - ctl.lx, e.clientY - ctl.ly); ctl.lx = e.clientX; ctl.ly = e.clientY; }
 }
 function pointerUp(e) {
+  if (ctl.releaseHook) ctl.releaseHook(e.pointerId);
   if (e.pointerId === ctl.stickId) { ctl.stickId = null; ctl.stick.x = ctl.stick.y = 0; $('knob').style.transform = ''; const st = $('stick'); st.style.left = ''; st.style.bottom = ''; }
   if (e.pointerId === ctl.lookId) ctl.lookId = null;
 }
@@ -77,6 +81,7 @@ function driveLocomotion(dt, p) {
     const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw);
     dx = (fx * f + rx * r) / len * sp; dz = (fz * f + rz * r) / len * sp;
     moved = stepPlayer(p, dx, dz);
+    if (ctl.moveHook) ctl.moveHook(p);
   }
   player.moving = moved > 1e-4; p.walkPhase += moved * 4.6; p.animT += dt;
   return { moved, dx, dz };
@@ -95,7 +100,7 @@ function initControl() {
     const k = e.key.toLowerCase();
     if (k === 'e' && !e.repeat) toggleSit();
     if (k === 'escape' && !document.pointerLockElement) exitPlay();
-    if (k === 'v' && !e.repeat) setView(ctl.mode === 'fp' ? 'third' : 'fp');
+    if (k === 'v' && !e.repeat && !ctl.viewLocked) setView(ctl.mode === 'fp' ? 'third' : 'fp');
     if (ctl.keyHook && !e.repeat) ctl.keyHook(k);
   });
 }
