@@ -1,33 +1,32 @@
 # Office Floor Sim
 
-3D office floor simulation (Three.js). Built with Vite.
+A 3D office floor simulation (Three.js, built with Vite). Staff follow daily schedules; you can orbit the floor or walk around as your own character in first or third person.
 
 ```
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # outputs dist/
+npm run dev        # http://localhost:5173
+npm run build      # outputs dist/
+npm run preview    # serve the production build
 ```
 
-## Layout (`src/`)
+## Controls
 
-| Folder | What lives there |
+- **Orbit views:** drag to move, right-drag or Shift-drag to turn and tilt, wheel or pinch to zoom, `H` hides the HUD. Click a person to see what they are doing.
+- **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `Esc` exits.
+- **Hazel:** "Find her" follows her; "Make her angry" does what it says.
+
+## Documentation
+
+Start with [`docs/`](docs/README.md). It sets the standard for how this codebase is organised and changed.
+
+| | |
 |---|---|
-| `config/` | Floor-plan data and coordinate conversion |
-| `core/` | Small shared utilities |
-| `render/` | Renderer, scene, materials, screen textures, labels, day/night lighting |
-| `world/` | Floor, walls, doors, furniture (one file per area), `interactables.js` registry (desks, seats, counters...), static-mesh baking |
-| `nav/` | Navigation grid and A* pathfinding |
-| `character/` | `spec.js` CharacterSpec (plain JSON appearance + parts catalog + validation, no Three.js), `rig.js` body rig, `parts.js` hair/accessories, `gfx.js` shared helpers |
-| `people/` | NPC data (names, roles, activity categories), factory, animation poses, per-frame body sync |
-| `player/` | The player entity (same rig as NPCs, not in the NPC list; `setPlayerSpec()` changes its look) plus what first and third person share: `control.js` (look angles, touch stick, keys, movement), `locomotion.js` (collision), `seating.js`, `prompts.js` |
-| `sim/` | Shared sim state, tasks, meetings, day cycle, per-frame stepping |
-| `camera/` | `controller.js` switches camera modes (`modes/`: angle, top, follow, free, firstPerson, thirdPerson); `state.js` orbit state; `collide.js` wall collision for the third-person arm; `orbit.js` + `input.js` pointer/keyboard input; `spots.js` jump-to |
-| `ui/` | HUD controls, ledger, selected-person card |
-| `fp/` | First-person camera (eye height, bob) |
-| `styles/` | CSS, split by UI area |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | layers, folder map, startup order, state ownership |
+| [docs/CODING-STANDARDS.md](docs/CODING-STANDARDS.md) | rules for new code and the checklist before you push |
+| [docs/HOW-TO.md](docs/HOW-TO.md) | recipes: furniture, activities, camera views, looks, HUD controls |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | moving work from the old single `index.html` |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | planned features and follow-ups |
 
-`src/bootstrap.js` is the one place that assembles the scene: each world/sim/UI module exports a `build*()` or `init*()` function and bootstrap calls them in order (furniture registers interactables, the nav grid reads the obstacles, then people are seated). Modules do nothing on import. `src/main.js` calls `bootstrap()` and runs the main loop.
+## At a glance
 
-Walk around as your character with **First person** or **Third person** (over the right shoulder). Keys: WASD/arrows move, drag to look, Shift run, E sit/stand, V swap first/third person, C swap shoulder (third person), wheel zoom (third person), Esc exit.
-
-To add a camera view: write a mode (`{ id, enter, update, exit }`) in `camera/modes/` and register it in `initCamera()`.
+`index.html` is markup only. `src/bootstrap.js` is the one place the scene is assembled: each module exports a `build*()` or `init*()` function and bootstrap calls them in order; modules do nothing when imported. `src/main.js` runs the frame loop. Code lives in `config/ core/ render/ world/ nav/ character/ people/ sim/ player/ camera/ fp/ ui/ styles/`; see the folder map in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#folder-map-src).
