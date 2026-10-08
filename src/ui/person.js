@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { camGoal, followP, setFollowP, setViewName, setViewPressed, view } from '../camera/view.js';
+import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB } from '../people/data.js';
 import { scene } from '../render/renderer.js';
 import { $ } from './dom.js';
@@ -11,7 +11,7 @@ const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.Me
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
   if (p) { $('pAvatar').style.background = p.look.shirt; $('pAvatar').style.borderColor = p.look.hair; }
-  if (!p && view === 'follow') { setFollowP(null); setViewPressed(null); }
+  if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }
 const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
@@ -46,7 +46,7 @@ function renderPerson() {
   $('pName').textContent = p.name; $('pRole').textContent = `${p.role} · ${p.seat.place}`;
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
-  $('pFollow').textContent = followP === p ? 'Following' : 'Follow';
+  $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
 }
 
 
@@ -55,7 +55,7 @@ function initPerson() {
   selRing.visible = false;
   selRing.renderOrder = 3;
   scene.add(selRing);
-  $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; setFollowP(selected); setViewPressed('follow'); setViewName('follow'); camGoal.dist = Math.min(camGoal.dist, 9); camGoal.pitch = Math.min(camGoal.pitch, .75); renderPerson(); };
+  $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
 }
 

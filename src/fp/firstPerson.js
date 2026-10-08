@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { el, keys } from '../camera/input.js';
 import { ray } from '../camera/spots.js';
-import { camGoal, camState, followP, setFollowP, setView, setViewPressed } from '../camera/view.js';
+import { setView } from '../camera/controller.js';
+import { camGoal, camState } from '../camera/state.js';
 import { FULL_H, LOW_H, OX, OY, S } from '../config/plan.js';
 import { pick } from '../core/util.js';
 import { walkPx } from '../nav/grid.js';
@@ -23,14 +24,14 @@ function enterFP() {
   endTask(p); p.queue = []; p.path = null; p.chatWith = null; p.task = null; p.state = 'player';
   people.forEach(q => { if (q.chatWith === p) q.chatWith = null; });
   Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.look.scale, savedWall: wallGoal });
-  setWallGoal(FULL_H); setFollowP(null);
+  setWallGoal(FULL_H);
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; p.body.ring.visible = false;
   document.body.classList.add('fp'); $('fpBar').hidden = false; $('crosshair').hidden = false; $('stick').hidden = !coarse; $('fpPrompt').hidden = false;
   $('fpWho').textContent = `Walking as ${p.name}`;
-  setViewPressed('fp');
 }
-function exitFP() {
+// Leave first-person mode (called by the camera controller when another mode takes over).
+function leaveFP() {
   if (!fp.on) return; const p = fp.p;
   if (fp.sitting) standUp();
   fp.on = false; fp.p = null; setWallGoal(fp.savedWall); fp.stickId = fp.lookId = null; fp.stick.x = fp.stick.y = 0;
@@ -43,8 +44,9 @@ function exitFP() {
     camGoal.dist = camState.dist = 12; camGoal.pitch = camState.pitch = .75; camGoal.yaw = camState.yaw = p.face + Math.PI;
     select(p);
   }
-  setViewPressed(null);
 }
+// Public: drop out of first person; the camera stays free-orbiting around the person.
+function exitFP() { if (fp.on) setView('free'); }
 function seatOK(sp, p) {
   if (sp.shared) return !sp.occupant || sp.occupant === p;
   return !sp.owner || sp.owner === p || sp.owner.state === 'away';
@@ -144,13 +146,13 @@ let coarse;
 function initFirstPerson() {
   coarse = matchMedia('(pointer: coarse)').matches;
   $('fpAct').onclick = toggleSit;
-  $('fpExit').onclick = () => setView('angle');
+  $('fpExit').onclick = exitFP;
   addEventListener('keydown', e => {
     if (!fp.on || e.target.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     if (k === 'e' && !e.repeat) toggleSit();
-    if (k === 'escape' && !document.pointerLockElement) setView('angle');
+    if (k === 'escape' && !document.pointerLockElement) exitFP();
   });
 }
 
-export { enterFP, exitFP, fp, fpPointerDown, fpPointerMove, fpPointerUp, fpUpdate, initFirstPerson };
+export { enterFP, exitFP, leaveFP, fp, fpPointerDown, fpPointerMove, fpPointerUp, fpUpdate, initFirstPerson };

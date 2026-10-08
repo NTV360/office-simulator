@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { camGoal, followP, setFollowP, setViewPressed, view } from './view.js';
+import { follow, following, setView, viewId } from './controller.js';
+import { camGoal } from './state.js';
 import { W } from '../config/plan.js';
 import { fp } from '../fp/firstPerson.js';
 import { camera } from '../render/renderer.js';
@@ -16,7 +17,7 @@ const SPOTS = {
   lounge: { px: [270, 330], dist: 13, yaw: .25, pitch: .72 },
 };
 function goTo(k) {
-  const s = SPOTS[k]; setFollowP(null); setViewPressed(null);
+  const s = SPOTS[k]; setView('free');
   camGoal.target.copy(W(...s.px)); camGoal.dist = s.dist; camGoal.yaw = s.yaw; camGoal.pitch = s.pitch;
 }
 
@@ -26,8 +27,8 @@ function pickAt(x, y) {
   ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(people.filter(p => p.state !== 'away').map(p => p.body.root), true);
   const hit = hits.find(h => h.object.userData.person);
-  if (hit) { select(hit.object.userData.person); if (view === 'follow') setFollowP(selected); }
-  else if (!followP) select(null);
+  if (hit) { select(hit.object.userData.person); if (viewId() === 'follow') follow(selected); }
+  else if (!following()) select(null);
 }
 
 export { goTo, pickAt, ray };

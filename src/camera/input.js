@@ -1,5 +1,7 @@
 import { pickAt } from './spots.js';
-import { camGoal, freeCam, pan, rotate, zoomAt } from './view.js';
+import { freeCam } from './controller.js';
+import { pan, rotate, zoomAt } from './orbit.js';
+import { camGoal } from './state.js';
 import { angDiff } from '../core/util.js';
 import { fp, fpPointerDown, fpPointerMove, fpPointerUp } from '../fp/firstPerson.js';
 import { renderer } from '../render/renderer.js';

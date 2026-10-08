@@ -1,5 +1,7 @@
 import { goTo } from '../camera/spots.js';
-import { camGoal, freeCam, setView, zoomAt } from '../camera/view.js';
+import { freeCam, setView } from '../camera/controller.js';
+import { zoomAt } from '../camera/orbit.js';
+import { camGoal } from '../camera/state.js';
 import { FULL_H, LOW_H } from '../config/plan.js';
 import { rnd } from '../core/util.js';
 import { makePerson, removePerson } from '../people/factory.js';

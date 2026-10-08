@@ -12,10 +12,10 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { keyCam } from './camera/input.js';
-import { updateCamera } from './camera/update.js';
-import { camGoal, camState, setView } from './camera/view.js';
+import { following, setView, updateCamera, viewId } from './camera/controller.js';
+import { camGoal, camState } from './camera/state.js';
 import { toPx } from './config/plan.js';
-import { fp, fpUpdate } from './fp/firstPerson.js';
+import { fp } from './fp/firstPerson.js';
 import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { applyPose } from './people/animation.js';
@@ -61,7 +61,7 @@ function tick(now) {
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelsOn && !fp.on && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wallGoal - wallH) > .001) { setWallH(wallH + (wallGoal - wallH) * (1 - Math.exp(-dt * 6))); scalers.forEach(f => f(wallH)); }
-  keyCam(dt); updateCamera(dt); if (fp.on) fpUpdate(dt); updateGolf(); updateDarts(now);
+  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (fp.on && fp.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
@@ -75,6 +75,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { sim, people, interactables, NAV, GC, GR, camGoal, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { sim, people, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
 }, log };

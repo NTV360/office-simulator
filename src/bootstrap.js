@@ -1,3 +1,4 @@
+import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
 import { initFirstPerson } from './fp/firstPerson.js';
 import { initGrid } from './nav/grid.js';
@@ -57,6 +58,7 @@ export function bootstrap() {
   initState();
   initDay();
   // input and UI
+  initCamera();
   initInput();
   initPerson();
   initLedger();
