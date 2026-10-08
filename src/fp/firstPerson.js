@@ -13,7 +13,7 @@ function enterFP() {
   const p = spawnPlayer();
   select(null);
   if (!player.sitting) p.task = null;
-  beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit' });
+  beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · O customize · Esc to exit' });
   ctl.pitchMin = -1.2; ctl.pitchMax = 1.2;
   eye = 1.6 * p.spec.scale;
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();

@@ -112,7 +112,36 @@
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>
+  <button class="btn" id="fpCustomize" type="button" title="Customize your character (O)">Customize</button>
   <button class="btn" id="fpExit" type="button">Exit</button>
+</section>
+<section class="card" id="creator" hidden aria-labelledby="crTitle">
+  <div class="cr-head">
+    <div><div class="eyebrow">Walking as you</div><h2 id="crTitle">Customize</h2></div>
+    <button class="btn primary" id="crDone" type="button">Done</button>
+  </div>
+  <div class="cr-stage" id="crStage">
+    <canvas id="crPreview" aria-label="Preview of your character"></canvas>
+    <div class="seg cr-frame" role="group" aria-label="Preview framing">
+      <button type="button" data-frame="full" aria-pressed="true">Full</button>
+      <button type="button" data-frame="head" aria-pressed="false">Head</button>
+    </div>
+    <span class="cr-drag">Drag to turn</span>
+  </div>
+  <div class="seg cr-tabs" role="group" aria-label="Customization sections">
+    <button type="button" data-tab="body" aria-controls="crParts" aria-pressed="true">Body</button>
+    <button type="button" data-tab="acc" aria-controls="crAcc" aria-pressed="false">Accessories</button>
+    <button type="button" data-tab="chars" aria-controls="crChars" aria-pressed="false">Characters</button>
+  </div>
+  <div class="cr-body" id="crBody">
+    <div id="crParts"></div>
+    <div id="crAcc" hidden></div>
+    <div id="crChars" hidden><p class="hint">Start from one of the sprite characters, then change any part or accessory.</p></div>
+  </div>
+  <div class="cr-foot">
+    <button class="btn" id="crRandom" type="button">Randomize</button>
+    <button class="btn" id="crReset" type="button">Reset</button>
+  </div>
 </section>
 <div id="fpPrompt" hidden><div id="fpLook"></div><button class="btn" id="fpAct" type="button" hidden></button></div>
 <div id="crosshair" hidden></div>

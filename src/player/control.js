@@ -16,6 +16,7 @@ const ctl = {
   active: false, mode: null, yaw: 0, pitch: 0, pitchMin: -1.2, pitchMax: 1.2, savedWall: LOW_H, coarse: false,
   stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
   keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
+  menu: null, // set while a menu is open (the character creator): it owns keys and pointer, and calling it closes the menu
 };
 
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
@@ -30,6 +31,7 @@ function beginControl(mode, p, hud) {
 const PLAY_VIEWS = new Set(['fp', 'third']);
 // Stop steering. Stand up unless we are just swapping between first and third person.
 function endControl(nextId) {
+  if (ctl.menu) ctl.menu();
   const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId)) standUp(p);
   document.body.classList.remove(ctl.mode);
   Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
@@ -40,6 +42,7 @@ function endControl(nextId) {
 
 function look(dx, dy) { ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035)); }
 function pointerDown(e) {
+  if (ctl.menu) return;
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
   if (e.pointerType === 'touch' && e.clientX < innerWidth * .45 && e.clientY > innerHeight * .45 && ctl.stickId === null) {
     ctl.stickId = e.pointerId; ctl.stickO = { x: e.clientX, y: e.clientY };
@@ -65,10 +68,12 @@ function pointerUp(e) {
 // Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
 function driveLocomotion(dt, p) {
   let f = 0, r = 0, turn = 0;
-  if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
-  if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
-  if (keys.has('arrowleft')) turn += 1; if (keys.has('arrowright')) turn -= 1;
-  f -= ctl.stick.y; r += ctl.stick.x;
+  if (!ctl.menu) {
+    if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
+    if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
+    if (keys.has('arrowleft')) turn += 1; if (keys.has('arrowright')) turn -= 1;
+    f -= ctl.stick.y; r += ctl.stick.x;
+  }
   ctl.yaw += turn * 2.2 * dt;
   const len = Math.hypot(f, r); let moved = 0, dx = 0, dz = 0;
   if (len > .08 && player.sitting) standUp(p);
@@ -91,7 +96,9 @@ function initControl() {
   $('fpAct').onclick = toggleSit;
   $('fpExit').onclick = exitPlay;
   addEventListener('keydown', e => {
-    if (!ctl.active || e.target.tagName === 'INPUT') return;
+    if (!ctl.active) return;
+    if (ctl.menu) { if (e.key === 'Escape') ctl.menu(); return; } // an open menu owns the keys; Esc closes it instead of leaving
+    if (e.target.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     if (k === 'e' && !e.repeat) toggleSit();
     if (k === 'escape' && !document.pointerLockElement) exitPlay();

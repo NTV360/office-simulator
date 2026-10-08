@@ -144,3 +144,19 @@ That commit added a special character, a rage mode, a music corner and new look 
 | "UX/UI Designer" role verb | `src/people/data.js` |
 
 Two things changed on the way over: Hazel's rage no longer needs a special case for the player possessing her (the player is separate), and her look fields are part of `CharacterSpec`.
+
+## Worked example: sprite avatars (`feat/aalejandrino/office`)
+
+That branch gave every NPC a look sampled from 75 sprites. The look data and the new body options were ported, but they now belong to the player's character creator, not to the staff.
+
+| What the branch added | Where it lives now |
+|---|---|
+| `AVATARS` (sampled colours) and `AV_ACC` (hand-written extras) | `character/presets.js`: one `CharacterSpec` per sprite, with the extras folded in |
+| The base64 sprite pictures | `src/assets/avatars/NN.png`, shown in the creator's Characters tab |
+| Hair styles `afro`, `spiky`, `pigtails`, `braid`; `look.bald` | `HAIR_STYLES` in `character/parts.js` (`bald` is now a style) |
+| Hats, goggles, earrings, scarf, tie | `character/accessories.js`, driven by new spec fields |
+| Monsters (`vampire`, `snowman`, `frank`, `wolf`) and ghost translucency | `COSTUMES` in `accessories.js`; the ghost look is `tintOf` in `character/gfx.js` (`zombie` was only colours, so it is just a preset) |
+| `AV_ORDER`, applied to everyone in `makePerson` | Not ported. NPCs keep random looks; sprite looks are picked in the creator (`ui/creator.js`) |
+| The sprite on the person card (`#pAvatar`) | Not ported. The card still shows shirt and hair colour |
+
+Still skipped, as in the branch: wheelchairs and the ear-muff bands on sprites 62 and 74.
