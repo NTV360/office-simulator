@@ -51,7 +51,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 ## 5. Data versus code
 
-- **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `config/plan.js`, `character/spec.js`, `people/data.js`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
+- **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `packages/shared/src/plan.ts`, `character/spec.js`, `people/data.js`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
 - Do not hard-code magic numbers deep inside logic when they describe the world. Put them in a data module or at the top of the file with a name.
 - A character's look is a `CharacterSpec`. Add a look option to `character/spec.js` (default, `PARTS`, `normalizeSpec`) **and** to the rig/parts. See [HOW-TO.md](HOW-TO.md#add-a-hairstyle-or-another-look-option).
 

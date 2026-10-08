@@ -85,6 +85,6 @@ Hazel (`people/hazel.js`) is the template.
 
 ## Change the floor plan
 
-- Walls and the outer outline are data in `config/plan.js` (`OUTER`, `WALLS`) in plan pixels. Wall segments must be axis-aligned (horizontal or vertical); a gap in a wall is a doorway.
+- Walls and the outer outline are data in `packages/shared/src/plan.ts` (`OUTER`, `WALLS`) in plan pixels. Wall segments must be axis-aligned (horizontal or vertical); a gap in a wall is a doorway.
 - Free-standing wall blocks are made with `solidBlock(...)` in `world/walls.js`. Walls and blocks register themselves for navigation (`OBS`) and for the third-person camera (`SOLIDS`).
 - After any plan change, check the nav counts, walk through every doorway in first person, and try the third-person camera against the changed walls.

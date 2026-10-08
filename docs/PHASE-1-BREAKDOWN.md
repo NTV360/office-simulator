@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: approved. Steps 0 and 1 are done; steps 2 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. Steps 0, 1 and 2 are done; steps 3 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -48,10 +48,16 @@ Building the safety net taught three things, now part of how the project works:
 
 **What it does not catch.** A change that never alters an outcome in ten seeds at those five points in the day (for example a tweak to a branch that is almost never reached) can pass. Code review and, from step 8 on, unit tests in Node cover that.
 
+### What step 2 turned out to need
+
+1. **A play-through, not just recordings.** The recordings only exercise the simulation. A `Vec3` that lacked one method would only fail where a person actually does something. My code search for Three.js-only vector methods covered the simulation folders but not `world/`, and missed a chained `p.pos.clone().add(...)` in the darts animation. It crashed the render loop every frame. Nothing in the recordings would have noticed; the new **interaction scenario** in the runner did, immediately (11 failed checks, one clear error). The scenario now plays through: every jump-to button, selecting and following someone, walking as the player, sitting and standing, switching to third person and swapping shoulders, leaving with Escape, the staff slider, and Hazel's find and rage buttons, and fails on any console error.
+2. **Keep `Vec3` minimal.** The simulation only calls `clone`, `copy` and `distanceTo` on positions, so that is all `Vec3` has. Drawing code that needs more (the dart-throwing hand position) uses a Three.js vector itself, which is where rendering math belongs.
+3. **The camera eases.** A scripted check that asserts where the eased camera *is* after a fixed delay depends on the browser's frame rate. Assert the camera's *goal* instead, which is set exactly every frame.
+
 **How to use it:**
 
 ```
-npm run verify:browser            quick: seeds 1 to 3, every camera view, default-mode checks (about 40 s)
+npm run verify:browser            quick: seeds 1 to 3, every camera view, the interaction scenario, default-mode checks (about 50 s)
 npm run verify:browser:thorough   all ten seeds (about 70 s). Run at the end of each step
 npm run verify:browser:record     re-record the golden files. Only when a change is MEANT to alter behaviour
 ```
@@ -64,7 +70,7 @@ It builds the client, serves it, drives headless Chromium, and saves a screensho
 |---|---|---|---|---|
 | **0** | Safety net (**done**) | Seeded random, fingerprint, golden recordings, browser runner (section 3) | The runner passes on today's code | M |
 | **1** | Shared wiring and utilities (**done**) | The client can import `@office/shared` (a Vite alias to the shared source, so edits show live). `core/util.js` becomes `shared/src/util.ts`: `rnd`, `pick`, `shuffle`, `angDiff`, `TAU`, the seedable random source | Unit tests: a seeded generator repeats; `shuffle` returns a permutation; `angDiff` wraps. Golden master unchanged | S |
-| **2** | `Vec3` and the floor plan | A small `Vec3` class (`x`, `y`, `z`, `add`, `set`, `copy`, `clone`, `distanceTo`, `multiplyScalar`). `config/plan.js` becomes `shared/src/plan.ts`; `W()` returns a `Vec3`. The two Three.js uses in the sim (the chat spot, the people group) are handled | Unit tests for `Vec3` and for `W`/`toPx` round trips; `W(223.5, 420)` equals today's `ENTRY` to the last digit. Check that no client code calls a Three.js-only method on a `W()` result. Golden master and nav cell count unchanged | S to M |
+| **2** | `Vec3` and the floor plan (**done**) | A small `Vec3` class (`x`, `y`, `z`, `add`, `set`, `copy`, `clone`, `distanceTo`, `multiplyScalar`). `config/plan.js` becomes `shared/src/plan.ts`; `W()` returns a `Vec3`. The two Three.js uses in the sim (the chat spot, the people group) are handled | Unit tests for `Vec3` and for `W`/`toPx` round trips; `W(223.5, 420)` equals today's `ENTRY` to the last digit. Check that no client code calls a Three.js-only method on a `W()` result. Golden master and nav cell count unchanged | S to M |
 | **3** | Character and people data | `character/spec.js` becomes `shared/src/character/spec.ts`. `people/data.js` (names, roles, activity categories) moves to `shared` | Unit tests: `normalizeSpec` round trip and bad input; `randomSpec` is repeatable with a seed; every option in `PARTS` is a valid colour | S |
 | **4** | Navigation and movement | `nav/astar.js`, `nav/grid.js` and `player/locomotion.js` move to `shared`. The grid is built from obstacle data passed in (`initGrid(outline, obstacles)`) instead of importing the client's list | Unit tests on tiny layouts: a path goes around a wall; no path when sealed in; diagonal costs; `stepPlayer` slides along walls and stops at them. In the browser, the walkable-cell count stays 11,643 and the golden master is unchanged | M |
 | **5** | Props and visibility become state | A `Person` type in `shared`. Held items become flags (`p.props.mug`, `.phone`, `.pad`, `.guitar`, `.putter`) set by activities. `sim/day.js`, `sim/tasks.js`, `player/seating.js` and Hazel stop touching meshes. `people/sync.js` applies the flags and shows or hides each body from the person's state | Golden master (the fingerprint now includes the flags). Browser check: mugs, phones, the guitar and the putter still appear and disappear | M |
