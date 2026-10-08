@@ -30,6 +30,8 @@ function statusText(p) {
     case 'storage': return going ? 'Heading to the storage room' : 'Grabbing supplies from storage';
     case 'sink': return going ? 'Taking a mug to the sink' : 'Washing a mug';
     case 'locker': return going ? `Going to ${where}` : `At ${where}`;
+    case 'piano': return going ? 'Heading to the keyboard' : 'Playing the keyboard';
+    case 'guitar': return going ? 'Grabbing the guitar' : 'Playing guitar';
     case 'darts': return going ? 'Heading to the dartboard' : 'Playing darts';
     case 'golf': return going ? 'Heading to the mini golf green' : 'Putting on the mini golf green';
     case 'game': return going ? 'Heading to the TV lounge for a game' : 'Playing PS5 in the TV lounge';

@@ -48,6 +48,11 @@ function coffee(p) {
 function sinkTrip(p) { const s = free(interactables.of('sink'))[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
 function lockerTrip(p) { const s = free(interactables.of('locker'))[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
 function sofaBreak(p) { const s = free(interactables.of('lounge').filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
+function musicBreak(p) {
+  const s = free(interactables.of('music'))[0]; if (!s) return false;
+  const g = s.kind === 'guitar';
+  return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: q => { if (g) q.body.guitar.visible = true; }, onEnd: q => { q.body.guitar.visible = false; } });
+}
 function dartsBreak(p) {
   const s = free(interactables.of('darts'))[0]; if (!s) return false;
   return goDo(p, { kind: 'darts', cat: 'break', anim: 'darts', spot: s, dur: rnd(6, 12) });
@@ -126,6 +131,8 @@ function chooseNext(p) {
   if (r < .49 && gameBreak(p)) return;
   if (r < .53 && golfBreak(p)) return;
   if (r < .57 && dartsBreak(p)) return;
+  if (r < .61 && musicBreak(p)) return;
+  if (interactables.of('music').some(x => x.occupant) && Math.random() < .05 && musicBreak(p)) return;
   if (interactables.of('darts').some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
   if (interactables.of('golf').some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
   { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .07 && gameBreak(p)) return; }

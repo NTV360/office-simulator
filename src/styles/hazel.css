@@ -1,0 +1,7 @@
+.seg.hz{border-color:#9b4d62}
+.seg.hz button{color:#9b4d62;font-weight:700}
+.seg.hz button+button{border-left-color:#9b4d62}
+.seg.hz button:hover{background:#9b4d62;color:#fff}
+#rageHazel{color:#c8302c}
+#rageHazel:hover{background:#c8302c;color:#fff}
+#rageHazel:disabled{background:#c8302c;color:#fff;cursor:default;opacity:.9}

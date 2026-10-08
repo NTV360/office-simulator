@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CATS } from '../people/data.js';
 import { boxGeo } from '../world/helpers.js';
-import { addGlasses, addHair, addHeadphones } from './parts.js';
+import { addAngry, addGlasses, addHair, addHeadphones } from './parts.js';
+import { makeGuitar } from './props.js';
 import { eyeMat, limb, sph, stdMat } from './gfx.js';
 
 const ringGeo = new THREE.RingGeometry(.27, .33, 32);
@@ -16,14 +17,19 @@ function buildBody(spec) {
   const hips = new THREE.Group(); hips.position.y = .88; root.add(hips);
   const pelvis = new THREE.Mesh(sph(.16), pants); pelvis.scale.set(1.05, .62, .78); pelvis.castShadow = true; hips.add(pelvis);
   const torso = new THREE.Group(); hips.add(torso);
+  if (spec.skirt) {
+    const sk = new THREE.Mesh(new THREE.CylinderGeometry(.16, .27, .34, 20, 1, true), stdMat(spec.skirt, .8)); sk.material.side = THREE.DoubleSide; sk.position.y = -.13; sk.castShadow = true; hips.add(sk);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(.165, .165, .04, 20), stdMat(spec.skirt, .6)); band.position.y = .03; hips.add(band);
+  }
   const chest = new THREE.Mesh(new THREE.CapsuleGeometry(.155, .26, 4, 12), shirt); chest.position.y = .28; chest.scale.set(1.15, 1, .74); chest.castShadow = true; torso.add(chest);
   if (spec.jacket) { const j = new THREE.Mesh(new THREE.CapsuleGeometry(.162, .22, 4, 12, ), stdMat(spec.jacket)); j.position.y = .27; j.scale.set(1.17, 1, .77); j.castShadow = true; torso.add(j); const sh = new THREE.Mesh(sph(.06), shirt); sh.position.set(0, .45, .095); sh.scale.set(1, 1.4, .4); torso.add(sh); }
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(.048, .055, .1, 10), skin); neck.position.y = .55; torso.add(neck);
   const head = new THREE.Group(); head.position.y = .6; torso.add(head);
-  const skull = new THREE.Mesh(sph(.135, 20, 16), skin); skull.position.y = .13; skull.scale.set(1, 1.08, 1.02); skull.castShadow = true; head.add(skull);
-  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eyeMat); e.position.set(s * .047, .14, .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
+  const skull = new THREE.Mesh(spec.cube ? boxGeo(.27, .29, .26) : sph(.135, 20, 16), skin); skull.position.y = .13; if (!spec.cube) skull.scale.set(1, 1.08, 1.02); skull.castShadow = true; head.add(skull);
+  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eyeMat); e.position.set(s * .047, .14, spec.cube ? .132 : .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
   const nose = new THREE.Mesh(sph(.022, 8, 6), skin); nose.position.set(0, .11, .138); head.add(nose);
-  addHair(head, spec); addGlasses(head, spec); addHeadphones(head, spec);
+  addHair(head, spec); addAngry(head, spec); addGlasses(head, spec); addHeadphones(head, spec);
+  root.userData.chest = chest;
   const sleeve = spec.longSleeve ? (spec.jacket ? stdMat(spec.jacket) : shirt) : skin;
   const arm = side => {
     const sh = new THREE.Group(); sh.position.set(side * .205, .46, 0); torso.add(sh);
@@ -58,8 +64,10 @@ function buildBody(spec) {
   [-1, 1].forEach(sd => { const gp = new THREE.Mesh(sph(.03, 8, 6), pw); gp.position.set(sd * .066, -.006, -.03); gp.scale.set(1, .8, 1.5); pad.add(gp); });
   const tp = new THREE.Mesh(boxGeo(.065, .006, .035), pk); tp.position.set(0, .016, .005); pad.add(tp);
   pad.position.set(.08, -.07, .05); pad.visible = false; R.hand.add(pad);
+  const guitar = makeGuitar(); guitar.position.set(-.04, .14, .2); guitar.rotation.z = .35; guitar.scale.setScalar(.95); guitar.visible = false; torso.add(guitar);
+  const skinMeshes = []; root.traverse(o => { if (o.isMesh && o.material === skin) skinMeshes.push(o); });
   const sockets = { head, torso, leftHand: L.hand, rightHand: R.hand };
-  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, ring, sockets };
+  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, guitar, ring, chest, skin, skinMeshes, sockets };
 }
 
 export { buildBody, ringMats };

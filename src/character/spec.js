@@ -13,13 +13,14 @@ const PARTS = {
   jacket: ['#2f3a45', '#6b5a4a', '#41505e', '#7d8a72'],
   headphones: ['#2b3138', '#e9ecef', '#c45f4b', '#3a7f86'],
 };
-const STYLE_OPTIONS = ['short', 'long', 'bun', 'buzz', 'curly', 'side'];
+const STYLE_OPTIONS = ['short', 'long', 'bun', 'buzz', 'curly', 'side', 'bob'];
 const STYLE_WEIGHTED = ['short', 'long', 'bun', 'buzz', 'curly', 'side', 'short', 'long']; // what NPCs draw from
 const SCALE_RANGE = [.9, 1.1];
 
 const DEFAULT_SPEC = {
   skin: PARTS.skin[2], hair: PARTS.hair[1], style: 'short', shirt: PARTS.shirt[0], pants: PARTS.pants[0], shoes: PARTS.shoes[0],
   glasses: false, headphones: null, longSleeve: false, jacket: null, scale: 1,
+  skirt: null, cube: false, angry: false, // special looks (Hazel); not drawn for NPCs
 };
 
 function randomSpec(role) {
@@ -27,6 +28,7 @@ function randomSpec(role) {
     skin: pick(PARTS.skin), hair: pick(PARTS.hair), shirt: pick(PARTS.shirt), pants: pick(PARTS.pants), shoes: pick(PARTS.shoes), style: pick(STYLE_WEIGHTED),
     glasses: Math.random() < .28, headphones: Math.random() < (role === 'Developer' ? .3 : .1) ? pick(PARTS.headphones) : null,
     longSleeve: Math.random() < .4, jacket: Math.random() < .18 ? pick(PARTS.jacket) : null, scale: rnd(.93, 1.04),
+    skirt: null, cube: false, angry: false,
   };
 }
 
@@ -39,7 +41,8 @@ function normalizeSpec(raw = {}) {
     skin: color('skin'), hair: color('hair'), shirt: color('shirt'), pants: color('pants'), shoes: color('shoes'),
     style: STYLE_OPTIONS.includes(raw.style) ? raw.style : d.style,
     glasses: !!raw.glasses, longSleeve: !!raw.longSleeve,
-    headphones: color('headphones', true), jacket: color('jacket', true),
+    headphones: color('headphones', true), jacket: color('jacket', true), skirt: color('skirt', true),
+    cube: !!raw.cube, angry: !!raw.angry,
     scale: Number.isFinite(raw.scale) ? Math.min(SCALE_RANGE[1], Math.max(SCALE_RANGE[0], raw.scale)) : d.scale,
   };
 }

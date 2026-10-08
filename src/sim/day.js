@@ -52,6 +52,8 @@ function initDay() {
     const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: interactables.of('booth')[1], dur: 12, onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
     const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: interactables.of('counter')[0], dur: 5, onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => q.body.mug.visible = false });
     const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: interactables.of('bar')[0], dur: 6, onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false });
+    { const g = here()[0]; if (g) placeNow(g, { kind: 'piano', cat: 'break', anim: 'piano', spot: interactables.of('piano')[0], dur: 12 }); }
+    { const g = here()[0]; if (g) placeNow(g, { kind: 'guitar', cat: 'break', anim: 'guitar', spot: interactables.of('guitar')[0], dur: 14, onStart: q => q.body.guitar.visible = true, onEnd: q => q.body.guitar.visible = false }); }
     interactables.of('darts').forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'darts', cat: 'break', anim: 'darts', spot: sp, dur: 10 + i * 2 }); });
     interactables.of('golf').forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'golf', cat: 'break', anim: 'putt', spot: sp, dur: 9 + i * 3, onStart: q => q.body.putter.visible = true, onEnd: q => q.body.putter.visible = false }); });
     [5, 6, 7].forEach((k, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'game', cat: 'break', anim: 'game', spot: interactables.of('lounge')[k], dur: 14 + i * 3, onStart: q => q.body.pad.visible = true, onEnd: q => q.body.pad.visible = false }); });

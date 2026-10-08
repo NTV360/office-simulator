@@ -4,6 +4,7 @@ import { initGrid } from './nav/grid.js';
 import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
 import { initState } from './sim/state.js';
+import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
 import { initLedger } from './ui/ledger.js';
@@ -23,6 +24,7 @@ import { buildGolf } from './world/furniture/golf.js';
 import { buildKitchen } from './world/furniture/kitchen.js';
 import { buildLounge } from './world/furniture/lounge.js';
 import { buildPlants } from './world/furniture/plants.js';
+import { buildMusic } from './world/furniture/music.js';
 import { buildServer } from './world/furniture/server.js';
 import { buildStorage } from './world/furniture/storage.js';
 import { buildWorkfloor } from './world/furniture/workfloor.js';
@@ -46,6 +48,7 @@ export function bootstrap() {
   buildGolf();
   buildDarts();
   buildServer();
+  buildMusic();
   buildKitchen();
   buildStorage();
   buildPlants();
@@ -57,6 +60,7 @@ export function bootstrap() {
   // simulation
   initState();
   initDay();
+  initHazel();
   // input and UI
   initCamera();
   initInput();

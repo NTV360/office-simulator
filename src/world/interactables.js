@@ -3,9 +3,12 @@
 // counters register the same way and can carry their own behaviour.
 const byKind = new Map();
 
+// A spot is listed under its kind, and also under spot.group if it has one (e.g. 'piano' and 'guitar' are both in 'music').
 function add(spot) {
-  if (!byKind.has(spot.kind)) byKind.set(spot.kind, []);
-  byKind.get(spot.kind).push(spot);
+  for (const k of spot.group ? [spot.kind, spot.group] : [spot.kind]) {
+    if (!byKind.has(k)) byKind.set(k, []);
+    byKind.get(k).push(spot);
+  }
   return spot;
 }
 

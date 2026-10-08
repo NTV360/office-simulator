@@ -3,6 +3,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/hud.css';
 import './styles/controls.css';
+import './styles/hazel.css';
 import './styles/ledger.css';
 import './styles/person.css';
 import './styles/ui-toggle.css';
@@ -19,6 +20,7 @@ import { ctl } from './player/control.js';
 import { tp } from './camera/modes/thirdPerson.js';
 import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
+import { rageShake, updateRage } from './people/hazel.js';
 import { syncBody } from './people/sync.js';
 import { player } from './player/player.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
@@ -35,6 +37,7 @@ import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
+import { updateMusic } from './world/furniture/music.js';
 import { scalers, wall } from './world/helpers.js';
 
 bootstrap();
@@ -56,7 +59,8 @@ function tick(now) {
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
-  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now);
+  updateRage(dt, now);
+  keyCam(dt); updateCamera(dt); rageShake(now); updateGolf(); updateDarts(now); updateMusic(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
