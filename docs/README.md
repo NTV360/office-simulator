@@ -8,7 +8,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [CODING-STANDARDS.md](CODING-STANDARDS.md) | know the rules for new code (imports, state, naming, git) and the checklist before you push |
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | deploy to Render (web service or static site) and fix common deploy errors |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
 | [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) | the proposed plan for accounts, a shared persistent world with movable objects, NPCs that players take over, voice, and a self-hosted Docker stack (proposal, not built) |
 | [ROADMAP.md](ROADMAP.md) | see what is planned (items, shops, character creation) and the design it was built to allow |
 

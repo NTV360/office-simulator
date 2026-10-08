@@ -1,6 +1,8 @@
 # Deployment
 
-The app is a static site: `npm run build` produces `dist/` (HTML, JS, CSS, the logo), and nothing needs a server beyond serving those files. The repo is set up to run on Render either as a **Static Site** or as a **Web Service**.
+> **Current direction:** Render and EC2 are **not used for now**. The team is building a **local Docker setup** (frontend, server and database in one compose file) and will move that same setup to EC2 later. See [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#13-hosting-local-docker-first-ec2-later). This page documents how the **current single-player demo** can be served as a static site, which is also what the future `web` container will do for the built frontend.
+
+The app is a static site: `npm run build` produces `dist/` (HTML, JS, CSS, the logo), and nothing needs a server beyond serving those files. While it is still a demo, the repo can run on Render either as a **Static Site** or as a **Web Service**.
 
 ## Render: Web Service
 

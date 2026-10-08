@@ -14,9 +14,12 @@ Questions that are still open are in [section 18](#18-open-questions).
 | The office | **Customisable and physical**: movable chairs, personalised stations, lifting, moving and throwing things, "like a real office" |
 | NPCs | The server runs them. **An account's character is an NPC while its player is offline and is controlled by the player while online** |
 | Voice | Coming soon (planned for, built after movement and chat) |
-| Hosting | **Self-hosted on a PC in the office**, on the local network, no cloud budget |
+| Hosting | **Local Docker first**: the whole stack runs from one compose file on a PC (a developer's, or one in the office). **Render and EC2 are dropped for now.** Once the local stack works, the same containers move to EC2 unchanged |
 | Containers | Everything in Docker: web (frontend), server, database (and voice later) |
 | Repo | One monorepo ([section 9](#9-repository-layout)) |
+| World clock | Keep the **fast day** (about 28.5 real minutes), as a setting that can change later |
+| Desk assignment | An **admin picks** each new account's desk (slot) |
+| What can be moved | Furniture rules in [section 8.8](#88-what-is-fixed-and-what-moves): the station tables, Main TV and its table, conference tables and the fridge are fixed; kitchen tables, chairs, desk items and light to medium objects move |
 
 ## 2. Goals and non-goals
 
@@ -27,7 +30,7 @@ Questions that are still open are in [section 18](#18-open-questions).
 3. A living office: NPCs fill in for people who are not online, and the office keeps its state between sessions.
 4. Players can change the office: move furniture, customise their station, carry and throw objects.
 5. Smooth: movement must feel instant and the server must not stall at about 100 players.
-6. Easy to run: `docker compose up` on the office PC, or on any developer's PC for testing.
+6. Easy to run: `docker compose up` on a PC (the host PC or any developer's), and later the same compose file on EC2.
 7. Fun to work on: simple tooling and few moving parts (this is a team project for enjoyment, so we avoid ceremony).
 
 **Non-goals for now:** more than one office, cloud hosting, mobile app, strong anti-cheat beyond server-side validation, public sign-ups.
@@ -55,7 +58,7 @@ Questions that are still open are in [section 18](#18-open-questions).
      |  WebRTC voice (to the voice container, later)
      v
   +----------------------------------------------------------+
-  |  Docker Compose project on the office PC                 |
+  |  Docker Compose project on the host PC                   |
   |                                                          |
   |  web     Caddy: HTTPS, serves the built frontend,        |
   |          proxies /api and /ws to the server              |
@@ -94,7 +97,7 @@ A **slot** is a desk plus the person that belongs to it. Slots have three states
 
 How it works:
 
-- **Register:** the new account **claims an unclaimed slot** (or the admin assigns one). Their first login opens character creation; the person's look becomes theirs and the desk becomes their station. If there are no unclaimed slots, the admin raises the slot count (up to the number of desks).
+- **Register:** the new account is created in a **"waiting for a desk"** state. **An admin picks its slot** from the unclaimed ones (the admin page lists unclaimed desks by station). Until then the player can log in and look around with the orbit camera but cannot control a person. Once assigned, their first login opens character creation; the person's look becomes theirs and the desk becomes their station. If there are no unclaimed slots, the admin raises the slot count (up to the number of desks).
 - **Log in:** the account takes control of its person **where it currently is**. There is no teleport; if the NPC was at lunch, the player is at lunch.
 - **Log out or disconnect:** the person goes back to AI **from where it stands** and carries on (after a short grace period so a dropped connection can reconnect without the character wandering off).
 - **The day cycle:** AI-controlled people arrive in the morning and go home in the evening as they do today. A **player** is never sent home: they can stay all night.
@@ -173,7 +176,7 @@ Anything that happens in the world is created on the server and broadcast with a
 
 | Piece | Design |
 |---|---|
-| Register | `POST /api/auth/register` (username, password). Usernames are unique and case-insensitive. Claims an unclaimed slot (section 5) |
+| Register | `POST /api/auth/register` (username, password). Usernames are unique and case-insensitive. The account starts **waiting for a desk**; an admin assigns a slot (section 5) with `POST /api/admin/users/:id/assign-slot` |
 | Passwords | argon2id; never logged or returned. **No email**: an admin resets a forgotten password (`POST /api/admin/users/:id/reset-password`) |
 | Login | `POST /api/auth/login` returns a short-lived access token and sets a refresh token in an httpOnly cookie. Also `refresh` and `logout` |
 | Joining the game | `POST /api/play/ticket` returns a **one-time ticket** (about 30 seconds). The browser opens `wss://host/ws` and sends it first. Tokens never go in URLs |
@@ -197,7 +200,8 @@ object { id, type, x, y, z, rotation, owner (account or none), station (slot or 
 
 - Types come from a **catalogue** (chair, stool, plant, mug, notebook, monitor, lamp, ball, and so on). Each type has a **prefab**: how to draw it, its footprint, its weight, how it can be carried, and whether it has a **seat** or other spots.
 - **Spots belong to objects.** A chair object carries its seat spot, so when the chair moves, the seat moves with it, and AI people simply use the nearest free seat.
-- The **building shell** (floor, walls, doors, windows) stays static and is still baked into a few draw calls. Fixtures such as desks start as objects that only admins or an edit mode can move.
+- The **building shell** (floor, walls, doors, windows) stays static and is still baked into a few draw calls.
+- Each type has a **mobility** flag (`fixed` or `movable`). **Fixed** objects are still objects (they are saved, drawn and used the same way) but cannot be picked up or edited by players. Which things are which is decided in [section 8.8](#88-what-is-fixed-and-what-moves) and lives in data, so changing it is an edit to the catalogue, not to code.
 
 ### 8.2 What this does to today's furniture code
 
@@ -217,9 +221,9 @@ object { id, type, x, y, z, rotation, owner (account or none), station (slot or 
 
 ### 8.4 Permissions
 
-- Your **station** (your desk and the area around it) is yours: others can look and may be allowed to sit, but moving your things is limited to you and admins by default. A setting can open this up for fun.
-- Shared areas (lounge, kitchen) are free for everybody.
-- Admins can move, lock, reset or delete anything.
+- Whether a thing can move at all is its **mobility** (section 8.8). Fixed things never move for players.
+- Movable things at your station (monitor, keyboard, mug, chair) are yours to arrange. **Whether other people may also move them is still open** ([section 18](#18-open-questions)); until decided, the default is that only the station's owner and admins can move things at a station, and everything in shared areas is free for everybody.
+- Admins can move, lock, reset or delete anything, including fixed objects.
 - Every change is attributed (who moved what) and recent changes can be undone.
 
 ### 8.5 Physics
@@ -244,6 +248,48 @@ The nav grid is currently built once. With movable objects it must **update**: w
 | Schema versions | The saved world carries a version; migrations upgrade old worlds |
 
 Tables (v1): `accounts`, `refresh_tokens`, `persons` (identity, spec, slot, last position, state, owner account or none), `slots` (desk assignment), `world_objects`, `world_state` (clock, day, settings), `audit_log` (admin actions, object changes). Later: items, inventory, money.
+
+### 8.8 What is fixed and what moves
+
+**The team's rules:**
+
+- **Fixed:** the tables of the **office stations A to H**, the **Main TV** and the **table it stands on**, the **tables in the conference rooms**, and the **fridge** (once there is one).
+- **Movable:** the **kitchen tables**, **all chairs**, **all desk items** (computers, monitors, keyboards and so on), and **light, small and medium objects** in general.
+
+Every type in the object catalogue carries `mobility: fixed | movable` and a **weight class**: *light* (carry with one hand: mug, keyboard, notebook), *medium* (two hands, slower: chair, stool, plant, small table), *heavy* (cannot be carried, so it is fixed). When a type is not covered by a rule above, the tie-breaker is: **built in, wall-mounted or heavy means fixed; light, small or medium means movable.**
+
+**How that applies to the furniture that exists today.** Rows marked *proposed* are my application of the tie-breaker and need your confirmation ([section 18](#18-open-questions)).
+
+| Thing in the office today | Mobility | Basis |
+|---|---|---|
+| Station tables (named "Desk 01" to "Desk 08" in the code; they become **Stations A to H**) | fixed | stated |
+| Chairs at the stations and everywhere else (office, dining, conference, bar stools) | movable | stated |
+| Monitors, keyboards, mice, mugs, notebooks, small desk plants | movable | stated (desk items) |
+| Main TV (lounge) | fixed | stated |
+| The table the Main TV stands on (the lounge table in front of it; **please confirm this is the one you mean**) | fixed | stated |
+| Conference tables (three rooms) | fixed | stated |
+| Conference TVs and the credenzas under them | fixed | *proposed*: room fixtures |
+| Kitchen / dining tables (the six in the dining area) | movable | stated |
+| Fridge | fixed | stated. **There is no fridge in the office today**; add one if wanted |
+| Counter top and sink cabinet | fixed | *proposed*: built in |
+| Coffee machine, water bottle and other things on the counter | movable | *proposed*: small |
+| Sofas and the couch | fixed | *proposed*: heavy |
+| Armchairs | movable | *proposed*: medium |
+| Bar tables | movable | *proposed*: medium |
+| Floor plants | movable | *proposed*: medium |
+| Work-floor TVs on stands | fixed | *proposed*: display fixtures |
+| Game console, guitar, guitar stand, keyboard piano on its stand | movable | *proposed*: small to medium |
+| Storage cabinets and lockers | fixed | *proposed*: built in |
+| Phone booths (glass cabins) | fixed | *proposed*: built in |
+| Mini-golf green, dartboard, server rack, brand wall | fixed | *proposed*: floor-laid or wall-mounted |
+| Floor, walls, doors, windows | fixed | the building shell |
+
+Consequences for the design:
+
+- **Chairs are the most-moved objects**, and they carry the seats. Moving a chair moves its seat, and AI people use whatever free seat is nearest. A person's own desk seat is the one at their station; if someone drags their chair across the room, they walk to it. "Reset my station" brings it back.
+- **Desk items belong to a station** (they are saved with the station they sit on), so each person's station keeps its personality through restarts and is easy to reset.
+- Because fixed things never move, the **station tables, conference tables and Main TV can stay part of a cheap merged mesh** for drawing. Only movable types need to be separate objects, which keeps the number of draw calls down.
+- The catalogue flags are plain data, so the team can change any of the above (make the sofas movable, say) without touching code.
 
 ## 9. Repository layout
 
@@ -327,9 +373,11 @@ Voice is built after movement and chat but affects decisions now.
 - **Networking:** WebRTC uses UDP port ranges and must advertise the PC's **local network address**. On **Docker Desktop for Windows** (which runs containers in a virtual machine), host networking is limited and advertising the right address can be fiddly. **Prototype voice in Docker on the actual office PC early** (see the risks) so there are no late surprises. A spare Linux machine is the easiest host for it.
 - Text chat remains as a fallback.
 
-## 13. Self-hosting on the office PC
+## 13. Hosting: local Docker first, EC2 later
 
-### 13.1 The host machine
+**The path.** Render and EC2 are not used for now. The one thing to build and prove first is a **single `docker-compose.yml` that runs the whole stack on one PC**: web, server and database (voice later). When that works locally, putting it on EC2 is **the same compose file on a rented Linux machine**, with a domain name for HTTPS and the firewall opened. No redesign. So every choice below is made to be portable: configuration comes from environment variables, data lives in named volumes, and nothing assumes a particular PC.
+
+### 13.1 The host machine (any PC for now)
 
 - Always on, wired to the network, with a **fixed local address** (a DHCP reservation on the router) and a stable name.
 - A modern 4-core CPU, 16 GB RAM and an SSD are a comfortable target for about 100 players plus voice. The game loop uses one core lightly; the database and voice use the rest.
@@ -349,12 +397,12 @@ Voice is built after movement and chat but affects decisions now.
 
 ### 13.3 HTTPS on the local network
 
-Needed for voice, and good practice for logins. Options:
+Needed for voice, and good practice for logins. On the PC itself, `http://localhost` already counts as a secure page, so **local development needs nothing**. HTTPS matters when *other people's computers* connect to the host over the network, and again on EC2. Options:
 
 | Option | How | Trade-off |
 |---|---|---|
-| **A. A real domain name the company already owns** (recommended if available) | Point a name such as `office.yourcompany.com` at the PC's local address in DNS, and let Caddy get a normal trusted certificate using a DNS challenge | People just open the address; no setup on each computer. Needs a domain and a supported DNS provider |
-| B. Caddy's internal certificate authority | Caddy makes its own certificates (`tls internal`); each person installs the root certificate once | No domain needed. Everyone has to trust the certificate once, which is easy to document but is a step per computer |
+| **A. A real domain name** (the way to go on **EC2**, and on the office network if the company has a domain) | Point a name such as `office.yourcompany.com` at the PC's local address in DNS, and let Caddy get a normal trusted certificate using a DNS challenge | People just open the address; no setup on each computer. Needs a domain and a supported DNS provider |
+| **B. Caddy's internal certificate authority** (the default for the **local network** stage) | Caddy makes its own certificates (`tls internal`); each person installs the root certificate once | No domain needed. Everyone has to trust the certificate once, which is easy to document but is a step per computer |
 | C. A local certificate tool (mkcert) | Same idea as B | Fine for development machines |
 
 ### 13.4 Firewall and ports
@@ -430,7 +478,7 @@ Sizes are relative (S, M, L), not calendar estimates.
 
 | # | Phase | Delivers | Done when |
 |---|---|---|---|
-| 0 | **Foundations** (S) | npm workspaces; TypeScript for `shared` and `server`; `docker-compose.yml` with `db` and a placeholder `server`; tests set up; client moved to `apps/client` | Today's app builds and runs unchanged from the new layout, and `docker compose up` brings up the empty stack |
+| 0 | **Foundations** (S) | npm workspaces; TypeScript for `shared` and `server`; `docker-compose.yml` with `web`, `server` and `db` (the server a placeholder); tests set up; client moved to `apps/client` | Today's app builds and runs unchanged from the new layout, and **`docker compose up` serves it from the `web` container** with the empty server and database alongside |
 | 1 | **Shareable sim** (L) | Section 10: one person model, person/view split, props as state, no Three.js, seeded random, slots, `shared/*`, unit tests | The sim runs in Node under tests, and the browser (offline mode) behaves as it does today |
 | 2 | **Server and persistence** (M) | The server runs the sim and the tick, the protocol, snapshots, the saved world (people, slots, clock) and restore, admin settings (slots, pause, speed); the client connects as a viewer | Two browsers see the same office; a restart brings back the same people, positions and clock |
 | 3 | **Accounts and takeover** (M) | Register (claims a slot), login, tickets, character creation, take control and give back control, admin password reset | You can register, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is |
@@ -438,24 +486,28 @@ Sizes are relative (S, M, L), not calendar estimates.
 | 5 | **World objects** (L) | Furniture split into prefabs and placement data; objects as server entities with persistence; dynamic nav; pick up, place, edit mode, permissions and reset | You can move your chair and personalise your station, and it is all still there after a restart |
 | 6 | **Throwing and physics** (M) | Rapier for objects in motion; throw; shared flight; sleeping bodies | Everyone sees the same thrown object land in the same place, with no cost at rest |
 | 7 | **Voice** (M) | LiveKit container, HTTPS on the LAN, tokens, proximity subscription and 3D audio | People near each other hear each other; people far away do not |
-| 8 | **Harden** (S to M) | Load tests and fixes, backups and restore tested, admin page, runbook | 100 bots meet the budgets on the office PC; a restore from a backup is rehearsed |
+| 8 | **Harden** (S to M) | Load tests and fixes, backups and restore tested, admin page, runbook | 100 bots meet the budgets on the host PC; a restore from a backup is rehearsed |
+| 9 | **EC2 trial** (S, optional) | The same compose file on an EC2 Linux instance with a domain, the firewall open on 80 and 443 (and the voice ports), and automatic HTTPS | The team can play on EC2 exactly as on the local stack, with the same `.env` shape |
 
 The order lets you **see progress after every phase**. Phases 5 and 6 can swap with 7 if voice matters more to the team than rearranging furniture. Docker is introduced in phase 0 so we never debug containers and gameplay at the same time.
 
 ## 18. Open questions
 
-Defaults in brackets are what this plan assumes.
+**Already decided** (for the record): the fast day stays (as a setting); an admin picks each account's desk; local Docker first with EC2 later; no Render. See [section 1](#1-decisions-so-far).
 
-1. **How fast does the world clock run?** Today a day takes about 28.5 real minutes. In a persistent office, should time follow the **real clock** (9 to 5, people arrive and leave at real times) or keep the fast day? This changes how NPCs and players overlap. [Keep the fast day; make it a setting]
-2. **Claiming a slot:** when someone registers, does an admin choose their desk, or do they get the next free one? [Next free one, admin can change it]
-3. **Offline players as NPCs:** should an offline player's character always be shown on autopilot, or only some of the time (`OFFLINE_PLAYERS_AS_NPCS`, `MAX_AUTOPILOT`)? [Always shown]
-4. **Stations:** how much can a player change? Move chairs and small props [yes], add objects from a catalogue [yes, within a quota], move their desk [admins only at first], change walls [no].
-5. **Griefing rules:** may other people move things at your station? Throw things at you? [No at stations, yes in shared areas]
-6. **Can thrown objects hit people**, knock them, or break? [No in v1]
-7. **The office PC:** Windows or Linux? Docker Desktop on Windows works for everything except that voice needs extra care (section 12). Is a spare Linux machine possible? [Windows with Docker Desktop, prototype voice early]
-8. **HTTPS:** does the company own a domain we can use (section 13.3 option A)? [Else option B]
-9. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
-10. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only]
+Still open. Defaults in brackets are what this plan assumes.
+
+1. **Please confirm the "proposed" rows in [section 8.8](#88-what-is-fixed-and-what-moves)**: conference TVs and credenzas, counter and sink, sofas, armchairs, bar tables, plants, work-floor TVs, console and music gear, storage and lockers, booths, golf, darts, server rack. [As proposed]
+2. **Which table does the Main TV stand on?** I read it as the lounge table in front of the TV. [That one]
+3. **Fridge:** there is none today. Should one be added to the kitchen? [Yes, as a fixed object, when someone has time]
+4. **Rename "Desk 01" to "Desk 08" as Stations A to H** (in the status text and labels)? [Yes, in phase 1]
+5. **Other people's stuff:** may someone else move things at *your* station (monitor, mug, chair)? Throw things at you? [No at stations, yes in shared areas]
+6. **Can thrown objects hit people**, knock them back, or break? [No in v1]
+7. **The host PC for the final setup.** Which computer will run the stack day to day, and is it Windows or Linux? This only matters for **voice**. See the note below. [Windows with Docker Desktop; prototype voice early]
+8. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
+9. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only for now]
+
+**About question 7.** Docker on Windows does not run containers directly. It runs them inside a small hidden Linux virtual machine. Almost everything works the same either way, so you can develop and test on Windows without any issue. Voice is the exception: it sends audio over a different kind of network connection that is fiddly to pass through that hidden machine, and the container has to advertise the PC's real network address. It is solvable, but it is the one place where the choice of host machine could cost time. There is nothing to decide today. Voice is phase 7, and the plan is to try it early on whichever PC will be the host.
 
 ## 19. First gameplay interactions (proposal)
 
