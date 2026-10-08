@@ -1,6 +1,4 @@
-import { CATS, isStaff } from '@office/shared';
-import { phaseName } from '../sim/day.js';
-import { log, logState, people, sim } from '../sim/state.js';
+import { CATS, isStaff, log, logState, people, phaseName, sim } from '@office/shared';
 import { $ } from './dom.js';
 import { fmt, renderPerson } from './person.js';
 function renderUI() {

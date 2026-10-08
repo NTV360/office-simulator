@@ -1,5 +1,4 @@
-import { isStaff, vpick } from '@office/shared';
-import { people } from '../../sim/state.js';
+import { isStaff, people, vpick } from '@office/shared';
 import { select, selected } from '../../ui/person.js';
 import { camGoal, orbitStep } from '../state.js';
 

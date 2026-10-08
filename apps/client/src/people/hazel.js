@@ -1,22 +1,16 @@
+import { addLog, people } from '@office/shared';
 import * as THREE from 'three';
 import { follow } from '../camera/controller.js';
 import { camGoal } from '../camera/state.js';
 import { exitPlay } from '../player/control.js';
 import { canvasTex } from '../render/materials.js';
 import { camera, scene } from '../render/renderer.js';
-import { addLog, people } from '../sim/state.js';
 import { $ } from '../ui/dom.js';
 import { fmt, select } from '../ui/person.js';
 
-// Hazel Sellote: the one hand-written character. She is the first person created (see makePerson),
+// Hazel Sellote: the one hand-written character. She is the first person created (see makeStaff),
 // has her own look, always leaves last, and can be found or made angry from the HUD.
-const HAZEL_NAME = 'Hazel Sellote';
-
-// Give the first generated person Hazel's identity. Mutates the spec; returns her name and role.
-function applyHazel(spec) {
-  Object.assign(spec, { style: 'bob', cube: true, hair: '#2b201b', scale: .7, skirt: '#2f3d6b', angry: true, glasses: false, headphones: null, jacket: null, shirt: '#9b4d62', pants: '#2a2228', skin: '#d9a27a' });
-  return { first: 'Hazel', last: 'Sellote', role: 'UX/UI Designer' };
-}
+// (Her identity and look live in the shared package: packages/shared/src/sim/hazel.ts.)
 
 // ----- rage mode: for 10 seconds she swells, turns red, steams, and stomps -----
 const HAZEL = () => people.find(q => q.name === 'Hazel Sellote');
@@ -78,4 +72,4 @@ function rageShake(now) {
   if (RAGE.on && RAGE.t > .4) { const a = .035 * Math.min(1, (RAGE.until - now) / 1500); camera.position.x += (Math.random() - .5) * a; camera.position.y += (Math.random() - .5) * a; }
 }
 
-export { HAZEL, HAZEL_NAME, RAGE, applyHazel, initHazel, rageShake, updateRage };
+export { HAZEL, RAGE, initHazel, rageShake, updateRage };

@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from './controller.js';
 import { camGoal } from './state.js';
-import { W, isStaff } from '@office/shared';
+import { isStaff, people, W } from '@office/shared';
 import { ctl } from '../player/control.js';
 import { camera } from '../render/renderer.js';
-import { people } from '../sim/state.js';
 import { select, selected } from '../ui/person.js';
 
 // Jump-to spots

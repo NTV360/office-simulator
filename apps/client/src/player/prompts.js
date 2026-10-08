@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { isStaff } from '@office/shared';
+import { isStaff, people } from '@office/shared';
 import { ray } from '../camera/spots.js';
 import { camera } from '../render/renderer.js';
-import { people } from '../sim/state.js';
 import { $ } from '../ui/dom.js';
 import { statusText } from '../ui/person.js';
 import { ctl } from './control.js';

@@ -1,6 +1,6 @@
+import { sim } from '@office/shared';
 import * as THREE from 'three';
 import { hemi, sun } from './renderer.js';
-import { sim } from '../sim/state.js';
 
 /* ================= Lighting through the day ================= */
 const cWarm = new THREE.Color(0xffc58f), cDay = new THREE.Color(0xfff6ea), cDusk = new THREE.Color(0x8fa6d6);

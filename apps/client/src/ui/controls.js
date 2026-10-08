@@ -2,12 +2,10 @@ import { goTo } from '../camera/spots.js';
 import { freeCam, setView } from '../camera/controller.js';
 import { zoomAt } from '../camera/orbit.js';
 import { camGoal } from '../camera/state.js';
-import { FULL_H, LOW_H, isStaff, rnd } from '@office/shared';
-import { makePerson, removePerson } from '../people/factory.js';
+import { FULL_H, isStaff, LOW_H, makeStaff, people, removeStaff, rnd, sim } from '@office/shared';
 import { updateScreens } from '../people/screens.js';
 import { labelState } from '../render/labels.js';
 import { camera, renderer } from '../render/renderer.js';
-import { people, sim } from '../sim/state.js';
 import { $ } from './dom.js';
 import { select } from './person.js';
 import { wall } from '../world/helpers.js';
@@ -34,8 +32,8 @@ function initControls() {
   $('tLabels').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); labelState.on = on; };
   $('staff').oninput = e => {
     const n = +e.target.value; $('staffVal').textContent = n;
-    while (people.filter(isStaff).length < n) { const p = makePerson(); if (!p) break; if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50) { p.arriveAt = sim.t + rnd(.1, 4); } }
-    while (people.filter(isStaff).length > n) removePerson();
+    while (people.filter(isStaff).length < n) { const p = makeStaff(); if (!p) break; if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50) { p.arriveAt = sim.t + rnd(.1, 4); } }
+    while (people.filter(isStaff).length > n) removeStaff();
     updateScreens(); // a paused simulation does not update monitors by itself
   };
   addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('play').click(); } if (e.key === 'Escape') select(null); });

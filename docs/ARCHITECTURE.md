@@ -14,7 +14,7 @@ An npm-workspaces monorepo (see [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#9-repo
 |---|---|
 | `apps/client/` | The browser app: Vite, JavaScript, Three.js. Everything below in "Folder map" lives in `apps/client/src/` |
 | `apps/server/` | The NestJS server (TypeScript). Today it only serves a health check; accounts and the game come in later phases |
-| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js. Today: `sim/props.ts` (the five held props as flags), `character/spec.ts` and `sim/data.ts` (the look of a person, names, roles, activity categories), `nav/` (walkable grid and A*), `sim/locomotion.ts` (`stepPlayer`, walking with collision), `plan.ts` (the floor-plan data, the plan-to-metre conversion `W`/`wx`/`wz`/`toPx`, wall heights), `vec3.ts` (`Vec3`, the simulation's point type), `util.ts` (the seedable simulation random stream, the visual stream, `angDiff`, `TAU`) and the server defaults. The client imports it from source through a Vite alias |
+| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js. Today: **the whole simulation** in `sim/` (`state.ts`, `tasks.ts`, `meetings.ts`, `day.ts`, `step.ts` with `stepSim`, `factory.ts` with `makeStaff`/`removeStaff`, `hazel.ts`, `events.ts`, `types.ts` with `Person`, `interactables.ts`/`spots.ts`, `person.ts`, `props.ts`), `character/spec.ts` and `sim/data.ts` (the look of a person, names, roles, activity categories), `nav/` (walkable grid and A*), `sim/locomotion.ts` (`stepPlayer`, walking with collision), `plan.ts` (the floor-plan data, the plan-to-metre conversion `W`/`wx`/`wz`/`toPx`, wall heights), `vec3.ts` (`Vec3`, the simulation's point type), `util.ts` (the seedable simulation random stream, the visual stream, `angDiff`, `TAU`) and the server defaults. The client imports it from source through a Vite alias |
 | `docker/`, `docker-compose.yml` | The local stack: web (Caddy and the built client), server, database. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md) |
 | `scripts/` | Helper scripts, such as the stack smoke test |
 
@@ -25,7 +25,7 @@ Code is grouped by what it is. Dependencies point **downwards** in this list. A 
 ```
         ui/   camera/   fp/                     ← input and presentation
           \      |      /
-        player/   people/   sim/                ← who is doing what
+        player/   people/                       ← who is doing what (the simulation itself is in @office/shared)
               \     |     /
        character/   world/                     ← the things in the world
               \     |     /
@@ -38,7 +38,7 @@ In practice:
 - `render/renderer.js` and `materials.js` are the base that everything that draws imports from.
 - `world/` builds static geometry and registers things people can use. It never imports from `sim/`, `ui/`, `people/`, `player/`, `camera/` or `fp/`. (This one holds today; keep it that way.)
 - Navigation (the walkable grid and A*) lives in `packages/shared/src/nav/`. It takes the obstacle list as an argument (`initGrid(OBS)`), so it does not import `world/`.
-- `sim/` decides what people do. It reads `world/` (interactables) and the shared navigation (paths) and writes to people objects. It does not import `ui/`, `camera/`, `player/` or `fp/`. (Also holds today.)
+- The simulation (`packages/shared/src/sim/`) decides what people do. It has no Three.js and no DOM, so it cannot import anything from the client; it announces changes as events (`simEvents`: `personAdded`, `personRemoved`) and the client listens (`people/views.js`).
 - `ui/`, `camera/`, `fp/` and `player/` are the input and presentation side. They read the sim and may call into it.
 
 **Known exceptions.** These exist today. They are debt, not precedent. Do not add more; if you need to, ask.
@@ -46,9 +46,9 @@ In practice:
 | Where | Goes "up" to | Why it exists |
 |---|---|---|
 | `render/labels.js` | `world/furniture/desks.js` | labels each desk island |
-| `render/lighting.js` | `sim/state.js` | light follows the sim clock |
+| `render/lighting.js` | `@office/shared` (`sim`) | light follows the sim clock |
 | `character/rig.js` | `@office/shared` (`sim/data.ts`) | the activity-ring colours come from `CATS` |
-| `people/factory.js` | `ui/person.js` | deselects a removed person |
+| `people/views.js` | `ui/person.js` | deselects a removed person |
 | `people/animation.js` | `player/player.js` | the player's pose depends on sitting/moving |
 | `people/hazel.js` | `camera/`, `player/`, `ui/` | Hazel's HUD buttons, camera follow and rage effects live in one feature module |
 
@@ -64,8 +64,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
 | `@office/shared` `sim/interactables.ts` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')`. `sim/spots.ts` has `mkSpot`, `ENTRY` and `exitSpot()` |
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
-| `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
-| `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
+| `people/` | The client side of people: `views.js` (gives each person a body when the simulation creates them), `animation.js` (poses), `sync.js` (put meshes where the sim says), `screens.js` (desk monitors), `hazel.js` (her HUD buttons and rage effect) |
 | `player/` | The player's character: `player.js` (makes the person and holds the local control state), `control.js` (look angles, keys, touch stick), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
@@ -101,9 +100,9 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 
 | State | Owner | Notes |
 |---|---|---|
-| `sim` | `sim/state.js` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
-| `people` | `sim/state.js` | Everyone in the office: staff (`controller: 'ai'`) and human-controlled people (`controller: 'account'`, today only the player). Loops that mean "staff" filter with `isStaff` |
-| `logState`, `log` | `sim/state.js` | Event log shown in the ledger; set `logState.dirty` to redraw |
+| `sim` | `packages/shared/src/sim/state.ts` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
+| `people` | `packages/shared/src/sim/state.ts` | Everyone in the office: staff (`controller: 'ai'`) and human-controlled people (`controller: 'account'`, today only the player). Loops that mean "staff" filter with `isStaff` |
+| `logState`, `log` | `packages/shared/src/sim/state.ts` | Event log shown in the ledger; set `logState.dirty` to redraw |
 | `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed |
 | `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
 | `camState`, `camGoal` | `camera/state.js` | Orbit camera: smoothed result and where input wants it |
@@ -125,7 +124,7 @@ A character is three separate things:
 
 - **`CharacterSpec`** (`packages/shared/src/character/spec.ts`): plain JSON describing the look (colours, hair style, glasses, jacket, scale, and so on). `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `PARTS` lists the options a character creator can offer. It has no Three.js in it.
 - **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
-- **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig, the same list and the same `people/animation.js` poses.
+- **The person object**: position, task, state and so on. Staff are made by `makeStaff` in the shared `sim/factory.ts` (the client then gives them a body in `people/views.js`); the player is made by `player/player.js`. Both use the same rig, the same list and the same `people/animation.js` poses.
 
 **The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as staff (the ledger, the staff slider, meetings, chats and the end-of-day reset all use `isStaff`). `controller` and `isStaff`/`isControlled` live in `packages/shared/src/sim/person.ts`. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
@@ -135,7 +134,7 @@ A character is three separate things:
 
 Anything a person can use is a **spot** created with `mkSpot(kind, x, y, face, options)`. It registers itself in the shared `interactables` registry (`packages/shared/src/sim/interactables.ts`) under its `kind` (and under `options.group` if given). Spots have `pos`, `approach`, `face`, `occupant`, and so on.
 
-An **activity** is a function in `sim/tasks.js` (for example `dartsBreak`) that finds a free spot, calls `goDo(person, task)`, and is offered by `chooseNext`. The `task.anim` name selects a pose in `people/animation.js`, and `statusText` in `ui/person.js` words it for the HUD. See [HOW-TO.md](HOW-TO.md#add-an-interactable-and-an-activity).
+An **activity** is a function in `packages/shared/src/sim/tasks.ts` (for example `dartsBreak`) that finds a free spot, calls `goDo(person, task)`, and is offered by `chooseNext`. The `task.anim` name selects a pose in `people/animation.js`, and `statusText` in `ui/person.js` words it for the HUD. See [HOW-TO.md](HOW-TO.md#add-an-interactable-and-an-activity).
 
 ## Camera
 

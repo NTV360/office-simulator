@@ -1,11 +1,10 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initGrid } from '@office/shared';
+import { initDay, initGrid, initState } from '@office/shared';
 import { OBS } from './world/helpers.js';
 import { initLabels } from './render/labels.js';
-import { initDay } from './sim/day.js';
 import { initPeopleGroup } from './people/group.js';
-import { initState } from './sim/state.js';
+import { initPeopleViews } from './people/views.js';
 import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
@@ -61,6 +60,7 @@ export function bootstrap() {
   initGrid(OBS);
   // simulation
   initPeopleGroup();
+  initPeopleViews(); // before the simulation creates anyone, so each new person gets a body
   initState();
   initDay();
   initHazel();

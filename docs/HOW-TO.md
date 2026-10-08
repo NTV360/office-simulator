@@ -25,14 +25,14 @@ Meshes you will move or animate later must be marked so `bake` leaves them alone
 
 ## Add an interactable and an activity
 
-Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/tasks.js`).
+Example: the music corner (`world/furniture/music.js`, `musicBreak` in `packages/shared/src/sim/tasks.ts`).
 
 1. **Create the spot** in your `build` function:
    ```js
    mkSpot('piano', 652, 525, E, { sit: true, hipY: .6, place: 'the keyboard', group: 'music' });
    ```
-   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height. Every spot gets a stable `id` (`kind:n`, its place in creation order) when it is registered. If a spot has a screen, register its mesh under that id (`registerScreen(spot.id, mesh)` in `render/screens.js`); the simulation says what a screen shows (`screenState` in `sim/step.js`) and `people/screens.js` applies it. The simulation never holds a mesh.
-2. **Write the activity** in `sim/tasks.js`:
+   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height. Every spot gets a stable `id` (`kind:n`, its place in creation order) when it is registered. If a spot has a screen, register its mesh under that id (`registerScreen(spot.id, mesh)` in `render/screens.js`); the simulation says what a screen shows (`screenState` in `packages/shared/src/sim/step.ts`) and `people/screens.js` applies it. The simulation never holds a mesh.
+2. **Write the activity** in `packages/shared/src/sim/tasks.ts` (TypeScript; the example is shown in plain form):
    ```js
    function musicBreak(p) {
      const s = free(interactables.of('music'))[0]; if (!s) return false;
@@ -40,12 +40,12 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
    }
    ```
    `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `packages/shared/src/sim/data.ts`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
-3. **Offer it** by adding a line to `chooseNext` in `sim/tasks.js` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
+3. **Offer it** by adding a line to `chooseNext` in `packages/shared/src/sim/tasks.ts` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
 4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`).
 5. **Word it for the HUD**: add `case 'piano': return going ? '...' : '...';` in `statusText` in `ui/person.js`.
 6. **Let the player use it**: add the kind to the list in `nearestSeat` (`player/seating.js`) and map it to an `anim` in `sitDown`.
 7. **Props** a person holds are state, not meshes. Add the name to `PROP_KEYS` in `packages/shared/src/sim/props.ts`, create the mesh in `character/rig.js` (hidden by default), and set the flag in `onStart`/`onEnd` (`q.props.mug = true`) and in `sitDown`/`standUp`. `people/sync.js` shows or hides the mesh from the flag every frame. The simulation never touches a mesh.
-8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `sim/day.js`.
+8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `packages/shared/src/sim/day.ts`.
 9. Check: `__sim.advance(3000)` a dozen times shows your `kind` among `people[i].task.kind`, and the player can sit and play.
 
 ## Add a camera view
@@ -78,8 +78,8 @@ All of these also apply to NPCs and the player, because they all share `Characte
 
 Hazel (`people/hazel.js`) is the template.
 
-1. Give the character a spec override (`apply<Name>(spec)`) and call it from `makePerson` in `people/factory.js` for the person created at the right index. Add any new look options to the spec first (see above).
-2. Keep identity in one place: name constant, role, schedule overrides (see `scheduleDay` in `factory.js`).
+1. Give the character a spec override (`apply<Name>(spec)`) and call it from `makeStaff` in `packages/shared/src/sim/factory.ts` for the person created at the right index. Add any new look options to the spec first (see above).
+2. Keep identity in one place: name constant, role, schedule overrides (see `packages/shared/src/sim/hazel.ts` and `scheduleDay` in `packages/shared/src/sim/factory.ts`).
 3. Put the character's own behaviour and effects in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
 4. Poses and status texts go in `people/animation.js` and `ui/person.js` like any other activity.
 

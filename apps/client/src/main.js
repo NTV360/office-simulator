@@ -13,7 +13,7 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { fingerprint, screenMismatches } from './debug.js';
-import { ENTRY, findPath, GC, GR, interactables, NAV, setSeed, toPx, walkPx } from '@office/shared';
+import { ENTRY, findPath, GC, GR, interactables, log, NAV, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -25,10 +25,6 @@ import { player } from './player/player.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
 import { updateLight } from './render/lighting.js';
 import { camera, renderer, scene } from './render/renderer.js';
-import { newDay } from './sim/day.js';
-import { tickMeetings, tryMeeting } from './sim/meetings.js';
-import { CLOCK, log, people, sim } from './sim/state.js';
-import { stepPerson } from './sim/step.js';
 import { updateScreens } from './people/screens.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
@@ -50,11 +46,7 @@ let last = performance.now(), uiAcc = 0;
 function tick(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (!sim.paused) {
-    sim.t += dt * sim.speed * CLOCK;
-    if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); }
-    tickMeetings();
-    if (sim.t >= 19 * 60 + 10) newDay();
-    for (const p of people) stepPerson(p, dt);
+    stepSim(dt);
     updateScreens(); updateLight();
   }
   for (const p of people) syncBody(p, dt);
@@ -77,5 +69,5 @@ requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
 window.__sim = { fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
-  for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
+  for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

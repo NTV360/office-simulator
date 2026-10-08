@@ -1,11 +1,17 @@
-import { angDiff, interactables, isControlled, OX, OY, S, walkPx } from '@office/shared';
-import { arriveNow } from './day.js';
-import { people, sim } from './state.js';
-import { arrive, chooseNext } from './tasks.js';
+import { OX, OY, S } from '../plan';
+import { walkPx } from '../nav/grid';
+import { angDiff } from '../util';
+import { arriveNow, newDay } from './day';
+import type { Spot } from './interactables';
+import { tickMeetings, tryMeeting } from './meetings';
+import { isControlled } from './person';
+import { CLOCK, people, sim } from './state';
+import { arrive, chooseNext } from './tasks';
+import type { Person } from './types';
 
 /* ================= Simulation step ================= */
-function stepPerson(p, dt, sdt) {
-  if (p.rageK > .05) { p.animT += dt; return; }
+export function stepPerson(p: Person, dt: number): void {
+  if ((p.rageK ?? 0) > .05) { p.animT += dt; return; }
   if (isControlled(p)) return;
   if (p.state === 'away') {
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
@@ -43,12 +49,21 @@ function stepPerson(p, dt, sdt) {
   p.face += angDiff(p.face, p.faceGoal) * k;
 }
 
-// What a desk's monitor shows: 'off' (nobody's desk, or they are not in), 'lock' (in but not working), or 'kind:variant'
-// (working; e.g. 'code:3'). The client turns that into a material.
-function screenState(s) {
-  const p = s.owner;
+/**
+ * What a desk monitor shows: 'off' (nobody's desk, or they are not in), 'lock' (in but not working), or
+ * 'kind:variant' (working; e.g. 'code:3'). The client turns that into a material.
+ */
+export function screenState(s: Spot): string {
+  const p = s.owner as Person | null | undefined;
   if (!p || p.state === 'away') return 'off';
   return (p.state === 'doing' && p.task?.spot === s && p.task.kind === 'work') ? p.screenKind + ':' + p.screenVariant : 'lock';
 }
 
-export { screenState, stepPerson };
+/** Advance the whole simulation by dt real seconds: the clock, meetings, the day roll-over, and every person. */
+export function stepSim(dt: number): void {
+  sim.t += dt * sim.speed * CLOCK;
+  if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); }
+  tickMeetings();
+  if (sim.t >= 19 * 60 + 10) newDay();
+  for (const p of people) stepPerson(p, dt);
+}

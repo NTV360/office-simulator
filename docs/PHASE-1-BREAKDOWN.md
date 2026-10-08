@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: approved. Steps 0 to 7 are done; steps 8 and 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. Steps 0 to 8 are done; step 9 is next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -74,6 +74,14 @@ Building the safety net taught three things, now part of how the project works:
 2. **A controlled person has its own state.** `state: 'controlled'` replaces the old `'player'`; the checks use the controller, not the state.
 3. **What is deliberately not done yet.** The `player` object in `player/player.js` still holds the local control state (sitting, moving, spec). Per-account control state arrives with the server (phase 3). A guest has no slot; claiming one is phase 4.
 
+### What step 8 turned out to need
+
+1. **Done in two moves.** First the registry, `mkSpot` and `ENTRY` (step 8a, own commit), then the rest of the simulation (8b). Both passed the recordings exactly on the first run.
+2. **Where the client touches the simulation now.** `people/views.js` (bodies, from `personAdded`/`personRemoved` events), `people/sync.js` (poses, visibility, props), `people/screens.js` (monitors), and the main loop, which calls `stepSim(dt)`. Hazel's rage keeps its client effect and writes `rageK` on her person; the step only reads it.
+3. **The exit door is looked up, not imported.** `exitSpot()` finds the registered `'exit'` spot, so the simulation does not need the world module. If no door is registered, a person who should leave just becomes absent.
+4. **`resetSim()`** puts the clock, log, people, meetings and the name counter back to a fresh state, for step 9's Node tests. Spots are cleared with `interactables.clear()`.
+5. **Spots carry their own ids.** `mkSpot` gives each spot `kind:n`, which the screen registry and the fingerprint use.
+
 **How to use it:**
 
 ```
@@ -96,7 +104,7 @@ It builds the client, serves it, drives headless Chromium, and saves a screensho
 | **5** (**done**) | Props and visibility become state | A `Person` type in `shared`. Held items become flags (`p.props.mug`, `.phone`, `.pad`, `.guitar`, `.putter`) set by activities. `sim/day.js`, `sim/tasks.js`, `player/seating.js` and Hazel stop touching meshes. `people/sync.js` applies the flags and shows or hides each body from the person's state | Golden master (the fingerprint now includes the flags). Browser check: mugs, phones, the guitar and the putter still appear and disappear | M |
 | **6** (**done**) | Slots and screens | `p.seat` becomes `p.slot` (the desk spot, the owner, later the station). The sim no longer touches monitor materials: spots get ids, and a client-side registry maps a spot id to its screen mesh; `updateScreens` and `screenMat` move to the client | Golden master. Browser check: screens show code, design, dashboards, the lock screen and "off" as before | M |
 | **7** (**done**) | The player becomes a person | One person model with `controller: ai or account`. The separate player entity (`player/player.js`) goes; the controlled person lives in the same list, with no slot when playing as a guest. `animation.js` keys off the controller. The ledger still counts only staff | Golden master (with no player spawned, nothing differs). A new browser test: enter first and third person, walk, sit, stand, exit; the staff's fingerprint does not change | M to L |
-| **8** | Move the simulation | `sim/state.js` (minus the Three.js group), `meetings`, `day`, `step`, `tasks`, `factory` (minus building a body), and Hazel's identity and schedule move to `shared`. `world/interactables.js` and `mkSpot` move too (pure data); `ENTRY` and `EXIT` become plan constants. A client `people/views.js` creates and removes each person's body from the person list. `removePerson` becomes an event the client listens to (it replaces the call into the UI) | Golden master, exactly. The client now contains no simulation logic | L |
+| **8** (**done**) | Move the simulation | `sim/state.js` (minus the Three.js group), `meetings`, `day`, `step`, `tasks`, `factory` (minus building a body), and Hazel's identity and schedule move to `shared`. `world/interactables.js` and `mkSpot` move too (pure data); `ENTRY` and `EXIT` become plan constants. A client `people/views.js` creates and removes each person's body from the person list. `removePerson` becomes an event the client listens to (it replaces the call into the UI) | Golden master, exactly. The client now contains no simulation logic | L |
 | **9** | Simulate in Node | Unit and scenario tests on a small test layout that run the real simulation without a browser | A seeded day: everyone arrives and sits; meetings start and end; nobody is stuck; the day rolls over; the same seed gives the same result twice; claiming and releasing a slot works | M |
 
 **Why this order.** Steps 0 to 4 move the parts that are already nearly pure and are the easiest to prove. Steps 5 to 7 remove the real couplings while the code is still in the client, where the golden master and the browser both check it. Step 8 is then a mostly mechanical move, and step 9 is the payoff: the simulation running under tests in Node.

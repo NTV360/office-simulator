@@ -1,9 +1,8 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H, stepPlayer } from '@office/shared';
+import { FULL_H, LOW_H, people, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
-import { people } from '../sim/state.js';
 import { wall } from '../world/helpers.js';
 import { player } from './player.js';
 import { updatePrompts } from './prompts.js';

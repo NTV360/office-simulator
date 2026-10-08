@@ -1,6 +1,5 @@
-import { PROP_KEYS, isControlled } from '@office/shared';
+import { isControlled, PROP_KEYS, sim } from '@office/shared';
 import { ringMats } from '../character/rig.js';
-import { sim } from '../sim/state.js';
 import { applyPose } from './animation.js';
 
 // Show or hide a person's meshes from their state: the simulation never touches meshes. The player's own body

@@ -78,13 +78,13 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 1134 to 1171 A* | `packages/shared/src/nav/astar.ts` (moved in phase 1, step 4) |
 | 1173 to 1195 names, roles, activity categories | `packages/shared/src/sim/data.ts` (palettes in `packages/shared/src/character/spec.ts`; both moved in phase 1, step 3) |
 | 1196 to 1274 `buildBody` | `apps/client/src/character/rig.js`, `parts.js`, `gfx.js` |
-| 1276 to 1285 people list, sim clock, log | `apps/client/src/sim/state.js` |
-| 1287 to 1323 `makePerson`, `removePerson`, `scheduleDay` | `apps/client/src/people/factory.js` |
-| 1325 to 1450 activities, `chooseNext` | `apps/client/src/sim/tasks.js` |
-| 1451 to 1483 meetings | `apps/client/src/sim/meetings.js` |
-| 1484 to 1534 day cycle, initial scene | `apps/client/src/sim/day.js` |
+| 1276 to 1285 people list, sim clock, log | `packages/shared/src/sim/state.ts` (moved in phase 1, step 8) |
+| 1287 to 1323 `makePerson`, `removePerson`, `scheduleDay` | `packages/shared/src/sim/factory.ts` (the body is made in `apps/client/src/people/views.js`) |
+| 1325 to 1450 activities, `chooseNext` | `packages/shared/src/sim/tasks.ts` |
+| 1451 to 1483 meetings | `packages/shared/src/sim/meetings.ts` |
+| 1484 to 1534 day cycle, initial scene | `packages/shared/src/sim/day.ts` |
 | 1535 to 1613 poses | `apps/client/src/people/animation.js` |
-| 1614 to 1660 per-frame movement | `apps/client/src/sim/step.js` |
+| 1614 to 1660 per-frame movement | `packages/shared/src/sim/step.ts` |
 | 1662 to 1675 day/night light | `apps/client/src/render/lighting.js` |
 | 1676 to 1716 camera state and views | `apps/client/src/camera/state.js`, `controller.js`, `modes/*`, `orbit.js` |
 | 1717 to 1780 pointer and keyboard input | `apps/client/src/camera/input.js` |
@@ -136,9 +136,9 @@ That commit added a special character, a rage mode, a music corner and new look 
 | New materials | `apps/client/src/render/materials.js` |
 | Cube head, skirt, bob hair, angry face, guitar on the rig | `apps/client/src/character/rig.js`, `parts.js`, and new `spec` fields (`skirt`, `cube`, `angry`) |
 | Hazel's identity, rage mode, find/rage buttons | `apps/client/src/people/hazel.js` |
-| Music activity and its start-of-day placement | `apps/client/src/sim/tasks.js` (`musicBreak`), `apps/client/src/sim/day.js` |
+| Music activity and its start-of-day placement | `packages/shared/src/sim/tasks.ts` (`musicBreak`), `packages/shared/src/sim/day.ts` |
 | Piano, guitar and rage poses | `apps/client/src/people/animation.js` |
-| Rage freezes walking | `apps/client/src/sim/step.js` |
+| Rage freezes walking | `packages/shared/src/sim/step.ts` |
 | Status text for piano/guitar | `apps/client/src/ui/person.js` |
 | "Music corner" label | `apps/client/src/render/labels.js` |
 | Camera shake, `updateRage`, `updateMusic` in the loop | `apps/client/src/main.js` |

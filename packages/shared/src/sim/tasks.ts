@@ -1,14 +1,21 @@
-import { exitSpot, findPath, interactables, random, rnd, shuffle, toPx, Vec3, walkPx } from '@office/shared';
-import { addLog, people, sim } from './state.js';
+import { findPath } from '../nav/astar';
+import { toPx } from '../plan';
+import { random, rnd, shuffle } from '../util';
+import { Vec3 } from '../vec3';
+import { walkPx } from '../nav/grid';
+import { interactables, type Spot } from './interactables';
+import { addLog, people, sim } from './state';
+import { exitSpot } from './spots';
+import type { Person, Task, TaskSpot } from './types';
 
 /* ---------- Tasks ---------- */
-function endTask(p) {
+export function endTask(p: Person): void {
   const t = p.task; if (!t || t.ended) return;
   t.ended = true;
   if (t.onEnd) t.onEnd(p);
   if (t.spot && t.spot.shared && t.spot.occupant === p) t.spot.occupant = null;
 }
-function goDo(p, task) {
+export function goDo(p: Person, task: Task): boolean {
   const spot = task.spot;
   if (spot.shared && spot.occupant && spot.occupant !== p) return false;
   const path = findPath(p.pos, spot.approach);
@@ -19,61 +26,61 @@ function goDo(p, task) {
   p.task = task; p.path = path; p.pi = 0; p.state = 'walking';
   return true;
 }
-function placeNow(p, task) {
+export function placeNow(p: Person, task: Task): void {
   endTask(p); const s = task.spot; if (s.shared) s.occupant = p;
   p.task = task; p.pos.copy(s.pos); p.face = p.faceGoal = s.face; arrive(p);
 }
-function arrive(p) {
-  const t = p.task; p.state = 'doing'; p.path = null;
+export function arrive(p: Person): void {
+  const t = p.task!; p.state = 'doing'; p.path = null;
   p.pos.copy(t.spot.pos); p.faceGoal = t.spot.face;
   p.until = t.until ?? sim.t + (t.dur ?? 0);
   if (t.onStart) t.onStart(p);
 }
-const free = list => shuffle(list.filter(s => !s.occupant));
+const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant));
 
-function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
-function coffee(p) {
+export function goWork(p: Person): boolean { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
+function coffee(p: Person): boolean {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
   if (ok && random() < .5) p.queue.push('bar');
   if (ok && random() < .3) p.queue.push('sink');
   return ok;
 }
-function sinkTrip(p) { const s = free(interactables.of('sink'))[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
-function lockerTrip(p) { const s = free(interactables.of('locker'))[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
-function sofaBreak(p) { const s = free(interactables.of('lounge').filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
-function musicBreak(p) {
+function sinkTrip(p: Person): boolean { const s = free(interactables.of('sink'))[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
+export function lockerTrip(p: Person): boolean { const s = free(interactables.of('locker'))[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
+function sofaBreak(p: Person): boolean { const s = free(interactables.of('lounge').filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
+function musicBreak(p: Person): boolean {
   const s = free(interactables.of('music'))[0]; if (!s) return false;
   const g = s.kind === 'guitar';
   return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: q => { if (g) q.props.guitar = true; }, onEnd: q => { q.props.guitar = false; } });
 }
-function dartsBreak(p) {
+function dartsBreak(p: Person): boolean {
   const s = free(interactables.of('darts'))[0]; if (!s) return false;
   return goDo(p, { kind: 'darts', cat: 'break', anim: 'darts', spot: s, dur: rnd(6, 12) });
 }
-function golfBreak(p) {
+function golfBreak(p: Person): boolean {
   const s = free(interactables.of('golf'))[0]; if (!s) return false;
-  return goDo(p, { kind: 'golf', cat: 'break', anim: 'putt', spot: s, dur: rnd(6, 12), onStart: q => q.props.putter = true, onEnd: q => q.props.putter = false });
+  return goDo(p, { kind: 'golf', cat: 'break', anim: 'putt', spot: s, dur: rnd(6, 12), onStart: q => { q.props.putter = true; }, onEnd: q => { q.props.putter = false; } });
 }
-function gameBreak(p) {
+function gameBreak(p: Person): boolean {
   const s = free(interactables.of('lounge').filter(x => x.game))[0]; if (!s) return false;
-  return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => q.props.pad = true, onEnd: q => q.props.pad = false });
+  return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => { q.props.pad = true; }, onEnd: q => { q.props.pad = false; } });
 }
-function storageTrip(p) { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
-function barTrip(p) { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.props.mug = true, onEnd: q => q.props.mug = false }); }
-function booth(p) {
+function storageTrip(p: Person): boolean { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
+function barTrip(p: Person): boolean { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => { q.props.mug = true; }, onEnd: q => { q.props.mug = false; } }); }
+function booth(p: Person): boolean {
   const s = free(interactables.of('booth'))[0]; if (!s) return false;
-  return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => q.props.phone = true, onEnd: q => q.props.phone = false });
+  return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => { q.props.phone = true; }, onEnd: q => { q.props.phone = false; } });
 }
-function chat(p) {
+function chat(p: Person): boolean {
   const cands = shuffle(people.filter(q => q !== p && q.state === 'doing' && q.task?.kind === 'work' && !q.chatWith));
-  cands.sort((a, b) => (a.slot.place === p.slot.place ? 0 : 1) - (b.slot.place === p.slot.place ? 0 : 1));
+  cands.sort((a, b) => (a.slot!.place === p.slot!.place ? 0 : 1) - (b.slot!.place === p.slot!.place ? 0 : 1));
   for (const q of cands.slice(0, 4)) {
-    const f = q.slot.face, back = [-Math.sin(f), -Math.cos(f)], side = [Math.cos(f), -Math.sin(f)];
+    const f = q.slot!.face, back = [-Math.sin(f), -Math.cos(f)], side = [Math.cos(f), -Math.sin(f)];
     for (const sd of shuffle([1, -1])) {
-      const v = new Vec3(q.slot.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.slot.pos.z + back[1] * .62 + side[1] * .42 * sd);
+      const v = new Vec3(q.slot!.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.slot!.pos.z + back[1] * .62 + side[1] * .42 * sd);
       if (!walkPx(...toPx(v))) continue;
-      const spot = { kind: 'chat', pos: v, approach: v, face: Math.atan2(q.pos.x - v.x, q.pos.z - v.z), shared: false, place: `${q.slot.place}` };
+      const spot: TaskSpot = { kind: 'chat', pos: v, approach: v, face: Math.atan2(q.pos.x - v.x, q.pos.z - v.z), shared: false, place: `${q.slot!.place}` };
       const ok = goDo(p, { kind: 'chat', cat: 'chat', anim: 'talkStand', spot, dur: rnd(3, 8), partner: q,
         onStart: me => { if (q.state === 'doing' && q.task?.kind === 'work') q.chatWith = me; },
         onEnd: me => { if (q.chatWith === me) q.chatWith = null; } });
@@ -82,7 +89,7 @@ function chat(p) {
   }
   return false;
 }
-function lunch(p) {
+function lunch(p: Person): boolean {
   const d = free(interactables.of('dining'))[0];
   if (d && random() < .75) {
     if (random() < .35 && lockerTrip(p)) { p.queue.push('dining'); return true; }
@@ -90,25 +97,26 @@ function lunch(p) {
   }
   const s = free(interactables.of('lounge').filter(x => !x.game))[0];
   if (s && random() < .5) return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: s, dur: rnd(20, 30) });
-  return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.slot, dur: rnd(20, 30) });
+  return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.slot!, dur: rnd(20, 30) });
 }
-function leave(p) {
+function leave(p: Person): void {
   if (random() < .3 && !p.queue.includes('exit') && lockerTrip(p)) { p.queue.push('exit'); return; }
   goExit(p);
 }
-function goExit(p) {
-  if (!goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: exitSpot(), dur: 0, onStart: q => { q.state = 'away'; q.shown = false; q.task = null; addLog(`${q.name} headed home`); } })) {
+function goExit(p: Person): void {
+  const door = exitSpot();
+  if (!door || !goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: door, dur: 0, onStart: q => { q.state = 'away'; q.shown = false; q.task = null; addLog(`${q.name} headed home`); } })) {
     p.state = 'away'; p.shown = false;
   }
 }
-function runQueued(p, k) {
+function runQueued(p: Person, k: string | undefined): boolean {
   if (k === 'sink') return sinkTrip(p);
   if (k === 'bar') return barTrip(p);
   if (k === 'exit') { goExit(p); return true; }
   if (k === 'dining') { const d = free(interactables.of('dining'))[0]; return !!d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) }); }
   return false;
 }
-function chooseNext(p) {
+export function chooseNext(p: Person): void {
   while (p.queue.length) { if (runQueued(p, p.queue.shift())) return; }
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
@@ -133,5 +141,3 @@ function chooseNext(p) {
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }
 }
-
-export { arrive, chooseNext, endTask, goDo, goWork, lockerTrip, placeNow };

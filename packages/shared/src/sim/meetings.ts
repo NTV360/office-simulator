@@ -1,11 +1,13 @@
-import { interactables, isStaff, pick, random, rnd, shuffle } from '@office/shared';
-import { addLog, people, sim } from './state.js';
-import { goDo } from './tasks.js';
+import { pick, random, rnd, shuffle } from '../util';
+import { interactables } from './interactables';
+import { isStaff } from './person';
+import { addLog, meetings, people, sim } from './state';
+import { goDo } from './tasks';
+import type { Meeting } from './types';
 
 /* ---------- Meetings ---------- */
-const meetings = [];
 const TOPICS = ['sprint planning', 'design review', 'client sync', 'bug triage', 'release check-in', 'stand-up', 'retro', '1:1'];
-function tryMeeting() {
+export function tryMeeting(): void {
   const t = sim.t; if (t < 9 * 60 + 15 || t > 17 * 60 + 10) return;
   const lunchHour = t > 12 * 60 && t < 13 * 60;
   for (const room of shuffle([1, 2, 3])) {
@@ -16,17 +18,17 @@ function tryMeeting() {
     const pool = shuffle(people.filter(p => isStaff(p) && p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));
-    const m = { room, start: t, end: t + rnd(18, 45), members: [], speaker: null, swap: 0, topic };
+    const m: Meeting = { room, start: t, end: t + rnd(18, 45), members: [], speaker: null, swap: 0, topic };
     const seats = shuffle(interactables.conf(room).slice());
     for (const p of pool.slice(0, Math.min(n, cap))) {
-      const s = seats.pop();
+      const s = seats.pop()!;
       if (goDo(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: s, until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } })) m.members.push(p);
     }
     if (m.members.length >= 2) { meetings.push(m); addLog(`${m.members[0].name.split(' ')[0]} started a ${m.topic} in Conference ${room} (${m.members.length})`); }
     else m.members.forEach(p => { p.until = sim.t; });
   }
 }
-function tickMeetings() {
+export function tickMeetings(): void {
   for (let i = meetings.length - 1; i >= 0; i--) {
     const m = meetings[i];
     if (sim.t >= m.end) { meetings.splice(i, 1); continue; }
@@ -34,5 +36,4 @@ function tickMeetings() {
     if (!m.speaker || sim.t >= m.swap || !seated.includes(m.speaker)) { m.speaker = seated.length ? pick(seated) : null; m.swap = sim.t + rnd(1, 3.5); }
   }
 }
-
-export { meetings, tickMeetings, tryMeeting };
+export { meetings };
