@@ -54,15 +54,15 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
 | `world/interactables.js` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')` |
 | `nav/` | `grid.js` (walkable grid built from the obstacles), `astar.js` (pathfinding) |
-| `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
+| `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `presets.js` the sprite starting looks (plain data), `rig.js` the shared body rig, `parts.js` hair and face parts, `accessories.js` hats, goggles, scarf, tie, costumes, `props.js` held props, `gfx.js` cached materials/geometry |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
 | `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
-| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
+| `player/` | The player's character: `player.js` (the entity, and saving its look), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
-| `ui/` | HUD controls, the headcount ledger, the selected-person card |
+| `ui/` | HUD controls, the headcount ledger, the selected-person card, the character creator (`creator.js`, with its 3D preview in `preview.js`) |
 | `styles/` | CSS split by UI area, imported in order by `main.js` |
-| `assets/` | Static files imported by code (the logo) |
+| `assets/` | Static files imported by code (the logo, and the 75 sprite avatars in `avatars/`) |
 
 ## How the app starts
 
@@ -95,8 +95,8 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | `sim` | `sim/state.js` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
 | `people` | `sim/state.js` | The NPC list. The player is **not** in it |
 | `logState`, `log` | `sim/state.js` | Event log shown in the ledger; set `logState.dirty` to redraw |
-| `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed |
-| `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
+| `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed. `spec` is saved to `localStorage` (`officeSimPlayerSpec`) on every change and loaded by `initPlayer()` |
+| `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks, and `menu` (set by the creator while it is open: it owns the keys and pointer, and calling it closes it) |
 | `camState`, `camGoal` | `camera/state.js` | Orbit camera: smoothed result and where input wants it |
 | `wall` | `world/helpers.js` | `{ h, goal }` wall height and its target |
 | `labelState` | `render/labels.js` | `{ on }` |
@@ -114,11 +114,13 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 
 A character is three separate things:
 
-- **`CharacterSpec`** (`character/spec.js`): plain JSON describing the look (colours, hair style, glasses, jacket, scale, and so on). `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `PARTS` lists the options a character creator can offer. It has no Three.js in it.
-- **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
+- **`CharacterSpec`** (`character/spec.js`): plain JSON describing the look. Its fields are either **body parts** (skin, hair style and colour, eyes, top colour and sleeves, legs colour and length, shoes, height) or **accessories** (glasses, headphones, jacket, hat, goggles, earrings, scarf, tie, costume), which are all off by default. `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `CREATOR_COLORS` and the `*_OPTIONS` lists are what character creation offers. It has no Three.js in it.
+- **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; worn extras in `accessories.js`; held props in `props.js`.
 - **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig and the same `people/animation.js` poses.
 
-**The player** (`player/`) is a separate entity, not an NPC. It has no seat or schedule and is never picked by the sim. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
+**The player** (`player/`) is a separate entity, not an NPC. It has no seat or schedule and is never picked by the sim. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live and saves it.
+
+**The character creator** (`ui/creator.js`) is how the player changes that look. It only exists while walking as yourself (first or third person): the **Customize** button in the walking bar, or `O`, opens it. NPCs never use it and never get the sprite looks. It has three tabs: **Body** (one section per body part), **Accessories** (extras on top), and **Characters** (the 75 sprite avatars from `character/presets.js`, each a starting look to pick and then tweak; applying one keeps your height). Every control is one entry in the `BODY` / `ACCESSORIES` tables at the top of `creator.js` and edits one spec field, so the body in the world updates as you click. A second small renderer (`ui/preview.js`) turns a copy of your character in the panel, so you can see yourself in first person too. While the creator is open `ctl.menu` is set, which stops movement and look input, and `Esc` closes it instead of leaving first/third person.
 
 **Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look and name, she always leaves last, and the HUD can find her or make her angry.
 

@@ -24,7 +24,7 @@ const thirdPersonMode = {
     const p = spawnPlayer();
     select(null);
     if (!player.sitting) p.task = null;
-    beginControl('tp', p, { title: 'Third person', keys: 'WASD move · drag look · wheel zoom · C swap shoulder · Shift run · E sit · V first person · Esc exit' });
+    beginControl('tp', p, { title: 'Third person', keys: 'WASD move · drag look · wheel zoom · C swap shoulder · Shift run · E sit · V first person · O customize · Esc exit' });
     ctl.pitchMin = -.75; ctl.pitchMax = .7; ctl.pitch = -.14;
     ctl.keyHook = k => { if (k === 'c') tp.side = -tp.side; };
     ctl.wheelHook = dy => { tp.dist = Math.max(tp.minDist, Math.min(tp.maxDist, tp.dist * Math.exp(dy * .0008))); };

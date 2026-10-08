@@ -7,6 +7,8 @@ import { initState } from './sim/state.js';
 import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
+import { initPlayer } from './player/player.js';
+import { initCreator } from './ui/creator.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { buildBake } from './world/bake.js';
@@ -61,6 +63,7 @@ export function bootstrap() {
   initState();
   initDay();
   initHazel();
+  initPlayer();
   // input and UI
   initCamera();
   initInput();
@@ -68,4 +71,5 @@ export function bootstrap() {
   initLedger();
   initControls();
   initControl();
+  initCreator();
 }

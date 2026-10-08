@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { CATS } from '../people/data.js';
 import { boxGeo } from '../world/helpers.js';
+import { addCostume, addEarrings, addGoggles, addHat, addScarf, addTie } from './accessories.js';
 import { addAngry, addGlasses, addHair, addHeadphones } from './parts.js';
 import { makeGuitar } from './props.js';
-import { eyeMat, limb, sph, stdMat } from './gfx.js';
+import { limb, sph, stdMat, tintOf } from './gfx.js';
 
 const ringGeo = new THREE.RingGeometry(.27, .33, 32);
 const ringMats = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, new THREE.MeshBasicMaterial({ color: v.color, transparent: true, opacity: .85, depthWrite: false })]));
@@ -12,7 +13,8 @@ const ringMats = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, new
 // Build the shared character rig for a CharacterSpec. Returns the mesh groups plus the joints and props
 // the animation code drives. `sockets` are attach points for future held/worn items.
 function buildBody(spec) {
-  const skin = stdMat(spec.skin, .65), shirt = stdMat(spec.shirt), pants = stdMat(spec.pants, .85), shoe = stdMat(spec.shoes, .6);
+  const tint = tintOf(spec);
+  const skin = tint(stdMat(spec.skin, .65)), shirt = tint(stdMat(spec.shirt)), pants = tint(stdMat(spec.pants, .85)), shoe = tint(stdMat(spec.shoes, .6)), eye = stdMat(spec.eyes, .3);
   const root = new THREE.Group(); root.scale.setScalar(spec.scale);
   const hips = new THREE.Group(); hips.position.y = .88; root.add(hips);
   const pelvis = new THREE.Mesh(sph(.16), pants); pelvis.scale.set(1.05, .62, .78); pelvis.castShadow = true; hips.add(pelvis);
@@ -22,18 +24,20 @@ function buildBody(spec) {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(.165, .165, .04, 20), stdMat(spec.skirt, .6)); band.position.y = .03; hips.add(band);
   }
   const chest = new THREE.Mesh(new THREE.CapsuleGeometry(.155, .26, 4, 12), shirt); chest.position.y = .28; chest.scale.set(1.15, 1, .74); chest.castShadow = true; torso.add(chest);
-  if (spec.jacket) { const j = new THREE.Mesh(new THREE.CapsuleGeometry(.162, .22, 4, 12, ), stdMat(spec.jacket)); j.position.y = .27; j.scale.set(1.17, 1, .77); j.castShadow = true; torso.add(j); const sh = new THREE.Mesh(sph(.06), shirt); sh.position.set(0, .45, .095); sh.scale.set(1, 1.4, .4); torso.add(sh); }
+  const jacket = spec.jacket && tint(stdMat(spec.jacket));
+  if (spec.jacket) { const j = new THREE.Mesh(new THREE.CapsuleGeometry(.162, .22, 4, 12, ), jacket); j.position.y = .27; j.scale.set(1.17, 1, .77); j.castShadow = true; torso.add(j); const sh = new THREE.Mesh(sph(.06), shirt); sh.position.set(0, .45, .095); sh.scale.set(1, 1.4, .4); torso.add(sh); }
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(.048, .055, .1, 10), skin); neck.position.y = .55; torso.add(neck);
   const head = new THREE.Group(); head.position.y = .6; torso.add(head);
   const skull = new THREE.Mesh(spec.cube ? boxGeo(.27, .29, .26) : sph(.135, 20, 16), skin); skull.position.y = .13; if (!spec.cube) skull.scale.set(1, 1.08, 1.02); skull.castShadow = true; head.add(skull);
-  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eyeMat); e.position.set(s * .047, .14, spec.cube ? .132 : .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
+  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eye); e.position.set(s * .047, .14, spec.cube ? .132 : .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
   const nose = new THREE.Mesh(sph(.022, 8, 6), skin); nose.position.set(0, .11, .138); head.add(nose);
   addHair(head, spec); addAngry(head, spec); addGlasses(head, spec); addHeadphones(head, spec);
+  addHat(head, spec); addGoggles(head, spec); addEarrings(head, spec); addScarf(torso, spec); addTie(torso, spec); addCostume(head, torso, spec);
   root.userData.chest = chest;
-  const sleeve = spec.longSleeve ? (spec.jacket ? stdMat(spec.jacket) : shirt) : skin;
+  const sleeve = spec.longSleeve ? (jacket || shirt) : skin;
   const arm = side => {
     const sh = new THREE.Group(); sh.position.set(side * .205, .46, 0); torso.add(sh);
-    const up = new THREE.Mesh(new THREE.CapsuleGeometry(.056, .17, 4, 10), spec.jacket ? stdMat(spec.jacket) : shirt); up.position.y = -.14; up.castShadow = true; sh.add(up);
+    const up = new THREE.Mesh(new THREE.CapsuleGeometry(.056, .17, 4, 10), jacket || shirt); up.position.y = -.14; up.castShadow = true; sh.add(up);
     const el = new THREE.Group(); el.position.y = -.28; sh.add(el);
     el.add(limb(.047, .26, sleeve));
     const hand = new THREE.Group(); hand.position.y = -.27; el.add(hand);
@@ -45,7 +49,7 @@ function buildBody(spec) {
     const hp = new THREE.Group(); hp.position.set(side * .095, -.02, 0); hips.add(hp);
     hp.add(limb(.076, .43, pants));
     const kn = new THREE.Group(); kn.position.y = -.43; hp.add(kn);
-    kn.add(limb(.064, .41, pants));
+    kn.add(limb(.064, .41, spec.shorts ? skin : pants));
     const s = new THREE.Mesh(boxGeo(.11, .075, .25), shoe); s.position.set(0, -.405, .045); s.castShadow = true; kn.add(s);
     return { hp, kn };
   };
@@ -70,4 +74,8 @@ function buildBody(spec) {
   return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, guitar, ring, chest, skin, skinMeshes, sockets };
 }
 
-export { buildBody, ringMats };
+// Free the GPU buffers of a body that is being replaced (the player's body is rebuilt on every edit).
+// Cached geometry is shared with other bodies; it is simply uploaded again the next time it is drawn.
+function disposeBody(body) { body.root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+
+export { buildBody, disposeBody, ringMats };

@@ -8,6 +8,7 @@ import './styles/ledger.css';
 import './styles/person.css';
 import './styles/ui-toggle.css';
 import './styles/first-person.css';
+import './styles/creator.css';
 import './styles/veil.css';
 import './styles/responsive.css';
 

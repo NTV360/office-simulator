@@ -58,14 +58,21 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
 
 ## Add a hairstyle or another look option
 
-All of these also apply to NPCs and the player, because they all share `CharacterSpec`.
+All of these work on NPCs and the player, because they share `CharacterSpec`. Only the player can choose them (in the character creator); NPCs keep drawing from `PARTS`, so a new option does not change them unless you add it to `randomSpec`.
 
-1. **`character/spec.js`:** add the field to `DEFAULT_SPEC`, to `randomSpec` (usually a constant so NPCs do not change), and to `normalizeSpec`. Add the choices to `PARTS` (or `STYLE_OPTIONS` for a hairstyle). Keep this file free of Three.js.
+1. **`character/spec.js`:** add the field to `DEFAULT_SPEC` (accessories default to off: `null` or `false`) and to `normalizeSpec`. Add the choices to `CREATOR_COLORS` (colours) or to `STYLE_OPTIONS` / `HAT_OPTIONS` / `COSTUME_OPTIONS` (names). Leave `randomSpec` alone unless NPCs should get it. Keep this file free of Three.js.
 2. **Build it:**
-   - Hairstyle: add an entry to `HAIR_STYLES` in `character/parts.js` (`{ cap, extra(head, hair, spec) }`).
-   - Anything else on the head/face: add an `add<Thing>(head, spec)` in `parts.js` and call it from `buildBody` in `character/rig.js`.
+   - Hairstyle: add an entry to `HAIR_STYLES` in `character/parts.js` (`{ cap, none, tall, extra(head, hair, spec) }`). Set `tall` if it rises above the skull, so it is drawn as short hair under a hat.
+   - Hat or costume: add an entry to `HATS` or `COSTUMES` in `character/accessories.js`.
+   - Another worn extra (like the scarf or earrings): add an `add<Thing>(head or torso, spec)` in `accessories.js` and call it from `buildBody` in `character/rig.js`.
+   - Anything else on the head/face: add an `add<Thing>(head, spec)` in `parts.js`.
    - Body or clothing: edit `buildBody` in `rig.js`.
-3. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, and `setPlayerSpec(spec)` shows it on the player.
+3. **Offer it in the creator:** add a control to the `BODY` or `ACCESSORIES` table in `ui/creator.js` (`choice`, `color`, `colorOrNone` or `range`, with an optional `when` to hide it until it matters). New accessories go in `ACCESSORIES`; they are the extras on top of the body parts.
+4. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, `setPlayerSpec(spec)` shows it on the player, and the creator's controls and preview show it. For a new style, hat or costume, build every combination once (`buildBody` for each) to catch clipping or errors.
+
+### Add a starting look (character preset)
+
+A preset is one line in `PRESETS` in `character/presets.js`: `{ id, name?, skin, hair, style, shirt, pants, shoes, ...accessories }`. Fields left out use the defaults, so an accessory not listed is off. The `id` is also the sprite number: put its picture at `src/assets/avatars/<id as two digits>.png` and it appears in the creator's Characters tab.
 
 ## Add a HUD control
 
@@ -73,6 +80,7 @@ All of these also apply to NPCs and the player, because they all share `Characte
 2. Style it in the CSS file for that area in `src/styles/` (or a new file imported in `main.js`).
 3. Bind it in an `init*` function (`ui/controls.js` for general controls) using `$('id').onclick = ...`.
 4. If it must disappear while walking around as the player, add it to the `body.fp`/`body.tp` rules in `styles/first-person.css`.
+5. If it opens a panel that takes over the keyboard and pointer while the player is walking (like the creator), set `ctl.menu` to a function that closes the panel while it is open, and clear it when it closes.
 
 ## Add a special character
 

@@ -14,7 +14,8 @@ Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `
 ## Controls
 
 - **Orbit views:** drag to move, right-drag or Shift-drag to turn and tilt, wheel or pinch to zoom, `H` hides the HUD. Click a person to see what they are doing.
-- **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `Esc` exits.
+- **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `O` (or the **Customize** button) opens the character creator, `Esc` exits.
+- **Character creator:** while walking, press `O`. Change each body part (skin, hair, eyes, top, legs, shoes, height), add accessories (glasses, hat, goggles, scarf, tie, costume and more), or start from one of the 75 sprite characters. Your look is saved in the browser. It only changes your own character, not the staff.
 - **Hazel:** "Find her" follows her; "Make her angry" does what it says.
 
 ## Documentation

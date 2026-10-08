@@ -1,15 +1,15 @@
 # Roadmap
 
-What is planned, and the design the current structure was built to allow. **None of this exists yet** except where stated. Update this page when something ships or the plan changes.
+What is planned, and the design the current structure was built to allow. **The planned features below do not exist yet.** Update this page when something ships or the plan changes.
 
-## Planned features
+## Shipped
 
 ### Character creation
-Let the player choose their look, and keep it.
+The player chooses their look while walking (first or third person), and it is kept between visits. `ui/creator.js` edits a `CharacterSpec` and calls `setPlayerSpec`, which rebuilds the body live and saves it to `localStorage`. Each body part has its own controls, accessories are a separate tab on top, and the 75 sprite avatars are starting looks. NPCs are unchanged. See [ARCHITECTURE.md](ARCHITECTURE.md#people-characters-and-the-player).
 
-- The pieces exist: `CharacterSpec` (`character/spec.js`) lists every option in `PARTS`, `normalizeSpec()` repairs any input, and `setPlayerSpec(raw)` rebuilds the player's body live.
-- To build: a creator screen (a new `ui/` module) that edits a spec and calls `setPlayerSpec`; saving and loading the spec (start with `localStorage` as JSON, validated through `normalizeSpec`); more options in `PARTS` and `HAIR_STYLES`.
-- Keep NPCs and the player on the same base rig. New looks are new parts, not a second rig.
+Not done: opening the creator outside first/third person, sharing or exporting a look, more hair styles, hats and clothing, and giving sprite looks to NPCs (the old `office` branch did; this was deliberately limited to the player).
+
+## Planned features
 
 ### Items and shops
 - Needs a data layer that does not exist yet, kept free of Three.js like `spec.js`: item definitions, an inventory, a wallet, shop definitions, equipment slots.
@@ -18,7 +18,7 @@ Let the player choose their look, and keep it.
 - Static shop furniture goes in `world/furniture/` like any area. Items the player can pick up or move must be marked `userData.dynamic = true` so `bake` does not merge them.
 
 ### Saving
-A small `persistence/` module for the player's spec, inventory and money. Not started.
+The player's look is saved today (`officeSimPlayerSpec` in `localStorage`, written by `player/player.js`). A small `persistence/` module for that plus the inventory and money is still to do.
 
 ## Engineering follow-ups
 
@@ -31,4 +31,4 @@ A small `persistence/` module for the player's spec, inventory and money. Not st
 | Split the production bundle | Single ~600 KB chunk |
 | Camera collision with furniture | The third-person camera collides with walls only |
 | Reduce the known layering exceptions | Listed in [ARCHITECTURE.md](ARCHITECTURE.md#layers-and-dependency-rules) |
-| UI approach for shops, inventory and creator | The HUD is plain DOM; decide on a small component approach before it grows |
+| UI approach for shops and inventory | The HUD is plain DOM, and the creator builds its controls from tables by hand. Decide on a small component approach before shops and inventory are added |
