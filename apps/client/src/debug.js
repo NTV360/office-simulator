@@ -1,6 +1,7 @@
 import { GC, GR, NAV, PROP_KEYS, drawCount } from '@office/shared';
 import { meetings } from './sim/meetings.js';
 import { log, people, sim } from './sim/state.js';
+import { SCREENS } from './render/screens.js';
 import { interactables } from './world/interactables.js';
 
 // A stable summary of the whole simulation, used to prove that a refactor changed nothing: record it
@@ -29,6 +30,7 @@ function fingerprint() {
     until: r3(p.until), arriveAt: r3(p.arriveAt), leaveAt: r3(p.leaveAt), lunchAt: r3(p.lunchAt),
     arrivedAt: p.arrivedAt == null ? null : r3(p.arrivedAt),
     hadLunch: p.hadLunch, coffees: p.coffees,
+    slot: spotIndex(p.seat), screen: p.screenKind + ':' + SCREENS[p.screenKind].indexOf(p.screenMat),
     shown: p.shown, ring: p.shown, props: PROP_KEYS.filter(k => p.props[k]).join(','),
     chatWith: p.chatWith ? p.chatWith.name : '', queue: p.queue.join(','), pathLeft: p.path ? p.path.length - p.pi : 0,
   }));
