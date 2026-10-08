@@ -57,7 +57,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
 | `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
-| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
+| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick, hooks for activities), `locomotion.js` (collision), `seating.js`, `prompts.js`, `darts.js` (the playable dartboard) |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
 | `ui/` | HUD controls, the headcount ledger, the selected-person card |

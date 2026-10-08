@@ -15,6 +15,7 @@ Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `
 
 - **Orbit views:** drag to move, right-drag or Shift-drag to turn and tilt, wheel or pinch to zoom, `H` hides the HUD. Click a person to see what they are doing.
 - **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `Esc` exits.
+- **Darts:** step into the blue throwing area by the dartboard and press `E`. Darts is played in first person: from third person it switches you to first person, and back again when you stop (`V` is disabled while playing). Aim with the crosshair, hold the mouse button (or the Throw dart button) to charge, release to throw; `E` stops.
 - **Hazel:** "Find her" follows her; "Make her angry" does what it says.
 
 ## Documentation

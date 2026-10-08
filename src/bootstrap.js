@@ -7,6 +7,7 @@ import { initState } from './sim/state.js';
 import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
+import { initDarts } from './player/darts.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { buildBake } from './world/bake.js';
@@ -68,4 +69,5 @@ export function bootstrap() {
   initLedger();
   initControls();
   initControl();
+  initDarts();
 }
