@@ -4,7 +4,8 @@ import { randomSpec } from '../character/spec.js';
 import { FIRST, LAST, roleBag } from './data.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { SCREENS } from '../render/screens.js';
-import { deskPool, people, peopleGroup } from '../sim/state.js';
+import { deskPool, people } from '../sim/state.js';
+import { peopleGroup } from './group.js';
 import { endTask } from '../sim/tasks.js';
 import { select, selected } from '../ui/person.js';
 

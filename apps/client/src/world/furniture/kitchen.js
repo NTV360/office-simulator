@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { S, wx, wz } from '../../config/plan.js';
+import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { SO, WST, mkSpot } from './basics.js';
 import { addObs, box, boxGeo, cyl, staticRoot } from '../helpers.js';

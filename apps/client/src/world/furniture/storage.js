@@ -1,4 +1,4 @@
-import { S } from '../../config/plan.js';
+import { S } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { N, SO, mkSpot } from './basics.js';
 import { cabinet } from './cabinet.js';

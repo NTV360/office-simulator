@@ -13,11 +13,10 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { fingerprint } from './debug.js';
-import { setSeed } from '@office/shared';
+import { setSeed, toPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
-import { toPx } from './config/plan.js';
 import { ctl } from './player/control.js';
 import { tp } from './camera/modes/thirdPerson.js';
 import { findPath } from './nav/astar.js';

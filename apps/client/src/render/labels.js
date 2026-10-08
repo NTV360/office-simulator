@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toPx, wx, wz } from '../config/plan.js';
+import { toPx, wx, wz } from '@office/shared';
 import { scene } from './renderer.js';
 import { ISLANDS } from '../world/furniture/desks.js';
 

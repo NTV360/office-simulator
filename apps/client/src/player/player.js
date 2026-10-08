@@ -1,6 +1,6 @@
 import { buildBody } from '../character/rig.js';
 import { DEFAULT_SPEC, normalizeSpec } from '../character/spec.js';
-import { peopleGroup } from '../sim/state.js';
+import { peopleGroup } from '../people/group.js';
 import { ENTRY } from '../world/entrance.js';
 import { N } from '../world/furniture/basics.js';
 

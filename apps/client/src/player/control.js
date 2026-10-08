@@ -1,6 +1,6 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H } from '../config/plan.js';
+import { FULL_H, LOW_H } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';

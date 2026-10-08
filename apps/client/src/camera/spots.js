@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from './controller.js';
 import { camGoal } from './state.js';
-import { W } from '../config/plan.js';
+import { W } from '@office/shared';
 import { ctl } from '../player/control.js';
 import { camera } from '../render/renderer.js';
 import { people } from '../sim/state.js';

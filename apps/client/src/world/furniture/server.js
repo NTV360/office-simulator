@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WALL_T } from '../../config/plan.js';
+import { WALL_T } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E } from './basics.js';
 import { addObs, box, boxGeo, frame } from '../helpers.js';

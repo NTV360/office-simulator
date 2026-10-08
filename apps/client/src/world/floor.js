@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OUTER, S, wx, wz } from '../config/plan.js';
+import { OUTER, S, wx, wz } from '@office/shared';
 import { M } from '../render/materials.js';
 import { groundMat, scene } from '../render/renderer.js';
 import { rectPlane, staticRoot } from './helpers.js';

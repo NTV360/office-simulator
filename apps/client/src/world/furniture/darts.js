@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { WALL_T, wx, wz } from '../../config/plan.js';
-import { TAU } from '@office/shared';
+import { TAU, WALL_T, wx, wz } from '@office/shared';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, WST, mkSpot } from './basics.js';
@@ -15,7 +14,7 @@ function updateDarts(now) {
     if (!p || p.state !== 'doing') { set.darts.forEach(d => d.visible = false); continue; }
     const t = p.animT + set.spot.dartOff, n = Math.floor(t / 6), ph = t % 6, k = n % 3;
     const fwd = new THREE.Vector3(Math.sin(p.face), 0, Math.cos(p.face)), right = new THREE.Vector3(-Math.cos(p.face), 0, Math.sin(p.face));
-    const hand = p.pos.clone().add(fwd.multiplyScalar(.35)).add(right.multiplyScalar(.2)); hand.y = 1.75;
+    const hand = new THREE.Vector3().copy(p.pos).add(fwd.multiplyScalar(.35)).add(right.multiplyScalar(.2)); hand.y = 1.75;
     set.darts.forEach((d, j) => {
       const seed = Math.sin((n - (k - j)) * 12.9898 + j * 78.233 + set.spot.dartOff) * 43758.5453, rr = (seed - Math.floor(seed)) * .26, aa = (seed * 7 % 1) * TAU;
       const hit = BOARD_C.clone().add(new THREE.Vector3(.02, Math.sin(aa) * rr, Math.cos(aa) * rr));

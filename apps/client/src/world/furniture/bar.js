@@ -1,4 +1,4 @@
-import { S, wx, wz } from '../../config/plan.js';
+import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E, N, SO, WST, barStool, mkSpot } from './basics.js';
 import { addObs, box, cyl, frame, staticRoot } from '../helpers.js';

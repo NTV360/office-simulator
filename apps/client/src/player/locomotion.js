@@ -1,4 +1,4 @@
-import { OX, OY, S } from '../config/plan.js';
+import { OX, OY, S } from '@office/shared';
 import { walkPx } from '../nav/grid.js';
 import { people } from '../sim/state.js';
 

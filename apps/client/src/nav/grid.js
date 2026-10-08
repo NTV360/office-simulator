@@ -1,4 +1,4 @@
-import { OUTER } from '../config/plan.js';
+import { OUTER } from '@office/shared';
 import { OBS } from '../world/helpers.js';
 
 /* ================= Navigation grid + A* ================= */

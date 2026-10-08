@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LOW_H, S, W, wx, wz } from '../config/plan.js';
+import { LOW_H, S, W, wx, wz } from '@office/shared';
 import { scene } from '../render/renderer.js';
 
 /* ================= Geometry helpers ================= */

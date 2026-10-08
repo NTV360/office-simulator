@@ -3,6 +3,7 @@ import { initInput } from './camera/input.js';
 import { initGrid } from './nav/grid.js';
 import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
+import { initPeopleGroup } from './people/group.js';
 import { initState } from './sim/state.js';
 import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
@@ -58,6 +59,7 @@ export function bootstrap() {
   // navigation reads the obstacles registered by the world
   initGrid();
   // simulation
+  initPeopleGroup();
   initState();
   initDay();
   initHazel();

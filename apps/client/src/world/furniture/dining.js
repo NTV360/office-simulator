@@ -1,4 +1,4 @@
-import { W } from '../../config/plan.js';
+import { W } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E, WST, mkSpot, woodChair } from './basics.js';
 import { table } from './conference.js';

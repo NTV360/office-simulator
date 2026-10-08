@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { W } from '../../config/plan.js';
-import { TAU, vpick, vrnd } from '@office/shared';
+import { TAU, W, vpick, vrnd } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E } from './basics.js';
 import { tv } from './tv.js';

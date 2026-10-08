@@ -1,4 +1,4 @@
-import { W } from '../config/plan.js';
+import { W } from '@office/shared';
 import { N, mkSpot } from './furniture/basics.js';
 
 let EXIT, ENTRY;

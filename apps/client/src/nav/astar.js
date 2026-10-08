@@ -1,4 +1,4 @@
-import { W, toPx } from '../config/plan.js';
+import { W, toPx } from '@office/shared';
 import { CS, GC, GR, GX0, GY0, NAV, cellOf, nearestWalk, walkPx } from './grid.js';
 
 const NCELLS = GC * GR, gS = new Float32Array(NCELLS), from = new Int32Array(NCELLS), seen = new Uint32Array(NCELLS), shut = new Uint32Array(NCELLS); let gen = 0;

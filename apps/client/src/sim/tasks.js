@@ -1,6 +1,4 @@
-import * as THREE from 'three';
-import { toPx } from '../config/plan.js';
-import { random, rnd, shuffle } from '@office/shared';
+import { Vec3, random, rnd, shuffle, toPx } from '@office/shared';
 import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
 import { addLog, people, sim } from './state.js';
@@ -77,7 +75,7 @@ function chat(p) {
   for (const q of cands.slice(0, 4)) {
     const f = q.seat.face, back = [-Math.sin(f), -Math.cos(f)], side = [Math.cos(f), -Math.sin(f)];
     for (const sd of shuffle([1, -1])) {
-      const v = new THREE.Vector3(q.seat.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.seat.pos.z + back[1] * .62 + side[1] * .42 * sd);
+      const v = new Vec3(q.seat.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.seat.pos.z + back[1] * .62 + side[1] * .42 * sd);
       if (!walkPx(...toPx(v))) continue;
       const spot = { kind: 'chat', pos: v, approach: v, face: Math.atan2(q.pos.x - v.x, q.pos.z - v.z), shared: false, place: `${q.seat.place}` };
       const ok = goDo(p, { kind: 'chat', cat: 'chat', anim: 'talkStand', spot, dur: rnd(3, 8), partner: q,

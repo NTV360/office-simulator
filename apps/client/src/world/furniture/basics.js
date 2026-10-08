@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { W } from '../../config/plan.js';
-import { TAU, vrnd } from '@office/shared';
+import { TAU, W, vrnd } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { addObs, box, cyl, frame } from '../helpers.js';
 import { interactables } from '../interactables.js';

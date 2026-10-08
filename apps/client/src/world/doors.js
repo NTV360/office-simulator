@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { S, W, wx, wz } from '../config/plan.js';
+import { S, W, wx, wz } from '@office/shared';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
 import { box, dynamic, scalers, staticRoot } from './helpers.js';

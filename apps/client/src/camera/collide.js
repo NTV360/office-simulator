@@ -1,4 +1,4 @@
-import { OX, OY, S } from '../config/plan.js';
+import { OX, OY, S } from '@office/shared';
 import { SOLIDS, wall } from '../world/helpers.js';
 
 // Camera vs walls. The third-person camera sits on an "arm" from the player's head to where it
