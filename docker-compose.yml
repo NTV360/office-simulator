@@ -1,0 +1,65 @@
+# The whole stack on one machine:   docker compose up --build
+# Then open http://localhost:8080    (change the port with WEB_PORT in .env)
+#
+# web     the built frontend, served by Caddy, which also forwards /api and /socket.io to the server
+# server  the NestJS server (health check only in phase 0)
+# db      PostgreSQL, data kept in the "pgdata" volume
+#
+# The defaults below are for local development only. For anything shared, copy .env.example to .env
+# and set real values.
+name: office-sim
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    environment:
+      PORT: "3000"
+      TZ: "${TZ:-UTC}"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-office}:${POSTGRES_PASSWORD:-office_dev_password}@db:5432/${POSTGRES_DB:-office}"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-office}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-office_dev_password}"
+      POSTGRES_DB: "${POSTGRES_DB:-office}"
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
