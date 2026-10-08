@@ -13,7 +13,7 @@ The app is a static site: `npm run build` produces `dist/` (HTML, JS, CSS, the l
 | Node version | from `.node-version` (22), or set the `NODE_VERSION` environment variable |
 | Environment variables | none needed (Render supplies `PORT`) |
 
-`npm start` runs `vite preview`, configured in [`vite.config.js`](../vite.config.js) to listen on `0.0.0.0` and on the port in `$PORT`, and to accept the service's public hostname.
+`npm start` runs `vite preview`, configured in [`apps/client/vite.config.js`](../apps/client/vite.config.js) to listen on `0.0.0.0` and on the port in `$PORT`, and to accept the service's public hostname.
 
 ## Render: Static Site (simpler)
 
@@ -22,7 +22,7 @@ Because there is no server-side code, a Static Site is the lighter choice: no se
 | Setting | Value |
 |---|---|
 | Build command | `npm install && npm run build` |
-| Publish directory | `dist` |
+| Publish directory | `apps/client/dist` |
 
 ## Run the production build locally
 

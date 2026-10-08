@@ -4,6 +4,8 @@
 
 Questions that are still open are in [section 18](#18-open-questions).
 
+**Progress:** phase 0 (foundations) is done on the branch `phase-0/foundations`: npm workspaces, the client moved to `apps/client`, a TypeScript `shared` package, a NestJS server skeleton, tests, and a Docker stack (web, server, database) with a smoke test.
+
 ## 1. Decisions so far
 
 | Topic | Decision |
@@ -329,7 +331,7 @@ office-simulator/
       src/protocol/            message types, encode and decode
       src/config.ts            tunables
   apps/
-    client/                    today's src/, index.html, Vite (JavaScript for now)
+    client/                    the browser app (moved here in phase 0), Vite, JavaScript for now
     server/                    NestJS: auth, admin, game, persistence
     bots/                      load-test clients (optional, later)
 ```
@@ -517,7 +519,7 @@ Sizes are relative (S, M, L), not calendar estimates.
 
 | # | Phase | Delivers | Done when |
 |---|---|---|---|
-| 0 | **Foundations** (S) | npm workspaces; TypeScript for `shared` and `server`; `docker-compose.yml` with `web`, `server` and `db` (the server a placeholder); tests set up; client moved to `apps/client` | Today's app builds and runs unchanged from the new layout, and **`docker compose up` serves it from the `web` container** with the empty server and database alongside |
+| 0 | **Foundations** (S) — **done** | npm workspaces; TypeScript for `shared` and `server`; `docker-compose.yml` with `web`, `server` and `db` (the server a placeholder); tests set up; client moved to `apps/client` | Today's app builds and runs unchanged from the new layout, and **`docker compose up` serves it from the `web` container** with the empty server and database alongside |
 | 1 | **Shareable sim** (L) | Section 10: one person model, person/view split, props as state, no Three.js, seeded random, slots, `shared/*`, unit tests | The sim runs in Node under tests, and the browser (offline mode) behaves as it does today |
 | 2 | **Server and persistence** (M) | The server runs the sim and the tick, the protocol, snapshots, the saved world (people, slots, clock) and restore, admin settings (slots, pause, speed); the client connects as a viewer | Two browsers see the same office; a restart brings back the same people, positions and clock |
 | 3 | **Accounts and takeover** (M) | Register (claims a slot), login, tickets, character creation, take control and give back control, admin password reset | You can register, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is |

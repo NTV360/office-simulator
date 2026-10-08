@@ -12,12 +12,12 @@ Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.
 
 ## Add furniture or an area
 
-1. Create `src/world/furniture/<area>.js`. Export a `build<Area>()` function that does all the work (meshes, obstacles, spots). Nothing runs at import time.
+1. Create `apps/client/src/world/furniture/<area>.js`. Export a `build<Area>()` function that does all the work (meshes, obstacles, spots). Nothing runs at import time.
 2. Use the helpers: `box`, `cyl`, `frame(px, py, facing)` from `world/helpers.js`, materials from `render/materials.js` (`M.*`; add new materials to the `M` palette there), and `W(px, py)` for positions.
 3. Register obstacles with `addObs(x1, y1, x2, y2)` (plan pixels) so people path around the furniture. The nav grid is built after all furniture, so this must happen in your `build` function.
 4. If people can use it, create spots with `mkSpot` (next section).
 5. If it animates, export an `update<Area>(now)` and call it from the loop in `main.js`.
-6. Add `build<Area>()` to [`src/bootstrap.js`](../src/bootstrap.js), **before `buildBake()`** (static meshes are merged there) and **before `initGrid()`**.
+6. Add `build<Area>()` to [`apps/client/src/bootstrap.js`](../apps/client/src/bootstrap.js), **before `buildBake()`** (static meshes are merged there) and **before `initGrid()`**.
 7. If the area needs a name on the map, add a `label(...)` line in `render/labels.js`.
 8. Check: the nav cell count (`__sim.NAV`) changes by about the size of your furniture, and people walk around it.
 
@@ -50,7 +50,7 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
 
 ## Add a camera view
 
-1. Create `src/camera/modes/<name>.js` exporting a mode object: `{ id, enter(ctrl, opts), update(dt, ctrl), exit(ctrl) }`. `ctrl.setView(id)` switches mode; `ctrl.nextId` tells `exit` where we are going.
+1. Create `apps/client/src/camera/modes/<name>.js` exporting a mode object: `{ id, enter(ctrl, opts), update(dt, ctrl), exit(ctrl) }`. `ctrl.setView(id)` switches mode; `ctrl.nextId` tells `exit` where we are going.
 2. For orbit-style views, set `camGoal` in `enter` and call `orbitStep(dt, rate)` in `update` (see `angle.js`).
 3. Register it in `initCamera()` in `camera/controller.js`.
 4. Add a button with `data-view="<id>"` in `index.html`. The controller keeps its pressed state in sync and `ui/controls.js` already binds every `[data-view]` button.
@@ -70,7 +70,7 @@ All of these also apply to NPCs and the player, because they all share `Characte
 ## Add a HUD control
 
 1. Add the markup in `index.html` (give it an `id`; no inline handlers).
-2. Style it in the CSS file for that area in `src/styles/` (or a new file imported in `main.js`).
+2. Style it in the CSS file for that area in `apps/client/src/styles/` (or a new file imported in `main.js`).
 3. Bind it in an `init*` function (`ui/controls.js` for general controls) using `$('id').onclick = ...`.
 4. If it must disappear while walking around as the player, add it to the `body.fp`/`body.tp` rules in `styles/first-person.css`.
 

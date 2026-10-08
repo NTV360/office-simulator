@@ -8,14 +8,16 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [CODING-STANDARDS.md](CODING-STANDARDS.md) | know the rules for new code (imports, state, naming, git) and the checklist before you push |
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
+| [PARALLEL-WORK.md](PARALLEL-WORK.md) | split work between several people or AI instances without them breaking each other (tracks, folder ownership, rules, a brief to hand out) |
+| [LOCAL-DOCKER.md](LOCAL-DOCKER.md) | run the whole stack (web, server, database) in Docker on your PC, and troubleshoot it |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
 | [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) | the proposed plan for accounts, a shared persistent world with movable objects, NPCs that players take over, voice, and a self-hosted Docker stack (proposal, not built) |
 | [ROADMAP.md](ROADMAP.md) | see what is planned (items, shops, character creation) and the design it was built to allow |
 
 **The short version**
 
-1. Run it: `npm install`, then `npm run dev` (http://localhost:5173). Build with `npm run build`.
-2. The whole scene is assembled in one place: [`src/bootstrap.js`](../src/bootstrap.js). Modules do nothing when imported.
+1. Run it: `npm install`, then `npm run dev` (http://localhost:5173). Build with `npm run build`, test with `npm test`. To run the whole stack in Docker: `docker compose up --build`, then `npm run smoke`.
+2. The whole scene is assembled in one place: [`apps/client/src/bootstrap.js`](../apps/client/src/bootstrap.js). Modules do nothing when imported.
 3. Put code in the folder that matches what it is (see the table in [ARCHITECTURE.md](ARCHITECTURE.md)). If it does not fit anywhere, ask before inventing a new folder.
-4. Verify in a real browser before pushing (checklist in [CODING-STANDARDS.md](CODING-STANDARDS.md#before-you-push)). There are no automated tests yet.
+4. Verify in a real browser before pushing (checklist in [CODING-STANDARDS.md](CODING-STANDARDS.md#before-you-push)). `npm test` covers only the shared and server code so far; the browser app is still checked by hand.
 5. Keep commits short. Do not add AI co-author trailers.

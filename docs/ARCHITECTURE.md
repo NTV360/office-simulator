@@ -2,9 +2,21 @@
 
 Office Floor Sim is a Three.js simulation of an office floor: NPCs follow daily schedules, and the user can orbit the floor or walk around as their own character (first or third person). It is a browser app built with Vite and plain ES modules, with no UI framework.
 
-- **Entry:** `index.html` (markup only) loads `src/main.js`.
-- **Assembly:** `src/bootstrap.js` builds the world and wires everything up.
-- **Loop:** `src/main.js` runs the per-frame loop.
+- **Entry:** `index.html` (markup only) loads `apps/client/src/main.js`.
+- **Assembly:** `apps/client/src/bootstrap.js` builds the world and wires everything up.
+- **Loop:** `apps/client/src/main.js` runs the per-frame loop.
+
+## Repository layout
+
+An npm-workspaces monorepo (see [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#9-repository-layout)).
+
+| Path | What it is |
+|---|---|
+| `apps/client/` | The browser app: Vite, JavaScript, Three.js. Everything below in "Folder map" lives in `apps/client/src/` |
+| `apps/server/` | The NestJS server (TypeScript). Today it only serves a health check; accounts and the game come in later phases |
+| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js |
+| `docker/`, `docker-compose.yml` | The local stack: web (Caddy and the built client), server, database. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md) |
+| `scripts/` | Helper scripts, such as the stack smoke test |
 
 ## Layers and dependency rules
 
@@ -42,7 +54,7 @@ In practice:
 
 Some function-level cycles also exist (for example `camera/controller.js` and `player/control.js` call each other). They are fine as long as no module **reads another module's value at import time** (see [CODING-STANDARDS.md](CODING-STANDARDS.md#2-no-work-at-import-time)).
 
-## Folder map (`src/`)
+## Folder map (`apps/client/src/`)
 
 | Folder | What lives there |
 |---|---|
@@ -67,7 +79,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 ## How the app starts
 
 1. **Import.** `main.js` imports CSS and modules. Importing does nothing except define functions and constants. This is a hard rule.
-2. **`bootstrap()`** (`src/bootstrap.js`) then calls each module's `build*()` / `init*()` in a fixed order:
+2. **`bootstrap()`** (`apps/client/src/bootstrap.js`) then calls each module's `build*()` / `init*()` in a fixed order:
    1. **World:** floor, walls, doors, then furniture. Furniture creates meshes, adds obstacles (`addObs`), and registers interactables (`mkSpot`). Then `buildBake()` merges the static meshes.
    2. **`initLabels()`**, then **`initGrid()`**, which reads the obstacles to build the navigation grid. It must come after all furniture.
    3. **Simulation:** `initState()`, `initDay()` (creates the 40 starting staff and a live mid-morning), `initHazel()`.
@@ -142,5 +154,5 @@ The third-person camera runs an "arm" from the head to the wanted camera spot an
 
 - The simulation still imports Three.js: a person carries its meshes and some activities toggle props. You cannot run the sim without a browser yet.
 - The third-person camera collides with walls only, not furniture.
-- No automated tests or linting yet; verification is a manual checklist.
+- Automated tests exist only for `packages/shared` and `apps/server` (`npm test`). The browser app has none yet and is verified by a manual checklist; there is no linting yet.
 - The production build is a single ~600 KB chunk.
