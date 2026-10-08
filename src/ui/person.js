@@ -10,7 +10,7 @@ const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.Me
 
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
-  if (p) { $('pAvatar').style.background = p.look.shirt; $('pAvatar').style.borderColor = p.look.hair; }
+  if (p) { $('pAvatar').style.background = p.spec.shirt; $('pAvatar').style.borderColor = p.spec.hair; }
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }

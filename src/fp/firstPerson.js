@@ -23,7 +23,7 @@ function enterFP() {
   select(null);
   endTask(p); p.queue = []; p.path = null; p.chatWith = null; p.task = null; p.state = 'player';
   people.forEach(q => { if (q.chatWith === p) q.chatWith = null; });
-  Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.look.scale, savedWall: wall.goal });
+  Object.assign(fp, { on: true, p, yaw: p.face, pitch: -.08, sitting: null, moving: false, eye: 1.6 * p.spec.scale, savedWall: wall.goal });
   wall.goal = FULL_H;
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; p.body.ring.visible = false;
@@ -133,7 +133,7 @@ function fpUpdate(dt) {
   }
   fp.moving = moved > 1e-4; p.walkPhase += moved * 4.6; p.animT += dt;
   p.face = p.faceGoal = fp.sitting ? fp.sitting.face : fp.yaw;
-  const eyeGoal = (fp.sitting ? 1.2 : 1.6) * p.look.scale; fp.eye += (eyeGoal - fp.eye) * (1 - Math.exp(-dt * 8));
+  const eyeGoal = (fp.sitting ? 1.2 : 1.6) * p.spec.scale; fp.eye += (eyeGoal - fp.eye) * (1 - Math.exp(-dt * 8));
   const bob = fp.moving ? Math.abs(Math.sin(p.walkPhase)) * .03 : 0;
   camera.position.set(p.pos.x + Math.sin(fp.yaw) * .1, fp.eye + bob, p.pos.z + Math.cos(fp.yaw) * .1);
   const cp = Math.cos(fp.pitch);

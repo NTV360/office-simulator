@@ -19,7 +19,7 @@ import { fp } from './fp/firstPerson.js';
 import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { applyPose } from './people/animation.js';
-import { ringMats } from './people/body.js';
+import { ringMats } from './character/rig.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
 import { updateLight } from './render/lighting.js';
 import { camera, renderer, scene } from './render/renderer.js';
