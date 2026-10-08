@@ -1,0 +1,171 @@
+// Browser verification for the simulation refactor (phase 1). See docs/PHASE-1-BREAKDOWN.md, step 0.
+//
+//   npm run verify:browser            quick check: seeds 1 to 3 against the recorded golden fingerprints
+//   npm run verify:browser:thorough   all ten recorded seeds (use at the end of each phase 1 step)
+//   npm run verify:browser:record     (re)record all ten: only when a change is MEANT to alter behaviour
+//
+// It serves the freshly built client (or uses VERIFY_URL if you already have a site running), loads it in
+// headless Chromium with ?seed=N, steps the simulation to fixed points in the day with __sim.advance(),
+// and compares __sim.fingerprint() with tests/browser/golden/seed-N.json. It then visits every camera view,
+// saves a screenshot of each to tests/browser/out/, and fails if the browser console shows any error.
+import { chromium } from 'playwright';
+import { execSync, spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const goldenDir = path.join(root, 'tests/browser/golden');
+const outDir = path.join(root, 'tests/browser/out');
+const record = process.argv.includes('--record');
+
+const ALL_SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const thorough = process.argv.includes('--thorough');
+const SEEDS = record || thorough ? ALL_SEEDS : [1, 2, 3];
+const CHECKPOINTS = [0, 600, 3000, 12000, 36000]; // steps from the start (0.05 s of sim time each at 1x)
+const VIEWS = ['angle', 'top', 'follow', 'fp', 'third', 'angle'];
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let failures = 0;
+const fail = msg => { failures++; console.log('  FAIL  ' + msg); };
+const pass = msg => console.log('  ok    ' + msg);
+
+// ---- the site under test
+// Vite does not export its binary, so find it from its package.json (it may or may not be hoisted).
+function findVite() {
+  for (const d of ['apps/client/node_modules/vite', 'node_modules/vite']) {
+    const dir = path.join(root, d), pj = path.join(dir, 'package.json');
+    if (fs.existsSync(pj)) { const bin = JSON.parse(fs.readFileSync(pj, 'utf8')).bin; return path.join(dir, typeof bin === 'string' ? bin : bin.vite); }
+  }
+  throw new Error('vite is not installed; run npm install');
+}
+
+async function startSite() {
+  if (process.env.VERIFY_URL) return { url: process.env.VERIFY_URL.replace(/\/$/, ''), stop() {} };
+  execSync('npm run build -w @office/client', { cwd: root, stdio: 'ignore' }); // always test the current source
+  const vite = findVite();
+  const port = 4399;
+  const child = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
+    cwd: path.join(root, 'apps/client'), stdio: 'ignore',
+  });
+  const url = `http://127.0.0.1:${port}`;
+  for (let i = 0; i < 60; i++) {
+    try { if ((await fetch(url)).ok) return { url, stop: () => child.kill() }; } catch { /* not up yet */ }
+    await sleep(250);
+  }
+  child.kill();
+  throw new Error('the preview server did not start');
+}
+
+// ---- helpers
+function collectErrors(page) {
+  const errors = [];
+  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });
+  return errors;
+}
+
+async function openPage(browser, url, query = '') {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const errors = collectErrors(page);
+  await page.goto(`${url}/${query}`, { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__simReady === true, null, { timeout: 90000 });
+  return { page, errors };
+}
+
+// Step the simulation to each checkpoint and return the fingerprints.
+async function runSeed(browser, url, seed) {
+  const { page, errors } = await openPage(browser, url, `?seed=${seed}`);
+  const prints = [];
+  let done = 0;
+  for (const cp of CHECKPOINTS) {
+    prints.push(await page.evaluate(n => { window.__sim.advance(n); return window.__sim.fingerprint(); }, cp - done));
+    done = cp;
+  }
+  await page.close();
+  return { prints, errors };
+}
+
+// First few differences between two plain JSON values.
+function diffs(expected, actual, where = '', out = []) {
+  if (out.length >= 8) return out;
+  if (typeof expected !== typeof actual || Array.isArray(expected) !== Array.isArray(actual) || expected === null || actual === null) {
+    if (expected !== actual) out.push(`${where}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    return out;
+  }
+  if (typeof expected !== 'object') {
+    if (expected !== actual) out.push(`${where}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    return out;
+  }
+  const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
+  for (const k of keys) diffs(expected[k], actual[k], where ? `${where}.${k}` : k, out);
+  return out;
+}
+
+// ---- main
+const site = await startSite();
+const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+try {
+  console.log(`${record ? 'Recording' : 'Verifying'} the simulation under seeds ${SEEDS.join(', ')} at steps ${CHECKPOINTS.join(', ')}\n`);
+  fs.mkdirSync(goldenDir, { recursive: true });
+
+  for (const seed of SEEDS) {
+    console.log(`seed ${seed}`);
+    const first = await runSeed(browser, site.url, seed);
+    first.errors.forEach(e => fail(e));
+
+    if (record) {
+      const second = await runSeed(browser, site.url, seed); // the recording itself must be repeatable
+      const d = diffs(first.prints, second.prints);
+      if (d.length) { fail('two runs of the same seed differ, so it cannot be recorded:\n          ' + d.join('\n          ')); continue; }
+      fs.writeFileSync(path.join(goldenDir, `seed-${seed}.json`), JSON.stringify({ seed, steps: CHECKPOINTS, fingerprints: first.prints }, null, 1) + '\n');
+      pass(`recorded (hashes ${first.prints.map(p => p.hash).join(' ')})`);
+      continue;
+    }
+
+    const file = path.join(goldenDir, `seed-${seed}.json`);
+    if (!fs.existsSync(file)) { fail(`no recording at ${path.relative(root, file)}; run npm run verify:browser:record`); continue; }
+    const golden = JSON.parse(fs.readFileSync(file, 'utf8'));
+    CHECKPOINTS.forEach((cp, i) => {
+      const d = diffs(golden.fingerprints[i], first.prints[i]);
+      if (!d.length) pass(`step ${String(cp).padStart(5)}  matches  (${first.prints[i].hash})`);
+      else fail(`step ${cp} differs from the recording:\n          ` + d.join('\n          '));
+    });
+  }
+
+  // every camera view loads without errors; a screenshot of each is saved for a human to glance at
+  console.log('\ncamera views');
+  fs.mkdirSync(outDir, { recursive: true });
+  const { page, errors } = await openPage(browser, site.url);
+  let n = 0;
+  for (const v of VIEWS) {
+    await page.evaluate(view => window.__sim.setView(view), v);
+    await sleep(700);
+    const now = await page.evaluate(() => window.__sim.viewId());
+    if (now === v) pass(`view ${v}`); else fail(`asked for view ${v} but the app is in ${now}`);
+    await page.screenshot({ path: path.join(outDir, `${String(++n).padStart(2, '0')}-${v}.png`) });
+  }
+  errors.forEach(e => fail(e));
+  if (!errors.length) pass('no errors in the browser console');
+  await page.close();
+
+  // without a seed the game must behave exactly as it always did: live, and different every time
+  console.log('\ndefault mode (no seed)');
+  const a = await openPage(browser, site.url);
+  const first = await a.page.evaluate(() => ({ paused: window.__sim.sim.paused, t: window.__sim.sim.t, hash: window.__sim.fingerprint().hash }));
+  await sleep(1500);
+  const later = await a.page.evaluate(() => window.__sim.sim.t);
+  const b = await openPage(browser, site.url);
+  const other = await b.page.evaluate(() => window.__sim.fingerprint().hash);
+  if (first.paused === false) pass('the simulation runs live'); else fail('the simulation started paused without a seed');
+  if (later > first.t) pass(`the clock advances on its own (${first.t.toFixed(2)} to ${later.toFixed(2)})`); else fail('the clock did not advance');
+  if (first.hash !== other) pass('two loads without a seed differ (still random)'); else fail('two loads without a seed were identical');
+  [...a.errors, ...b.errors].forEach(e => fail(e));
+  await a.page.close(); await b.page.close();
+} finally {
+  await browser.close();
+  site.stop();
+}
+
+console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
+process.exitCode = failures ? 1 : 0;
