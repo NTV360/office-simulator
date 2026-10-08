@@ -5,7 +5,7 @@ What is planned, and the design the current structure was built to allow. **None
 ## Planned features
 
 ### Multiplayer (the main direction)
-Accounts with username and password, a shared realtime world for about 100 players, NPCs run by the server (with a configurable count), deployed with Docker locally and on EC2. The full design, repository layout, deployment, phases and open questions are in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md). It changes how several items below should be built: character data, items, money and saving all become **server-authoritative**, and the engineering follow-up "make the sim independent of Three.js" becomes the first phase of the plan.
+Accounts with username and password; one shared, **persistent** office for about 100 people where furniture can be moved and things can be thrown; each account's character is an NPC while its player is offline and is driven by the player when online; voice chat; all self-hosted in Docker (frontend, server, database) on a PC in the office. The full design, repository layout, deployment, phases and open questions are in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md). It changes how several items below should be built: character data, items, money and saving all become **server-authoritative**, and the engineering follow-up "make the sim independent of Three.js" becomes the first phase of the plan.
 
 ### Character creation
 Let the player choose their look, and keep it.

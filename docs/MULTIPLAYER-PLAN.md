@@ -1,445 +1,484 @@
 # Multiplayer plan
 
-**Status: proposal, for review. Nothing in this document is built yet.** It turns "accounts, login, realtime with other people, about 100 at once" into a design, a repository layout, a deployment, and a phased plan with acceptance criteria. Decisions that still need an answer are collected in [section 17](#17-open-questions).
+**Status: proposal (version 2), for review. Nothing in this document is built yet.** It turns the team's decisions into a design, a repository layout, a self-hosted Docker deployment, and a phased plan with acceptance criteria. Version 2 replaces version 1 after these decisions: voice chat is coming, the world is **persistent and editable** (movable furniture, lifting, throwing), accounts take over their own NPC, the server is self-hosted on an office PC, and everything runs in Docker including the database.
 
-## 1. Goals
+Questions that are still open are in [section 18](#18-open-questions).
 
-From the requirements so far:
+## 1. Decisions so far
 
-1. People create an **account with a username and password**, log in, and control **their own character**.
-2. About **100 people playing at the same time**, in realtime, with other real people.
-3. **What one person sees and hears, everyone else sees and hears.** One shared world, not 100 private copies.
-4. **The server runs the NPCs.** They are the same for everybody.
-5. The number of NPCs is **controllable** (a setting, not a slider each player owns).
-6. Runs in **Docker**, on a developer's PC (to test, or to host a local session) **and** on an **EC2** instance.
-7. **No lag.** Movement must feel responsive; the server must not stall under load.
-8. Written down **before** it is built. The current app is a demo of the whole floor; real gameplay interactions are not designed yet (see [section 16](#16-first-gameplay-interactions-proposal)).
-
-**Non-goals for now:** voice chat (separate project, see [section 17](#17-open-questions)), more than one office or instance, mobile app, anti-cheat beyond server-side validation.
-
-## 2. What today's code tells us
-
-These facts, taken from the current code, shape the design.
-
-| Fact | Consequence |
+| Topic | Decision |
 |---|---|
-| The whole simulation runs in each browser, with its own clock and `Math.random` | Two players would see different worlds. The sim must move to one place: the server |
-| One simulated day (07:45 to 19:10, 685 sim-minutes) at `CLOCK = 0.4` sim-minutes per second takes **~28.5 real minutes** at 1× | The server owns the clock. **Pause and Speed (1×/3×/8×) are global**, so they become admin-only, not per-player controls |
-| 70 desks; the staff slider runs 8 to 70; NPCs are seated at desks | NPC count is bounded by desks (70) today. The new NPC setting is clamped to that until NPCs without desks are designed |
-| NPCs walk at 1.15 to 1.45 m/s; the player walks at 1.5 m/s and runs at 3 m/s | The server can check a player's speed against these numbers |
-| The floor is about 23 m by 42 m | Everyone can see everyone, so **no interest management** is needed in v1: broadcast to all |
-| The sim reaches into meshes: tasks and day setup set `p.body.mug.visible` and similar; `sim/state.js`, `sim/tasks.js` and `config/plan.js` import Three.js | The sim cannot run on a Node server yet. **Splitting it from rendering is the biggest piece of work** (section 9) |
-| About 15 uses of `Math.random` in `sim/`, one `performance.now` (Hazel's rage timer) | Server code uses a seeded random source and the sim clock, which also makes it testable |
-| Furniture builders create meshes **and** register obstacles and spots in one pass | The server needs obstacles, walls and spots as plain data. Section 9 covers how we get them |
-| Hazel's rage, the lounge fighting game and "heard" events are client-side effects | They become **shared events** the server starts and every client plays |
+| Players | Up to about 100 at once, company staff only |
+| Login | Username and password. Forgotten passwords are reset by an admin (no email) |
+| World | **Persistent**: it survives restarts, and so does everything players change in it |
+| The office | **Customisable and physical**: movable chairs, personalised stations, lifting, moving and throwing things, "like a real office" |
+| NPCs | The server runs them. **An account's character is an NPC while its player is offline and is controlled by the player while online** |
+| Voice | Coming soon (planned for, built after movement and chat) |
+| Hosting | **Self-hosted on a PC in the office**, on the local network, no cloud budget |
+| Containers | Everything in Docker: web (frontend), server, database (and voice later) |
+| Repo | One monorepo ([section 9](#9-repository-layout)) |
 
-## 3. Architecture
+## 2. Goals and non-goals
+
+**Goals**
+
+1. Accounts, login, and control of your own character.
+2. One shared world where what one person sees and hears, everybody sees and hears.
+3. A living office: NPCs fill in for people who are not online, and the office keeps its state between sessions.
+4. Players can change the office: move furniture, customise their station, carry and throw objects.
+5. Smooth: movement must feel instant and the server must not stall at about 100 players.
+6. Easy to run: `docker compose up` on the office PC, or on any developer's PC for testing.
+7. Fun to work on: simple tooling and few moving parts (this is a team project for enjoyment, so we avoid ceremony).
+
+**Non-goals for now:** more than one office, cloud hosting, mobile app, strong anti-cheat beyond server-side validation, public sign-ups.
+
+## 3. What the current code tells us
+
+| Fact (from the code today) | Consequence |
+|---|---|
+| The whole simulation runs in each browser, with its own clock and `Math.random` | One server must own it, or everyone sees a different world |
+| A day (07:45 to 19:10) takes about 28.5 real minutes at 1× | The server owns the clock. Pause and Speed become admin-only. See the clock question in [section 18](#18-open-questions) |
+| 70 desks. Every NPC is created with a desk (`seat`) and uses it as its identity (`p.seat` is used throughout the sim) | A "character slot" (a desk plus a person) is the natural unit. Capacity is 70 until stations can be added |
+| `bake()` **merges every furniture mesh into a few draw calls**, and chairs and monitors are created *inside* the desk-island builder | **Movable furniture cannot work until furniture is separate objects.** This is the largest client-side change (section 8) |
+| Spots (seats and so on) and obstacles are registered by the builders and never change afterwards; the nav grid is built once | In a world where things move, spots follow their objects and the nav grid updates when objects move |
+| The sim reaches into meshes (`p.body.mug.visible`) and imports Three.js | It cannot run on a Node server yet. Splitting it from rendering is the first big job (section 10) |
+| About 15 uses of `Math.random` in `sim/` and one `performance.now` (Hazel) | The server uses a seeded random source and the sim clock |
+| Step 3 of the restructure made the **player a separate entity from NPCs** | For multiplayer the better shape is **one kind of person, controlled either by AI or by an account**. That is how the original "possess a character" idea worked. Phase 1 merges the two (section 5) |
+| The floor is about 23 m by 42 m | Everyone can see everyone: broadcast to all, no area-of-interest filtering in v1 |
+
+## 4. Architecture
 
 ```
-  Browser clients (up to ~100)
-     |  HTTPS  (page, REST: register / login / character)
-     |  WSS    (realtime game traffic)
+  Browsers on the office network (up to ~100)
+     |  HTTPS  page + REST (register, login, character)
+     |  WSS    realtime game traffic
+     |  WebRTC voice (to the voice container, later)
      v
-  +-----------------------------------------------------------+
-  |  Reverse proxy (Caddy): TLS, serves the built client,     |
-  |  routes /api/* and /ws                                    |
-  +-----------------------------------------------------------+
-        |  /api/*                         |  /ws
-        v                                 v
-  +--------------+   signed ticket   +----------------------------+
-  |  api         | ----------------> |  game                      |
-  |  NestJS      |   (HMAC, 30 s)    |  Node + ws, no framework   |
-  |  accounts,   |                   |  on the hot path           |
-  |  login,      |   admin commands  |  authoritative sim,        |
-  |  characters, | ----------------> |  fixed tick, snapshots,    |
-  |  admin REST  |   (internal net)  |  chat, shared events       |
-  +--------------+                   +----------------------------+
-        |
-        v
-  +--------------+
-  |  Postgres    |   accounts, characters (spec JSON), later: items, money
-  +--------------+
+  +----------------------------------------------------------+
+  |  Docker Compose project on the office PC                 |
+  |                                                          |
+  |  web     Caddy: HTTPS, serves the built frontend,        |
+  |          proxies /api and /ws to the server              |
+  |                                                          |
+  |  server  NestJS app: accounts and admin REST, plus the   |
+  |          game: authoritative sim, physics, WebSocket,    |
+  |          persistence                                     |
+  |                                                          |
+  |  db      PostgreSQL (volume on the PC's disk)            |
+  |                                                          |
+  |  voice   LiveKit (later phase)                           |
+  +----------------------------------------------------------+
 ```
 
-Two server processes, one codebase:
+Yes: the Docker group is **frontend, server, database** (and voice later). The frontend is the built static files served by Caddy, which also provides HTTPS and forwards API and WebSocket traffic to the server.
 
-- **`api`** is a NestJS app. It handles everything that is request/response and not time-critical: sign-up, login, password hashing, saving the character, admin settings.
-- **`game`** is a small Node process with a WebSocket server and the authoritative simulation. It does **no** database or password work on the hot path.
+**One server container, not two.** Version 1 of this plan split accounts and game into separate processes to keep password hashing away from the game loop. For a company-only game on a local network with a few logins at a time, that is more than needed: password hashing runs off the main thread, and logins are rare. So there is **one server process**, built as clearly separated modules (auth, game, persistence, admin). If it ever needs splitting, the module boundaries are already there. The game loop is still plain TypeScript and the WebSocket still bypasses NestJS's per-message machinery (section 6.1).
 
-Why two processes: password hashing is deliberately CPU-heavy. If a burst of logins shared a process with the game loop, the loop would stutter and everyone would feel lag. Separate processes (separate containers) make that impossible. The game server never calls the API while running; it trusts a short-lived **signed ticket** issued by the API (section 7).
+## 5. The core model: persons, slots and takeover
 
-## 4. Technology choices
+Everyone in the world is a **person**: the same data, the same rig, the same animation. A person is controlled either by **AI** or by **an account**.
 
-| Choice | Decision | Why, and what we rejected |
+```
+person  { id, name, spec (look), slot, position, state, task, props, controller }
+controller:  ai                       (an NPC)
+          |  account(accountId)       (a player is driving)
+```
+
+A **slot** is a desk plus the person that belongs to it. Slots have three states:
+
+| Slot state | Who controls the person | Notes |
 |---|---|---|
-| Language | **TypeScript on Node.js** for `shared`, `api` and `game` | Same language as the client, so the simulation code is literally shared. The client stays JavaScript for now and imports from `shared` (Vite handles TypeScript); it can migrate later |
-| API framework | **NestJS** | Good fit for accounts and REST: modules, validation, guards, config, testing. Not used for the game loop (below) |
-| Game server | **Plain Node + `ws`**, binary messages | Lowest overhead on the part that must not lag. NestJS adds layers (dependency injection, interceptors) that are fine per request but wasteful per frame |
-| Realtime transport | **WebSocket (`ws`)**, binary | Works through proxies and browsers everywhere. Rejected Socket.IO (extra framing, JSON by default, heavier per message) |
-| Alternative considered | **Colyseus** (a game-server framework with rooms and automatic state sync) | It would save work on state sync and rooms. We prefer a small custom protocol because the world is one room, the state is simple, and we want the sim shared with the client. Revisit if we ever need many rooms |
-| Database | **PostgreSQL** | Accounts, characters, later inventory and money. Relational, boring, reliable |
-| DB access | **Prisma** (or TypeORM) | Typed queries and migrations. Either works with Nest |
-| Passwords | **argon2id** | Modern, memory-hard. bcrypt is acceptable if argon2 is a problem to install |
-| Reverse proxy | **Caddy** | Automatic HTTPS on EC2, one config file, serves the static client. Same origin for page, API and WebSocket means no CORS or cross-site cookie problems |
-| Packaging | **Docker** and **docker-compose** | One command locally, the same images on EC2 |
-| Repo layout | **npm workspaces** monorepo | One repo, shared code without publishing packages |
+| **Unclaimed** | AI | A pure NPC that no account owns, such as Hazel. These are the NPCs the admin counts |
+| **Claimed, owner offline** | AI ("autopilot") | The account's own character, looking like them and sitting at their station, following the daily routine |
+| **Claimed, owner online** | The player | The NPC is "overcome": the same person, now driven by the player |
 
-## 5. The game server
+How it works:
 
-### 5.1 Authority
+- **Register:** the new account **claims an unclaimed slot** (or the admin assigns one). Their first login opens character creation; the person's look becomes theirs and the desk becomes their station. If there are no unclaimed slots, the admin raises the slot count (up to the number of desks).
+- **Log in:** the account takes control of its person **where it currently is**. There is no teleport; if the NPC was at lunch, the player is at lunch.
+- **Log out or disconnect:** the person goes back to AI **from where it stands** and carries on (after a short grace period so a dropped connection can reconnect without the character wandering off).
+- **The day cycle:** AI-controlled people arrive in the morning and go home in the evening as they do today. A **player** is never sent home: they can stay all night.
 
-The server is the single source of truth.
-
-| Owned by the server | Owned by the client |
-|---|---|
-| The clock, day cycle, pause and speed | Rendering, camera, lighting from `sim.t` |
-| Every NPC: schedule, task, position, path | Choosing which part of the world to look at |
-| Every player's accepted position, seat and state | Predicting the local player's own movement (see 5.3) |
-| Who occupies each spot (seats, piano, darts, ...) | Animation poses (derived from the state the server sends) |
-| Meetings, events such as Hazel's rage | Camera shake and visual effects |
-| Chat | |
-
-### 5.2 The tick
-
-- A fixed loop at **20 Hz** (50 ms), drift-corrected (compensates for late timers), never `setInterval` alone.
-- Each tick: apply queued player inputs, step the simulation, build one snapshot, send it to everyone.
-- NPC state is sent every second tick (**10 Hz**); players are sent every tick (**20 Hz**).
-- The tick time is measured and logged. It is the key health number (target in section 12).
-
-### 5.3 Player movement
-
-- The client sends **inputs** (a move vector, heading, run flag, with a sequence number), not positions.
-- The client moves its own character immediately (**prediction**) so controls feel instant.
-- The server runs the same movement code (`stepPlayer`, moved into `shared`) against the same collision data, then reports the accepted position with the last input number it handled. If the client's prediction differs, it corrects smoothly (**reconciliation**).
-- Other people are drawn about **100 to 150 ms in the past**, interpolated between the last two snapshots, so their movement looks smooth despite network jitter.
-- Speed is capped on the server (walk 1.5 m/s, run 3 m/s plus a small tolerance). Walls and furniture are enforced by the same collision grid.
-
-### 5.4 Interactions and shared state
-
-- Sitting, standing and using spots are **requests** the server accepts or refuses (is the spot free? is the player close enough?). Occupancy is one list on the server, so two people can never sit in the same chair, and an NPC and a player contest the same spots fairly.
-- NPCs react to players: players are added to the NPCs' avoidance, and NPC chat or meetings can later target players.
-- **Pause, speed and the day clock** are server state, changed only by an admin.
-
-### 5.5 Shared events (what one sees, everyone sees)
-
-Anything that is an event in the world is created on the server and broadcast with a start time, so every client plays the same thing at the same moment:
-
-- Hazel's rage: started by a request, runs for 10 s of **server** time, with a cooldown so it cannot be spammed.
-- The lounge fighting game: shown when the server says someone is playing, driven by shared time.
-- Chat and announcements ("Day 2 begins").
-- Joins and leaves.
-
-### 5.6 Chat ("heard")
-
-"Heard" is taken to mean **text chat first**:
-
-- **Local chat**: heard by people within a radius (about 10 m), shown as a bubble over the speaker and in a chat panel.
-- **Global channel** for announcements and admin messages.
-- Server-side: length limit, rate limit, basic sanitising, mute and ban hooks.
-
-Voice is a different project: 100 people cannot be a peer-to-peer mesh; it needs a media server (an SFU such as LiveKit). It is listed in [section 17](#17-open-questions).
-
-### 5.7 Controlling the number of NPCs
-
-The NPC count is **server configuration**, not a per-player setting.
+**NPC count control.** The admin controls the **number of slots** (`SLOT_COUNT`, from 0 to the number of desks, 70 today) and the number of those that start unclaimed. Options for how offline players appear:
 
 | Setting | Meaning |
 |---|---|
-| `NPC_COUNT` | How many NPCs to run. Default 40. Clamped to `0` through the number of desks (70 today) |
-| `NPC_MODE=fixed` | Always exactly `NPC_COUNT` |
-| `NPC_MODE=fill` (optional) | Keep **total** population near a target: as players join, NPCs leave, and the reverse. `NPC_TARGET_POPULATION` sets the target |
+| `SLOT_COUNT` | Total slots (people in the office when everyone is offline). Clamped to the desk count |
+| `OFFLINE_PLAYERS_AS_NPCS` | `true` (default): an offline player's person is shown on autopilot. `false`: the person is hidden and their desk empty while they are away |
+| `MAX_AUTOPILOT` (optional) | Cap on how many autopilot people are shown at once, to bound the crowd |
 
-- Set at startup from the environment, and **changeable while running** by an admin (`PUT /api/admin/npcs`, then forwarded to the game server over the internal network). Increases spawn NPCs arriving at the entrance; decreases let NPCs finish what they are doing and walk out, so nobody vanishes mid-stride.
-- The client's "People" slider and the Pause/Speed buttons are removed for players and shown only to admins.
-- If we ever want more than 70 NPCs, NPCs without a personal desk must be designed first. That is a gameplay change, not a server change.
+All of these can be changed live by an admin. Reducing the count makes people walk out of the building, never vanish mid-stride.
 
-## 6. Network protocol
+## 6. The game server
 
-Binary WebSocket frames. A one-byte message type, then a compact body. A shared `protocol` module defines both encode and decode so client and server cannot disagree.
+### 6.1 Technology
+
+| Choice | Decision | Why |
+|---|---|---|
+| Language | **TypeScript on Node.js** for `shared` and `server` | Same language as the client, so the simulation is genuinely shared. The client stays JavaScript for now |
+| Server framework | **NestJS** | Good structure for accounts, REST, validation, config, guards and tests |
+| Game loop and WebSocket | A plain **`ws`** server attached to Nest's HTTP server (`upgrade` handler on `/ws`), with the loop as a plain TypeScript class | Lowest overhead on the part that must not lag; Nest's decorators and interceptors are fine per request but wasteful per message at 20 Hz × 100 clients |
+| Messages | **Binary**, defined once in a shared `protocol` module | Small and fast. No JSON on the hot path |
+| Database | **PostgreSQL** with **Prisma** (TypeORM also works) | Typed queries and migrations; boring and reliable |
+| Passwords | **argon2id** | Modern and memory-hard; runs off the main thread |
+| Physics | **Rapier** (WebAssembly, runs in Node and the browser) | Rigid bodies for thrown and dropped objects. See section 8.5 |
+| Voice | **LiveKit** (open-source SFU, self-hosted in Docker) | 100 people cannot be a peer-to-peer mesh. See section 12 |
+| Alternative considered | Colyseus (game-server framework with rooms and state sync) | Would save work on sync, but we want the simulation shared with the client and a persistent single world; a small custom protocol fits better |
+
+### 6.2 Authority
+
+The server is the single source of truth.
+
+| Server owns | Client owns |
+|---|---|
+| The clock, day cycle, pause, speed | Rendering, lighting from the sim time, camera |
+| Every person (AI or player): position, state, task, spot, props | Predicting the local player's own movement |
+| Every world object: position, rotation, owner, who is carrying it | Animation poses (derived from the state the server sends) |
+| Which spot each person occupies | Camera shake and visual effects |
+| Physics of objects in motion | |
+| Events (such as Hazel's rage) and chat | |
+
+### 6.3 The tick
+
+- A fixed loop at **20 Hz** (50 ms), drift-corrected (compensating for late timers).
+- Each tick: apply queued inputs, step the sim, step physics for active bodies, build one snapshot, send it.
+- People who are players are sent every tick (20 Hz); AI people and objects that are moving are sent at 10 Hz.
+- The server logs how long each tick takes: this is the key health number ([section 14](#14-performance-budget-and-load-testing)).
+
+### 6.4 Player movement
+
+- The client sends **inputs** (a move vector, heading, run flag, sequence number), not positions.
+- The client moves its own person immediately (**prediction**) so controls feel instant.
+- The server runs the same movement code (`stepPlayer`, moved into `shared`) against the same collision data and replies with the accepted position and the last input it handled; the client corrects smoothly if it differs (**reconciliation**).
+- Other people are drawn about 100 to 150 ms in the past, interpolated between snapshots, so movement is smooth despite network jitter.
+- Speed is capped on the server (walk 1.5 m/s, run 3 m/s plus a small tolerance). Walls and objects are enforced by the shared collision grid.
+
+### 6.5 Interactions and shared state
+
+- Sitting, standing, using a spot, picking up, placing and throwing are **requests** the server accepts or refuses (is it free? is the player close enough? is it allowed?).
+- **Occupancy** (who is in which seat or using which thing) is one list on the server, so two people can never sit in one chair, and AI and players compete for spots fairly.
+- Players are added to the NPCs' avoidance, so AI people walk around them.
+- Pause, speed and the clock are server state, changed only by an admin.
+
+### 6.6 Shared events (what one sees, all see)
+
+Anything that happens in the world is created on the server and broadcast with a start time, so every client shows it at the same moment: Hazel's rage (with a cooldown), the lounge fighting game, announcements, joins and leaves, an object being thrown.
+
+### 6.7 Chat
+
+- **Local chat** heard within about 10 m (shown as a bubble over the speaker and in a chat panel) and a **global channel** for announcements.
+- Server side: length limit, rate limit, sanitising, mute and ban hooks.
+
+## 7. Accounts and login
+
+| Piece | Design |
+|---|---|
+| Register | `POST /api/auth/register` (username, password). Usernames are unique and case-insensitive. Claims an unclaimed slot (section 5) |
+| Passwords | argon2id; never logged or returned. **No email**: an admin resets a forgotten password (`POST /api/admin/users/:id/reset-password`) |
+| Login | `POST /api/auth/login` returns a short-lived access token and sets a refresh token in an httpOnly cookie. Also `refresh` and `logout` |
+| Joining the game | `POST /api/play/ticket` returns a **one-time ticket** (about 30 seconds). The browser opens `wss://host/ws` and sends it first. Tokens never go in URLs |
+| One session per account | A second login kicks the first, so one person never drives a character from two tabs |
+| Abuse limits | Rate limits and lockouts on register and login |
+| Character | `GET/PUT /api/character`. The server always runs `normalizeSpec` on what it receives |
+| Admin | A role on the account: NPC and slot control, pause and speed, kick, announce, reset a password, reset or lock an object |
+
+## 8. A persistent, editable world
+
+This is new in version 2 and is the biggest change after the simulation split.
+
+### 8.1 Everything movable is an object
+
+A **world object** is a server entity:
+
+```
+object { id, type, x, y, z, rotation, owner (account or none), station (slot or none),
+         carriedBy (person or none), locked, props }
+```
+
+- Types come from a **catalogue** (chair, stool, plant, mug, notebook, monitor, lamp, ball, and so on). Each type has a **prefab**: how to draw it, its footprint, its weight, how it can be carried, and whether it has a **seat** or other spots.
+- **Spots belong to objects.** A chair object carries its seat spot, so when the chair moves, the seat moves with it, and AI people simply use the nearest free seat.
+- The **building shell** (floor, walls, doors, windows) stays static and is still baked into a few draw calls. Fixtures such as desks start as objects that only admins or an edit mode can move.
+
+### 8.2 What this does to today's furniture code
+
+- The builders (`island()` and others) create desks, chairs, monitors and props **together** with hard-coded positions. They must be split into **prefabs** (one function that draws one thing) plus **placement data** (a list of "chair at x, z, rotation"). This is a rewrite of the furniture files, not a patch.
+- `bake()` currently merges everything. Objects must not be merged; instead each prefab becomes **one mesh per object** (or an instanced mesh per type) so a few hundred objects stay cheap to draw. This is a measured, tunable part of the client work.
+- The **starting layout** is generated once from today's code into a `seed-layout` data file, so the office looks the same on day one.
+
+### 8.3 Interactions
+
+| Interaction | How it works |
+|---|---|
+| **Pick up** | Request to grab a nearby object; if allowed, the object is attached to the person's hand socket (`sockets.rightHand`) and carried. Heavy objects slow you or need two hands (a per-type rule) |
+| **Place / move** | Put it down at a spot in front of you; the server checks it fits (walls, other objects, optional grid snapping) |
+| **Edit mode** | A mode for rearranging your station: select, move, rotate, remove, add from a catalogue within a quota |
+| **Throw** | Releasing a carried object with an impulse; the server simulates it as a rigid body (section 8.5) and everyone sees the same flight |
+| **Reset** | "Reset this object" and "reset my station" restore defaults, so mistakes and pranks are cheap to undo |
+
+### 8.4 Permissions
+
+- Your **station** (your desk and the area around it) is yours: others can look and may be allowed to sit, but moving your things is limited to you and admins by default. A setting can open this up for fun.
+- Shared areas (lounge, kitchen) are free for everybody.
+- Admins can move, lock, reset or delete anything.
+- Every change is attributed (who moved what) and recent changes can be undone.
+
+### 8.5 Physics
+
+- **Rapier** simulates only objects that are in motion (thrown, dropped, knocked). Objects at rest are asleep and cost almost nothing.
+- Characters keep the existing grid-based collision; they are not pushed by physics in v1. Thrown objects collide with walls, the floor and other objects. Hitting people is a later extra.
+- Physics runs at a fixed step on the server; clients interpolate the positions they receive.
+
+### 8.6 Navigation changes with the world
+
+The nav grid is currently built once. With movable objects it must **update**: when an object moves, the affected cells are recomputed (a small rectangle, cheap), and AI people repath if their route is blocked. Desks that move bring their owner's station with them.
+
+### 8.7 Persistence
+
+| What | How |
+|---|---|
+| In memory | The server keeps the live world; the database is the **saved copy** |
+| Saving | **Dirty tracking**: changed objects, people and the clock are written in batches every few seconds, and everything is flushed on shutdown (`SIGTERM`). Worst case after a crash: a few seconds of changes lost |
+| Loading | On start the server loads the saved world; if it is empty, it creates the seed layout and the seed NPCs |
+| Backups | A nightly `pg_dump` to a folder on the host PC, kept for several days, plus a documented restore (section 13.5) |
+| Clock | The world clock is saved and resumes after a restart |
+| Schema versions | The saved world carries a version; migrations upgrade old worlds |
+
+Tables (v1): `accounts`, `refresh_tokens`, `persons` (identity, spec, slot, last position, state, owner account or none), `slots` (desk assignment), `world_objects`, `world_state` (clock, day, settings), `audit_log` (admin actions, object changes). Later: items, inventory, money.
+
+## 9. Repository layout
+
+**Yes, a monorepo is a good fit here.** The point of this project is that the browser and the server run the *same* code (simulation, spec, protocol, plan). One repo with one set of shared packages makes that trivial, and for a small team of friends it means one clone, one pull request, one version. Heavier monorepo tools (Nx, Turborepo) are **not** needed; plain **npm workspaces** are enough.
+
+```
+office-simulator/
+  package.json                 workspaces: apps/*, packages/*
+  docker-compose.yml           web, server, db  (voice added later)
+  docker/
+    Caddyfile                  HTTPS, static files, proxy
+    server.Dockerfile
+    web.Dockerfile             builds the client, then Caddy serves it
+    backup/                    nightly pg_dump script
+  docs/
+  packages/
+    shared/                    TypeScript, no DOM, no Three.js
+      src/plan/                floor plan data, coordinate maths
+      src/character/           CharacterSpec, PARTS, normalizeSpec
+      src/sim/                 persons, tasks, meetings, day, movement, nav
+      src/world/               object model, catalogue, placement rules
+      src/protocol/            message types, encode and decode
+      src/config.ts            tunables
+  apps/
+    client/                    today's src/, index.html, Vite (JavaScript for now)
+    server/                    NestJS: auth, admin, game, persistence
+    bots/                      load-test clients (optional, later)
+```
+
+One thing to keep in mind with monorepos: Docker builds need the whole repo as their context so they can see `packages/shared`. The Dockerfiles in `docker/` handle that.
+
+## 10. Making the simulation shareable (phase 1)
+
+The app keeps working at every step; players see no change.
+
+1. **One kind of person.** Merge today's separate `player` entity into the person model: `controller: ai | account`. The camera, input and seating code that now works on `player.person` will work on "the person I control".
+2. **Separate the person from their body.** Today a person holds `body` (meshes). Split the **sim person** (plain data, including `props` flags) from the **client view** (rig and meshes), keyed by person id. `people/sync.js` already bridges the two.
+3. **Props as state, not mesh toggles.** `onStart: q => q.body.mug.visible = true` becomes `q.props.mug = true`; the client rig shows or hides the mesh.
+4. **No Three.js in shared code.** `THREE.Vector3` becomes plain `{ x, y, z }`.
+5. **No hidden randomness or time.** `Math.random` becomes an injected seeded source; `performance.now` becomes sim time. The sim becomes reproducible and unit-testable.
+6. **Slots instead of `p.seat`.** A slot object (desk spot, owner, station area) replaces the person's direct `seat` reference.
+7. **Extract in thin slices:** `shared/plan` and `shared/character` first (nearly free of Three.js already), then nav and movement, then tasks, meetings and the day cycle. The client keeps an **offline mode** that runs the same shared sim in the browser, which is also the best demo and development setup.
+
+The furniture-to-objects work in section 8.2 is a separate phase after the server can run, so the simulation split is not blocked on it.
+
+## 11. Network protocol
+
+Binary WebSocket frames: a one-byte message type, then a compact body. The shared `protocol` module encodes and decodes both directions.
 
 **Client to server**
 
 | Message | Contents |
 |---|---|
 | `input` | sequence number, move x/z, heading, run flag (about 20 per second) |
-| `act` | sit, stand, or use a spot (spot id) |
-| `chat` | text (length-limited) |
-| `emote` | emote id |
-| `ping` | timestamp, for latency measurement |
+| `act` | sit, stand, use a spot (id) |
+| `grab` / `drop` / `throw` | object id, placement or direction and strength |
+| `edit` | move, rotate, add or remove an object in edit mode |
+| `chat`, `emote` | text (limited), emote id |
+| `ping` | timestamp |
 
 **Server to client**
 
 | Message | Contents |
 |---|---|
-| `welcome` | your id, world version, config (tick rate, NPC count), sim time, your character spec, the current full state |
-| `snapshot` | tick, sim time, then one record per **changed** entity: id, x, z (quantised to 16 bits), heading, anim/state id, spot id, flags (props shown, raging) |
-| `event` | chat line, join, leave, "Hazel is furious", day change, admin notice |
-| `spec` | someone's appearance (sent when they join or change it) |
-| `pong` | timestamp echo |
-| `kick` | reason |
+| `welcome` | your person id, config, sim time, **the full world** (people and objects) |
+| `snapshot` | tick, sim time, then one compact record per **changed** person and **moving** object |
+| `object` | an object created, moved to rest, changed or removed (sent as events, not every tick, when it is not moving) |
+| `event` | chat line, join, leave, rage, day change, admin notice |
+| `spec` | a person's look, when they join or change it |
+| `pong`, `kick` | latency echo; disconnect with a reason |
 
-**Snapshot size and bandwidth** (an estimate to validate with the load test, not a promise):
+**Size.** A person record is about 10 bytes. With 100 players and 70 AI people, a full snapshot of people is about 1.7 KB; players at 20 Hz and AI at 10 Hz is about 27 KB/s per client, about 22 Mbit/s across 100 clients before sending only what changed (which should roughly halve it). That is trivial on a wired local network, but worth checking on Wi-Fi: **a good access point setup matters more than the server** at 100 clients. Objects at rest cost nothing per tick; only moving objects appear in snapshots. These figures are estimates for the load test to confirm.
 
-- One entity record is about 10 bytes. With 100 players and 70 NPCs, a full snapshot is about **1.7 KB**.
-- Players at 20 Hz and NPCs at 10 Hz is about **27 KB/s per client**, about **2.7 MB/s (22 Mbit/s) across 100 clients**. Sending only entities that changed (seated NPCs rarely do) should cut that by roughly half.
-- At full load that is on the order of 5 to 10 GB per hour of outbound traffic. **Check current AWS data-transfer pricing before committing**; it is the main running cost at this scale, not CPU.
-- Each snapshot is encoded **once** and the same buffer is sent to every client, so cost does not multiply by the number of players.
+## 12. Voice (planned)
 
-**Latency.** WebSocket runs on TCP, so a lost packet delays later ones. For a social game this is acceptable. If it ever hurts, WebTransport or WebRTC data channels are the upgrade path; the protocol module isolates the transport.
+Voice is built after movement and chat but affects decisions now.
 
-## 7. Accounts and login
+- **LiveKit** runs as a fourth container. The server issues each player a LiveKit token from the same login. The browser connects to LiveKit for audio.
+- **Proximity voice:** the server already knows where everyone is, so each client subscribes only to the speakers near it (for example within 15 m) and plays them with 3D positioning in the Web Audio API. That keeps 100 people from hearing each other all at once and keeps the load small.
+- **HTTPS is required.** Browsers allow microphone access only on secure pages (HTTPS, or `localhost`). A plain `http://` address on the office network will **not** be able to use the microphone. So HTTPS on the local network must be solved properly ([section 13.3](#133-https-on-the-local-network)).
+- **Networking:** WebRTC uses UDP port ranges and must advertise the PC's **local network address**. On **Docker Desktop for Windows** (which runs containers in a virtual machine), host networking is limited and advertising the right address can be fiddly. **Prototype voice in Docker on the actual office PC early** (see the risks) so there are no late surprises. A spare Linux machine is the easiest host for it.
+- Text chat remains as a fallback.
 
-| Piece | Design |
-|---|---|
-| Sign-up | `POST /api/auth/register` with username and password (and email if we choose, see section 17). Usernames unique, case-insensitive, limited characters and length |
-| Password storage | argon2id, never logged, never returned |
-| Login | `POST /api/auth/login` returns a short-lived **access token** and sets a refresh token in an httpOnly, secure, same-site cookie. `POST /api/auth/refresh`, `POST /api/auth/logout` |
-| Joining the game | `POST /api/play/ticket` (needs a valid login) returns a **one-time ticket**: user id, username, character spec, expiry about 30 seconds, signed with a secret shared by `api` and `game`. The browser opens `wss://host/ws` and sends the ticket as its first message. The game server verifies the signature and expiry with **no database call** |
-| Why a ticket and not the token | Tokens in URLs end up in logs. A ticket is single-use and expires in seconds |
-| One session per account | A second login kicks the first (`kick`) |
-| Abuse limits | Per-IP and per-account rate limits on register and login (`@nestjs/throttler`), lockout after repeated failures, a cap on concurrent hashing work |
-| Character | `GET`/`PUT /api/character`. The server always runs `normalizeSpec` on whatever the client sends, so a hand-crafted spec cannot break rendering or be oversized |
-| Admin | A role on the user. Admin endpoints (NPC count, pause, speed, kick, announce) require it |
+## 13. Self-hosting on the office PC
 
-Database tables (v1):
+### 13.1 The host machine
 
-| Table | Columns (main ones) |
-|---|---|
-| `users` | id, username (unique, lower-cased), password_hash, role, created_at, last_login_at |
-| `characters` | user_id, spec (JSON), last_x, last_z, updated_at |
-| `refresh_tokens` | id, user_id, token_hash, expires_at, revoked |
-| `audit_log` (optional) | who, what, when (admin actions, bans) |
+- Always on, wired to the network, with a **fixed local address** (a DHCP reservation on the router) and a stable name.
+- A modern 4-core CPU, 16 GB RAM and an SSD are a comfortable target for about 100 players plus voice. The game loop uses one core lightly; the database and voice use the rest.
+- If it is a Windows PC: Docker Desktop with WSL2. Keep the PC from sleeping, and turn off automatic restarts for updates during working hours.
+- **The office Wi-Fi is the likely bottleneck, not the server.** About 100 clients need a proper access-point setup.
 
-Later phases add `items`, `inventory`, `wallet`/`transactions`, `shops`; all server-authoritative.
-
-## 8. Repository layout
-
-An npm-workspaces monorepo. The current `src/` becomes the client, and code that both sides need moves to `shared`.
-
-```
-office-simulator/
-  package.json                 workspaces: apps/*, packages/*
-  docker-compose.yml           local: proxy, api, game, db
-  docker-compose.prod.yml      EC2 overrides
-  docs/
-  packages/
-    shared/                    TypeScript, no DOM, no Three.js
-      src/plan/                floor plan data (OUTER, WALLS), coordinate maths
-      src/character/spec.ts    CharacterSpec, PARTS, normalizeSpec (from character/spec.js)
-      src/sim/                 the simulation (people, tasks, meetings, day, nav, movement)
-      src/layout/              obstacles, walls and spots as plain data (+ generated world.json)
-      src/protocol/            message types, encode/decode
-      src/config.ts            tunables (tick rate, speeds, limits)
-  apps/
-    client/                    today's src/, index.html, Vite   (JavaScript for now)
-    api/                       NestJS
-    game/                      Node + ws; loads shared/sim
-    bots/                      load-test clients
-```
-
-Moves from today's tree:
-
-| Today | Goes to |
-|---|---|
-| `config/plan.js` (minus the Three.js `Vector3`) | `shared/plan` |
-| `character/spec.js` | `shared/character` |
-| `people/data.js` (names, roles, categories) | `shared/sim` |
-| `sim/*`, `nav/*`, `player/locomotion.js`, the logic half of `people/` | `shared/sim` |
-| everything that draws, plus `ui/`, `camera/`, `fp/`, `player/control.js`, `world/` | `apps/client` |
-
-## 9. Making the simulation shareable (the big refactor)
-
-This is the phase everything else depends on, and the one with the most risk. It can be done **without changing what players see**, and the app keeps working at every step.
-
-**9.1 Separate the person from their body.**
-Today a person object holds `body` (meshes). Split it: the **sim person** is plain data (position, state, task, spot, props flags); the **client view** (rig and meshes) is a separate object keyed by person id. `people/sync.js` already moves meshes to match the sim; it becomes the bridge.
-
-**9.2 Props as state, not mesh toggles.**
-Activities such as `onStart: q => q.body.mug.visible = true` become `q.props.mug = true`. The client rig shows or hides the mesh from `props`. This touches `sim/tasks.js`, `sim/day.js`, `player/seating.js` and Hazel.
-
-**9.3 No Three.js in shared code.**
-Replace `THREE.Vector3` with plain `{ x, y, z }`; the client converts at the edge. `W(px, py)` returns a plain point on the server side.
-
-**9.4 No hidden randomness or time.**
-Replace `Math.random` in the sim with an injected seeded random source; replace `performance.now` with sim time. Result: the sim is reproducible and unit-testable.
-
-**9.5 Layout as data (walls, obstacles, spots).**
-Furniture builders currently produce meshes and register obstacles and spots in the same pass using hard-coded numbers. The server needs only the second half. Options:
-
-| Option | How | Trade-off |
-|---|---|---|
-| **A. Export from the builders** (recommended for v1) | Run the existing builders headless in Node (Three.js works without a renderer; stub the canvas-based textures) and write `world.json`: obstacles, walls, spots (kind, position, facing, seat height, group). CI fails if the committed file is out of date | Smallest change, and client and server **cannot disagree** because the same code makes both. Slightly hacky build step |
-| B. Declarative layout | Rewrite each builder so spots and obstacles come from data files and meshes are generated from them | Cleanest result, but a rewrite of every furniture file |
-
-Plan: A first; B only if the export step proves fragile.
-
-**9.6 Extract in thin slices.**
-One module at a time, each slice verified in the browser (and, once tests exist, by unit tests): `shared/plan` and `shared/character` first (already nearly free of Three.js), then nav and movement, then tasks, meetings and day. The client keeps an **offline mode** by running the same shared sim in the browser, which is also the best development and demo setup.
-
-## 10. Client changes
-
-- **Login and register screen** before the world loads; reconnect and "session expired" handling.
-- **`net/` module**: connection, ticket handshake, message decode, snapshot buffer, interpolation, input send, prediction and reconciliation, ping display.
-- **Remote people** (NPCs and other players) are drawn from snapshots using the existing rig and animation: the server sends `anim`/`state` ids and the client's `people/animation.js` produces the pose. Other players use their own `CharacterSpec`.
-- **Name labels** above players; NPC names as today.
-- **HUD**: the ledger uses server counts; Pause, Speed and the People slider move to an admin panel; a chat panel and emote menu are added.
-- **Character creation** (already planned) saves through the API.
-- The `window.__sim` debug hook is removed from production builds (it would be a cheating tool).
-- **Offline mode** stays, running the shared sim locally, for development and demos.
-
-## 11. Deployment
-
-### 11.1 Containers
+### 13.2 Containers
 
 | Container | Image | Notes |
 |---|---|---|
-| `proxy` | Caddy | TLS (automatic on EC2), serves the built client from a volume, routes `/api` to `api` and `/ws` to `game` |
-| `api` | Node, built from `apps/api` | Stateless; migrations run on start |
-| `game` | Node, built from `apps/game` | **Exactly one instance** (it holds the world). Restart policy `unless-stopped` |
-| `db` | Postgres | Named volume; backups (below) |
+| `web` | Caddy, with the built frontend baked in | HTTPS, static files, proxy to `server` |
+| `server` | Node, built from `apps/server` | One instance only (it owns the world). `restart: unless-stopped`. Runs migrations on start. Flushes the world on `SIGTERM` |
+| `db` | `postgres` | Named volume on the host's disk; password from an environment file |
+| `voice` | `livekit/livekit-server` | Added in the voice phase |
 
-Multi-stage Dockerfiles: install and build in one stage, copy only runtime files into a slim final image, run as a non-root user.
+`docker compose up --build` starts everything. Developers can run the same file on their own PCs to test. A `docker compose` profile can add a Vite dev server for client work.
 
-### 11.2 Local use
+### 13.3 HTTPS on the local network
 
-`docker compose up --build` starts everything at `http://localhost`. To host a session for people on the same network, they browse to the host PC's address. (Plain HTTP is fine for the game itself; features that browsers restrict to secure pages, such as microphone access for future voice, would need HTTPS even on a LAN. Verify when voice is planned.)
+Needed for voice, and good practice for logins. Options:
 
-### 11.3 EC2
-
-- **Instance:** a compute-oriented type such as `c6i.large` (2 vCPU, 4 GB) is a comfortable start for 100 players: the game process is single-threaded and light, and the second core absorbs the API and database. Avoid **burstable** (`t`-series) types for sustained load unless "unlimited" mode is on, because exhausted CPU credits throttle the game loop. Confirm sizing with the load test.
-- **Region:** the one closest to the players (for players in the Philippines, Singapore `ap-southeast-1` is nearest).
-- **Network:** an Elastic IP and a domain pointing at it; the security group opens **80 and 443 only**; SSH replaced by AWS Systems Manager Session Manager.
-- **Data:** Postgres on an EBS volume with scheduled snapshots, **or** Amazon RDS (more reliable, costs more). Either way, a nightly dump to S3 is cheap insurance.
-- **Deploy:** GitHub Actions builds images, pushes them to a registry (GHCR or ECR), then tells the instance to `docker compose pull && docker compose up -d`. A restart briefly disconnects players; the client reconnects automatically.
-- **Render:** this replaces it for the full game, because the game needs a long-lived WebSocket server and a database on one network. The current Render static site can stay as a demo of the offline mode.
-
-### 11.4 Configuration (environment variables)
-
-| Variable | Used by | Meaning |
+| Option | How | Trade-off |
 |---|---|---|
-| `DATABASE_URL` | api | Postgres connection |
-| `TICKET_SECRET` | api, game | Signs and verifies join tickets |
-| `JWT_SECRET` | api | Signs access tokens |
-| `ADMIN_SECRET` | api, game | Authenticates admin calls between them |
-| `NPC_COUNT`, `NPC_MODE`, `NPC_TARGET_POPULATION` | game | NPC control (section 5.7) |
-| `TICK_RATE` | game | Defaults to 20 |
-| `MAX_PLAYERS` | game | Hard cap (default 120, a little above the target) |
-| `PUBLIC_URL` | proxy, api | The site's address |
+| **A. A real domain name the company already owns** (recommended if available) | Point a name such as `office.yourcompany.com` at the PC's local address in DNS, and let Caddy get a normal trusted certificate using a DNS challenge | People just open the address; no setup on each computer. Needs a domain and a supported DNS provider |
+| B. Caddy's internal certificate authority | Caddy makes its own certificates (`tls internal`); each person installs the root certificate once | No domain needed. Everyone has to trust the certificate once, which is easy to document but is a step per computer |
+| C. A local certificate tool (mkcert) | Same idea as B | Fine for development machines |
 
-Secrets live in the host's environment or a secrets store, never in git.
+### 13.4 Firewall and ports
 
-### 11.5 Operations
+Open on the host PC: `443` (and `80` for redirects) for the site and WebSocket; the LiveKit ports when voice is added (a TCP port and a UDP range). Nothing else, and **do not expose any of this to the internet**: it is for the office network (or a VPN) only.
 
-- A `/health` endpoint on each service; Docker health checks restart a stuck container.
-- Structured logs; the game server logs tick time, players, NPCs, bytes sent, and event-loop lag once a second.
-- Alerts (CloudWatch or similar) on: instance CPU, disk space, tick p99 above its budget, container restarts.
-- World state is **ephemeral** by default: a restart begins a fresh morning, while accounts and characters persist. Saving the world is optional and listed in section 17.
+### 13.5 Backups, updates and recovery
 
-## 12. Performance budget and load testing
+- A `backup` job runs `pg_dump` nightly into a host folder and keeps the last 7 to 14 dumps. Copy that folder somewhere else occasionally.
+- **Restore** is one documented command that loads a dump into a fresh database.
+- **Updating:** `git pull`, then `docker compose up -d --build`. The server flushes the world on stop and loads it on start, so players see a short reconnect and then the same office.
+- The world also needs **"reset to defaults"** tools (per object, per station, whole office) for when a prank gets out of hand.
 
-**Budgets** (to verify, not assume):
+### 13.6 Operations (kept simple)
 
-| Measure | Target at 100 players + 70 NPCs |
+- A `/health` endpoint, Docker health checks, and `restart: unless-stopped`.
+- The server logs tick time, players, objects, and bytes sent once a second. A small admin page shows the same numbers.
+- No cloud monitoring or deployment pipeline is needed. If the team later moves to a cloud machine, the same compose file works there.
+
+### 13.7 Configuration
+
+| Variable | Meaning |
 |---|---|
-| Server tick (step + encode + send) | p99 under 10 ms of the 50 ms budget |
-| Event-loop lag on `game` | p99 under 20 ms |
-| Added input latency (client to server to client) | under 150 ms on a normal connection |
+| `DATABASE_URL` | Postgres connection |
+| `TICKET_SECRET`, `JWT_SECRET` | Sign join tickets and access tokens |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Seed admin account, created on first start |
+| `SLOT_COUNT`, `OFFLINE_PLAYERS_AS_NPCS`, `MAX_AUTOPILOT` | People control (section 5) |
+| `MAX_PLAYERS` | Hard cap, default 100 |
+| `TICK_RATE` | Default 20 |
+| `PUBLIC_URL` | The site's address |
+| `LIVEKIT_*` | Voice keys and address (later) |
+
+Secrets live in an `.env` file on the host, never in git (a `.env.example` is committed).
+
+## 14. Performance budget and load testing
+
+| Measure | Target at 100 players plus AI people |
+|---|---|
+| Server tick (step, physics, encode, send) | p99 under 10 ms of the 50 ms budget |
+| Event-loop lag | p99 under 20 ms |
+| Added input latency | under 150 ms on the local network |
 | Bandwidth per client | under 40 KB/s |
-| `game` CPU | under 50% of one core |
+| Server CPU | under 50% of one core, plus headroom for the database |
 | Memory | no growth over a one-hour soak |
+| Save (batch write) | under 50 ms, and never inside the tick |
 
-**Load test:** a `bots` app that logs in as N accounts, connects, walks randomly, sits, chats, and records round-trip times. Run it against local Docker first and then on the EC2 instance, at 50, 100 and 150 bots, plus a one-hour soak.
+**Load test.** A small `bots` app logs in as N accounts, walks, sits, chats, picks things up and throws them, and records round-trip times. Run it at 50, 100 and 150 bots, then a one-hour soak. A client-side check matters too: **draw calls and frame time with a few hundred movable objects** (section 8.2).
 
-**Rules that keep the loop fast:**
+**Rules that keep the loop fast:** binary messages; encode each snapshot once and send the same buffer to everyone; no allocation inside the tick; saving off the hot path (batched, asynchronous); if a client's socket falls behind, skip frames for that client instead of queueing without limit.
 
-- No JSON on the hot path; binary only.
-- Encode each snapshot once; send the same buffer to everyone.
-- No allocation inside the tick (reuse buffers and entity records).
-- Handle slow clients: if a socket's send buffer backs up, drop it behind rather than queueing without limit.
-- Keep the loop on its own process, away from hashing and database work.
-- If one core is ever not enough, the sim and the network fan-out can be split across worker threads. We do not need that for 100.
+## 15. Security (company-only)
 
-## 13. Security checklist
+- Validate every client message: type, size, range, rate. Disconnect repeat offenders.
+- The server decides everything: movement, seating, grabbing, placing, throwing, chat. The client only asks.
+- Object edits are checked against permissions, quotas and collisions, and attributed.
+- argon2id; no passwords in logs; HTTPS; httpOnly cookies for refresh tokens.
+- Secrets from the environment; separate secrets for tickets, tokens and admin.
+- Admin actions are role-checked and written to the audit log.
+- The network is internal only. The debug hook (`window.__sim`) is not shipped.
 
-- Validate **every** client message: type, size, ranges, rate. Drop and count violations; disconnect repeat offenders.
-- The server decides everything: movement (speed and collision), seating (distance, occupancy), chat, events. The client only requests.
-- `normalizeSpec` on every spec the server receives; size caps on everything.
-- Rate limits on register and login; lockouts; per-IP connection limits on `/ws`.
-- argon2id; no passwords in logs; HTTPS only in production; httpOnly secure cookies for refresh tokens.
-- Secrets from the environment; separate secrets for tickets, tokens and admin; rotate on a leak.
-- Admin actions are authorised by role and written to the audit log.
-- Dependency updates and an image scan in CI.
-- The debug hook is not shipped in production.
-
-## 14. Testing strategy
-
-Tests become possible once the sim is out of Three.js.
+## 16. Testing
 
 | Level | What |
 |---|---|
-| Unit (shared) | movement and collision, pathfinding, task selection, meetings, the day cycle, `normalizeSpec`, protocol encode/decode round-trips. Seeded randomness makes these reproducible |
-| API | register, login, refresh, ticket issue, character save, rate limits, admin guard |
-| Game integration | start a server in-process, connect scripted clients, assert sit/stand, occupancy, chat delivery, NPC count changes, kick |
-| Load | the bots in section 12 |
-| Browser smoke | boot the client against a server, log in, see people, walk, sit. This replaces the manual checklist for the core path |
+| Unit (shared) | movement and collision, pathfinding, tasks, takeover and handoff between AI and player, the day cycle, object placement rules, `normalizeSpec`, protocol round-trips (seeded randomness keeps them reproducible) |
+| Server integration | start a server in-process, connect scripted clients: register, login, claim a slot, take over a person, sit, grab, throw, chat, restart and check that the world was restored |
+| Load | the bots (section 14) |
+| Browser smoke | boot the client against a server, log in, see people and objects, walk, sit, move a chair |
 
-CI runs lint, type-check, unit and integration tests, and builds the images on every push.
+## 17. Phased plan
 
-## 15. Phased plan
-
-Sizes are relative (S, M, L), not calendar estimates; the first phase is the one most likely to run long.
+Sizes are relative (S, M, L), not calendar estimates.
 
 | # | Phase | Delivers | Done when |
 |---|---|---|---|
-| 0 | **Foundations** (S) | npm workspaces; TypeScript set up for `shared`/`api`/`game`; lint and CI; the client moved to `apps/client`; docs updated | Current app builds and runs unchanged from the new layout |
-| 1 | **Shareable sim** (L) | Section 9: person/view split, props as state, no Three.js, seeded random, `shared/plan` + `shared/character` + `shared/sim`, layout export, unit tests | The sim runs in Node under tests, and the browser app (offline mode) behaves as it does today |
-| 2 | **Headless server, viewers only** (M) | `game` app: tick loop, protocol, snapshots, NPC control (`NPC_COUNT`), admin pause/speed; the client connects as a **viewer** and renders server NPCs | Two browsers see the same NPCs doing the same things, with NPC count changeable live |
-| 3 | **Accounts** (M) | `api` app: register, login, refresh, tickets, character save and load, admin role; login screen and character persistence in the client | You can register, log in, change your look, log out and back in, and it is remembered |
-| 4 | **Players in the world** (L) | Player inputs, prediction and reconciliation, other players drawn and interpolated, sit/stand/use-spot on the server, local and global chat, emotes, shared Hazel rage, name labels | Many people walk around and sit together; everyone sees and hears the same things |
-| 5 | **Deploy and harden** (M) | Dockerfiles, compose files, Caddy, EC2 setup, CI deploy, health checks, backups, logging and alerts, load tests and fixes | 100 bots meet the budgets in section 12 on EC2; a restart is survivable |
-| 6 | **Gameplay** (ongoing) | Server-authoritative items, shops, money, quests; creator polish; more interactions | Each feature ships behind the server, never client-trusted |
+| 0 | **Foundations** (S) | npm workspaces; TypeScript for `shared` and `server`; `docker-compose.yml` with `db` and a placeholder `server`; tests set up; client moved to `apps/client` | Today's app builds and runs unchanged from the new layout, and `docker compose up` brings up the empty stack |
+| 1 | **Shareable sim** (L) | Section 10: one person model, person/view split, props as state, no Three.js, seeded random, slots, `shared/*`, unit tests | The sim runs in Node under tests, and the browser (offline mode) behaves as it does today |
+| 2 | **Server and persistence** (M) | The server runs the sim and the tick, the protocol, snapshots, the saved world (people, slots, clock) and restore, admin settings (slots, pause, speed); the client connects as a viewer | Two browsers see the same office; a restart brings back the same people, positions and clock |
+| 3 | **Accounts and takeover** (M) | Register (claims a slot), login, tickets, character creation, take control and give back control, admin password reset | You can register, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is |
+| 4 | **Players together** (L) | Prediction and reconciliation, other players drawn and interpolated, sit/stand/use spot on the server, local and global chat, emotes, shared events, name labels | Many people walk and sit together; everyone sees and hears the same things |
+| 5 | **World objects** (L) | Furniture split into prefabs and placement data; objects as server entities with persistence; dynamic nav; pick up, place, edit mode, permissions and reset | You can move your chair and personalise your station, and it is all still there after a restart |
+| 6 | **Throwing and physics** (M) | Rapier for objects in motion; throw; shared flight; sleeping bodies | Everyone sees the same thrown object land in the same place, with no cost at rest |
+| 7 | **Voice** (M) | LiveKit container, HTTPS on the LAN, tokens, proximity subscription and 3D audio | People near each other hear each other; people far away do not |
+| 8 | **Harden** (S to M) | Load tests and fixes, backups and restore tested, admin page, runbook | 100 bots meet the budgets on the office PC; a restore from a backup is rehearsed |
 
-Phases 2 to 4 can be demonstrated at each step, so the project is never "in pieces" for long. Phase 5's Docker work can start earlier (a local compose file in phase 2) so we are never debugging containers and gameplay at the same time.
+The order lets you **see progress after every phase**. Phases 5 and 6 can swap with 7 if voice matters more to the team than rearranging furniture. Docker is introduced in phase 0 so we never debug containers and gameplay at the same time.
 
-## 16. First gameplay interactions (proposal)
+## 18. Open questions
 
-There are no gameplay interactions yet, so this is a starting list, to be edited:
+Defaults in brackets are what this plan assumes.
 
-1. **Walk, sit, stand** and take any free seat (desk, dining, lounge, bar, booth, piano, guitar).
-2. **Local chat and emotes** (wave, sit-and-chat, point).
-3. **Use the facilities** that already exist: darts, mini golf, the lounge game, the keyboard and guitar. Shared and visible to everyone.
-4. **Follow a friend** and **see who is where** (a simple list with search).
-5. **Talk to NPCs** (stretch): NPCs that notice and react to you.
-6. **Presence and status**: away, busy, in a meeting, with a status line above the head.
+1. **How fast does the world clock run?** Today a day takes about 28.5 real minutes. In a persistent office, should time follow the **real clock** (9 to 5, people arrive and leave at real times) or keep the fast day? This changes how NPCs and players overlap. [Keep the fast day; make it a setting]
+2. **Claiming a slot:** when someone registers, does an admin choose their desk, or do they get the next free one? [Next free one, admin can change it]
+3. **Offline players as NPCs:** should an offline player's character always be shown on autopilot, or only some of the time (`OFFLINE_PLAYERS_AS_NPCS`, `MAX_AUTOPILOT`)? [Always shown]
+4. **Stations:** how much can a player change? Move chairs and small props [yes], add objects from a catalogue [yes, within a quota], move their desk [admins only at first], change walls [no].
+5. **Griefing rules:** may other people move things at your station? Throw things at you? [No at stations, yes in shared areas]
+6. **Can thrown objects hit people**, knock them, or break? [No in v1]
+7. **The office PC:** Windows or Linux? Docker Desktop on Windows works for everything except that voice needs extra care (section 12). Is a spare Linux machine possible? [Windows with Docker Desktop, prototype voice early]
+8. **HTTPS:** does the company own a domain we can use (section 13.3 option A)? [Else option B]
+9. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
+10. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only]
 
-Items, shops and an economy come after this foundation is solid, designed with the server as the authority (see [ROADMAP.md](ROADMAP.md)).
+## 19. First gameplay interactions (proposal)
 
-## 17. Open questions
+1. Walk, sit and stand on any free seat; **move your chair**.
+2. **Customise your station** (edit mode, catalogue, quota, reset).
+3. **Pick up, carry, place and throw** objects.
+4. Local chat, emotes, and later voice.
+5. Use the shared facilities: darts, mini golf, the lounge game, the keyboard and guitar.
+6. See who is where; follow a friend; status above the head.
+7. Items, shops and an economy later, with the server in charge.
 
-These need an answer from the team. The defaults in brackets are what this plan assumes.
-
-1. **Voice chat?** Text chat is planned. Voice needs a media server and is a separate project. [Text only for now]
-2. **Email at sign-up?** Needed only for password reset. Without it, a forgotten password needs an admin. [Username and password only, admin resets]
-3. **Who is an admin, and how is the first one created?** [A seed admin from the environment]
-4. **Does the world persist across restarts?** [No: fresh morning, accounts persist]
-5. **Do we want `NPC_MODE=fill`** (NPCs make way as players join), or a fixed count only? [Both supported; start with fixed]
-6. **How many people can be in the office at once?** Is 100 the hard cap, and what happens at the cap (queue, or refuse)? [Hard cap 120, then refuse with a message]
-7. **Public or company-only?** Public needs stronger abuse protection (captcha, moderation tools). [Company-only, but built with the limits above]
-8. **Database on the instance or Amazon RDS?** [On the instance with snapshots and S3 dumps to start]
-9. **Domain and region?** Needed for HTTPS and for choosing the closest region.
-10. **Budget ceiling** for the instance and data transfer, so we size to it.
-11. **Do players need desks?** With 100 players and 70 desks, people simply sit wherever there is a free seat. [Players have no assigned desk]
-12. **Moderation:** what are the chat rules, and who can mute or ban?
-
-## 18. Risks
+## 20. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Extracting the sim takes longer than expected | Delays everything after phase 1 | Thin slices; the app keeps working at every step; offline mode proves behaviour is unchanged |
-| The layout export (9.5 A) proves fragile | Client and server disagree about walls or seats | CI check that the committed `world.json` matches a fresh export; fall back to option B |
-| Crowd collision at 170 bodies | Jams in corridors, odd NPC paths | Players join NPC avoidance; tune radii in the load test; widen if needed |
-| Clock or position drift between clients | People appear to jump | Server time in every snapshot; interpolation delay; reconciliation tested under artificial latency |
-| Bandwidth cost higher than estimated | Surprise bill | Measure early (phase 2), send only changes, lower NPC rate, set an alert |
-| TCP stalls on poor connections | Brief freezes for that player | Acceptable for this game; transport is swappable behind the protocol module |
-| Scope creep into voice, economy, many rooms | Never ships | Phases with acceptance criteria; open questions closed before each phase |
-| Moving from Render to EC2 | Ops burden on the team | Keep the Render static demo; document the runbook; automate deploys |
+| The simulation split takes longer than expected | Delays everything | Thin slices; the app works at every step; offline mode proves behaviour unchanged |
+| Furniture-to-objects is a rewrite | Delays the editable office | Do it after the server exists; keep the starting layout generated from today's code |
+| Draw calls with hundreds of separate objects | Low frame rate | One mesh per object or instancing per type; measure early (section 14) |
+| Voice on Docker Desktop for Windows | Voice does not work or has one-way audio | Prototype early on the real PC; fall back to a Linux host |
+| Browsers refuse the microphone on a non-HTTPS address | No voice | Solve HTTPS first (section 13.3) |
+| Wi-Fi capacity at 100 clients | Rubber-banding for some people | Check the access points; the server is not the limit on a local network |
+| Physics cost or jitter | Stalls or strange motion | Only simulate moving bodies; cap active objects; tune in the load test |
+| Griefing in a shared, editable world | Annoyance | Permissions, quotas, undo, reset, audit log, admin tools |
+| A crash loses recent changes | Players lose a few seconds of edits | Batched saves every few seconds and a flush on shutdown; tested restore |
+| The host PC sleeps, updates or loses power | The office is down | Power settings, restart policy, a short runbook |
+| Scope creep | Never ships | Phases with acceptance criteria; open questions closed before each phase |
