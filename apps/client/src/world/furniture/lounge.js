@@ -1,7 +1,7 @@
 import logoUrl from '../../assets/logo.png';
 import * as THREE from 'three';
 import { S, WALL_T, wx, wz } from '../../config/plan.js';
-import { pick } from '../../core/util.js';
+import { vpick } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';
@@ -47,7 +47,7 @@ function buildLounge() {
   sofa(387.9, 296.0, 403.4, 312.1, WST, [[396, 304]], 'an armchair', [[412, 304]], true);
   sofa(387.9, 320.5, 403.4, 336.6, WST, [[396, 328.5]], 'an armchair', [[412, 328.5]], true);
   table(340.1, 309.1, 380.6, 329.1, M.diningWood, M.diningWood2, .42);
-  box(staticRoot, .22, .03, .3, pick(M.notebook), wx(352), .425, wz(318), false);
+  box(staticRoot, .22, .03, .3, vpick(M.notebook), wx(352), .425, wz(318), false);
   cyl(staticRoot, .05, .04, .1, M.white, wx(368), .47, wz(316), 10, false);
 }
 

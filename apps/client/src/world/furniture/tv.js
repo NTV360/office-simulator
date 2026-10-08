@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { S } from '../../config/plan.js';
-import { pick } from '../../core/util.js';
+import { vpick } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { TV_MATS } from '../../render/screens.js';
 import { addObs, box, dynamic, frame } from '../helpers.js';
@@ -14,7 +14,7 @@ function tv(x1, y1, x2, y2, face, kind = 'slides') {
   box(f, .5, .03, .32, M.chairBase, 0, .015, -.02);
   box(f, .07, yc, .05, M.chairBase, 0, yc / 2, -.06);
   box(f, w + .04, h + .04, .05, M.monitor, 0, yc, 0);
-  const scr = dynamic(new THREE.Mesh(new THREE.PlaneGeometry(w - .02, h - .02), pick(TV_MATS[kind])));
+  const scr = dynamic(new THREE.Mesh(new THREE.PlaneGeometry(w - .02, h - .02), vpick(TV_MATS[kind])));
   scr.position.set(0, yc, .027); f.add(scr); TV_SCREENS.push(scr);
   return scr;
 }

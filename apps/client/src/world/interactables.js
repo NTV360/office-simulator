@@ -19,4 +19,7 @@ function of(kind) { return byKind.get(kind) || EMPTY; }
 // Conference seats of one room (1-3).
 function conf(room) { return of('conf').filter(s => s.room === room); }
 
-export const interactables = { add, of, conf };
+// Every kind that has at least one spot (used by the debug fingerprint).
+const kinds = () => [...byKind.keys()];
+
+export const interactables = { add, of, conf, kinds };

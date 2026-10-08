@@ -12,6 +12,8 @@ import './styles/veil.css';
 import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
+import { fingerprint } from './debug.js';
+import { setSeed } from './core/util.js';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -39,6 +41,11 @@ import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './worl
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
 import { scalers, wall } from './world/helpers.js';
+
+// Development switch: ?seed=N makes the simulation repeatable (the same seed replays the same office day)
+// and stops the live loop from advancing it, so scripted checks can step it themselves with __sim.advance().
+const seedParam = new URLSearchParams(location.search).get('seed');
+if (seedParam !== null) { setSeed(Number(seedParam)); sim.paused = true; }
 
 bootstrap();
 
@@ -74,6 +81,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { fingerprint, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
 }, log };

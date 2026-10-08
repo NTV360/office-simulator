@@ -1,4 +1,4 @@
-import { rnd, shuffle } from '../core/util.js';
+import { random, rnd, shuffle } from '../core/util.js';
 import { makePerson, scheduleDay } from '../people/factory.js';
 import { meetings } from './meetings.js';
 import { addLog, people, sim } from './state.js';
@@ -21,7 +21,7 @@ function arriveNow(p, quiet) {
   p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI; p.arrivedAt = sim.t;
   p.body.root.visible = true; p.body.ring.visible = true; p.task = null;
   if (!quiet) addLog(`${p.name} arrived`);
-  if (Math.random() < .25 && lockerTrip(p)) return;
+  if (random() < .25 && lockerTrip(p)) return;
   if (!goWork(p)) p.state = 'away';
 }
 

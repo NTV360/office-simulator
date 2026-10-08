@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { W } from '../../config/plan.js';
-import { TAU, pick, rnd } from '../../core/util.js';
+import { TAU, vpick, vrnd } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { E } from './basics.js';
 import { tv } from './tv.js';
@@ -70,7 +70,7 @@ function drawGame(dt) {
     const gap = F.x[1] - F.x[0];
     if (gap > 70) { F.x[0] += step * 30; F.x[1] -= step * 30; }
     if (F.nextAct <= 0 && gap <= 74) {
-      const a = Math.random() < .5 ? 0 : 1, d = 1 - a, atk = pick(['punch', 'punch', 'kick', 'uppercut']);
+      const a = Math.random() < .5 ? 0 : 1, d = 1 - a, atk = vpick(['punch', 'punch', 'kick', 'uppercut']);
       F.move[a] = atk; F.mt[a] = 0;
       const blocked = Math.random() < .3;
       F.move[d] = blocked ? 'block' : 'hit'; F.mt[d] = -.12;
@@ -79,7 +79,7 @@ function drawGame(dt) {
         F.x[d] += (d ? 1 : -1) * (atk === 'uppercut' ? 22 : 12); F.spark = { x: (F.x[0] + F.x[1]) / 2, y: atk === 'kick' ? 112 : 88, t: 0, big: atk === 'uppercut' }; F.shake = .15;
       }
       if (F.hp[d] <= 0 || F.clock <= 0) { const w = F.hp[0] >= F.hp[1] ? 0 : 1; F.wins[w]++; F.move[w] = 'win'; F.move[1 - w] = 'ko'; F.mt = [0, 0]; F.ko = 3.2; }
-      F.nextAct = rnd(.45, 1.1);
+      F.nextAct = vrnd(.45, 1.1);
     }
     F.x[0] = Math.max(40, Math.min(F.x[0], 280)); F.x[1] = Math.max(F.x[0] + 46, Math.min(F.x[1], 290));
     if (gap < 60 && F.move[0] === 'idle' && F.move[1] === 'idle') { F.x[0] -= step * 14; F.x[1] += step * 14; }

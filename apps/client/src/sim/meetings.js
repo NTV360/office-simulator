@@ -1,4 +1,4 @@
-import { pick, rnd, shuffle } from '../core/util.js';
+import { pick, random, rnd, shuffle } from '../core/util.js';
 import { addLog, people, sim } from './state.js';
 import { goDo } from './tasks.js';
 import { interactables } from '../world/interactables.js';
@@ -11,9 +11,9 @@ function tryMeeting() {
   const lunchHour = t > 12 * 60 && t < 13 * 60;
   for (const room of shuffle([1, 2, 3])) {
     if (meetings.some(m => m.room === room)) continue;
-    if (Math.random() > (lunchHour ? .01 : .05)) continue;
+    if (random() > (lunchHour ? .01 : .05)) continue;
     const cap = interactables.conf(room).length;
-    const n = room === 2 ? 2 + Math.floor(Math.random() * 4) : 3 + Math.floor(Math.random() * 6);
+    const n = room === 2 ? 2 + Math.floor(random() * 4) : 3 + Math.floor(random() * 6);
     const pool = shuffle(people.filter(p => p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));

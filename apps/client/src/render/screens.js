@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TAU, pick } from '../core/util.js';
+import { TAU, vpick } from '../core/util.js';
 import { canvasTex } from './materials.js';
 
 /* Monitor screens: code, design files, dashboards, lock screen */
@@ -10,10 +10,10 @@ function codeScreen() {
     g.fillStyle = '#1a2733'; g.fillRect(0, 0, 44, h); g.fillRect(0, 0, w, 10);
     let y = 18, ind = 0;
     while (y < h - 6) {
-      ind = Math.max(0, Math.min(4, ind + pick([-1, 0, 0, 1])));
+      ind = Math.max(0, Math.min(4, ind + vpick([-1, 0, 0, 1])));
       let x = 52 + ind * 12;
       const n = 1 + Math.floor(Math.random() * 4);
-      for (let k = 0; k < n && x < w - 10; k++) { const len = 10 + Math.random() * 46; g.fillStyle = pick(CODE_COLS); g.fillRect(x, y, len, 4); x += len + 6; }
+      for (let k = 0; k < n && x < w - 10; k++) { const len = 10 + Math.random() * 46; g.fillStyle = vpick(CODE_COLS); g.fillRect(x, y, len, 4); x += len + 6; }
       y += 9;
     }
   });
@@ -23,7 +23,7 @@ function designScreen() {
     g.fillStyle = '#eef0f3'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, 40, h); g.fillRect(w - 50, 0, 50, h);
     g.fillStyle = '#ffffff'; g.fillRect(58, 18, 130, 108);
-    g.fillStyle = pick(['#2f8db3', '#d9694f', '#5b8f6c', '#7a6aa3']); g.fillRect(66, 26, 114, 34);
+    g.fillStyle = vpick(['#2f8db3', '#d9694f', '#5b8f6c', '#7a6aa3']); g.fillRect(66, 26, 114, 34);
     g.fillStyle = '#c9d2da'; for (let i = 0; i < 4; i++) g.fillRect(66, 68 + i * 12, 60 + Math.random() * 50, 5);
     g.fillStyle = '#e2b65c'; g.fillRect(66, 112, 40, 8);
     for (let i = 0; i < 8; i++) { g.fillStyle = '#d4dbe1'; g.fillRect(6, 10 + i * 14, 28, 6); g.fillRect(w - 44, 10 + i * 14, 38, 6); }
@@ -32,7 +32,7 @@ function designScreen() {
 function dashScreen() {
   return canvasTex(256, 144, (g, w, h) => {
     g.fillStyle = '#10171e'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 3; i++) { g.fillStyle = '#1b2731'; g.fillRect(8 + i * 82, 8, 76, 34); g.fillStyle = pick(['#6fd0c8', '#9ad19a', '#e6d27a']); g.fillRect(14 + i * 82, 26, 30 + Math.random() * 30, 8); }
+    for (let i = 0; i < 3; i++) { g.fillStyle = '#1b2731'; g.fillRect(8 + i * 82, 8, 76, 34); g.fillStyle = vpick(['#6fd0c8', '#9ad19a', '#e6d27a']); g.fillRect(14 + i * 82, 26, 30 + Math.random() * 30, 8); }
     g.strokeStyle = '#5ab5d8'; g.lineWidth = 2; g.beginPath();
     for (let x = 8; x < w - 8; x += 8) g.lineTo(x, 110 - Math.random() * 40 - Math.sin(x / 30) * 12); g.stroke();
     g.strokeStyle = '#e8875b'; g.beginPath();

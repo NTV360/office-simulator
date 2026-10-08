@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { toPx } from '../config/plan.js';
-import { rnd, shuffle } from '../core/util.js';
+import { random, rnd, shuffle } from '../core/util.js';
 import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
 import { addLog, people, sim } from './state.js';
@@ -41,8 +41,8 @@ function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', s
 function coffee(p) {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => { q.body.mug.visible = false; } });
-  if (ok && Math.random() < .5) p.queue.push('bar');
-  if (ok && Math.random() < .3) p.queue.push('sink');
+  if (ok && random() < .5) p.queue.push('bar');
+  if (ok && random() < .3) p.queue.push('sink');
   return ok;
 }
 function sinkTrip(p) { const s = free(interactables.of('sink'))[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
@@ -90,16 +90,16 @@ function chat(p) {
 }
 function lunch(p) {
   const d = free(interactables.of('dining'))[0];
-  if (d && Math.random() < .75) {
-    if (Math.random() < .35 && lockerTrip(p)) { p.queue.push('dining'); return true; }
+  if (d && random() < .75) {
+    if (random() < .35 && lockerTrip(p)) { p.queue.push('dining'); return true; }
     return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) });
   }
   const s = free(interactables.of('lounge').filter(x => !x.game))[0];
-  if (s && Math.random() < .5) return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: s, dur: rnd(20, 30) });
+  if (s && random() < .5) return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: s, dur: rnd(20, 30) });
   return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.seat, dur: rnd(20, 30) });
 }
 function leave(p) {
-  if (Math.random() < .3 && !p.queue.includes('exit') && lockerTrip(p)) { p.queue.push('exit'); return; }
+  if (random() < .3 && !p.queue.includes('exit') && lockerTrip(p)) { p.queue.push('exit'); return; }
   goExit(p);
 }
 function goExit(p) {
@@ -120,7 +120,7 @@ function chooseNext(p) {
   if (t >= p.leaveAt) return leave(p);
   if (!p.hadLunch && t >= p.lunchAt && t < 14 * 60) { p.hadLunch = true; if (lunch(p)) return; }
   if (p.task && p.task.kind !== 'work') { if (goWork(p)) return; }
-  const r = Math.random();
+  const r = random();
   if (r < .14 && coffee(p)) return;
   if (r < .25 && chat(p)) return;
   if (r < .31 && booth(p)) return;
@@ -132,10 +132,10 @@ function chooseNext(p) {
   if (r < .53 && golfBreak(p)) return;
   if (r < .57 && dartsBreak(p)) return;
   if (r < .61 && musicBreak(p)) return;
-  if (interactables.of('music').some(x => x.occupant) && Math.random() < .05 && musicBreak(p)) return;
-  if (interactables.of('darts').some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
-  if (interactables.of('golf').some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
-  { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .07 && gameBreak(p)) return; }
+  if (interactables.of('music').some(x => x.occupant) && random() < .05 && musicBreak(p)) return;
+  if (interactables.of('darts').some(x => x.occupant) && random() < .07 && dartsBreak(p)) return;
+  if (interactables.of('golf').some(x => x.occupant) && random() < .06 && golfBreak(p)) return;
+  { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && random() < .07 && gameBreak(p)) return; }
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }
 }

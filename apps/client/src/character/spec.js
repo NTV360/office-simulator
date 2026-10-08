@@ -1,4 +1,4 @@
-import { pick, rnd } from '../core/util.js';
+import { pick, random, rnd } from '../core/util.js';
 
 // CharacterSpec: a plain, JSON-safe description of how a character looks. NPCs get a random one;
 // the player's is chosen in character creation. The rig and parts turn a spec into meshes.
@@ -26,8 +26,8 @@ const DEFAULT_SPEC = {
 function randomSpec(role) {
   return {
     skin: pick(PARTS.skin), hair: pick(PARTS.hair), shirt: pick(PARTS.shirt), pants: pick(PARTS.pants), shoes: pick(PARTS.shoes), style: pick(STYLE_WEIGHTED),
-    glasses: Math.random() < .28, headphones: Math.random() < (role === 'Developer' ? .3 : .1) ? pick(PARTS.headphones) : null,
-    longSleeve: Math.random() < .4, jacket: Math.random() < .18 ? pick(PARTS.jacket) : null, scale: rnd(.93, 1.04),
+    glasses: random() < .28, headphones: random() < (role === 'Developer' ? .3 : .1) ? pick(PARTS.headphones) : null,
+    longSleeve: random() < .4, jacket: random() < .18 ? pick(PARTS.jacket) : null, scale: rnd(.93, 1.04),
     skirt: null, cube: false, angry: false,
   };
 }

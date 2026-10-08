@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FULL_H, S, W, WALLS, WALL_T, wx, wz } from '../config/plan.js';
-import { pick } from '../core/util.js';
+import { vpick } from '../core/util.js';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
 import { SOLIDS, addObs, boxGeo, dynamic, scalers } from './helpers.js';
@@ -67,7 +67,7 @@ function buildWalls() {
       const panel = dynamic(new THREE.Mesh(new THREE.BoxGeometry(.012, 1, bayW), mat)); panel.position.set(inX, 0, zc); panel.castShadow = true; up.add(panel);
       const bottom = dynamic(new THREE.Mesh(boxGeo(.03, .025, bayW), M.blindRail)); bottom.position.set(inX, 0, zc); up.add(bottom);
       const cord = dynamic(new THREE.Mesh(boxGeo(.006, 1, .006), M.blindRail)); cord.position.set(inX - .015, 0, zc + bayW / 2 - .06); up.add(cord);
-      bays.push({ panel, bottom, cord, mat, drop: pick([.25, .35, .5, .5, .65, .8]) });
+      bays.push({ panel, bottom, cord, mat, drop: vpick([.25, .35, .5, .5, .65, .8]) });
     }
     scalers.push(H => {
       const hh = Math.max(.05, H - .59); glass.scale.y = hh; glass.position.y = hh / 2; posts.forEach(pm => { pm.scale.y = hh; pm.position.y = hh / 2; }); top.position.y = hh;

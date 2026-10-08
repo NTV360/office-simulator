@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { W } from '../../config/plan.js';
-import { TAU, rnd } from '../../core/util.js';
+import { TAU, vrnd } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { addObs, box, cyl, frame } from '../helpers.js';
 import { interactables } from '../interactables.js';
@@ -31,12 +31,12 @@ function barStool(f) {
   const r = new THREE.Mesh(new THREE.TorusGeometry(.15, .012, 6, 18), M.steel); r.rotation.x = Math.PI / 2; r.position.y = .3; f.add(r);
 }
 function plant(px, py, big = 1) {
-  const g = frame(px, py, rnd(0, TAU));
+  const g = frame(px, py, vrnd(0, TAU));
   cyl(g, .17 * big, .13 * big, .38 * big, M.pot, 0, .19 * big, 0, 14);
   const ico = new THREE.IcosahedronGeometry(1, 0);
   for (let i = 0; i < 6; i++) {
-    const m = new THREE.Mesh(ico, i % 2 ? M.leaf : M.leaf2); const s = rnd(.14, .24) * big;
-    m.scale.set(s, s * 1.4, s); m.position.set(rnd(-.12, .12) * big, (.5 + i * .11) * big, rnd(-.12, .12) * big); m.rotation.set(rnd(0, 3), rnd(0, 3), 0); m.castShadow = true; g.add(m);
+    const m = new THREE.Mesh(ico, i % 2 ? M.leaf : M.leaf2); const s = vrnd(.14, .24) * big;
+    m.scale.set(s, s * 1.4, s); m.position.set(vrnd(-.12, .12) * big, (.5 + i * .11) * big, vrnd(-.12, .12) * big); m.rotation.set(vrnd(0, 3), vrnd(0, 3), 0); m.castShadow = true; g.add(m);
   }
   addObs(px - 6 * big, py - 6 * big, px + 6 * big, py + 6 * big);
 }
