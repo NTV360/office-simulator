@@ -8,6 +8,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [CODING-STANDARDS.md](CODING-STANDARDS.md) | know the rules for new code (imports, state, naming, git) and the checklist before you push |
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
+| [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md) | the ordered, testable steps for making the simulation shareable (proposal, for approval) |
 | [PARALLEL-WORK.md](PARALLEL-WORK.md) | split work between several people or AI instances without them breaking each other (tracks, folder ownership, rules, a brief to hand out) |
 | [LOCAL-DOCKER.md](LOCAL-DOCKER.md) | run the whole stack (web, server, database) in Docker on your PC, and troubleshoot it |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
