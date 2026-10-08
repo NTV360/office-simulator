@@ -47,7 +47,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | Old lines | Now |
 |---|---|
 | 211 to 232 plan data, `OUTER`, `WALLS` | `apps/client/src/config/plan.js` |
-| 217 to 221 helpers (`rnd`, `pick`, `shuffle`, `TAU`, `angDiff`) | `apps/client/src/core/util.js` |
+| 217 to 221 helpers (`rnd`, `pick`, `shuffle`, `TAU`, `angDiff`) | `packages/shared/src/util.ts` (moved there in phase 1, step 1) |
 | 234 to 265 renderer, scene, sun, theme | `apps/client/src/render/renderer.js` |
 | 267 to 355 textures and `M` materials | `apps/client/src/render/materials.js` |
 | 357 to 412 monitor and TV screens | `apps/client/src/render/screens.js` |

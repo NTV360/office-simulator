@@ -49,4 +49,4 @@ Start with [`docs/`](docs/README.md). It sets the standard for how this codebase
 
 ## At a glance
 
-`apps/client/index.html` is markup only. `apps/client/src/bootstrap.js` is the one place the scene is assembled: each module exports a `build*()` or `init*()` function and bootstrap calls them in order; modules do nothing when imported. `apps/client/src/main.js` runs the frame loop. The client code lives in `config/ core/ render/ world/ nav/ character/ people/ sim/ player/ camera/ fp/ ui/ styles/`; see the folder map in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#folder-map-appsclientsrc).
+`apps/client/index.html` is markup only. `apps/client/src/bootstrap.js` is the one place the scene is assembled: each module exports a `build*()` or `init*()` function and bootstrap calls them in order; modules do nothing when imported. `apps/client/src/main.js` runs the frame loop. The client code lives in `config/ render/ world/ nav/ character/ people/ sim/ player/ camera/ fp/ ui/ styles/`; see the folder map in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#folder-map-appsclientsrc).

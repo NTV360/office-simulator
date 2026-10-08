@@ -14,7 +14,7 @@ An npm-workspaces monorepo (see [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#9-repo
 |---|---|
 | `apps/client/` | The browser app: Vite, JavaScript, Three.js. Everything below in "Folder map" lives in `apps/client/src/` |
 | `apps/server/` | The NestJS server (TypeScript). Today it only serves a health check; accounts and the game come in later phases |
-| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js |
+| `packages/shared/` | TypeScript code used by both the client and the server (`@office/shared`). No DOM, no Three.js. Today: `util.ts` (the seedable simulation random stream, the visual stream, `angDiff`, `TAU`) and the server defaults. The client imports it from source through a Vite alias |
 | `docker/`, `docker-compose.yml` | The local stack: web (Caddy and the built client), server, database. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md) |
 | `scripts/` | Helper scripts, such as the stack smoke test |
 
@@ -29,12 +29,12 @@ Code is grouped by what it is. Dependencies point **downwards** in this list. A 
               \     |     /
        character/   nav/   world/               ← the things in the world
               \     |     /
-          render/   config/   core/             ← infrastructure and data
+          render/   config/   shared/           ← infrastructure and data
 ```
 
 In practice:
 
-- `config/` (floor-plan data) and `core/` (tiny utilities) import nothing from the app.
+- `config/` (floor-plan data) imports nothing from the app, and `packages/shared` (imported as `@office/shared`) imports nothing from either app.
 - `render/renderer.js` and `materials.js` are the base that everything that draws imports from.
 - `world/` builds static geometry and registers things people can use. It never imports from `sim/`, `ui/`, `people/`, `player/`, `camera/` or `fp/`. (This one holds today; keep it that way.)
 - `nav/` imports only `config/` and `world/`.
@@ -59,7 +59,6 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | Folder | What lives there |
 |---|---|
 | `config/plan.js` | Floor-plan data (`OUTER`, `WALLS`), plan→metre conversion (`W`, `wx`, `wz`, `toPx`), wall heights |
-| `core/util.js` | Small helpers: `angDiff`, `TAU`, and two random streams: the seedable simulation stream (`random`, `rnd`, `pick`, `shuffle`, `setSeed`) and the visual stream (`vrandom`, `vrnd`, `vpick`) |
 | `render/` | `renderer.js` (renderer, scene, camera, sun), `materials.js` (the `M` palette and `canvasTex`), `screens.js` (monitor/TV textures), `labels.js`, `lighting.js` (day/night) |
 | `world/helpers.js` | Geometry helpers (`box`, `cyl`, `frame`), the obstacle list `OBS`, the wall list `SOLIDS`, the shared `wall` height state |
 | `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |

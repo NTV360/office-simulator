@@ -64,7 +64,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 - `update*` functions run every frame: no allocating vectors, arrays or closures in them. Reuse a scratch object created at module level.
 - Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`). The one exception today is Hazel's real-time 10-second rage timer.
-- **Randomness has two streams.** Code that decides what people do or look like uses the simulation stream (`random`, `rnd`, `pick`, `shuffle` from `core/util.js`); code that is only about how things are drawn uses the visual stream (`vrandom`, `vrnd`, `vpick`). Never call `Math.random` in simulation code, and never use the simulation stream in visual code: it would make seeded runs (`?seed=N`) irreproducible. The order of simulation draws is part of the behaviour.
+- **Randomness has two streams.** Code that decides what people do or look like uses the simulation stream (`random`, `rnd`, `pick`, `shuffle` from `@office/shared`); code that is only about how things are drawn uses the visual stream (`vrandom`, `vrnd`, `vpick`). Never call `Math.random` in simulation code, and never use the simulation stream in visual code: it would make seeded runs (`?seed=N`) irreproducible. The order of simulation draws is part of the behaviour.
 - Easing uses `1 - Math.exp(-dt * rate)`, not a fixed fraction, so it behaves the same at any frame rate.
 
 ## 8. UI and CSS
@@ -112,7 +112,7 @@ Automated tests cover only the shared and server code so far (`npm test`). The b
 7. If you touched build order, nav, or furniture: compare `__sim.GC`, `__sim.GR` and the count of `__sim.NAV` walkable cells before and after. They should only change when you meant them to.
 8. `npm run build && npm start` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.
 
-If you changed the server, `docker/`, `docker-compose.yml` or anything the containers build: run `docker compose up --build -d` and then `npm run smoke`. It must print "all checks passed". See [LOCAL-DOCKER.md](LOCAL-DOCKER.md).
+If you changed the server, `docker/`, `docker-compose.yml` or anything the containers build: run `docker compose up --build -d` and then `npm run smoke`. It must print "all checks passed". Then also run `VERIFY_URL=http://localhost:8080 npm run verify:browser`, which replays the simulation recordings against the containerised site. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md).
 
 Tips for the browser checks:
 

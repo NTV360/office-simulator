@@ -46,6 +46,8 @@ curl http://localhost:8080/api/health                    # {"status":"ok","db":"
 
 `npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`.
 
+For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 npm run verify:browser`. It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -55,6 +57,7 @@ curl http://localhost:8080/api/health                    # {"status":"ok","db":"
 | The page loads but the smoke test says the database is unreachable | The database is still starting, or its password changed after the volume was created. Postgres only reads `POSTGRES_PASSWORD` the first time the volume is created. Either put the old password back, or reset with `docker compose down -v` (this deletes the data) |
 | A change to client code does not show up | The web container serves a **built** copy. Rebuild with `docker compose up --build`. For fast edits use `npm run dev` (http://localhost:5173) instead |
 | Build fails on `npm ci` with a lockfile error | The lockfile and `package.json` disagree. Run `npm install` at the repository root and commit `package-lock.json` |
+| The web image fails to build with "not found" (for example `Tsconfig not found /app/tsconfig.base.json`) | The web image copies only what `docker/web.Dockerfile` lists. When the client starts reading a new folder or config file (as it now does with `packages/shared` and `tsconfig.base.json`), add a `COPY` line for it |
 | Scripts or the Caddyfile behave oddly after a Windows checkout | Line endings. `.gitattributes` forces LF; re-clone or run `git add --renormalize .` |
 
 ## Notes for later phases
