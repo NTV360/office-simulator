@@ -1,7 +1,7 @@
 import { S, wx, wz } from '../../config/plan.js';
 import { M } from '../../render/materials.js';
 import { doorLeaf } from '../doors.js';
-import { SEATS, SO, mkSpot, officeChair } from './basics.js';
+import { SO, mkSpot, officeChair } from './basics.js';
 import { addObs, box, cyl, frame, staticRoot } from '../helpers.js';
 import { wallSeg } from '../walls.js';
 
@@ -22,8 +22,8 @@ function buildBooths() {
     box(staticRoot, (x1 - x0 - 4) * S, .04, .34, M.diningWood, wx(cx), .74, wz(932.5));
     box(staticRoot, (x1 - x0 - 4) * S, .7, .04, M.diningWood2, wx(cx), .37, wz(936.5));
     cyl(staticRoot, .07, .05, .05, M.dark, wx(cx) + .45, .785, wz(933), 10);
-    const s = mkSpot('booth', cx, 914, SO, { sit: true, place: `Booth B${i + 1}`, ap: [x0 + 17.5, 906] });
-    officeChair(frame(cx, 914, SO)); SEATS.booth.push(s);
+    mkSpot('booth', cx, 914, SO, { sit: true, place: `Booth B${i + 1}`, ap: [x0 + 17.5, 906] });
+    officeChair(frame(cx, 914, SO));
   }
 }
 

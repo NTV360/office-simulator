@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { shuffle } from '../core/util.js';
 import { scene } from '../render/renderer.js';
-import { SEATS } from '../world/furniture/basics.js';
+import { interactables } from '../world/interactables.js';
 
 const people = [];
 const peopleGroup = new THREE.Group();
@@ -18,7 +18,7 @@ let deskPool;
 
 function initState() {
   scene.add(peopleGroup);
-  deskPool = shuffle(SEATS.desk.slice());
+  deskPool = shuffle(interactables.of('desk').slice());
 }
 
 export { CLOCK, addLog, deskPool, log, logDirty, people, peopleGroup, sim, setLogDirty, initState };

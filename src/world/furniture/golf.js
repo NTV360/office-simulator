@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { S, W, wx, wz } from '../../config/plan.js';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
-import { E, SEATS, mkSpot } from './basics.js';
+import { E, mkSpot } from './basics.js';
 import { box, cyl, staticRoot } from '../helpers.js';
+import { interactables } from '../interactables.js';
 
 function updateGolf() {
   for (const g of GOLF_BALLS) {
@@ -21,7 +22,6 @@ let GOLF_HOLE, GOLF_BALLS;
 function buildGolf() {
   
   // Mini golf: one simple straight putting strip along the east wall
-  SEATS.golf = [];
   GOLF_HOLE = W(667, 982);
   GOLF_BALLS = [];
   {
@@ -36,10 +36,10 @@ function buildGolf() {
     const flag = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -.18, 0), new THREE.Vector3(.26, -.09, 0)]), M.flag);
     flag.geometry.computeVertexNormals(); flag.position.set(GOLF_HOLE.x, 1.02, GOLF_HOLE.z); flag.userData.dynamic = true; scene.add(flag);
     box(staticRoot, .3, .005, .3, M.turfDark, wx(667), .028, wz(1054), false);
-    SEATS.golf.push(mkSpot('golf', 659, 1054, E, { place: 'the putting strip' }));
+    mkSpot('golf', 659, 1054, E, { place: 'the putting strip' });
     const ball = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 10), M.white); ball.castShadow = true; scene.add(ball);
     const start = W(667, 1054); ball.position.set(start.x, .05, start.z);
-    GOLF_BALLS.push({ ball, start, spot: SEATS.golf[0] });
+    GOLF_BALLS.push({ ball, start, spot: interactables.of('golf')[0] });
   }
 }
 

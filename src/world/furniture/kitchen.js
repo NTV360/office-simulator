@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { S, wx, wz } from '../../config/plan.js';
 import { M } from '../../render/materials.js';
-import { SEATS, SO, WST, mkSpot } from './basics.js';
+import { SO, WST, mkSpot } from './basics.js';
 import { addObs, box, boxGeo, cyl, staticRoot } from '../helpers.js';
 
 
@@ -20,7 +20,7 @@ function buildKitchen() {
     box(staticRoot, .4, .3, .3, M.steel, cx - .6, 1.11, cz - .25);
     for (let i = 0; i < 4; i++) cyl(staticRoot, .035, .03, .08, M.white, cx + .25, .99, cz - .2 + i * .1, 10, false);
     cyl(staticRoot, .14, .1, .08, M.diningWood2, cx - .1, .99, cz + .25, 14);
-    SEATS.counter.push(mkSpot('counter', 442, 1004, WST, { place: 'the counter' }), mkSpot('counter', 442, 1024, WST, { place: 'the counter' }));
+    mkSpot('counter', 442, 1004, WST, { place: 'the counter' }); mkSpot('counter', 442, 1024, WST, { place: 'the counter' });
   }
   // Sink
   {
@@ -31,7 +31,7 @@ function buildKitchen() {
     box(staticRoot, .55, .03, .4, M.steel, wx(370.3), .925, cz, false);
     cyl(staticRoot, .02, .02, .3, M.steel, wx(370.3), 1.07, cz + .26, 8);
     box(staticRoot, .03, .03, .16, M.steel, wx(370.3), 1.21, cz + .19);
-    SEATS.sink.push(mkSpot('sink', 374, 1049, SO, { place: 'the sink' }), mkSpot('sink', 408, 1049, SO, { place: 'the sink' }));
+    mkSpot('sink', 374, 1049, SO, { place: 'the sink' }); mkSpot('sink', 408, 1049, SO, { place: 'the sink' });
   }
 }
 

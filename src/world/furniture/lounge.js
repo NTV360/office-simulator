@@ -4,7 +4,7 @@ import { S, WALL_T, wx, wz } from '../../config/plan.js';
 import { pick } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
-import { E, N, SEATS, SO, WST, mkSpot } from './basics.js';
+import { E, N, SO, WST, mkSpot } from './basics.js';
 import { table } from './conference.js';
 import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
 
@@ -18,7 +18,7 @@ function sofa(x1, y1, x2, y2, face, seats, place, aps, single = false) {
   box(f, len - .12, .12, dep - .14, single ? M.armchair : M.sofa, 0, .37, .04);
   box(f, len, .42, .16, single ? M.armchair : M.sofa, 0, .55, -dep / 2 + .08);
   [-1, 1].forEach(s => box(f, .13, .3, dep, M.sofaDark, s * (len / 2 - .065), .42, 0));
-  seats.forEach(([px, py], i) => SEATS.lounge.push(mkSpot('lounge', px, py, face, { sit: true, hipY: .5, place, ap: aps[i] })));
+  seats.forEach(([px, py], i) => mkSpot('lounge', px, py, face, { sit: true, hipY: .5, place, ap: aps[i] }));
 }
 
 

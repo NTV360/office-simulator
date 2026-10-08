@@ -1,7 +1,7 @@
 import { pick, rnd, shuffle } from '../core/util.js';
 import { addLog, people, sim } from './state.js';
 import { goDo } from './tasks.js';
-import { SEATS } from '../world/furniture/basics.js';
+import { interactables } from '../world/interactables.js';
 
 /* ---------- Meetings ---------- */
 const meetings = [];
@@ -12,13 +12,13 @@ function tryMeeting() {
   for (const room of shuffle([1, 2, 3])) {
     if (meetings.some(m => m.room === room)) continue;
     if (Math.random() > (lunchHour ? .01 : .05)) continue;
-    const cap = SEATS.conf[room].length;
+    const cap = interactables.conf(room).length;
     const n = room === 2 ? 2 + Math.floor(Math.random() * 4) : 3 + Math.floor(Math.random() * 6);
     const pool = shuffle(people.filter(p => p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));
     const m = { room, start: t, end: t + rnd(18, 45), members: [], speaker: null, swap: 0, topic };
-    const seats = shuffle(SEATS.conf[room].slice());
+    const seats = shuffle(interactables.conf(room).slice());
     for (const p of pool.slice(0, Math.min(n, cap))) {
       const s = seats.pop();
       if (goDo(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: s, until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } })) m.members.push(p);

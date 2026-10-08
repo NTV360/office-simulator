@@ -27,7 +27,7 @@ import { buildStorage } from './world/furniture/storage.js';
 import { buildWorkfloor } from './world/furniture/workfloor.js';
 import { buildWalls } from './world/walls.js';
 
-// The order below is the order the scene is assembled in. It matters: furniture fills SEATS and
+// The order below is the order the scene is assembled in. It matters: furniture registers interactables and
 // the obstacle list, the nav grid reads those obstacles, and people are seated at the desks.
 export function bootstrap() {
   // world: building shell, then furniture, then bake static meshes into few draw calls

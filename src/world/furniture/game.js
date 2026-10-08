@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { W } from '../../config/plan.js';
 import { TAU, pick, rnd } from '../../core/util.js';
 import { M } from '../../render/materials.js';
-import { E, SEATS } from './basics.js';
+import { E } from './basics.js';
 import { tv } from './tv.js';
 import { addObs, box, boxGeo, frame } from '../helpers.js';
+import { interactables } from '../interactables.js';
 let gameT = 0, gameAcc = 0;
 const FIGHTERS = [
   { name: 'KAI', skin: '#d9a27a', top: '#2f6fb3', pants: '#1d2733', hair: '#1b1817', belt: '#e2b65c' },
@@ -121,7 +122,7 @@ function buildGame() {
   loungeTV = tv(317.9, 298.0, 329.0, 344.1, E, 'dash');
   loungeTVDefault = loungeTV.material;
   LOUNGE_TV_POS = W(323.5, 321.05);
-  SEATS.lounge.slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
+  interactables.of('lounge').slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
   // Game console standing beside the TV
   {
     const f = frame(331, 350, E); addObs(328, 346, 335, 354);

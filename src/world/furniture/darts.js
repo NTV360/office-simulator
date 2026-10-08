@@ -3,7 +3,7 @@ import { WALL_T, wx, wz } from '../../config/plan.js';
 import { TAU } from '../../core/util.js';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
-import { E, SEATS, WST, mkSpot } from './basics.js';
+import { E, WST, mkSpot } from './basics.js';
 import { SERVER_LEDS } from './server.js';
 import { addObs, box, boxGeo, cyl, frame, staticRoot } from '../helpers.js';
 const DART_SETS = [];
@@ -34,7 +34,6 @@ let BOARD_C;
 function buildDarts() {
   
   // Dartboard on the column wall beside the counter top
-  SEATS.darts = [];
   BOARD_C = new THREE.Vector3(wx(351.8 + WALL_T / 2) + .1, 1.73, wz(925));
   {
     const bx = 351.8 + WALL_T / 2;
@@ -67,7 +66,7 @@ function buildDarts() {
     box(f, .36, .5, .02, M.chalk, .66, 1.45, .03);
     box(staticRoot, .05, .004, .9, M.white, wx(410), .003, wz(925), false);
     [[410, 914, 0], [414, 940, 3]].forEach(([px, py, off], i) => {
-      const sp = mkSpot('darts', px, py, WST, { place: 'the dartboard' }); sp.dartOff = off; SEATS.darts.push(sp);
+      const sp = mkSpot('darts', px, py, WST, { place: 'the dartboard' }); sp.dartOff = off;
       const darts = [0, 1, 2].map(() => {
         const d = new THREE.Group();
         const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.004, .004, .13, 6), M.steel); shaft.rotation.z = Math.PI / 2; d.add(shaft);

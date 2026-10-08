@@ -5,7 +5,7 @@ import { SCREENS } from '../render/screens.js';
 import { arriveNow } from './day.js';
 import { people, sim } from './state.js';
 import { arrive, chooseNext } from './tasks.js';
-import { SEATS } from '../world/furniture/basics.js';
+import { interactables } from '../world/interactables.js';
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
@@ -47,7 +47,7 @@ function stepPerson(p, dt, sdt) {
 }
 
 function updateScreens() {
-  for (const s of SEATS.desk) {
+  for (const s of interactables.of('desk')) {
     const p = s.owner;
     let m = SCREENS.off;
     if (p && p.state !== 'away') m = (p.state === 'doing' && p.task?.spot === s && (p.task.kind === 'work')) ? p.screenMat : SCREENS.lock;

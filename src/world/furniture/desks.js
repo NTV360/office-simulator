@@ -3,7 +3,7 @@ import { S, wx, wz } from '../../config/plan.js';
 import { pick } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { SCREENS } from '../../render/screens.js';
-import { N, SEATS, SO, mkSpot, officeChair } from './basics.js';
+import { N, SO, mkSpot, officeChair } from './basics.js';
 import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
 
 // Shared desk islands
@@ -39,7 +39,6 @@ function island(name, x1, y1, x2, y2, cols, sides = ['top', 'bottom'], gap = 12.
       if (r < .3) cyl(f, .04, .035, .1, M.white, -.38, .81, edge + .32, 10);
       else if (r < .45) box(f, .2, .025, .27, pick(M.notebook), .36, .775, edge + .35, false);
       else if (r < .52) { cyl(f, .06, .05, .1, M.pot, -.4, .81, mz - .05, 10); const l = new THREE.Mesh(new THREE.IcosahedronGeometry(.09, 0), M.leaf); l.position.set(-.4, .92, mz - .05); f.add(l); }
-      SEATS.desk.push(spot);
     }
   }
   return { name, cx, cz };

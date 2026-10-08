@@ -11,8 +11,8 @@ import { endTask } from '../sim/tasks.js';
 import { $ } from '../ui/dom.js';
 import { select, selected, statusText } from '../ui/person.js';
 import { ENTRY } from '../world/entrance.js';
-import { SEATS } from '../world/furniture/basics.js';
 import { setWallGoal, wallGoal } from '../world/helpers.js';
+import { interactables } from '../world/interactables.js';
 
 /* ================= First person ================= */
 const fp = { on: false, p: null, yaw: 0, pitch: 0, sitting: null, moving: false, eye: 1.6, savedWall: LOW_H, stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0, acc: 0 };
@@ -51,7 +51,7 @@ function seatOK(sp, p) {
 }
 function nearestSeat() {
   const p = fp.p; let best = null, bd = 1.15;
-  const all = [...SEATS.desk, ...Object.values(SEATS.conf).flat(), ...SEATS.dining, ...SEATS.lounge, ...SEATS.bar, ...SEATS.booth];
+  const all = [...interactables.of('desk'), ...interactables.of('conf'), ...interactables.of('dining'), ...interactables.of('lounge'), ...interactables.of('bar'), ...interactables.of('booth')];
   for (const sp of all) { if (!seatOK(sp, p)) continue; const d = Math.hypot(sp.pos.x - p.pos.x, sp.pos.z - p.pos.z); if (d < bd) { bd = d; best = sp; } }
   return best;
 }

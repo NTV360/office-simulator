@@ -5,7 +5,7 @@ import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
 import { addLog, people, sim } from './state.js';
 import { EXIT } from '../world/entrance.js';
-import { SEATS } from '../world/furniture/basics.js';
+import { interactables } from '../world/interactables.js';
 
 /* ---------- Tasks ---------- */
 function endTask(p) {
@@ -39,31 +39,31 @@ const free = list => shuffle(list.filter(s => !s.occupant));
 
 function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
 function coffee(p) {
-  const s = free(SEATS.counter)[0]; if (!s) return false;
+  const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => { q.body.mug.visible = false; } });
   if (ok && Math.random() < .5) p.queue.push('bar');
   if (ok && Math.random() < .3) p.queue.push('sink');
   return ok;
 }
-function sinkTrip(p) { const s = free(SEATS.sink)[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
-function lockerTrip(p) { const s = free(SEATS.locker)[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
-function sofaBreak(p) { const s = free(SEATS.lounge.filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
+function sinkTrip(p) { const s = free(interactables.of('sink'))[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
+function lockerTrip(p) { const s = free(interactables.of('locker'))[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
+function sofaBreak(p) { const s = free(interactables.of('lounge').filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
 function dartsBreak(p) {
-  const s = free(SEATS.darts)[0]; if (!s) return false;
+  const s = free(interactables.of('darts'))[0]; if (!s) return false;
   return goDo(p, { kind: 'darts', cat: 'break', anim: 'darts', spot: s, dur: rnd(6, 12) });
 }
 function golfBreak(p) {
-  const s = free(SEATS.golf)[0]; if (!s) return false;
+  const s = free(interactables.of('golf'))[0]; if (!s) return false;
   return goDo(p, { kind: 'golf', cat: 'break', anim: 'putt', spot: s, dur: rnd(6, 12), onStart: q => q.body.putter.visible = true, onEnd: q => q.body.putter.visible = false });
 }
 function gameBreak(p) {
-  const s = free(SEATS.lounge.filter(x => x.game))[0]; if (!s) return false;
+  const s = free(interactables.of('lounge').filter(x => x.game))[0]; if (!s) return false;
   return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => q.body.pad.visible = true, onEnd: q => q.body.pad.visible = false });
 }
-function storageTrip(p) { const s = free(SEATS.storage)[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
-function barTrip(p) { const s = free(SEATS.bar)[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false }); }
+function storageTrip(p) { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
+function barTrip(p) { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false }); }
 function booth(p) {
-  const s = free(SEATS.booth)[0]; if (!s) return false;
+  const s = free(interactables.of('booth'))[0]; if (!s) return false;
   return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
 }
 function chat(p) {
@@ -84,12 +84,12 @@ function chat(p) {
   return false;
 }
 function lunch(p) {
-  const d = free(SEATS.dining)[0];
+  const d = free(interactables.of('dining'))[0];
   if (d && Math.random() < .75) {
     if (Math.random() < .35 && lockerTrip(p)) { p.queue.push('dining'); return true; }
     return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) });
   }
-  const s = free(SEATS.lounge.filter(x => !x.game))[0];
+  const s = free(interactables.of('lounge').filter(x => !x.game))[0];
   if (s && Math.random() < .5) return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: s, dur: rnd(20, 30) });
   return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.seat, dur: rnd(20, 30) });
 }
@@ -106,7 +106,7 @@ function runQueued(p, k) {
   if (k === 'sink') return sinkTrip(p);
   if (k === 'bar') return barTrip(p);
   if (k === 'exit') { goExit(p); return true; }
-  if (k === 'dining') { const d = free(SEATS.dining)[0]; return !!d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) }); }
+  if (k === 'dining') { const d = free(interactables.of('dining'))[0]; return !!d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) }); }
   return false;
 }
 function chooseNext(p) {
@@ -126,8 +126,8 @@ function chooseNext(p) {
   if (r < .49 && gameBreak(p)) return;
   if (r < .53 && golfBreak(p)) return;
   if (r < .57 && dartsBreak(p)) return;
-  if (SEATS.darts.some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
-  if (SEATS.golf.some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
+  if (interactables.of('darts').some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
+  if (interactables.of('golf').some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
   { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .07 && gameBreak(p)) return; }
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }

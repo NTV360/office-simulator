@@ -3,11 +3,11 @@ import { W } from '../../config/plan.js';
 import { TAU, rnd } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { addObs, box, cyl, frame } from '../helpers.js';
+import { interactables } from '../interactables.js';
 
 /* ================= Furniture ================= */
-const SEATS = { desk: [], conf: { 1: [], 2: [], 3: [] }, dining: [], lounge: [], bar: [], booth: [], counter: [], sink: [], locker: [], storage: [] };
 function mkSpot(kind, px, py, face, o = {}) {
-  return { kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53, place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room };
+  return interactables.add({ kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53, place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room });
 }
 const E = Math.PI / 2, WST = -Math.PI / 2, N = Math.PI, SO = 0; // facing directions: east, west, north, south
 
@@ -41,4 +41,4 @@ function plant(px, py, big = 1) {
   addObs(px - 6 * big, py - 6 * big, px + 6 * big, py + 6 * big);
 }
 
-export { E, N, SEATS, SO, WST, barStool, mkSpot, officeChair, plant, woodChair };
+export { E, N, SO, WST, barStool, mkSpot, officeChair, plant, woodChair };
