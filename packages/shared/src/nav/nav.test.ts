@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { OX, OY, S, W } from '../plan';
+import { OX, OY, S, W, toPx } from '../plan';
 import { Vec3 } from '../vec3';
 import { stepPlayer } from '../sim/locomotion';
 import { GC, GR, NAV, initGrid, walkPx } from './grid';
@@ -33,26 +33,34 @@ describe('grid', () => {
 
 describe('findPath', () => {
   beforeAll(() => initGrid([]));
-  it('finds a straight route in open floor and ends at the target', () => {
+  it('goes straight in open floor: the only waypoint is the target (the start is not included)', () => {
     const a = W(450, 600), b = W(500, 640);
     const path = findPath(a, b)!;
-    expect(path).not.toBeNull();
-    const last = path[path.length - 1];
-    expect(last.x).toBeCloseTo(b.x, 9);
-    expect(last.z).toBeCloseTo(b.z, 9);
+    expect(path).toHaveLength(1);
+    expect(path[0].x).toBeCloseTo(b.x, 9);
+    expect(path[0].z).toBeCloseTo(b.z, 9);
   });
-  it('routes around a wall of obstacles', () => {
+  it('bends around a wall: more than one waypoint, one of them past the wall end, every straight leg walkable', () => {
     initGrid([[480, 500, 520, 700]]);
     const a = W(400, 600), b = W(600, 600);
     const path = findPath(a, b)!;
     expect(path.length).toBeGreaterThan(1);
-    for (const v of path.slice(0, -1)) expect(walkPx(v.x / S + OX, v.z / S + OY)).toBe(true);
+    const pts = [toPx(a), ...path.map(toPx)];
+    expect(pts.some(([, y]) => y < 500 || y > 700)).toBe(true);
+    for (let i = 0; i < pts.length - 1; i++) for (let k = 0; k <= 20; k++) {
+      const x = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * k / 20, y = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * k / 20;
+      expect(walkPx(x, y)).toBe(true);
+    }
+    const last = path[path.length - 1];
+    expect(last.x).toBeCloseTo(b.x, 9);
+    expect(last.z).toBeCloseTo(b.z, 9);
     initGrid([]);
   });
-  it('gives up when the target is sealed off', () => {
-    const ring: [number, number, number, number][] = [[440, 590, 460, 598], [440, 602, 460, 610], [440, 590, 448, 610], [452, 590, 460, 610]];
-    initGrid(ring);
-    expect(findPath(W(200, 600), W(450, 600))).not.toBeNull; // nearestWalk may relocate the target; must not throw
+  it('returns null when a wall splits the floor in two and both ends are walkable', () => {
+    initGrid([[0, 480, 1000, 520]]);
+    expect(walkPx(450, 400)).toBe(true);
+    expect(walkPx(450, 700)).toBe(true);
+    expect(findPath(W(450, 400), W(450, 700))).toBeNull();
     initGrid([]);
   });
 });
@@ -66,9 +74,12 @@ describe('stepPlayer', () => {
   });
   it('slides along a blocked axis', () => {
     initGrid([[470, 560, 490, 640]]);
-    const w = W(466, 600), p = walker(w.x, w.z);
-    const moved = stepPlayer(p, 1, 0.2, [p]);
-    expect(moved).toBeGreaterThan(0);
+    const w = W(440, 600), p = walker(w.x, w.z);
+    const x0 = p.pos.x, z0 = p.pos.z;
+    const moved = stepPlayer(p, 1.5, 0.2, [p]);
+    expect(p.pos.x).toBe(x0);
+    expect(p.pos.z).toBeCloseTo(z0 + 0.2, 12);
+    expect(moved).toBeCloseTo(0.2, 12);
     initGrid([]);
   });
   it('nudges out of another person but ignores people who are away', () => {
