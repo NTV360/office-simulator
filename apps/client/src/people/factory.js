@@ -1,7 +1,7 @@
 import { TAU, pick, random, rnd } from '@office/shared';
 import { buildBody } from '../character/rig.js';
-import { randomSpec } from '../character/spec.js';
-import { FIRST, LAST, roleBag } from './data.js';
+import { randomSpec } from '@office/shared';
+import { FIRST, LAST, roleBag } from '@office/shared';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { SCREENS } from '../render/screens.js';
 import { deskPool, people } from '../sim/state.js';

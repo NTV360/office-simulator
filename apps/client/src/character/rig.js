@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATS } from '../people/data.js';
+import { CATS } from '@office/shared';
 import { boxGeo } from '../world/helpers.js';
 import { addAngry, addGlasses, addHair, addHeadphones } from './parts.js';
 import { makeGuitar } from './props.js';

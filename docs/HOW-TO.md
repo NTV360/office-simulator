@@ -39,7 +39,7 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
      return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: ..., onEnd: ... });
    }
    ```
-   `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `people/data.js`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
+   `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `packages/shared/src/sim/data.ts`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
 3. **Offer it** by adding a line to `chooseNext` in `sim/tasks.js` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
 4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`).
 5. **Word it for the HUD**: add `case 'piano': return going ? '...' : '...';` in `statusText` in `ui/person.js`.
@@ -60,7 +60,7 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
 
 All of these also apply to NPCs and the player, because they all share `CharacterSpec`.
 
-1. **`character/spec.js`:** add the field to `DEFAULT_SPEC`, to `randomSpec` (usually a constant so NPCs do not change), and to `normalizeSpec`. Add the choices to `PARTS` (or `STYLE_OPTIONS` for a hairstyle). Keep this file free of Three.js.
+1. **`packages/shared/src/character/spec.ts`:** add the field to `DEFAULT_SPEC`, to `randomSpec` (usually a constant so NPCs do not change), and to `normalizeSpec`. Add the choices to `PARTS` (or `STYLE_OPTIONS` for a hairstyle). Keep this file free of Three.js.
 2. **Build it:**
    - Hairstyle: add an entry to `HAIR_STYLES` in `character/parts.js` (`{ cap, extra(head, hair, spec) }`).
    - Anything else on the head/face: add an `add<Thing>(head, spec)` in `parts.js` and call it from `buildBody` in `character/rig.js`.

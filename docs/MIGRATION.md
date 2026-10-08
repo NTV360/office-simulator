@@ -76,7 +76,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 1080 to 1111 labels | `apps/client/src/render/labels.js` |
 | 1113 to 1133 nav grid | `apps/client/src/nav/grid.js` |
 | 1134 to 1171 A* | `apps/client/src/nav/astar.js` |
-| 1173 to 1195 names, roles, activity categories | `apps/client/src/people/data.js` (palettes moved to `character/spec.js`) |
+| 1173 to 1195 names, roles, activity categories | `packages/shared/src/sim/data.ts` (palettes in `packages/shared/src/character/spec.ts`; both moved in phase 1, step 3) |
 | 1196 to 1274 `buildBody` | `apps/client/src/character/rig.js`, `parts.js`, `gfx.js` |
 | 1276 to 1285 people list, sim clock, log | `apps/client/src/sim/state.js` |
 | 1287 to 1323 `makePerson`, `removePerson`, `scheduleDay` | `apps/client/src/people/factory.js` |
@@ -105,7 +105,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | `SEATS.x.push(mkSpot(...))` | `mkSpot(...)` alone; it registers itself |
 | `SEATS.x = []` | not needed |
 | `look`, `p.look.shirt`, `buildBody(look)` | `spec`, `p.spec.shirt`, `buildBody(spec)` (`character/rig.js`) |
-| the `look = {...}` block in `makePerson` | `randomSpec(role)` in `character/spec.js` |
+| the `look = {...}` block in `makePerson` | `randomSpec(role)` in `packages/shared/src/character/spec.ts` |
 | `fp.on` | `ctl.active` (first **or** third person) |
 | `fp.p` | `player.person` (the player is its own entity now) |
 | `fp.sitting`, `fp.moving` | `player.sitting`, `player.moving` |
@@ -143,6 +143,6 @@ That commit added a special character, a rage mode, a music corner and new look 
 | "Music corner" label | `apps/client/src/render/labels.js` |
 | Camera shake, `updateRage`, `updateMusic` in the loop | `apps/client/src/main.js` |
 | Player can sit at the piano/guitar | `apps/client/src/player/seating.js` |
-| "UX/UI Designer" role verb | `apps/client/src/people/data.js` |
+| "UX/UI Designer" role verb | `packages/shared/src/sim/data.ts` |
 
 Two things changed on the way over: Hazel's rage no longer needs a special case for the player possessing her (the player is separate), and her look fields are part of `CharacterSpec`.

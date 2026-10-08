@@ -1,4 +1,4 @@
-import { CATS } from '../people/data.js';
+import { CATS } from '@office/shared';
 import { phaseName } from '../sim/day.js';
 import { log, logState, people, sim } from '../sim/state.js';
 import { $ } from './dom.js';

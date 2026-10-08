@@ -10,7 +10,7 @@ Accounts with username and password; one shared, **persistent** office for about
 ### Character creation
 Let the player choose their look, and keep it.
 
-- The pieces exist: `CharacterSpec` (`character/spec.js`) lists every option in `PARTS`, `normalizeSpec()` repairs any input, and `setPlayerSpec(raw)` rebuilds the player's body live.
+- The pieces exist: `CharacterSpec` (`packages/shared/src/character/spec.ts`) lists every option in `PARTS`, `normalizeSpec()` repairs any input, and `setPlayerSpec(raw)` rebuilds the player's body live.
 - To build: a creator screen (a new `ui/` module) that edits a spec and calls `setPlayerSpec`; saving and loading the spec (start with `localStorage` as JSON, validated through `normalizeSpec`); more options in `PARTS` and `HAIR_STYLES`.
 - Keep NPCs and the player on the same base rig. New looks are new parts, not a second rig.
 

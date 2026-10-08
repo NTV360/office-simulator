@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
-import { VERB } from '../people/data.js';
+import { VERB } from '@office/shared';
 import { scene } from '../render/renderer.js';
 import { $ } from './dom.js';
 

@@ -47,7 +47,7 @@ In practice:
 |---|---|---|
 | `render/labels.js` | `world/furniture/desks.js` | labels each desk island |
 | `render/lighting.js` | `sim/state.js` | light follows the sim clock |
-| `character/rig.js` | `people/data.js` | the activity-ring colours come from `CATS` |
+| `character/rig.js` | `@office/shared` (`sim/data.ts`) | the activity-ring colours come from `CATS` |
 | `people/factory.js` | `ui/person.js` | deselects a removed person |
 | `people/animation.js` | `player/player.js` | the player's pose depends on sitting/moving |
 | `people/hazel.js` | `camera/`, `player/`, `ui/` | Hazel's HUD buttons, camera follow and rage effects live in one feature module |
@@ -124,7 +124,7 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 
 A character is three separate things:
 
-- **`CharacterSpec`** (`character/spec.js`): plain JSON describing the look (colours, hair style, glasses, jacket, scale, and so on). `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `PARTS` lists the options a character creator can offer. It has no Three.js in it.
+- **`CharacterSpec`** (`packages/shared/src/character/spec.ts`): plain JSON describing the look (colours, hair style, glasses, jacket, scale, and so on). `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `PARTS` lists the options a character creator can offer. It has no Three.js in it.
 - **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
 - **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig and the same `people/animation.js` poses.
 

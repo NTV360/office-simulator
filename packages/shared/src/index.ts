@@ -26,3 +26,5 @@ export function clampSlotCount(requested: number, desks: number): number {
 export * from './plan';
 export * from './util';
 export * from './vec3';
+export * from './character/spec';
+export * from './sim/data';
