@@ -19,13 +19,15 @@ npm run build    # outputs dist/
 | `nav/` | Navigation grid and A* pathfinding |
 | `character/` | `spec.js` CharacterSpec (plain JSON appearance + parts catalog + validation, no Three.js), `rig.js` body rig, `parts.js` hair/accessories, `gfx.js` shared helpers |
 | `people/` | NPC data (names, roles, activity categories), factory, animation poses, per-frame body sync |
-| `player/` | The player entity: same rig as NPCs, not in the NPC list; `setPlayerSpec()` changes its look |
+| `player/` | The player entity (same rig as NPCs, not in the NPC list; `setPlayerSpec()` changes its look) plus what first and third person share: `control.js` (look angles, touch stick, keys, movement), `locomotion.js` (collision), `seating.js`, `prompts.js` |
 | `sim/` | Shared sim state, tasks, meetings, day cycle, per-frame stepping |
-| `camera/` | `controller.js` switches camera modes (`modes/`: angle, top, follow, free, firstPerson); `state.js` orbit state; `orbit.js` + `input.js` pointer/keyboard input; `spots.js` jump-to |
+| `camera/` | `controller.js` switches camera modes (`modes/`: angle, top, follow, free, firstPerson, thirdPerson); `state.js` orbit state; `collide.js` wall collision for the third-person arm; `orbit.js` + `input.js` pointer/keyboard input; `spots.js` jump-to |
 | `ui/` | HUD controls, ledger, selected-person card |
-| `fp/` | First-person mode |
+| `fp/` | First-person camera (eye height, bob) |
 | `styles/` | CSS, split by UI area |
 
 `src/bootstrap.js` is the one place that assembles the scene: each world/sim/UI module exports a `build*()` or `init*()` function and bootstrap calls them in order (furniture registers interactables, the nav grid reads the obstacles, then people are seated). Modules do nothing on import. `src/main.js` calls `bootstrap()` and runs the main loop.
+
+Walk around as your character with **First person** or **Third person** (over the right shoulder). Keys: WASD/arrows move, drag to look, Shift run, E sit/stand, V swap first/third person, C swap shoulder (third person), wheel zoom (third person), Esc exit.
 
 To add a camera view: write a mode (`{ id, enter, update, exit }`) in `camera/modes/` and register it in `initCamera()`.

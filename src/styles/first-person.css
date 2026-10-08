@@ -8,6 +8,6 @@
 #crosshair{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(20,30,40,.55);z-index:3;pointer-events:none}
 #stick{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.6);z-index:3;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 2px 8px rgba(0,0,0,.2)}
-body.fp #hud,body.fp #ledger,body.fp #person,body.fp #uiToggle{display:none}
-body.fp #stage canvas{cursor:crosshair}
+body.fp #hud,body.fp #ledger,body.fp #person,body.fp #uiToggle,body.tp #hud,body.tp #ledger,body.tp #person,body.tp #uiToggle{display:none}
+body.fp #stage canvas,body.tp #stage canvas{cursor:crosshair}
 @media (max-width:760px){#fpBar{left:12px;right:12px;transform:none;max-width:none}.fp-keys{display:none}#fpPrompt{bottom:calc(160px + env(safe-area-inset-bottom,0px))}}

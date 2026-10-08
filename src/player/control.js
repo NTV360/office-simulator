@@ -21,14 +21,16 @@ const ctl = {
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
 function beginControl(mode, p, hud) {
   Object.assign(ctl, { active: true, mode, yaw: p.face, pitch: -.08, savedWall: wall.goal });
-  player.sitting = null; player.moving = false;
+  player.moving = false;
   wall.goal = FULL_H;
   document.body.classList.add(mode);
   $('fpBar').hidden = false; $('stick').hidden = !ctl.coarse; $('fpPrompt').hidden = false;
   $('fpMode').textContent = hud.title; $('fpKeys').textContent = hud.keys; $('fpWho').textContent = 'Walking as you';
 }
-function endControl() {
-  const p = player.person; if (player.sitting && p) standUp(p);
+const PLAY_VIEWS = new Set(['fp', 'third']);
+// Stop steering. Stand up unless we are just swapping between first and third person.
+function endControl(nextId) {
+  const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId)) standUp(p);
   document.body.classList.remove(ctl.mode);
   Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
   wall.goal = ctl.savedWall; ctl.stick.x = ctl.stick.y = 0;

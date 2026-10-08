@@ -5,6 +5,7 @@ import { scene } from '../render/renderer.js';
 /* ================= Geometry helpers ================= */
 const staticRoot = new THREE.Group(); scene.add(staticRoot);
 const OBS = []; // obstacle rects in plan px
+const SOLIDS = []; // wall/block rects in plan px with their full height: [x1, y1, x2, y2, fullH]
 const addObs = (x1, y1, x2, y2) => OBS.push([Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)]);
 const geoCache = new Map();
 function boxGeo(w, h, d) { const k = `b${w.toFixed(3)},${h.toFixed(3)},${d.toFixed(3)}`; if (!geoCache.has(k)) geoCache.set(k, new THREE.BoxGeometry(w, h, d)); return geoCache.get(k); }
@@ -29,4 +30,4 @@ const scalers = [];
 // Wall height: `goal` is where the toggle wants it, `h` eases toward it each frame.
 const wall = { h: LOW_H, goal: LOW_H };
 
-export { OBS, addObs, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wall };
+export { OBS, SOLIDS, addObs, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wall };

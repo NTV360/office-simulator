@@ -4,7 +4,7 @@ import { enterFP, fpUpdate, leaveFP } from '../../fp/firstPerson.js';
 const firstPersonMode = {
   id: 'fp',
   enter() { enterFP(); },
-  exit() { leaveFP(); },
+  exit(ctrl) { leaveFP(ctrl.nextId); },
   update(dt) { fpUpdate(dt); },
 };
 

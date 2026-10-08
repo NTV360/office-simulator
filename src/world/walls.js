@@ -3,7 +3,7 @@ import { FULL_H, S, W, WALLS, WALL_T, wx, wz } from '../config/plan.js';
 import { pick } from '../core/util.js';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
-import { addObs, boxGeo, dynamic, scalers } from './helpers.js';
+import { SOLIDS, addObs, boxGeo, dynamic, scalers } from './helpers.js';
 
 /* ================= Walls and doors ================= */
 function wallSeg(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, thick = WALL_T, capMat = M.cap) {
@@ -13,6 +13,7 @@ function wallSeg(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, thick = WALL_T, c
 }
 function solidBlock(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, capMat = M.cap) {
   addObs(x1, y1, x2, y2);
+  SOLIDS.push([x1, y1, x2, y2, fullH]);
   const w = (x2 - x1) * S, d = (y2 - y1) * S, cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2);
   const g = new THREE.BoxGeometry(w, 1, d); g.translate(0, .5, 0);
   const body = dynamic(new THREE.Mesh(g, mat)); body.position.set(cx, 0, cz); body.castShadow = !mat.transparent; body.receiveShadow = true; scene.add(body);
