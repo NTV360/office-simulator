@@ -1,4 +1,4 @@
-import { FIRST, LAST, TAU, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
+import { FIRST, LAST, TAU, newProps, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
 import { buildBody } from '../character/rig.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { SCREENS } from '../render/screens.js';
@@ -20,14 +20,13 @@ function makePerson() {
   const p = {
     id: people.length, name: `${first} ${last}`, role, spec, body, seat,
     pos: seat.pos.clone(), face: seat.face, faceGoal: seat.face, speed: rnd(1.15, 1.45),
-    state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
+    state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
     screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
   p.screenMat = pick(SCREENS[p.screenKind]);
   seat.owner = p;
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
-  body.root.visible = false; body.ring.visible = false;
   peopleGroup.add(body.root); peopleGroup.add(body.ring);
   scheduleDay(p);
   people.push(p);

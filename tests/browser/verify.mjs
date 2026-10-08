@@ -83,14 +83,24 @@ async function openPage(browser, url, query = '') {
 // Step the simulation to each checkpoint and return the fingerprints.
 async function runSeed(browser, url, seed) {
   const { page, errors } = await openPage(browser, url, `?seed=${seed}`);
-  const prints = [];
+  const prints = [], mesh = [];
   let done = 0;
   for (const cp of CHECKPOINTS) {
     prints.push(await page.evaluate(n => { window.__sim.advance(n); return window.__sim.fingerprint(); }, cp - done));
     done = cp;
+    // the meshes must show exactly what the people's state says (let two frames render first; the sim is paused)
+    const bad = await page.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const out = [], keys = ['mug', 'phone', 'pad', 'guitar', 'putter'];
+      for (const p of window.__sim.people) {
+        if (p.body.root.visible !== p.shown || p.body.ring.visible !== p.shown) out.push(p.name + ': body shown ' + p.body.root.visible + ' but state says ' + p.shown);
+        for (const k of keys) if (p.body[k].visible !== p.props[k]) out.push(p.name + ': ' + k + ' mesh ' + p.body[k].visible + ' but state says ' + p.props[k]);
+      }
+      res(out.slice(0, 4));
+    }))));
+    mesh.push(...bad.map(b => 'step ' + cp + ' ' + b));
   }
   await page.close();
-  return { prints, errors };
+  return { prints, errors, mesh };
 }
 
 // First few differences between two plain JSON values.
@@ -120,6 +130,8 @@ try {
     console.log(`seed ${seed}`);
     const first = await runSeed(browser, site.url, seed);
     first.errors.forEach(e => fail(e));
+    first.mesh.forEach(e => fail('meshes disagree with state, ' + e));
+    if (!first.mesh.length) pass('meshes (visibility and held props) match each person state at every checkpoint');
 
     if (record) {
       const second = await runSeed(browser, site.url, seed); // the recording itself must be repeatable

@@ -1,5 +1,5 @@
 import { buildBody } from '../character/rig.js';
-import { DEFAULT_SPEC, normalizeSpec } from '@office/shared';
+import { DEFAULT_SPEC, newProps, normalizeSpec } from '@office/shared';
 import { peopleGroup } from '../people/group.js';
 import { ENTRY } from '../world/entrance.js';
 import { N } from '../world/furniture/basics.js';
@@ -20,7 +20,7 @@ function spawnPlayer() {
   if (player.person) return player.person;
   const p = {
     id: -1, name: 'You', role: 'You', spec: player.spec, body: makeBody(player.spec),
-    pos: ENTRY.clone(), face: N, faceGoal: N, state: 'player', task: null, chatWith: null,
+    pos: ENTRY.clone(), face: N, faceGoal: N, state: 'player', shown: true, props: newProps(), task: null, chatWith: null,
     walkPhase: 0, animT: 0, pose: {},
   };
   player.person = p;

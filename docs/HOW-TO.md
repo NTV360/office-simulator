@@ -44,7 +44,7 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
 4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`).
 5. **Word it for the HUD**: add `case 'piano': return going ? '...' : '...';` in `statusText` in `ui/person.js`.
 6. **Let the player use it**: add the kind to the list in `nearestSeat` (`player/seating.js`) and map it to an `anim` in `sitDown`.
-7. **Props** a person holds (a guitar, a mug) belong on the rig: create them in `character/props.js` / `character/rig.js`, hidden by default, and toggle `visible` in `onStart`/`onEnd` and in `sitDown`/`standUp`.
+7. **Props** a person holds are state, not meshes. Add the name to `PROP_KEYS` in `packages/shared/src/sim/props.ts`, create the mesh in `character/rig.js` (hidden by default), and set the flag in `onStart`/`onEnd` (`q.props.mug = true`) and in `sitDown`/`standUp`. `people/sync.js` shows or hides the mesh from the flag every frame. The simulation never touches a mesh.
 8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `sim/day.js`.
 9. Check: `__sim.advance(3000)` a dozen times shows your `kind` among `people[i].task.kind`, and the player can sit and play.
 

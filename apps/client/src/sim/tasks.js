@@ -36,7 +36,7 @@ const free = list => shuffle(list.filter(s => !s.occupant));
 function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
 function coffee(p) {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
-  const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => { q.body.mug.visible = false; } });
+  const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
   if (ok && random() < .5) p.queue.push('bar');
   if (ok && random() < .3) p.queue.push('sink');
   return ok;
@@ -47,7 +47,7 @@ function sofaBreak(p) { const s = free(interactables.of('lounge').filter(x => !x
 function musicBreak(p) {
   const s = free(interactables.of('music'))[0]; if (!s) return false;
   const g = s.kind === 'guitar';
-  return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: q => { if (g) q.body.guitar.visible = true; }, onEnd: q => { q.body.guitar.visible = false; } });
+  return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: q => { if (g) q.props.guitar = true; }, onEnd: q => { q.props.guitar = false; } });
 }
 function dartsBreak(p) {
   const s = free(interactables.of('darts'))[0]; if (!s) return false;
@@ -55,17 +55,17 @@ function dartsBreak(p) {
 }
 function golfBreak(p) {
   const s = free(interactables.of('golf'))[0]; if (!s) return false;
-  return goDo(p, { kind: 'golf', cat: 'break', anim: 'putt', spot: s, dur: rnd(6, 12), onStart: q => q.body.putter.visible = true, onEnd: q => q.body.putter.visible = false });
+  return goDo(p, { kind: 'golf', cat: 'break', anim: 'putt', spot: s, dur: rnd(6, 12), onStart: q => q.props.putter = true, onEnd: q => q.props.putter = false });
 }
 function gameBreak(p) {
   const s = free(interactables.of('lounge').filter(x => x.game))[0]; if (!s) return false;
-  return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => q.body.pad.visible = true, onEnd: q => q.body.pad.visible = false });
+  return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => q.props.pad = true, onEnd: q => q.props.pad = false });
 }
 function storageTrip(p) { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
-function barTrip(p) { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false }); }
+function barTrip(p) { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.props.mug = true, onEnd: q => q.props.mug = false }); }
 function booth(p) {
   const s = free(interactables.of('booth'))[0]; if (!s) return false;
-  return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
+  return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => q.props.phone = true, onEnd: q => q.props.phone = false });
 }
 function chat(p) {
   const cands = shuffle(people.filter(q => q !== p && q.state === 'doing' && q.task?.kind === 'work' && !q.chatWith));
@@ -99,8 +99,8 @@ function leave(p) {
   goExit(p);
 }
 function goExit(p) {
-  if (!goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: EXIT, dur: 0, onStart: q => { q.state = 'away'; q.body.root.visible = false; q.body.ring.visible = false; q.task = null; addLog(`${q.name} headed home`); } })) {
-    p.state = 'away'; p.body.root.visible = false; p.body.ring.visible = false;
+  if (!goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: EXIT, dur: 0, onStart: q => { q.state = 'away'; q.shown = false; q.task = null; addLog(`${q.name} headed home`); } })) {
+    p.state = 'away'; p.shown = false;
   }
 }
 function runQueued(p, k) {
