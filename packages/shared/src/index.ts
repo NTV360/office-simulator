@@ -23,4 +23,6 @@ export function clampSlotCount(requested: number, desks: number): number {
   return Math.max(0, Math.min(Math.floor(requested), desks));
 }
 
+export * from './plan';
 export * from './util';
+export * from './vec3';
