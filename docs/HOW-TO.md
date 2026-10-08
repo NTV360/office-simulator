@@ -83,6 +83,19 @@ Hazel (`people/hazel.js`) is the template.
 3. Put the character's own behaviour and effects in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
 4. Poses and status texts go in `people/animation.js` and `ui/person.js` like any other activity.
 
+## Run and test the simulation without a browser
+
+The simulation is plain TypeScript in `packages/shared/src/sim/`. In a test (`*.test.ts` next to the code, run by `npm test`):
+
+```ts
+setSeed(1);                       // repeatable
+buildTestLayout({ desks: 40 });   // a small office with one of everything
+initDay();                        // 40 staff, mid-morning
+for (let i = 0; i < 2000; i++) stepSim(0.05);
+```
+
+See `packages/shared/src/sim/scenario.test.ts` for a full day, meetings, the roll-over and slot claiming. To test a new activity, add its spot to `buildTestLayout` and assert on `people`, `interactables` and `sim`. Waiting for a time of day: the clock jumps back at 19:10, so wait for `sim.day` to change instead.
+
 ## Change the floor plan
 
 - Walls and the outer outline are data in `packages/shared/src/plan.ts` (`OUTER`, `WALLS`) in plan pixels. Wall segments must be axis-aligned (horizontal or vertical); a gap in a wall is a doorway.

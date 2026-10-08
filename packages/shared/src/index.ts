@@ -44,3 +44,4 @@ export * from './sim/meetings';
 export * from './sim/day';
 export * from './sim/step';
 export * from './sim/factory';
+export * from './sim/testing';

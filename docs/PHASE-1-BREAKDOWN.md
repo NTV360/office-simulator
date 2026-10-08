@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: approved. Steps 0 to 8 are done; step 9 is next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. All of steps 0 to 9 are done. Phase 1 is complete.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -82,6 +82,13 @@ Building the safety net taught three things, now part of how the project works:
 4. **`resetSim()`** puts the clock, log, people, meetings and the name counter back to a fresh state, for step 9's Node tests. Spots are cleared with `interactables.clear()`.
 5. **Spots carry their own ids.** `mkSpot` gives each spot `kind:n`, which the screen registry and the fingerprint use.
 
+### What step 9 turned out to need
+
+1. **A test office.** `buildTestLayout({ desks })` (`packages/shared/src/sim/testing.ts`) resets the simulation and registers one of everything the simulation looks for on open floor, so the real code runs with no browser and no client. The built CommonJS package (what the server will import) runs a seeded day in Node.
+2. **What the scenario tests cover.** A seeded day: 40 staff with their own desks, everyone in and busy by early afternoon, nobody on someone else's desk, meetings start with at least two people and end, nobody stands still while walking, props follow the task, screens show the right picture, the day rolls over (everyone away and rescheduled), Hazel leaves last, the same seed gives the same day and a different seed a different one, freeing and reusing a desk, and a human-controlled person is left alone.
+3. **They were mutation-tested.** Seven deliberate breaks (a desk not freed, meetings never ending, walkers frozen, a task end hook skipped, the human-controlled guard removed, and others) each made at least one test fail. One break (stepping the human-controlled person) was first missed and the test was strengthened.
+4. **A helper trap.** When a loop waits for a time of day, remember the clock jumps back to the morning at 19:10; wait for the day number to change instead. The first version of the roll-over test looped forever.
+
 **How to use it:**
 
 ```
@@ -105,7 +112,7 @@ It builds the client, serves it, drives headless Chromium, and saves a screensho
 | **6** (**done**) | Slots and screens | `p.seat` becomes `p.slot` (the desk spot, the owner, later the station). The sim no longer touches monitor materials: spots get ids, and a client-side registry maps a spot id to its screen mesh; `updateScreens` and `screenMat` move to the client | Golden master. Browser check: screens show code, design, dashboards, the lock screen and "off" as before | M |
 | **7** (**done**) | The player becomes a person | One person model with `controller: ai or account`. The separate player entity (`player/player.js`) goes; the controlled person lives in the same list, with no slot when playing as a guest. `animation.js` keys off the controller. The ledger still counts only staff | Golden master (with no player spawned, nothing differs). A new browser test: enter first and third person, walk, sit, stand, exit; the staff's fingerprint does not change | M to L |
 | **8** (**done**) | Move the simulation | `sim/state.js` (minus the Three.js group), `meetings`, `day`, `step`, `tasks`, `factory` (minus building a body), and Hazel's identity and schedule move to `shared`. `world/interactables.js` and `mkSpot` move too (pure data); `ENTRY` and `EXIT` become plan constants. A client `people/views.js` creates and removes each person's body from the person list. `removePerson` becomes an event the client listens to (it replaces the call into the UI) | Golden master, exactly. The client now contains no simulation logic | L |
-| **9** | Simulate in Node | Unit and scenario tests on a small test layout that run the real simulation without a browser | A seeded day: everyone arrives and sits; meetings start and end; nobody is stuck; the day rolls over; the same seed gives the same result twice; claiming and releasing a slot works | M |
+| **9** (**done**) | Simulate in Node | Unit and scenario tests on a small test layout that run the real simulation without a browser | A seeded day: everyone arrives and sits; meetings start and end; nobody is stuck; the day rolls over; the same seed gives the same result twice; claiming and releasing a slot works | M |
 
 **Why this order.** Steps 0 to 4 move the parts that are already nearly pure and are the easiest to prove. Steps 5 to 7 remove the real couplings while the code is still in the client, where the golden master and the browser both check it. Step 8 is then a mostly mechanical move, and step 9 is the payoff: the simulation running under tests in Node.
 
