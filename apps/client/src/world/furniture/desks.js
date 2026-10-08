@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { S, vpick, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
-import { SCREENS } from '../../render/screens.js';
+import { SCREENS, registerScreen } from '../../render/screens.js';
 import { N, SO, mkSpot, officeChair } from './basics.js';
 import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
 
@@ -31,7 +31,7 @@ function island(name, x1, y1, x2, y2, cols, sides = ['top', 'bottom'], gap = 12.
       box(f, .58, .34, .03, M.monitor, 0, 1.03, mz);
       const scr = dynamic(new THREE.Mesh(new THREE.PlaneGeometry(.54, .3), SCREENS.off));
       scr.position.set(0, 1.03, mz - .017); scr.rotation.y = Math.PI; f.add(scr);
-      spot.screen = scr;
+      registerScreen(spot.id, scr);
       box(f, .4, .018, .13, M.keyboard, -.03, .77, edge + .2, false);
       box(f, .05, .02, .08, M.keyboard, .26, .77, edge + .2, false);
       const r = Math.random();

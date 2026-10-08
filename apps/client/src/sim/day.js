@@ -31,7 +31,7 @@ function populate(n) {
     const p = makePerson(); if (!p) break;
     if (i < n * .88) {
       p.arriveAt = rnd(8 * 60, 9 * 60 + 20); p.arrivedAt = p.arriveAt; p.shown = true;
-      placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: rnd(2, 40) });
+      placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot, dur: rnd(2, 40) });
     } else p.arriveAt = rnd(sim.t + 1, sim.t + 40);
   }
 }

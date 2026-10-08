@@ -31,7 +31,7 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
    ```js
    mkSpot('piano', 652, 525, E, { sit: true, hipY: .6, place: 'the keyboard', group: 'music' });
    ```
-   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height.
+   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height. Every spot gets a stable `id` (`kind:n`, its place in creation order) when it is registered. If a spot has a screen, register its mesh under that id (`registerScreen(spot.id, mesh)` in `render/screens.js`); the simulation says what a screen shows (`screenState` in `sim/step.js`) and `people/screens.js` applies it. The simulation never holds a mesh.
 2. **Write the activity** in `sim/tasks.js`:
    ```js
    function musicBreak(p) {

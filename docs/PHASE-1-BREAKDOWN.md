@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: approved. Steps 0 to 5 are done; steps 6 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. Steps 0 to 6 are done; steps 7 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -61,6 +61,13 @@ Building the safety net taught three things, now part of how the project works:
 3. **The player's body visibility stays with the camera.** First person hides your own head and third person hides the body when the camera is close; that is presentation, not simulation, so `people/sync.js` applies only the props for the player.
 4. **The shared `Person` type is deferred.** Only the two new fields (`shown`, `props`) were added now; the full type arrives with the simulation move in step 8, when every field has a home.
 
+### What step 6 turned out to need
+
+1. **A person picks a screen number, not a material.** `screenVariant` replaces `screenMat`. The draw is the same single random call (`floor(random() * count)`), so the recordings are unchanged. `SCREEN_VARIANTS` in the shared package is the one list of how many pictures each kind has; the client builds exactly that many.
+2. **The mesh check needs its own statement of the rule.** The first version of the screen check compared the meshes to the same function that set them, which proves nothing. It now states the old rule independently (nobody or away is off, present but not working is the lock screen, working is the person's picture), and a deliberate break was caught.
+3. **Seeded runs do not update screens by themselves.** The paused simulation skips the per-step screen update, so the check runs the update first.
+4. **`seat` became `slot` as a rename only.** The field now means the desk spot; the owner and later the station hang off it. Removing a person no longer blanks the screen itself; the next screen update does.
+
 **How to use it:**
 
 ```
@@ -81,7 +88,7 @@ It builds the client, serves it, drives headless Chromium, and saves a screensho
 | **3** | Character and people data (**done**) | `character/spec.js` becomes `shared/src/character/spec.ts`. `people/data.js` (names, roles, activity categories) moves to `shared` | Unit tests: `normalizeSpec` round trip and bad input; `randomSpec` is repeatable with a seed; every option in `PARTS` is a valid colour | S |
 | **4** (**done**) | Navigation and movement | `nav/astar.js`, `nav/grid.js` and `player/locomotion.js` move to `shared`. The grid is built from obstacle data passed in (`initGrid(outline, obstacles)`) instead of importing the client's list | Unit tests on tiny layouts: a path goes around a wall; no path when sealed in; diagonal costs; `stepPlayer` slides along walls and stops at them. In the browser, the walkable-cell count stays 11,643 and the golden master is unchanged | M |
 | **5** (**done**) | Props and visibility become state | A `Person` type in `shared`. Held items become flags (`p.props.mug`, `.phone`, `.pad`, `.guitar`, `.putter`) set by activities. `sim/day.js`, `sim/tasks.js`, `player/seating.js` and Hazel stop touching meshes. `people/sync.js` applies the flags and shows or hides each body from the person's state | Golden master (the fingerprint now includes the flags). Browser check: mugs, phones, the guitar and the putter still appear and disappear | M |
-| **6** | Slots and screens | `p.seat` becomes `p.slot` (the desk spot, the owner, later the station). The sim no longer touches monitor materials: spots get ids, and a client-side registry maps a spot id to its screen mesh; `updateScreens` and `screenMat` move to the client | Golden master. Browser check: screens show code, design, dashboards, the lock screen and "off" as before | M |
+| **6** (**done**) | Slots and screens | `p.seat` becomes `p.slot` (the desk spot, the owner, later the station). The sim no longer touches monitor materials: spots get ids, and a client-side registry maps a spot id to its screen mesh; `updateScreens` and `screenMat` move to the client | Golden master. Browser check: screens show code, design, dashboards, the lock screen and "off" as before | M |
 | **7** | The player becomes a person | One person model with `controller: ai or account`. The separate player entity (`player/player.js`) goes; the controlled person lives in the same list, with no slot when playing as a guest. `animation.js` keys off the controller. The ledger still counts only staff | Golden master (with no player spawned, nothing differs). A new browser test: enter first and third person, walk, sit, stand, exit; the staff's fingerprint does not change | M to L |
 | **8** | Move the simulation | `sim/state.js` (minus the Three.js group), `meetings`, `day`, `step`, `tasks`, `factory` (minus building a body), and Hazel's identity and schedule move to `shared`. `world/interactables.js` and `mkSpot` move too (pure data); `ENTRY` and `EXIT` become plan constants. A client `people/views.js` creates and removes each person's body from the person list. `removePerson` becomes an event the client listens to (it replaces the call into the UI) | Golden master, exactly. The client now contains no simulation logic | L |
 | **9** | Simulate in Node | Unit and scenario tests on a small test layout that run the real simulation without a browser | A seeded day: everyone arrives and sits; meetings start and end; nobody is stuck; the day rolls over; the same seed gives the same result twice; claiming and releasing a slot works | M |

@@ -5,6 +5,7 @@ const byKind = new Map();
 
 // A spot is listed under its kind, and also under spot.group if it has one (e.g. 'piano' and 'guitar' are both in 'music').
 function add(spot) {
+  spot.id = `${spot.kind}:${of(spot.kind).length}`; // stable: kind plus position in creation order
   for (const k of spot.group ? [spot.kind, spot.group] : [spot.kind]) {
     if (!byKind.has(k)) byKind.set(k, []);
     byKind.get(k).push(spot);

@@ -1,7 +1,6 @@
-import { FIRST, LAST, TAU, newProps, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
+import { FIRST, LAST, SCREEN_VARIANTS, TAU, newProps, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
 import { buildBody } from '../character/rig.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
-import { SCREENS } from '../render/screens.js';
 import { deskPool, people } from '../sim/state.js';
 import { peopleGroup } from './group.js';
 import { endTask } from '../sim/tasks.js';
@@ -10,7 +9,7 @@ import { select, selected } from '../ui/person.js';
 let nameIdx = 0;
 
 function makePerson() {
-  const seat = deskPool.find(s => !s.owner); if (!seat) return null;
+  const slot = deskPool.find(s => !s.owner); if (!slot) return null;
   let role = pick(roleBag);
   const spec = randomSpec(role);
   let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
@@ -18,14 +17,14 @@ function makePerson() {
   nameIdx++;
   const body = buildBody(spec);
   const p = {
-    id: people.length, name: `${first} ${last}`, role, spec, body, seat,
-    pos: seat.pos.clone(), face: seat.face, faceGoal: seat.face, speed: rnd(1.15, 1.45),
+    id: people.length, name: `${first} ${last}`, role, spec, body, slot,
+    pos: slot.pos.clone(), face: slot.face, faceGoal: slot.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
     screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
-  p.screenMat = pick(SCREENS[p.screenKind]);
-  seat.owner = p;
+  p.screenVariant = Math.floor(random() * SCREEN_VARIANTS[p.screenKind]); // same single draw as picking from the list
+  slot.owner = p;
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   peopleGroup.add(body.root); peopleGroup.add(body.ring);
   scheduleDay(p);
@@ -34,7 +33,7 @@ function makePerson() {
 }
 function removePerson() {
   const p = people.pop(); if (!p) return;
-  endTask(p); p.seat.owner = null; p.seat.screen.material = SCREENS.off;
+  endTask(p); p.slot.owner = null;
   peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);
   if (selected === p) select(null);
 }

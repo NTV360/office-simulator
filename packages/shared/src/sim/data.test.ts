@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATS, FIRST, LAST, VERB, roleBag } from './data';
+import { CATS, FIRST, LAST, SCREEN_VARIANTS, VERB, roleBag } from './data';
 
 describe('people data', () => {
   it('has 48 unique first names and 16 last initials', () => {
@@ -18,5 +18,8 @@ describe('people data', () => {
   it('every category has a name and a hex colour', () => {
     expect(Object.keys(CATS)).toEqual(['work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk']);
     for (const c of Object.values(CATS)) { expect(c.name).toBeTruthy(); expect(c.color).toMatch(/^#[0-9a-f]{6}$/i); }
+  });
+  it('has the recorded number of screen pictures for each kind of work', () => {
+    expect(SCREEN_VARIANTS).toEqual({ code: 6, design: 3, dash: 3 });
   });
 });

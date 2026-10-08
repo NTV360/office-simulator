@@ -12,7 +12,7 @@ import './styles/veil.css';
 import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
-import { fingerprint } from './debug.js';
+import { fingerprint, screenMismatches } from './debug.js';
 import { GC, GR, NAV, findPath, setSeed, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
@@ -28,7 +28,8 @@ import { camera, renderer, scene } from './render/renderer.js';
 import { newDay } from './sim/day.js';
 import { tickMeetings, tryMeeting } from './sim/meetings.js';
 import { CLOCK, log, people, sim } from './sim/state.js';
-import { stepPerson, updateScreens } from './sim/step.js';
+import { stepPerson } from './sim/step.js';
+import { updateScreens } from './people/screens.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
 import { ENTRY } from './world/entrance.js';
@@ -78,6 +79,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { fingerprint, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
 }, log };

@@ -127,7 +127,7 @@ A character is three separate things:
 - **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
 - **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig and the same `people/animation.js` poses.
 
-**The player** (`player/`) is a separate entity, not an NPC. It has no seat or schedule and is never picked by the sim. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
+**The player** (`player/`) is a separate entity, not an NPC. It has no desk (slot) or schedule and is never picked by the sim. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
 **Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look and name, she always leaves last, and the HUD can find her or make her angry.
 

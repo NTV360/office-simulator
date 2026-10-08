@@ -3,6 +3,10 @@ export const FIRST = ['Ana', 'Marco', 'Liza', 'Paolo', 'Jessa', 'Carlo', 'Bea', 
 export const LAST = 'ABCDEFGLMNPRSTVY';
 const ROLES: [string, number][] = [['Developer', 10], ['QA Engineer', 2], ['Designer', 2], ['Product Manager', 2], ['DevOps', 2], ['Support', 1]];
 export const roleBag: string[] = ROLES.flatMap(([r, n]) => Array<string>(n).fill(r));
+/** How many different screen pictures exist for each kind of work. A person picks one number; the client owns the pictures. */
+export const SCREEN_VARIANTS = { code: 6, design: 3, dash: 3 } as const;
+export type ScreenKind = keyof typeof SCREEN_VARIANTS;
+
 export const VERB: Record<string, string> = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets' };
 
 export const CATS: Record<string, { name: string; color: string }> = {

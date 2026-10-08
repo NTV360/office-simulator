@@ -95,6 +95,7 @@ async function runSeed(browser, url, seed) {
         if (p.body.root.visible !== p.shown || p.body.ring.visible !== p.shown) out.push(p.name + ': body shown ' + p.body.root.visible + ' but state says ' + p.shown);
         for (const k of keys) if (p.body[k].visible !== p.props[k]) out.push(p.name + ': ' + k + ' mesh ' + p.body[k].visible + ' but state says ' + p.props[k]);
       }
+      out.push(...window.__sim.screenMismatches());
       res(out.slice(0, 4));
     }))));
     mesh.push(...bad.map(b => 'step ' + cp + ' ' + b));
@@ -131,7 +132,7 @@ try {
     const first = await runSeed(browser, site.url, seed);
     first.errors.forEach(e => fail(e));
     first.mesh.forEach(e => fail('meshes disagree with state, ' + e));
-    if (!first.mesh.length) pass('meshes (visibility and held props) match each person state at every checkpoint');
+    if (!first.mesh.length) pass('meshes (visibility, held props and desk screens) match the simulation state at every checkpoint');
 
     if (record) {
       const second = await runSeed(browser, site.url, seed); // the recording itself must be repeatable

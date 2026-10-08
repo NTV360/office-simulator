@@ -33,7 +33,7 @@ function arrive(p) {
 }
 const free = list => shuffle(list.filter(s => !s.occupant));
 
-function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
+function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
 function coffee(p) {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
@@ -69,13 +69,13 @@ function booth(p) {
 }
 function chat(p) {
   const cands = shuffle(people.filter(q => q !== p && q.state === 'doing' && q.task?.kind === 'work' && !q.chatWith));
-  cands.sort((a, b) => (a.seat.place === p.seat.place ? 0 : 1) - (b.seat.place === p.seat.place ? 0 : 1));
+  cands.sort((a, b) => (a.slot.place === p.slot.place ? 0 : 1) - (b.slot.place === p.slot.place ? 0 : 1));
   for (const q of cands.slice(0, 4)) {
-    const f = q.seat.face, back = [-Math.sin(f), -Math.cos(f)], side = [Math.cos(f), -Math.sin(f)];
+    const f = q.slot.face, back = [-Math.sin(f), -Math.cos(f)], side = [Math.cos(f), -Math.sin(f)];
     for (const sd of shuffle([1, -1])) {
-      const v = new Vec3(q.seat.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.seat.pos.z + back[1] * .62 + side[1] * .42 * sd);
+      const v = new Vec3(q.slot.pos.x + back[0] * .62 + side[0] * .42 * sd, 0, q.slot.pos.z + back[1] * .62 + side[1] * .42 * sd);
       if (!walkPx(...toPx(v))) continue;
-      const spot = { kind: 'chat', pos: v, approach: v, face: Math.atan2(q.pos.x - v.x, q.pos.z - v.z), shared: false, place: `${q.seat.place}` };
+      const spot = { kind: 'chat', pos: v, approach: v, face: Math.atan2(q.pos.x - v.x, q.pos.z - v.z), shared: false, place: `${q.slot.place}` };
       const ok = goDo(p, { kind: 'chat', cat: 'chat', anim: 'talkStand', spot, dur: rnd(3, 8), partner: q,
         onStart: me => { if (q.state === 'doing' && q.task?.kind === 'work') q.chatWith = me; },
         onEnd: me => { if (q.chatWith === me) q.chatWith = null; } });
@@ -92,7 +92,7 @@ function lunch(p) {
   }
   const s = free(interactables.of('lounge').filter(x => !x.game))[0];
   if (s && random() < .5) return goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: s, dur: rnd(20, 30) });
-  return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.seat, dur: rnd(20, 30) });
+  return goDo(p, { kind: 'lunchDesk', cat: 'lunch', anim: 'eat', spot: p.slot, dur: rnd(20, 30) });
 }
 function leave(p) {
   if (random() < .3 && !p.queue.includes('exit') && lockerTrip(p)) { p.queue.push('exit'); return; }

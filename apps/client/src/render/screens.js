@@ -1,3 +1,4 @@
+import { SCREEN_VARIANTS } from '@office/shared';
 import * as THREE from 'three';
 import { TAU, vpick } from '@office/shared';
 import { canvasTex } from './materials.js';
@@ -41,9 +42,9 @@ function dashScreen() {
 }
 const screenMat = t => new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
 const SCREENS = {
-  code: Array.from({ length: 6 }, () => screenMat(codeScreen())),
-  design: Array.from({ length: 3 }, () => screenMat(designScreen())),
-  dash: Array.from({ length: 3 }, () => screenMat(dashScreen())),
+  code: Array.from({ length: SCREEN_VARIANTS.code }, () => screenMat(codeScreen())),
+  design: Array.from({ length: SCREEN_VARIANTS.design }, () => screenMat(designScreen())),
+  dash: Array.from({ length: SCREEN_VARIANTS.dash }, () => screenMat(dashScreen())),
   lock: screenMat(canvasTex(128, 72, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#24465c'); gr.addColorStop(1, '#3b6f7f'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(w / 2, 30, 9, 0, TAU); g.fill(); g.fillRect(w / 2 - 18, 46, 36, 4); })),
   off: new THREE.MeshBasicMaterial({ color: 0x0c1014 }),
 };
@@ -59,4 +60,9 @@ function slidesScreen(i) {
 }
 const TV_MATS = { slides: [0, 1, 2].map(i => screenMat(slidesScreen(i))), dash: SCREENS.dash };
 
-export { SCREENS, TV_MATS };
+// The mesh that shows each desk's monitor, by spot id. The simulation only says what a screen shows (see screenState);
+// the client looks the mesh up here.
+const deskScreens = new Map();
+const registerScreen = (spotId, mesh) => deskScreens.set(spotId, mesh);
+
+export { SCREENS, TV_MATS, deskScreens, registerScreen };

@@ -1,5 +1,4 @@
 import { OX, OY, S, angDiff, walkPx } from '@office/shared';
-import { SCREENS } from '../render/screens.js';
 import { arriveNow } from './day.js';
 import { people, sim } from './state.js';
 import { arrive, chooseNext } from './tasks.js';
@@ -45,13 +44,12 @@ function stepPerson(p, dt, sdt) {
   p.face += angDiff(p.face, p.faceGoal) * k;
 }
 
-function updateScreens() {
-  for (const s of interactables.of('desk')) {
-    const p = s.owner;
-    let m = SCREENS.off;
-    if (p && p.state !== 'away') m = (p.state === 'doing' && p.task?.spot === s && (p.task.kind === 'work')) ? p.screenMat : SCREENS.lock;
-    if (s.screen.material !== m) s.screen.material = m;
-  }
+// What a desk's monitor shows: 'off' (nobody's desk, or they are not in), 'lock' (in but not working), or 'kind:variant'
+// (working; e.g. 'code:3'). The client turns that into a material.
+function screenState(s) {
+  const p = s.owner;
+  if (!p || p.state === 'away') return 'off';
+  return (p.state === 'doing' && p.task?.spot === s && p.task.kind === 'work') ? p.screenKind + ':' + p.screenVariant : 'lock';
 }
 
-export { stepPerson, updateScreens };
+export { screenState, stepPerson };
