@@ -6,8 +6,10 @@ A 3D office floor simulation (Three.js, built with Vite). Staff follow daily sch
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # outputs dist/
-npm run preview    # serve the production build
+npm start          # serve the production build (honours $PORT; used on Render)
 ```
+
+Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `npm install && npm run build` and start with `npm start`.
 
 ## Controls
 
