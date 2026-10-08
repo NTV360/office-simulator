@@ -9,6 +9,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | deploy to Render (web service or static site) and fix common deploy errors |
+| [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) | the proposed plan for accounts, a shared realtime world, a server-run NPC crowd, Docker and EC2 (proposal, not built) |
 | [ROADMAP.md](ROADMAP.md) | see what is planned (items, shops, character creation) and the design it was built to allow |
 
 **The short version**
