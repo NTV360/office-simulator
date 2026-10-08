@@ -1,0 +1,44 @@
+// Proves the simulation tests can fail: break the simulation on purpose, one way at a time, and require the Node
+// scenario tests to notice. Each file is put back afterwards, even if this script is interrupted.   npm run check:mutations
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const sim = 'packages/shared/src/sim/';
+
+const MUTATIONS = [
+  ['a new day forgets to hide people', sim + 'day.ts', 'p.meeting = null; p.shown = false; scheduleDay(p);', 'p.meeting = null; scheduleDay(p);'],
+  ['removing staff does not free their desk', sim + 'factory.ts', 'endTask(p); if (p.slot) p.slot.owner = null;', 'endTask(p);'],
+  ['meetings never end', sim + 'meetings.ts', 'if (sim.t >= m.end) {', 'if (sim.t >= m.end + 100000) {'],
+  ['walkers never move', sim + 'step.ts', 'else { p.pos.x += dx / d * step; p.pos.z += dz / d * step; moved += step; step = 0; }', 'else { moved += step; step = 0; }'],
+  ['finishing a task skips its end hook (props stay in hand)', sim + 'tasks.ts', '  if (t.onEnd) t.onEnd(p);', ''],
+  ['the simulation steps the human-controlled person', sim + 'step.ts', '  if (isControlled(p)) return;', ''],
+  ['Hazel loses her late-stay rule', sim + 'factory.ts', 'if (p.name === HAZEL_NAME) p.leaveAt = HAZEL_LEAVE_AT;', ''],
+  ['the new day does not clear the arrival record', sim + 'factory.ts', 'p.hadLunch = false; p.arrivedAt = null; p.coffees = 0;', 'p.hadLunch = false; p.coffees = 0;'],
+  ['the same seed no longer gives the same day', sim + 'tasks.ts', 'const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant));', 'const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant)).sort(() => Math.random() - .5);'],
+];
+
+const only = process.argv[2];
+let missed = 0;
+for (const [name, file, from, to] of MUTATIONS) {
+  if (only && !name.includes(only)) continue;
+  const full = path.join(root, file);
+  const original = fs.readFileSync(full, 'utf8');
+  if (original.split(from).length !== 2) { console.log(`  BROKEN SCRIPT  ${name}: the text to change is not in ${file} exactly once`); missed++; continue; }
+  const restore = () => fs.writeFileSync(full, original);
+  process.on('exit', restore);
+  try {
+    fs.writeFileSync(full, original.replace(from, () => to));
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const failed = r.status !== 0;
+    console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
+    if (!failed) missed++;
+  } finally {
+    restore();
+    process.removeListener('exit', restore);
+  }
+}
+console.log(missed ? `\n${missed} mutation(s) not caught` : '\nevery mutation was caught');
+process.exitCode = missed ? 1 : 0;

@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ENTRY } from './spots';
 import { findPath } from '../nav/astar';
@@ -41,6 +44,7 @@ afterEach(() => setSeed(null));
 
 describe('the test office', () => {
   it('has a route from the door to every desk', () => {
+    setSeed(1);
     buildTestLayout({ desks: 40 });
     for (const desk of interactables.of('desk')) expect(findPath(ENTRY, desk.approach), desk.id).not.toBeNull();
   });
@@ -60,7 +64,8 @@ describe('a seeded day', () => {
     runUntil(13 * 60);
     for (const p of staff()) {
       expect(p.arrivedAt, p.name + ' arrived').not.toBeNull();
-      expect(['walking', 'doing', 'idle']).toContain(p.state);
+      expect(['walking', 'doing'], p.name + ' is busy').toContain(p.state);
+      expect(p.task, p.name + ' has something to do').not.toBeNull();
     }
     for (const desk of interactables.of('desk')) {
       const here = staff().filter(p => p.state === 'doing' && p.task?.spot === desk);
@@ -82,32 +87,46 @@ describe('a seeded day', () => {
     expect(staff().every(p => !p.meeting)).toBe(true);
   });
 
-  it('nobody is stuck: anyone walking keeps getting closer to their goal', () => {
+  it('nobody is stuck: all day, anyone walking keeps getting closer to their goal', () => {
     start(2);
-    const last = new Map<Person, { x: number; z: number; since: number }>();
-    for (let i = 0; i < 4000; i++) {
+    const last = new Map<Person, { task: unknown; dist: number }>();
+    let samples = 0, tasksSeen = new Set<string>();
+    for (let i = 0; sim.day === 1; i++) {
       stepSim(DT);
       if (i % 50) continue; // look once every 50 steps (1 sim minute)
       for (const p of staff()) {
-        if (p.state !== 'walking') { last.delete(p); continue; }
+        if (p.state !== 'walking' || !p.path || !p.task) { last.delete(p); continue; }
+        const goal = p.path[p.path.length - 1];
+        const dist = Math.hypot(goal.x - p.pos.x, goal.z - p.pos.z);
         const prev = last.get(p);
-        if (prev && Math.hypot(prev.x - p.pos.x, prev.z - p.pos.z) < 1e-6) {
-          expect(sim.t - prev.since, p.name + ' stood still while walking').toBeLessThan(5);
-        } else last.set(p, { x: p.pos.x, z: p.pos.z, since: sim.t });
+        if (prev && prev.task === p.task) {
+          // gentle avoidance may nudge a walker a little off line, but never far from making progress
+          expect(dist, p.name + ' walking to ' + p.task.kind + ' is not getting closer').toBeLessThanOrEqual(prev.dist + 0.3);
+          expect(dist, p.name + ' made no progress in a minute').not.toBeCloseTo(prev.dist, 6);
+        }
+        last.set(p, { task: p.task, dist });
+        samples++; tasksSeen.add(p.task.kind);
       }
     }
+    expect(samples).toBeGreaterThan(200);
+    expect(tasksSeen.size).toBeGreaterThan(4); // arrivals, coffee, lunch, meetings, going home...
   });
 
-  it('props follow the task: nobody carries anything while away or at a desk', () => {
+  it('props follow the task, all day: the right thing in hand while doing it, nothing while away or at a desk', () => {
     start(3);
-    for (let i = 0; i < 6000; i++) {
+    const HELD: Record<string, string> = { coffee: 'mug', bar: 'mug', phone: 'phone', golf: 'putter', game: 'pad', guitar: 'guitar' };
+    const seenHeld = new Set<string>();
+    for (let i = 0; sim.day === 1; i++) {
       stepSim(DT);
-      if (i % 100) continue;
+      if (i % 20) continue;
       for (const p of staff()) {
-        if (p.state === 'away') expect(PROP_KEYS.some(k => p.props[k]), p.name + ' away with a prop').toBe(false);
-        if (p.task?.kind === 'work') expect(PROP_KEYS.some(k => p.props[k]), p.name + ' working with a prop').toBe(false);
+        const holding = PROP_KEYS.filter(k => p.props[k]);
+        if (p.state === 'away' || p.task?.kind === 'work') expect(holding, p.name + ' at ' + (p.task?.kind ?? 'away')).toEqual([]);
+        if (p.state === 'doing' && p.task && HELD[p.task.kind]) { expect(holding, p.name + ' during ' + p.task.kind).toEqual([HELD[p.task.kind]]); seenHeld.add(p.task.kind); }
       }
     }
+    expect([...seenHeld].sort()).toEqual(expect.arrayContaining(['coffee', 'phone']));
+    expect(seenHeld.size).toBeGreaterThanOrEqual(4);
   });
 
   it('screens: an empty desk is off, a working person shows their own picture', () => {
@@ -141,11 +160,14 @@ describe('a seeded day', () => {
     expect(staff().filter(p => p.state !== 'away').length).toBeGreaterThan(20);
   });
 
-  it('Hazel is the last one out', () => {
+  it('Hazel is the last one out: at 19:00 she is alone in the office, and everyone else is gone for the day', () => {
     start(1);
     runUntil(19 * 60);
-    const stillIn = staff().filter(p => p.state !== 'away');
-    expect(stillIn.every(p => p.name === 'Hazel Sellote')).toBe(true);
+    expect(staff().filter(p => p.state !== 'away').map(p => p.name)).toEqual(['Hazel Sellote']);
+    expect(staff()[0].leaveAt).toBe(19 * 60 + 2);
+    runUntil(19 * 60 + 9);
+    expect(sim.day).toBe(1);
+    expect(staff().slice(1).every(p => p.state === 'away')).toBe(true);
   });
 });
 
@@ -159,6 +181,24 @@ describe('repeatability', () => {
     start(7); run(240); const a = snapshot();
     start(8); run(240); const b = snapshot();
     expect(b).not.toBe(a);
+  });
+});
+
+describe('the built package', () => {
+  const dist = path.resolve(__dirname, '../../dist/index.cjs');
+  it.skipIf(!fs.existsSync(dist))('runs the same seeded day as the source (what the server will import)', () => {
+    const built = createRequire(import.meta.url)(dist);
+    const r = (v: number) => Math.round(v * 1000) / 1000;
+    const run = (api: { setSeed(n: number | null): void; buildTestLayout(o: object): void; initDay(): void; stepSim(dt: number): void; people: Person[]; sim: { t: number } }) => {
+      api.setSeed(11); api.buildTestLayout({ desks: 40 }); api.initDay();
+      for (let i = 0; i < 6000; i++) api.stepSim(DT);
+      return JSON.stringify([r(api.sim.t), api.people.map(p => [p.name, p.state, r(p.pos.x), r(p.pos.z)])]);
+    };
+    const fromBuilt = run(built);
+    setSeed(11); buildTestLayout({ desks: 40 }); initDay();
+    for (let i = 0; i < 6000; i++) stepSim(DT);
+    const fromSource = JSON.stringify([r(sim.t), people.map(p => [p.name, p.state, r(p.pos.x), r(p.pos.z)])]);
+    expect(fromBuilt).toBe(fromSource);
   });
 });
 

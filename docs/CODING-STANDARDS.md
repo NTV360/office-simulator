@@ -103,7 +103,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 Automated tests cover only the shared and server code so far (`npm test`). The browser app has none yet, so changes to it are checked by hand in a real browser. Do all of these:
 
-1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed.
+1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (and `npm run check:mutations` after changing the simulation).
 2. `npm run dev`, open the page, **hard-reload**, and confirm the browser console has no errors. If you added or removed files, **restart the dev server** first; a stale server serves old modules and gives confusing failures.
 3. The floor renders and people move. Press **Pause/Play**, change the speed, and move the **People** slider.
 4. Try every view: Angle, Plan, Follow, First person, Third person (and `V` between the two). Drag, wheel and a jump-to button should drop you into free camera. `Esc` exits first/third person.

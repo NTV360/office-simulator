@@ -94,7 +94,7 @@ initDay();                        // 40 staff, mid-morning
 for (let i = 0; i < 2000; i++) stepSim(0.05);
 ```
 
-See `packages/shared/src/sim/scenario.test.ts` for a full day, meetings, the roll-over and slot claiming. To test a new activity, add its spot to `buildTestLayout` and assert on `people`, `interactables` and `sim`. Waiting for a time of day: the clock jumps back at 19:10, so wait for `sim.day` to change instead.
+After changing the simulation, run `npm run check:mutations`: it breaks the simulation on purpose and requires these tests to notice. See `packages/shared/src/sim/scenario.test.ts` for a full day, meetings, the roll-over and slot claiming. To test a new activity, add its spot to `buildTestLayout` and assert on `people`, `interactables` and `sim`. Waiting for a time of day: the clock jumps back at 19:10, so wait for `sim.day` to change instead.
 
 ## Change the floor plan
 
