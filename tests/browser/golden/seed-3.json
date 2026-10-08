@@ -9,7 +9,7 @@
  ],
  "fingerprints": [
   {
-   "hash": "578d1c6f",
+   "hash": "a78ba988",
    "clock": {
     "t": 565,
     "day": 1
@@ -32,6 +32,9 @@
      "arrivedAt": 558.425,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -52,6 +55,9 @@
      "arrivedAt": 533.624,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -72,6 +78,9 @@
      "arrivedAt": 556.059,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -92,6 +101,9 @@
      "arrivedAt": 541.676,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "putter",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -112,6 +124,9 @@
      "arrivedAt": 480.905,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -132,6 +147,9 @@
      "arrivedAt": 548.953,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -152,6 +170,9 @@
      "arrivedAt": 545.711,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -172,6 +193,9 @@
      "arrivedAt": 537.438,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -192,6 +216,9 @@
      "arrivedAt": 529.474,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -212,6 +239,9 @@
      "arrivedAt": 508.678,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "mug",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -232,6 +262,9 @@
      "arrivedAt": 544.479,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "mug",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -252,6 +285,9 @@
      "arrivedAt": 554.176,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -272,6 +308,9 @@
      "arrivedAt": 480.825,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -292,6 +331,9 @@
      "arrivedAt": 522.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -312,6 +354,9 @@
      "arrivedAt": 495.232,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -332,6 +377,9 @@
      "arrivedAt": 541.895,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -352,6 +400,9 @@
      "arrivedAt": 532.658,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -372,6 +423,9 @@
      "arrivedAt": 540.135,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -392,6 +446,9 @@
      "arrivedAt": 552.639,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -412,6 +469,9 @@
      "arrivedAt": 520.608,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -432,6 +492,9 @@
      "arrivedAt": 502.432,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "phone",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -452,6 +515,9 @@
      "arrivedAt": 502.84,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "guitar",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -472,6 +538,9 @@
      "arrivedAt": 512.121,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -492,6 +561,9 @@
      "arrivedAt": 549.431,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -512,6 +584,9 @@
      "arrivedAt": 489.006,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -532,6 +607,9 @@
      "arrivedAt": 539.208,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -552,6 +630,9 @@
      "arrivedAt": 521.468,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -572,6 +653,9 @@
      "arrivedAt": 485.304,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -592,6 +676,9 @@
      "arrivedAt": 487.248,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -612,6 +699,9 @@
      "arrivedAt": 528.447,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -632,6 +722,9 @@
      "arrivedAt": 544.984,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -652,6 +745,9 @@
      "arrivedAt": 553.462,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -672,6 +768,9 @@
      "arrivedAt": 512.344,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -692,6 +791,9 @@
      "arrivedAt": 484.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -712,6 +814,9 @@
      "arrivedAt": 499.542,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -732,6 +837,9 @@
      "arrivedAt": 540.541,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -752,6 +860,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -772,6 +883,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -792,6 +906,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -812,6 +929,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -947,7 +1067,7 @@
    ]
   },
   {
-   "hash": "9a22f426",
+   "hash": "869e61a7",
    "clock": {
     "t": 577,
     "day": 1
@@ -970,6 +1090,9 @@
      "arrivedAt": 558.425,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -990,6 +1113,9 @@
      "arrivedAt": 533.624,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1010,6 +1136,9 @@
      "arrivedAt": 556.059,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -1030,6 +1159,9 @@
      "arrivedAt": 541.676,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 6
@@ -1050,6 +1182,9 @@
      "arrivedAt": 480.905,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1070,6 +1205,9 @@
      "arrivedAt": 548.953,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1090,6 +1228,9 @@
      "arrivedAt": 545.711,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1110,6 +1251,9 @@
      "arrivedAt": 537.438,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1130,6 +1274,9 @@
      "arrivedAt": 529.474,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1150,6 +1297,9 @@
      "arrivedAt": 508.678,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1170,6 +1320,9 @@
      "arrivedAt": 544.479,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -1190,6 +1343,9 @@
      "arrivedAt": 554.176,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1210,6 +1366,9 @@
      "arrivedAt": 480.825,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "sink",
      "pathLeft": 0
@@ -1230,6 +1389,9 @@
      "arrivedAt": 522.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 5
@@ -1250,6 +1412,9 @@
      "arrivedAt": 495.232,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 5
@@ -1270,6 +1435,9 @@
      "arrivedAt": 541.895,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1290,6 +1458,9 @@
      "arrivedAt": 532.658,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1310,6 +1481,9 @@
      "arrivedAt": 540.135,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1330,6 +1504,9 @@
      "arrivedAt": 552.639,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1350,6 +1527,9 @@
      "arrivedAt": 520.608,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1370,6 +1550,9 @@
      "arrivedAt": 502.432,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "phone",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1390,6 +1573,9 @@
      "arrivedAt": 502.84,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "guitar",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1410,6 +1596,9 @@
      "arrivedAt": 512.121,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1430,6 +1619,9 @@
      "arrivedAt": 549.431,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1450,6 +1642,9 @@
      "arrivedAt": 489.006,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "bar,sink",
      "pathLeft": 5
@@ -1470,6 +1665,9 @@
      "arrivedAt": 539.208,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 1
@@ -1490,6 +1688,9 @@
      "arrivedAt": 521.468,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "phone",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1510,6 +1711,9 @@
      "arrivedAt": 485.304,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1530,6 +1734,9 @@
      "arrivedAt": 487.248,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1550,6 +1757,9 @@
      "arrivedAt": 528.447,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1570,6 +1780,9 @@
      "arrivedAt": 544.984,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1590,6 +1803,9 @@
      "arrivedAt": 553.462,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -1610,6 +1826,9 @@
      "arrivedAt": 512.344,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1630,6 +1849,9 @@
      "arrivedAt": 484.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 5
@@ -1650,6 +1872,9 @@
      "arrivedAt": 499.542,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1670,6 +1895,9 @@
      "arrivedAt": 540.541,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1690,6 +1918,9 @@
      "arrivedAt": 573.28,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -1710,6 +1941,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1730,6 +1964,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1750,6 +1987,9 @@
      "arrivedAt": null,
      "hadLunch": false,
      "coffees": 0,
+     "shown": false,
+     "ring": false,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1899,7 +2139,7 @@
    ]
   },
   {
-   "hash": "a271281c",
+   "hash": "1f8b6a63",
    "clock": {
     "t": 625,
     "day": 1
@@ -1922,6 +2162,9 @@
      "arrivedAt": 558.425,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1942,6 +2185,9 @@
      "arrivedAt": 533.624,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -1962,6 +2208,9 @@
      "arrivedAt": 556.059,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -1982,6 +2231,9 @@
      "arrivedAt": 541.676,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2002,6 +2254,9 @@
      "arrivedAt": 480.905,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2022,6 +2277,9 @@
      "arrivedAt": 548.953,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "phone",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2042,6 +2300,9 @@
      "arrivedAt": 545.711,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2062,6 +2323,9 @@
      "arrivedAt": 537.438,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2082,6 +2346,9 @@
      "arrivedAt": 529.474,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -2102,6 +2369,9 @@
      "arrivedAt": 508.678,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2122,6 +2392,9 @@
      "arrivedAt": 544.479,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2142,6 +2415,9 @@
      "arrivedAt": 554.176,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2162,6 +2438,9 @@
      "arrivedAt": 480.825,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 1
@@ -2182,6 +2461,9 @@
      "arrivedAt": 522.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2202,6 +2484,9 @@
      "arrivedAt": 495.232,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2222,6 +2507,9 @@
      "arrivedAt": 541.895,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2242,6 +2530,9 @@
      "arrivedAt": 532.658,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2262,6 +2553,9 @@
      "arrivedAt": 540.135,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2282,6 +2576,9 @@
      "arrivedAt": 552.639,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2302,6 +2599,9 @@
      "arrivedAt": 520.608,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2322,6 +2622,9 @@
      "arrivedAt": 502.432,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2342,6 +2645,9 @@
      "arrivedAt": 502.84,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2362,6 +2668,9 @@
      "arrivedAt": 512.121,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2382,6 +2691,9 @@
      "arrivedAt": 549.431,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2402,6 +2714,9 @@
      "arrivedAt": 489.006,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2422,6 +2737,9 @@
      "arrivedAt": 539.208,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 1
@@ -2442,6 +2760,9 @@
      "arrivedAt": 521.468,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2462,6 +2783,9 @@
      "arrivedAt": 485.304,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2482,6 +2806,9 @@
      "arrivedAt": 487.248,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2502,6 +2829,9 @@
      "arrivedAt": 528.447,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2522,6 +2852,9 @@
      "arrivedAt": 544.984,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "mug",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2542,6 +2875,9 @@
      "arrivedAt": 553.462,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 5
@@ -2562,6 +2898,9 @@
      "arrivedAt": 512.344,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2582,6 +2921,9 @@
      "arrivedAt": 484.454,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "putter",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2602,6 +2944,9 @@
      "arrivedAt": 499.542,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "Cris Y.",
      "queue": "",
      "pathLeft": 0
@@ -2622,6 +2967,9 @@
      "arrivedAt": 540.541,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2642,6 +2990,9 @@
      "arrivedAt": 573.28,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "bar",
      "pathLeft": 1
@@ -2662,6 +3013,9 @@
      "arrivedAt": 582.16,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2682,6 +3036,9 @@
      "arrivedAt": 600.32,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2702,6 +3059,9 @@
      "arrivedAt": 584.08,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2836,7 +3196,7 @@
    ]
   },
   {
-   "hash": "7d05fbbb",
+   "hash": "79132691",
    "clock": {
     "t": 805,
     "day": 1
@@ -2859,6 +3219,9 @@
      "arrivedAt": 558.425,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 3
@@ -2879,6 +3242,9 @@
      "arrivedAt": 533.624,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2899,6 +3265,9 @@
      "arrivedAt": 556.059,
      "hadLunch": true,
      "coffees": 2,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 6
@@ -2919,6 +3288,9 @@
      "arrivedAt": 541.676,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2939,6 +3311,9 @@
      "arrivedAt": 480.905,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2959,6 +3334,9 @@
      "arrivedAt": 548.953,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2979,6 +3357,9 @@
      "arrivedAt": 545.711,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -2999,6 +3380,9 @@
      "arrivedAt": 537.438,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 4
@@ -3019,6 +3403,9 @@
      "arrivedAt": 529.474,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3039,6 +3426,9 @@
      "arrivedAt": 508.678,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3059,6 +3449,9 @@
      "arrivedAt": 544.479,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3079,6 +3472,9 @@
      "arrivedAt": 554.176,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3099,6 +3495,9 @@
      "arrivedAt": 480.825,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3119,6 +3518,9 @@
      "arrivedAt": 522.454,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3139,6 +3541,9 @@
      "arrivedAt": 495.232,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3159,6 +3564,9 @@
      "arrivedAt": 541.895,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3179,6 +3587,9 @@
      "arrivedAt": 532.658,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3199,6 +3610,9 @@
      "arrivedAt": 540.135,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3219,6 +3633,9 @@
      "arrivedAt": 552.639,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3239,6 +3656,9 @@
      "arrivedAt": 520.608,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -3259,6 +3679,9 @@
      "arrivedAt": 502.432,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3279,6 +3702,9 @@
      "arrivedAt": 502.84,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3299,6 +3725,9 @@
      "arrivedAt": 512.121,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3319,6 +3748,9 @@
      "arrivedAt": 549.431,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3339,6 +3771,9 @@
      "arrivedAt": 489.006,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 4
@@ -3359,6 +3794,9 @@
      "arrivedAt": 539.208,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3379,6 +3817,9 @@
      "arrivedAt": 521.468,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3399,6 +3840,9 @@
      "arrivedAt": 485.304,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3419,6 +3863,9 @@
      "arrivedAt": 487.248,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3439,6 +3886,9 @@
      "arrivedAt": 528.447,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3459,6 +3909,9 @@
      "arrivedAt": 544.984,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 3
@@ -3479,6 +3932,9 @@
      "arrivedAt": 553.462,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 4
@@ -3499,6 +3955,9 @@
      "arrivedAt": 512.344,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3519,6 +3978,9 @@
      "arrivedAt": 484.454,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3539,6 +4001,9 @@
      "arrivedAt": 499.542,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3559,6 +4024,9 @@
      "arrivedAt": 540.541,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3579,6 +4047,9 @@
      "arrivedAt": 573.28,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3599,6 +4070,9 @@
      "arrivedAt": 582.16,
      "hadLunch": true,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3619,6 +4093,9 @@
      "arrivedAt": 600.32,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3639,6 +4116,9 @@
      "arrivedAt": 584.08,
      "hadLunch": true,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3786,7 +4266,7 @@
    ]
   },
   {
-   "hash": "3fa1f74b",
+   "hash": "fecf5394",
    "clock": {
     "t": 599.98,
     "day": 2
@@ -3809,6 +4289,9 @@
      "arrivedAt": 536.82,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3829,6 +4312,9 @@
      "arrivedAt": 518.46,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3849,6 +4335,9 @@
      "arrivedAt": 555.18,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3869,6 +4358,9 @@
      "arrivedAt": 516.96,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3889,6 +4381,9 @@
      "arrivedAt": 574.32,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3909,6 +4404,9 @@
      "arrivedAt": 557.88,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3929,6 +4427,9 @@
      "arrivedAt": 503.32,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3949,6 +4450,9 @@
      "arrivedAt": 503.08,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3969,6 +4473,9 @@
      "arrivedAt": 510.44,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "pad",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -3989,6 +4496,9 @@
      "arrivedAt": 552.02,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -4009,6 +4519,9 @@
      "arrivedAt": 556.18,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4029,6 +4542,9 @@
      "arrivedAt": 573.8,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4049,6 +4565,9 @@
      "arrivedAt": 569.3,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4069,6 +4588,9 @@
      "arrivedAt": 527.44,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4089,6 +4611,9 @@
      "arrivedAt": 547.04,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4109,6 +4634,9 @@
      "arrivedAt": 538.98,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4129,6 +4657,9 @@
      "arrivedAt": 526.54,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 6
@@ -4149,6 +4680,9 @@
      "arrivedAt": 479.86,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4169,6 +4703,9 @@
      "arrivedAt": 480.06,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4189,6 +4726,9 @@
      "arrivedAt": 498.2,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -4209,6 +4749,9 @@
      "arrivedAt": 489.82,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4229,6 +4772,9 @@
      "arrivedAt": 494.24,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 1
@@ -4249,6 +4795,9 @@
      "arrivedAt": 476.32,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4269,6 +4818,9 @@
      "arrivedAt": 568.6,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4289,6 +4841,9 @@
      "arrivedAt": 507.74,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 3
@@ -4309,6 +4864,9 @@
      "arrivedAt": 550.62,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4329,6 +4887,9 @@
      "arrivedAt": 526.84,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4349,6 +4910,9 @@
      "arrivedAt": 489.9,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 2
@@ -4369,6 +4933,9 @@
      "arrivedAt": 545.2,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4389,6 +4956,9 @@
      "arrivedAt": 526.2,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 1
@@ -4409,6 +4979,9 @@
      "arrivedAt": 569.44,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4429,6 +5002,9 @@
      "arrivedAt": 506.68,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4449,6 +5025,9 @@
      "arrivedAt": 562.32,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4469,6 +5048,9 @@
      "arrivedAt": 502.46,
      "hadLunch": false,
      "coffees": 1,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4489,6 +5071,9 @@
      "arrivedAt": 472.94,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4509,6 +5094,9 @@
      "arrivedAt": 570.84,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4529,6 +5117,9 @@
      "arrivedAt": 493.68,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4549,6 +5140,9 @@
      "arrivedAt": 563.3,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0
@@ -4569,6 +5163,9 @@
      "arrivedAt": 558.42,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 3
@@ -4589,6 +5186,9 @@
      "arrivedAt": 508.38,
      "hadLunch": false,
      "coffees": 0,
+     "shown": true,
+     "ring": true,
+     "props": "",
      "chatWith": "",
      "queue": "",
      "pathLeft": 0

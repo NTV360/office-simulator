@@ -29,6 +29,7 @@ function fingerprint() {
     until: r3(p.until), arriveAt: r3(p.arriveAt), leaveAt: r3(p.leaveAt), lunchAt: r3(p.lunchAt),
     arrivedAt: p.arrivedAt == null ? null : r3(p.arrivedAt),
     hadLunch: p.hadLunch, coffees: p.coffees,
+    shown: p.body.root.visible, ring: p.body.ring.visible, props: ['mug', 'phone', 'pad', 'guitar', 'putter'].filter(k => p.body[k].visible).join(','),
     chatWith: p.chatWith ? p.chatWith.name : '', queue: p.queue.join(','), pathLeft: p.path ? p.path.length - p.pi : 0,
   }));
 
