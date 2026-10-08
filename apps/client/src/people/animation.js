@@ -1,4 +1,4 @@
-import { TAU, angDiff } from '../core/util.js';
+import { TAU, angDiff } from '@office/shared';
 import { player } from '../player/player.js';
 import { HAZEL, RAGE } from './hazel.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { S } from '../../config/plan.js';
-import { vpick } from '../../core/util.js';
+import { vpick } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { TV_MATS } from '../../render/screens.js';
 import { addObs, box, dynamic, frame } from '../helpers.js';

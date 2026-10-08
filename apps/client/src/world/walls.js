@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FULL_H, S, W, WALLS, WALL_T, wx, wz } from '../config/plan.js';
-import { vpick } from '../core/util.js';
+import { vpick } from '@office/shared';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
 import { SOLIDS, addObs, boxGeo, dynamic, scalers } from './helpers.js';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { shuffle } from '../core/util.js';
+import { shuffle } from '@office/shared';
 import { scene } from '../render/renderer.js';
 import { interactables } from '../world/interactables.js';
 

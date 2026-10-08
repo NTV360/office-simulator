@@ -1,7 +1,7 @@
 import logoUrl from '../../assets/logo.png';
 import * as THREE from 'three';
 import { S, WALL_T, wx, wz } from '../../config/plan.js';
-import { vpick } from '../../core/util.js';
+import { vpick } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';

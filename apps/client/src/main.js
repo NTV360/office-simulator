@@ -13,7 +13,7 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { fingerprint } from './debug.js';
-import { setSeed } from './core/util.js';
+import { setSeed } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';

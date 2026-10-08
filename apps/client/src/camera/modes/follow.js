@@ -1,4 +1,4 @@
-import { vpick } from '../../core/util.js';
+import { vpick } from '@office/shared';
 import { people } from '../../sim/state.js';
 import { select, selected } from '../../ui/person.js';
 import { camGoal, orbitStep } from '../state.js';

@@ -2,7 +2,7 @@ import { pickAt } from './spots.js';
 import { freeCam } from './controller.js';
 import { pan, rotate, zoomAt } from './orbit.js';
 import { camGoal } from './state.js';
-import { angDiff } from '../core/util.js';
+import { angDiff } from '@office/shared';
 import { ctl, pointerDown, pointerMove, pointerUp } from '../player/control.js';
 import { renderer } from '../render/renderer.js';
 

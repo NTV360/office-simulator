@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { WALL_T, wx, wz } from '../../config/plan.js';
-import { TAU } from '../../core/util.js';
+import { TAU } from '@office/shared';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, WST, mkSpot } from './basics.js';

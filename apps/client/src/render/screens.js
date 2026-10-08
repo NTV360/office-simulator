@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TAU, vpick } from '../core/util.js';
+import { TAU, vpick } from '@office/shared';
 import { canvasTex } from './materials.js';
 
 /* Monitor screens: code, design files, dashboards, lock screen */

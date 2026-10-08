@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TAU } from '../core/util.js';
+import { TAU } from '@office/shared';
 import { boxGeo } from '../world/helpers.js';
 import { sph, stdMat } from './gfx.js';
 

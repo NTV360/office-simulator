@@ -9,7 +9,9 @@ COPY apps/client/package.json apps/client/
 COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
 RUN npm ci -w @office/client
+COPY tsconfig.base.json ./
 COPY apps/client apps/client
+COPY packages/shared packages/shared
 RUN npm run build -w @office/client
 
 FROM caddy:2-alpine

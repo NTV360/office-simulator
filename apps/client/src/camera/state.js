@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { angDiff } from '../core/util.js';
+import { angDiff } from '@office/shared';
 import { camera } from '../render/renderer.js';
 
 // Orbit camera: camGoal is where input wants it, camState is the smoothed result.

@@ -3,7 +3,7 @@ import { freeCam, setView } from '../camera/controller.js';
 import { zoomAt } from '../camera/orbit.js';
 import { camGoal } from '../camera/state.js';
 import { FULL_H, LOW_H } from '../config/plan.js';
-import { rnd } from '../core/util.js';
+import { rnd } from '@office/shared';
 import { makePerson, removePerson } from '../people/factory.js';
 import { labelState } from '../render/labels.js';
 import { camera, renderer } from '../render/renderer.js';

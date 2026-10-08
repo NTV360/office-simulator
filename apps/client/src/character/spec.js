@@ -1,4 +1,4 @@
-import { pick, random, rnd } from '../core/util.js';
+import { pick, random, rnd } from '@office/shared';
 
 // CharacterSpec: a plain, JSON-safe description of how a character looks. NPCs get a random one;
 // the player's is chosen in character creation. The rig and parts turn a spec into meshes.

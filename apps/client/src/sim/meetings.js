@@ -1,4 +1,4 @@
-import { pick, random, rnd, shuffle } from '../core/util.js';
+import { pick, random, rnd, shuffle } from '@office/shared';
 import { addLog, people, sim } from './state.js';
 import { goDo } from './tasks.js';
 import { interactables } from '../world/interactables.js';

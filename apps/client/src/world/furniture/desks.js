@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { S, wx, wz } from '../../config/plan.js';
-import { vpick } from '../../core/util.js';
+import { vpick } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { SCREENS } from '../../render/screens.js';
 import { N, SO, mkSpot, officeChair } from './basics.js';

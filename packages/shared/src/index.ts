@@ -22,3 +22,5 @@ export function clampSlotCount(requested: number, desks: number): number {
   if (!Number.isFinite(requested)) return 0;
   return Math.max(0, Math.min(Math.floor(requested), desks));
 }
+
+export * from './util';

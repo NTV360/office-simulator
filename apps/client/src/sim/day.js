@@ -1,4 +1,4 @@
-import { random, rnd, shuffle } from '../core/util.js';
+import { random, rnd, shuffle } from '@office/shared';
 import { makePerson, scheduleDay } from '../people/factory.js';
 import { meetings } from './meetings.js';
 import { addLog, people, sim } from './state.js';

@@ -1,5 +1,5 @@
 import { OX, OY, S } from '../config/plan.js';
-import { angDiff } from '../core/util.js';
+import { angDiff } from '@office/shared';
 import { walkPx } from '../nav/grid.js';
 import { SCREENS } from '../render/screens.js';
 import { arriveNow } from './day.js';

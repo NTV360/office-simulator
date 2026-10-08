@@ -1,4 +1,4 @@
-import { TAU, pick, random, rnd } from '../core/util.js';
+import { TAU, pick, random, rnd } from '@office/shared';
 import { buildBody } from '../character/rig.js';
 import { randomSpec } from '../character/spec.js';
 import { FIRST, LAST, roleBag } from './data.js';

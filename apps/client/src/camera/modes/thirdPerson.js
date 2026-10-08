@@ -1,4 +1,4 @@
-import { angDiff } from '../../core/util.js';
+import { angDiff } from '@office/shared';
 import { beginControl, ctl, driveLocomotion, endControl, tickPrompts } from '../../player/control.js';
 import { player, spawnPlayer } from '../../player/player.js';
 import { camera } from '../../render/renderer.js';

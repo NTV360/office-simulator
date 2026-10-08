@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { toPx } from '../config/plan.js';
-import { random, rnd, shuffle } from '../core/util.js';
+import { random, rnd, shuffle } from '@office/shared';
 import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
 import { addLog, people, sim } from './state.js';
