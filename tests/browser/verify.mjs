@@ -149,6 +149,82 @@ try {
   if (!errors.length) pass('no errors in the browser console');
   await page.close();
 
+  // a scripted play-through of what people actually do, so code the recordings never reach (positions being
+  // copied and measured, following, walking, sitting, jumping to areas, Hazel) is exercised too
+  console.log('\ninteraction scenario');
+  {
+    const { page: sp, errors: serr } = await openPage(browser, site.url, '?seed=1');
+    const ev = (fn, arg) => sp.evaluate(fn, arg);
+    const ok = (cond, msg) => (cond ? pass(msg) : fail(msg));
+
+    // the jump-to buttons move the camera to plan positions
+    for (const area of ['pantry', 'booths', 'desks', 'meeting', 'lounge', 'golf']) {
+      await ev(a => document.querySelector('[data-go="' + a + '"]').click(), area);
+    }
+    ok((await ev(() => window.__sim.viewId())) === 'free', 'the jump-to buttons work and leave you in the free camera');
+
+    // select someone and follow them
+    const followed = await ev(() => {
+      const S = window.__sim, p = S.people.find(x => x.state !== 'away');
+      S.select(p); document.getElementById('pFollow').click();
+      return p.name;
+    });
+    await sleep(900);
+    const fol = await ev(() => {
+      const S = window.__sim, p = S.following();
+      // the camera EASES toward its goal (slowly in a headless browser), so check the goal, which is set on the person every frame
+      return { view: S.viewId(), name: p && p.name, d: p ? Math.hypot(S.camGoal.target.x - p.pos.x, S.camGoal.target.z - p.pos.z) : -1 };
+    });
+    ok(fol.view === 'follow' && fol.name === followed && fol.d >= 0 && fol.d < 0.05, 'following ' + followed + ': the camera is aimed at them (' + fol.d.toFixed(3) + ' m off)');
+
+    // walk as the player, sit at a dining seat, stand again
+    await ev(() => window.__sim.setView('fp'));
+    const start = await ev(() => { const p = window.__sim.player.person; return { x: p.pos.x, z: p.pos.z }; });
+    await sp.keyboard.down('w'); await sleep(1500); await sp.keyboard.up('w');
+    const moved = await ev(s => { const p = window.__sim.player.person; return Math.hypot(p.pos.x - s.x, p.pos.z - s.z); }, start);
+    ok(moved > 0.2, 'walking forward moves the player (' + moved.toFixed(2) + ' m)');
+    await ev(() => {
+      const S = window.__sim, seat = S.interactables.of('dining')[0], pos = S.player.person.pos;
+      pos.copy(seat.pos); pos.x += 0.3; pos.z += 0.1;
+    });
+    await sleep(400);
+    await sp.keyboard.press('e'); await sleep(250);
+    ok(await ev(() => !!window.__sim.player.sitting && window.__sim.player.person.task?.kind === 'playerSit'), 'pressing E sits at the nearest seat');
+    await sp.keyboard.press('e'); await sleep(250);
+    ok(await ev(() => !window.__sim.player.sitting), 'pressing E again stands up');
+
+    // third person, the shoulder swap, and out again
+    await sp.keyboard.press('v'); await sleep(300);
+    ok((await ev(() => window.__sim.viewId())) === 'third', 'V switches to third person');
+    const side0 = await ev(() => window.__sim.tp.side);
+    await sp.keyboard.press('c'); await sleep(150);
+    ok((await ev(() => window.__sim.tp.side)) === -side0, 'C swaps the shoulder');
+    await sp.keyboard.press('Escape'); await sleep(300);
+    ok((await ev(() => window.__sim.viewId())) === 'free' && (await ev(() => !window.__sim.ctl.active)), 'Escape leaves third person');
+
+    // the staff slider adds and removes people
+    const counts = await ev(() => {
+      const s = document.getElementById('staff'), n0 = window.__sim.people.length;
+      s.value = 46; s.dispatchEvent(new Event('input', { bubbles: true }));
+      const n1 = window.__sim.people.length;
+      s.value = 40; s.dispatchEvent(new Event('input', { bubbles: true }));
+      return [n0, n1, window.__sim.people.length];
+    });
+    ok(counts[0] === 40 && counts[1] === 46 && counts[2] === 40, 'the staff slider adds and removes people (' + counts.join(' to ') + ')');
+
+    // Hazel: make sure she is in, find her, make her angry
+    await ev(() => { const S = window.__sim; let n = 0; while (S.people[0].state === 'away' && n < 5000) { S.advance(50); n += 50; } });
+    await ev(() => document.getElementById('findHazel').click()); await sleep(300);
+    ok((await ev(() => window.__sim.following() && window.__sim.following().name)) === 'Hazel Sellote', '"Find her" follows Hazel');
+    await ev(() => document.getElementById('rageHazel').click()); await sleep(1800);
+    const rage = await ev(() => ({ k: window.__sim.people[0].rageK || 0, btn: document.getElementById('rageHazel').textContent }));
+    ok(rage.k > 0.3 && /Calming down/.test(rage.btn), '"Make her angry" works (rage ' + rage.k.toFixed(2) + ', button "' + rage.btn + '")');
+
+    serr.forEach(e => fail(e));
+    if (!serr.length) pass('no errors in the browser console during the scenario');
+    await sp.close();
+  }
+
   // without a seed the game must behave exactly as it always did: live, and different every time
   console.log('\ndefault mode (no seed)');
   const a = await openPage(browser, site.url);
