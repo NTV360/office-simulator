@@ -33,3 +33,5 @@ export * from './nav/astar';
 export * from './sim/locomotion';
 export * from './sim/props';
 export * from './sim/person';
+export * from './sim/interactables';
+export * from './sim/spots';

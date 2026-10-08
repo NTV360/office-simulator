@@ -1,11 +1,9 @@
-import { W } from '@office/shared';
-import { N, mkSpot } from './furniture/basics.js';
+import { mkSpot } from '@office/shared';
+import { N } from './furniture/basics.js';
 
-let EXIT, ENTRY;
-
+// The door people leave through. Where they arrive (ENTRY) is a plan constant in the shared package.
 function buildEntrance() {
-  EXIT = mkSpot('exit', 223.5, 420, N, { shared: false, place: 'the exit' });
-  ENTRY = W(223.5, 420);
+  mkSpot('exit', 223.5, 420, N, { shared: false, place: 'the exit' });
 }
 
-export { ENTRY, EXIT, buildEntrance };
+export { buildEntrance };

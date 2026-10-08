@@ -55,7 +55,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 440 to 457 floor | `apps/client/src/world/floor.js` |
 | 459 to 531 walls, windows, blinds | `apps/client/src/world/walls.js` |
 | 532 to 544 doors | `apps/client/src/world/doors.js` |
-| 546 to 581 `SEATS`, `mkSpot`, chairs, plants | `apps/client/src/world/furniture/basics.js` (+ `world/interactables.js`) |
+| 546 to 581 `SEATS`, `mkSpot`, chairs, plants | `apps/client/src/world/furniture/basics.js` (`mkSpot` and the registry moved to `packages/shared/src/sim/` in phase 1, step 8) |
 | 582 to 608 cabinet, TV stand | `furniture/cabinet.js`, `furniture/tv.js` |
 | 609 to 653 desk islands | `furniture/desks.js` |
 | 654 to 681 conference rooms | `furniture/conference.js` |
@@ -71,7 +71,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 1009 to 1034 counter, sink | `furniture/kitchen.js` |
 | 1035 to 1049 storage, lockers | `furniture/storage.js` |
 | 1050 to 1052 plants | `furniture/plants.js` |
-| 1051 to 1054 `EXIT`, `ENTRY` | `apps/client/src/world/entrance.js` |
+| 1051 to 1054 `EXIT`, `ENTRY` | `ENTRY` in `packages/shared/src/sim/spots.ts`; the exit door in `apps/client/src/world/entrance.js` |
 | 1056 to 1080 `bake` | `apps/client/src/world/bake.js` |
 | 1080 to 1111 labels | `apps/client/src/render/labels.js` |
 | 1113 to 1133 nav grid | `packages/shared/src/nav/grid.ts` (moved in phase 1, step 4) |

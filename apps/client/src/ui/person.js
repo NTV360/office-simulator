@@ -45,7 +45,7 @@ function statusText(p) {
 }
 function renderPerson() {
   const p = selected; if (!p) return;
-  $('pName').textContent = p.name; $('pRole').textContent = `${p.role} · ${p.slot.place}`;
+  $('pName').textContent = p.name; $('pRole').textContent = `${p.role} · ${p.slot ? p.slot.place : 'visiting'}`;
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';

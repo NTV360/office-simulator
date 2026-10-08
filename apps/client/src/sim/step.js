@@ -1,8 +1,7 @@
-import { OX, OY, S, angDiff, isControlled, walkPx } from '@office/shared';
+import { angDiff, interactables, isControlled, OX, OY, S, walkPx } from '@office/shared';
 import { arriveNow } from './day.js';
 import { people, sim } from './state.js';
 import { arrive, chooseNext } from './tasks.js';
-import { interactables } from '../world/interactables.js';
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {

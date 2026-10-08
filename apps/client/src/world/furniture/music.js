@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { isControlled } from '@office/shared';
+import { interactables, isControlled } from '@office/shared';
 import { makeGuitar } from '../../character/props.js';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, WST, mkSpot } from './basics.js';
 import { addObs, box, boxGeo, cyl, frame, rectPlane } from '../helpers.js';
-import { interactables } from '../interactables.js';
 
 // Music corner by the east window: keyboard piano and an acoustic guitar anyone can play
 const MUSIC = { notes: [], standGuitar: null };

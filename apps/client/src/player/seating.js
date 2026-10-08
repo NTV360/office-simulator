@@ -1,4 +1,4 @@
-import { interactables } from '../world/interactables.js';
+import { interactables } from '@office/shared';
 import { ctl } from './control.js';
 import { player } from './player.js';
 import { updatePrompts } from './prompts.js';

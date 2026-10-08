@@ -1,8 +1,7 @@
 import { buildBody } from '../character/rig.js';
-import { DEFAULT_SPEC, newProps, normalizeSpec } from '@office/shared';
+import { DEFAULT_SPEC, ENTRY, newProps, normalizeSpec } from '@office/shared';
 import { peopleGroup } from '../people/group.js';
 import { people } from '../sim/state.js';
-import { ENTRY } from '../world/entrance.js';
 import { N } from '../world/furniture/basics.js';
 
 // The player's character. A person like the NPCs (same rig, animation and list), but controller 'account':

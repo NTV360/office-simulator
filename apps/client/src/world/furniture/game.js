@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import { TAU, W, vpick, vrnd } from '@office/shared';
+import { interactables, TAU, vpick, vrnd, W } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E } from './basics.js';
 import { tv } from './tv.js';
 import { addObs, box, boxGeo, frame } from '../helpers.js';
-import { interactables } from '../interactables.js';
 let gameT = 0, gameAcc = 0;
 const FIGHTERS = [
   { name: 'KAI', skin: '#d9a27a', top: '#2f6fb3', pants: '#1d2733', hair: '#1b1817', belt: '#e2b65c' },

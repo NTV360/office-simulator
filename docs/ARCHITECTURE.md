@@ -60,9 +60,9 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 |---|---|
 | `render/` | `renderer.js` (renderer, scene, camera, sun), `materials.js` (the `M` palette and `canvasTex`), `screens.js` (monitor/TV textures), `labels.js`, `lighting.js` (day/night) |
 | `world/helpers.js` | Geometry helpers (`box`, `cyl`, `frame`), the obstacle list `OBS`, the wall list `SOLIDS`, the shared `wall` height state |
-| `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |
+| `world/floor.js`, `walls.js`, `doors.js`, `entrance.js` (registers the exit door), `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |
 | `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
-| `world/interactables.js` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')` |
+| `@office/shared` `sim/interactables.ts` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')`. `sim/spots.ts` has `mkSpot`, `ENTRY` and `exitSpot()` |
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
 | `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
@@ -109,7 +109,7 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | `camState`, `camGoal` | `camera/state.js` | Orbit camera: smoothed result and where input wants it |
 | `wall` | `world/helpers.js` | `{ h, goal }` wall height and its target |
 | `labelState` | `render/labels.js` | `{ on }` |
-| `interactables` | `world/interactables.js` | The registry of usable spots |
+| `interactables` | `packages/shared/src/sim/interactables.ts` | The registry of usable spots |
 | `OBS`, `SOLIDS` | `world/helpers.js` | Obstacle rects (nav) and wall rects (camera collision), in plan pixels |
 | `RAGE` | `people/hazel.js` | Hazel's rage-mode state |
 
@@ -133,7 +133,7 @@ A character is three separate things:
 
 ## Interactables and activities
 
-Anything a person can use is a **spot** created with `mkSpot(kind, x, y, face, options)`. It registers itself in `world/interactables.js` under its `kind` (and under `options.group` if given). Spots have `pos`, `approach`, `face`, `occupant`, and so on.
+Anything a person can use is a **spot** created with `mkSpot(kind, x, y, face, options)`. It registers itself in the shared `interactables` registry (`packages/shared/src/sim/interactables.ts`) under its `kind` (and under `options.group` if given). Spots have `pos`, `approach`, `face`, `occupant`, and so on.
 
 An **activity** is a function in `sim/tasks.js` (for example `dartsBreak`) that finds a free spot, calls `goDo(person, task)`, and is offered by `chooseNext`. The `task.anim` name selects a pose in `people/animation.js`, and `statusText` in `ui/person.js` words it for the HUD. See [HOW-TO.md](HOW-TO.md#add-an-interactable-and-an-activity).
 

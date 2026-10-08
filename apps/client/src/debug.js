@@ -1,10 +1,9 @@
-import { GC, GR, NAV, PROP_KEYS, drawCount, isStaff } from '@office/shared';
+import { drawCount, GC, GR, interactables, isStaff, NAV, PROP_KEYS } from '@office/shared';
 import { meetings } from './sim/meetings.js';
 import { log, people, sim } from './sim/state.js';
 import { SCREENS, deskScreens } from './render/screens.js';
 import { updateScreens } from './people/screens.js';
 import { screenState } from './sim/step.js';
-import { interactables } from './world/interactables.js';
 
 // A stable summary of the whole simulation, used to prove that a refactor changed nothing: record it
 // under a fixed seed before the change, and require the same fingerprint after. Everything is rounded

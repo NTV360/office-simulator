@@ -13,7 +13,7 @@ import './styles/responsive.css';
 
 import { bootstrap } from './bootstrap.js';
 import { fingerprint, screenMismatches } from './debug.js';
-import { GC, GR, NAV, findPath, setSeed, toPx, walkPx } from '@office/shared';
+import { ENTRY, findPath, GC, GR, interactables, NAV, setSeed, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -32,8 +32,6 @@ import { stepPerson } from './sim/step.js';
 import { updateScreens } from './people/screens.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
-import { ENTRY } from './world/entrance.js';
-import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';

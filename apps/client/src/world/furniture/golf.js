@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import { S, W, wx, wz } from '@office/shared';
+import { interactables, S, W, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, mkSpot } from './basics.js';
 import { box, cyl, staticRoot } from '../helpers.js';
-import { interactables } from '../interactables.js';
 
 function updateGolf() {
   for (const g of GOLF_BALLS) {

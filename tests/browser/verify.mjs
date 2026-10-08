@@ -206,7 +206,7 @@ try {
 
     // select someone and follow them
     const followed = await ev(() => {
-      const S = window.__sim, p = S.people.find(x => x.state !== 'away');
+      const S = window.__sim, p = S.people.find(x => x.controller === 'ai' && x.state !== 'away');
       S.select(p); document.getElementById('pFollow').click();
       return p.name;
     });

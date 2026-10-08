@@ -1,13 +1,9 @@
 import * as THREE from 'three';
-import { TAU, W, vrnd } from '@office/shared';
+import { TAU, W, mkSpot, vrnd } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { addObs, box, cyl, frame } from '../helpers.js';
-import { interactables } from '../interactables.js';
 
 /* ================= Furniture ================= */
-function mkSpot(kind, px, py, face, o = {}) {
-  return interactables.add({ kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53, place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group });
-}
 const E = Math.PI / 2, WST = -Math.PI / 2, N = Math.PI, SO = 0; // facing directions: east, west, north, south
 
 function officeChair(parent, mat = M.chairSeat) {

@@ -1,6 +1,6 @@
+import { interactables } from '@office/shared';
 import { SCREENS, deskScreens } from '../render/screens.js';
 import { screenState } from '../sim/step.js';
-import { interactables } from '../world/interactables.js';
 
 // Turn what each desk's screen should show (the simulation's screenState) into the material on its monitor mesh.
 function materialFor(state) {

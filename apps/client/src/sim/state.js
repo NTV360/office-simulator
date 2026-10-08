@@ -1,5 +1,4 @@
-import { shuffle } from '@office/shared';
-import { interactables } from '../world/interactables.js';
+import { interactables, shuffle } from '@office/shared';
 
 const people = [];
 

@@ -1,10 +1,8 @@
-import { isStaff, random, rnd, shuffle } from '@office/shared';
+import { ENTRY, interactables, isStaff, random, rnd, shuffle } from '@office/shared';
 import { makePerson, scheduleDay } from '../people/factory.js';
 import { meetings } from './meetings.js';
 import { addLog, people, sim } from './state.js';
 import { endTask, goWork, lockerTrip, placeNow } from './tasks.js';
-import { ENTRY } from '../world/entrance.js';
-import { interactables } from '../world/interactables.js';
 
 /* ---------- Day cycle ---------- */
 function phaseName(t) {

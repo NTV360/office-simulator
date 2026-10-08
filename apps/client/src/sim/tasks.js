@@ -1,7 +1,5 @@
-import { Vec3, findPath, random, rnd, shuffle, toPx, walkPx } from '@office/shared';
+import { exitSpot, findPath, interactables, random, rnd, shuffle, toPx, Vec3, walkPx } from '@office/shared';
 import { addLog, people, sim } from './state.js';
-import { EXIT } from '../world/entrance.js';
-import { interactables } from '../world/interactables.js';
 
 /* ---------- Tasks ---------- */
 function endTask(p) {
@@ -99,7 +97,7 @@ function leave(p) {
   goExit(p);
 }
 function goExit(p) {
-  if (!goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: EXIT, dur: 0, onStart: q => { q.state = 'away'; q.shown = false; q.task = null; addLog(`${q.name} headed home`); } })) {
+  if (!goDo(p, { kind: 'exit', cat: 'walk', anim: 'stand', spot: exitSpot(), dur: 0, onStart: q => { q.state = 'away'; q.shown = false; q.task = null; addLog(`${q.name} headed home`); } })) {
     p.state = 'away'; p.shown = false;
   }
 }

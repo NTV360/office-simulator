@@ -1,7 +1,6 @@
-import { isStaff, pick, random, rnd, shuffle } from '@office/shared';
+import { interactables, isStaff, pick, random, rnd, shuffle } from '@office/shared';
 import { addLog, people, sim } from './state.js';
 import { goDo } from './tasks.js';
-import { interactables } from '../world/interactables.js';
 
 /* ---------- Meetings ---------- */
 const meetings = [];
