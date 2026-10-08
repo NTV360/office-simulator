@@ -1,4 +1,4 @@
-import { GC, GR, NAV, PROP_KEYS, drawCount } from '@office/shared';
+import { GC, GR, NAV, PROP_KEYS, drawCount, isStaff } from '@office/shared';
 import { meetings } from './sim/meetings.js';
 import { log, people, sim } from './sim/state.js';
 import { SCREENS, deskScreens } from './render/screens.js';
@@ -25,7 +25,7 @@ function fingerprint() {
     return `${sp.kind}:${i}`;
   };
 
-  const persons = people.map(p => ({
+  const persons = people.filter(isStaff).map(p => ({
     name: p.name, role: p.role, state: p.state,
     task: p.task ? p.task.kind : '', spot: p.task ? spotIndex(p.task.spot) : '',
     x: r3(p.pos.x), z: r3(p.pos.z), face: r3(p.face),

@@ -1,4 +1,4 @@
-import { random, rnd, shuffle } from '@office/shared';
+import { isStaff, random, rnd, shuffle } from '@office/shared';
 import { makePerson, scheduleDay } from '../people/factory.js';
 import { meetings } from './meetings.js';
 import { addLog, people, sim } from './state.js';
@@ -14,7 +14,7 @@ function phaseName(t) {
 function newDay() {
   sim.day++; sim.t = 7 * 60 + 45;
   meetings.length = 0;
-  people.forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
+  people.filter(isStaff).forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
   addLog(`Day ${sim.day} begins`);
 }
 function arriveNow(p, quiet) {

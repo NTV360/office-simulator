@@ -1,4 +1,4 @@
-import { vpick } from '@office/shared';
+import { isStaff, vpick } from '@office/shared';
 import { people } from '../../sim/state.js';
 import { select, selected } from '../../ui/person.js';
 import { camGoal, orbitStep } from '../state.js';
@@ -14,7 +14,7 @@ const followMode = {
       this.target = opts.target;
       camGoal.dist = Math.min(camGoal.dist, 9); camGoal.pitch = Math.min(camGoal.pitch, .75);
     } else {
-      this.target = selected && selected.state !== 'away' ? selected : vpick(people.filter(p => p.state !== 'away')) || null;
+      this.target = selected && selected.state !== 'away' ? selected : vpick(people.filter(p => isStaff(p) && p.state !== 'away')) || null;
       if (this.target) { select(this.target); camGoal.dist = 8; camGoal.pitch = .62; }
     }
   },

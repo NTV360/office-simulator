@@ -1,4 +1,4 @@
-import { PROP_KEYS } from '@office/shared';
+import { PROP_KEYS, isControlled } from '@office/shared';
 import { ringMats } from '../character/rig.js';
 import { sim } from '../sim/state.js';
 import { applyPose } from './animation.js';
@@ -7,7 +7,7 @@ import { applyPose } from './animation.js';
 // visibility belongs to the camera (you do not see your own head), so only their props are applied here.
 function applyVisibility(p) {
   const b = p.body;
-  if (p.state !== 'player') { b.root.visible = p.shown; b.ring.visible = p.shown; }
+  if (!isControlled(p)) { b.root.visible = p.shown; b.ring.visible = p.shown; }
   for (const k of PROP_KEYS) b[k].visible = p.props[k];
 }
 
@@ -15,7 +15,7 @@ function applyVisibility(p) {
 function syncBody(p, dt) {
   applyVisibility(p);
   if (p.state === 'away') return;
-  if (!sim.paused || p.state === 'player') applyPose(p, dt);
+  if (!sim.paused || isControlled(p)) applyPose(p, dt);
   const b = p.body; b.root.position.set(p.pos.x, 0, p.pos.z); b.root.rotation.y = p.face;
   b.ring.position.set(p.pos.x, .015, p.pos.z);
   const cat = p.state === 'walking' ? 'walk' : (p.task?.kind === 'work' && p.chatWith ? 'chat' : p.task?.cat || 'walk');

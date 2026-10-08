@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
-import { VERB } from '@office/shared';
+import { VERB, isControlled } from '@office/shared';
 import { scene } from '../render/renderer.js';
 import { $ } from './dom.js';
 
@@ -16,7 +16,7 @@ function select(p) {
 }
 const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
-  if (p.state === 'player') return 'Controlled by you';
+  if (isControlled(p)) return 'Controlled by you';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;
   const t = p.task; if (!t) return 'Getting settled';
   const going = p.state === 'walking';

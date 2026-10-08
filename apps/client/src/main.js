@@ -60,7 +60,6 @@ function tick(now) {
     updateScreens(); updateLight();
   }
   for (const p of people) syncBody(p, dt);
-  if (player.person) syncBody(player.person, dt);
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }

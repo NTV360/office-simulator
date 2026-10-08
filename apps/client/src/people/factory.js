@@ -1,4 +1,4 @@
-import { FIRST, LAST, SCREEN_VARIANTS, TAU, newProps, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
+import { FIRST, LAST, SCREEN_VARIANTS, TAU, isStaff, newProps, pick, randomSpec, random, rnd, roleBag } from '@office/shared';
 import { buildBody } from '../character/rig.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { deskPool, people } from '../sim/state.js';
@@ -17,7 +17,7 @@ function makePerson() {
   nameIdx++;
   const body = buildBody(spec);
   const p = {
-    id: people.length, name: `${first} ${last}`, role, spec, body, slot,
+    id: people.filter(isStaff).length, controller: 'ai', name: `${first} ${last}`, role, spec, body, slot,
     pos: slot.pos.clone(), face: slot.face, faceGoal: slot.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
@@ -32,7 +32,9 @@ function makePerson() {
   return p;
 }
 function removePerson() {
-  const p = people.pop(); if (!p) return;
+  let i = people.length - 1; while (i >= 0 && !isStaff(people[i])) i--; // the last staff member (the player, if there is one, stays)
+  if (i < 0) return;
+  const [p] = people.splice(i, 1);
   endTask(p); p.slot.owner = null;
   peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);
   if (selected === p) select(null);

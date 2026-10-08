@@ -92,6 +92,7 @@ async function runSeed(browser, url, seed) {
     const bad = await page.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
       const out = [], keys = ['mug', 'phone', 'pad', 'guitar', 'putter'];
       for (const p of window.__sim.people) {
+        if (p.controller !== 'ai') continue; // the player's own body belongs to the camera
         if (p.body.root.visible !== p.shown || p.body.ring.visible !== p.shown) out.push(p.name + ': body shown ' + p.body.root.visible + ' but state says ' + p.shown);
         for (const k of keys) if (p.body[k].visible !== p.props[k]) out.push(p.name + ': ' + k + ' mesh ' + p.body[k].visible + ' but state says ' + p.props[k]);
       }
@@ -151,6 +152,26 @@ try {
       if (!d.length) pass(`step ${String(cp).padStart(5)}  matches  (${first.prints[i].hash})`);
       else fail(`step ${cp} differs from the recording:\n          ` + d.join('\n          '));
     });
+  }
+
+  // a player in the office must not change the staff: same seed, player present, same recorded fingerprints
+  if (!record) {
+    console.log('\nwith a player present');
+    const g = JSON.parse(fs.readFileSync(path.join(goldenDir, 'seed-1.json'), 'utf8'));
+    const { page: pp, errors: pe } = await openPage(browser, site.url, '?seed=1');
+    const present = await pp.evaluate(() => { window.__sim.setView('third'); return { inList: window.__sim.people.includes(window.__sim.player.person), controller: window.__sim.player.person.controller }; });
+    if (present.inList && present.controller === 'account') pass('the player is in the people list as an account-controlled person');
+    else fail('the player is not in the list as expected ' + JSON.stringify(present));
+    let done = 0;
+    for (let i = 0; i < CHECKPOINTS.length; i++) {
+      const fp = await pp.evaluate(n => { window.__sim.advance(n); return window.__sim.fingerprint(); }, CHECKPOINTS[i] - done);
+      done = CHECKPOINTS[i];
+      const d = diffs(g.fingerprints[i], fp);
+      if (!d.length) pass(`step ${String(CHECKPOINTS[i]).padStart(5)}  staff unchanged with the player present  (${fp.hash})`);
+      else fail(`step ${CHECKPOINTS[i]}: the player changed the staff:\n          ` + d.join('\n          '));
+    }
+    pe.forEach(e => fail(e));
+    await pp.close();
   }
 
   // every camera view loads without errors; a screenshot of each is saved for a human to glance at
@@ -224,13 +245,13 @@ try {
 
     // the staff slider adds and removes people
     const counts = await ev(() => {
-      const s = document.getElementById('staff'), n0 = window.__sim.people.length;
+      const s = document.getElementById('staff'), n0 = window.__sim.people.filter(p => p.controller === "ai").length;
       s.value = 46; s.dispatchEvent(new Event('input', { bubbles: true }));
-      const n1 = window.__sim.people.length;
+      const n1 = window.__sim.people.filter(p => p.controller === "ai").length;
       s.value = 40; s.dispatchEvent(new Event('input', { bubbles: true }));
-      return [n0, n1, window.__sim.people.length];
+      return [n0, n1, window.__sim.people.filter(p => p.controller === "ai").length, window.__sim.people.includes(window.__sim.player.person)];
     });
-    ok(counts[0] === 40 && counts[1] === 46 && counts[2] === 40, 'the staff slider adds and removes people (' + counts.join(' to ') + ')');
+    ok(counts[0] === 40 && counts[1] === 46 && counts[2] === 40 && counts[3] === true, 'the staff slider adds and removes staff and leaves the player alone (' + counts.join(' to ') + ')');
 
     // Hazel: make sure she is in, find her, make her angry
     await ev(() => { const S = window.__sim; let n = 0; while (S.people[0].state === 'away' && n < 5000) { S.advance(50); n += 50; } });

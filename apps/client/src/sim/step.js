@@ -1,4 +1,4 @@
-import { OX, OY, S, angDiff, walkPx } from '@office/shared';
+import { OX, OY, S, angDiff, isControlled, walkPx } from '@office/shared';
 import { arriveNow } from './day.js';
 import { people, sim } from './state.js';
 import { arrive, chooseNext } from './tasks.js';
@@ -7,7 +7,7 @@ import { interactables } from '../world/interactables.js';
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
   if (p.rageK > .05) { p.animT += dt; return; }
-  if (p.state === 'player') return;
+  if (isControlled(p)) return;
   if (p.state === 'away') {
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
     return;

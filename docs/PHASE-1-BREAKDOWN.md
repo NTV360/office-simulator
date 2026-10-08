@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: approved. Steps 0 to 6 are done; steps 7 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. Steps 0 to 7 are done; steps 8 and 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -68,6 +68,12 @@ Building the safety net taught three things, now part of how the project works:
 3. **Seeded runs do not update screens by themselves.** The paused simulation skips the per-step screen update, so the check runs the update first.
 4. **`seat` became `slot` as a rename only.** The field now means the desk spot; the owner and later the station hang off it. Removing a person no longer blanks the screen itself; the next screen update does.
 
+### What step 7 turned out to need
+
+1. **The new test paid for itself at once.** "The staff do not change when a player is present" replays seed 1 with the player standing in the office and requires the same recorded fingerprints at every checkpoint. The first run failed at the end of the day: the new-day reset looped over everyone and sent the player home. Every loop that means "staff" (the reset, meetings, chat partners, the ledger, the slider, random follow, click picking) now filters with `isStaff`; the loops over everyone (stepping, posing) skip controlled people where they must.
+2. **A controlled person has its own state.** `state: 'controlled'` replaces the old `'player'`; the checks use the controller, not the state.
+3. **What is deliberately not done yet.** The `player` object in `player/player.js` still holds the local control state (sitting, moving, spec). Per-account control state arrives with the server (phase 3). A guest has no slot; claiming one is phase 4.
+
 **How to use it:**
 
 ```
@@ -89,7 +95,7 @@ It builds the client, serves it, drives headless Chromium, and saves a screensho
 | **4** (**done**) | Navigation and movement | `nav/astar.js`, `nav/grid.js` and `player/locomotion.js` move to `shared`. The grid is built from obstacle data passed in (`initGrid(outline, obstacles)`) instead of importing the client's list | Unit tests on tiny layouts: a path goes around a wall; no path when sealed in; diagonal costs; `stepPlayer` slides along walls and stops at them. In the browser, the walkable-cell count stays 11,643 and the golden master is unchanged | M |
 | **5** (**done**) | Props and visibility become state | A `Person` type in `shared`. Held items become flags (`p.props.mug`, `.phone`, `.pad`, `.guitar`, `.putter`) set by activities. `sim/day.js`, `sim/tasks.js`, `player/seating.js` and Hazel stop touching meshes. `people/sync.js` applies the flags and shows or hides each body from the person's state | Golden master (the fingerprint now includes the flags). Browser check: mugs, phones, the guitar and the putter still appear and disappear | M |
 | **6** (**done**) | Slots and screens | `p.seat` becomes `p.slot` (the desk spot, the owner, later the station). The sim no longer touches monitor materials: spots get ids, and a client-side registry maps a spot id to its screen mesh; `updateScreens` and `screenMat` move to the client | Golden master. Browser check: screens show code, design, dashboards, the lock screen and "off" as before | M |
-| **7** | The player becomes a person | One person model with `controller: ai or account`. The separate player entity (`player/player.js`) goes; the controlled person lives in the same list, with no slot when playing as a guest. `animation.js` keys off the controller. The ledger still counts only staff | Golden master (with no player spawned, nothing differs). A new browser test: enter first and third person, walk, sit, stand, exit; the staff's fingerprint does not change | M to L |
+| **7** (**done**) | The player becomes a person | One person model with `controller: ai or account`. The separate player entity (`player/player.js`) goes; the controlled person lives in the same list, with no slot when playing as a guest. `animation.js` keys off the controller. The ledger still counts only staff | Golden master (with no player spawned, nothing differs). A new browser test: enter first and third person, walk, sit, stand, exit; the staff's fingerprint does not change | M to L |
 | **8** | Move the simulation | `sim/state.js` (minus the Three.js group), `meetings`, `day`, `step`, `tasks`, `factory` (minus building a body), and Hazel's identity and schedule move to `shared`. `world/interactables.js` and `mkSpot` move too (pure data); `ENTRY` and `EXIT` become plan constants. A client `people/views.js` creates and removes each person's body from the person list. `removePerson` becomes an event the client listens to (it replaces the call into the UI) | Golden master, exactly. The client now contains no simulation logic | L |
 | **9** | Simulate in Node | Unit and scenario tests on a small test layout that run the real simulation without a browser | A seeded day: everyone arrives and sits; meetings start and end; nobody is stuck; the day rolls over; the same seed gives the same result twice; claiming and releasing a slot works | M |
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from './controller.js';
 import { camGoal } from './state.js';
-import { W } from '@office/shared';
+import { W, isStaff } from '@office/shared';
 import { ctl } from '../player/control.js';
 import { camera } from '../render/renderer.js';
 import { people } from '../sim/state.js';
@@ -25,7 +25,7 @@ const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function pickAt(x, y) {
   if (ctl.active) return;
   ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-  const hits = ray.intersectObjects(people.filter(p => p.state !== 'away').map(p => p.body.root), true);
+  const hits = ray.intersectObjects(people.filter(p => isStaff(p) && p.state !== 'away').map(p => p.body.root), true);
   const hit = hits.find(h => h.object.userData.person);
   if (hit) { select(hit.object.userData.person); if (viewId() === 'follow') follow(selected); }
   else if (!following()) select(null);

@@ -66,7 +66,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
 | `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
-| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `seating.js`, `prompts.js` |
+| `player/` | The player's character: `player.js` (makes the person and holds the local control state), `control.js` (look angles, keys, touch stick), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
 | `ui/` | HUD controls, the headcount ledger, the selected-person card |
@@ -90,7 +90,7 @@ The order in `bootstrap.js` is the only place order matters. Each entry has a re
 Each frame, in this order:
 
 1. If not paused: advance the sim clock, start meetings, roll the day over at 19:10, step every NPC (`stepPerson`), update desk screens and the day/night light.
-2. Pose and place every NPC's body, and the player's (`syncBody`).
+2. Pose and place every person's body, the player's included (`syncBody`).
 3. Selection ring, label visibility, and the wall-height easing (`wall.h` eases toward `wall.goal`).
 4. `updateRage` (Hazel), then input and camera (`keyCam`, `updateCamera`, which runs the active camera mode), camera shake, then the animated props (golf, darts, music).
 5. Swap the lounge TV to the fighting game when someone is playing, render, and refresh the HUD about four times a second.
@@ -102,7 +102,7 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | State | Owner | Notes |
 |---|---|---|
 | `sim` | `sim/state.js` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
-| `people` | `sim/state.js` | The NPC list. The player is **not** in it |
+| `people` | `sim/state.js` | Everyone in the office: staff (`controller: 'ai'`) and human-controlled people (`controller: 'account'`, today only the player). Loops that mean "staff" filter with `isStaff` |
 | `logState`, `log` | `sim/state.js` | Event log shown in the ledger; set `logState.dirty` to redraw |
 | `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed |
 | `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
@@ -125,9 +125,9 @@ A character is three separate things:
 
 - **`CharacterSpec`** (`packages/shared/src/character/spec.ts`): plain JSON describing the look (colours, hair style, glasses, jacket, scale, and so on). `randomSpec(role)` makes an NPC's, `normalizeSpec(raw)` repairs any spec from a save file or form, and `PARTS` lists the options a character creator can offer. It has no Three.js in it.
 - **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
-- **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig and the same `people/animation.js` poses.
+- **The person object**: position, task, state and so on. NPCs are made by `people/factory.js`; the player is made by `player/player.js`. Both use the same rig, the same list and the same `people/animation.js` poses.
 
-**The player** (`player/`) is a separate entity, not an NPC. It has no desk (slot) or schedule and is never picked by the sim. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
+**The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as staff (the ledger, the staff slider, meetings, chats and the end-of-day reset all use `isStaff`). `controller` and `isStaff`/`isControlled` live in `packages/shared/src/sim/person.ts`. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
 **Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look and name, she always leaves last, and the HUD can find her or make her angry.
 
