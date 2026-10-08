@@ -15,7 +15,8 @@
     "smoke": "node scripts/smoke.mjs",
     "verify:browser": "node tests/browser/verify.mjs",
     "verify:browser:record": "node tests/browser/verify.mjs --record",
-    "verify:browser:thorough": "node tests/browser/verify.mjs --thorough"
+    "verify:browser:thorough": "node tests/browser/verify.mjs --thorough",
+    "check:docs": "node scripts/check-docs.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

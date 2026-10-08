@@ -11,6 +11,7 @@
 import { chromium } from 'playwright';
 import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +27,12 @@ const CHECKPOINTS = [0, 600, 3000, 12000, 36000]; // steps from the start (0.05 
 const VIEWS = ['angle', 'top', 'follow', 'fp', 'third', 'angle'];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Ask the OS for an unused port, so two checkouts can run this at the same time (set VERIFY_PORT to force one).
+const freePort = () => new Promise((resolve, reject) => {
+  const s = net.createServer();
+  s.on('error', reject);
+  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
+});
 let failures = 0;
 const fail = msg => { failures++; console.log('  FAIL  ' + msg); };
 const pass = msg => console.log('  ok    ' + msg);
@@ -44,7 +51,7 @@ async function startSite() {
   if (process.env.VERIFY_URL) return { url: process.env.VERIFY_URL.replace(/\/$/, ''), stop() {} };
   execSync('npm run build -w @office/client', { cwd: root, stdio: 'ignore' }); // always test the current source
   const vite = findVite();
-  const port = 4399;
+  const port = Number(process.env.VERIFY_PORT) || await freePort();
   const child = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
     cwd: path.join(root, 'apps/client'), stdio: 'ignore',
   });
