@@ -1,6 +1,6 @@
 # Phase 1 breakdown: making the simulation shareable
 
-**Status: proposal, for approval. No phase 1 code has been written.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
+**Status: approved. Step 0 (the safety net) is done and awaiting your review; steps 1 to 9 are next.** This turns phase 1 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps.
 
 **The goal.** Today the simulation (people, tasks, meetings, the day cycle, pathfinding, movement) lives in the browser app, mixed with drawing code. For the server to run the same simulation, it has to move into `packages/shared` and stop depending on Three.js, the DOM and `Math.random`. **The game must look and behave exactly the same after every step.**
 
@@ -38,11 +38,31 @@ Without this, a behaviour-preserving refactor of random, time-driven code can on
 
 **Done when:** the recording exists for three seeds, and running the runner against today's code passes. From then on, **every step must keep it passing.**
 
+### What step 0 turned out to need
+
+Building the safety net taught three things, now part of how the project works:
+
+1. **Two random streams, not one.** The first recording failed its own repeatability check: two runs of the same seed differed even at step 0. The cause was visual code (desk clutter, the fighting-game animation, camera choices) drawing from the same stream as the simulation, sometimes conditionally on an unseeded `Math.random`, so the number of simulation draws shifted from run to run. Now there is a **simulation stream** (`random`, `rnd`, `pick`, `shuffle`: seeded under `?seed=N`) and a **visual stream** (`vrandom`, `vrnd`, `vpick`: always `Math.random`). Visual code must never use the simulation stream.
+2. **The draw count is part of the fingerprint.** Every simulation draw is counted (`rngDraws`), so an added, dropped or reordered draw is caught even before it changes an outcome.
+3. **Ten seeds, because three were not enough.** A deliberate 1% change to one rarely-hit probability slipped past three seeds, and was caught by the ten-seed check (two of ten seeds diverged by the end of the day, with a different draw count). The quick check uses seeds 1 to 3; `npm run verify:browser:thorough` uses all ten and should be run at the end of every step. A bigger change (30% to 60%) is caught by the quick check at step 3,000 with a readable diff.
+
+**What it does not catch.** A change that never alters an outcome in ten seeds at those five points in the day (for example a tweak to a branch that is almost never reached) can pass. Code review and, from step 8 on, unit tests in Node cover that.
+
+**How to use it:**
+
+```
+npm run verify:browser            quick: seeds 1 to 3, every camera view, default-mode checks (about 40 s)
+npm run verify:browser:thorough   all ten seeds (about 70 s). Run at the end of each step
+npm run verify:browser:record     re-record the golden files. Only when a change is MEANT to alter behaviour
+```
+
+It builds the client, serves it, drives headless Chromium, and saves a screenshot of each camera view to `tests/browser/out/` (not committed). The golden recordings are `tests/browser/golden/seed-*.json`. A failure prints the first few differences, for example `persons.7.task: expected "coffee", got "chat"`. Without `?seed`, the game is unchanged: the runner proves it runs live and differs on every load.
+
 ## 4. The steps
 
 | # | Step | What moves or changes | How it is tested | Size |
 |---|---|---|---|---|
-| **0** | Safety net | Seeded random, fingerprint, golden recordings, browser runner (section 3) | The runner passes on today's code | M |
+| **0** | Safety net (**done**) | Seeded random, fingerprint, golden recordings, browser runner (section 3) | The runner passes on today's code | M |
 | **1** | Shared wiring and utilities | The client can import `@office/shared` (a Vite alias to the shared source, so edits show live). `core/util.js` becomes `shared/src/util.ts`: `rnd`, `pick`, `shuffle`, `angDiff`, `TAU`, the seedable random source | Unit tests: a seeded generator repeats; `shuffle` returns a permutation; `angDiff` wraps. Golden master unchanged | S |
 | **2** | `Vec3` and the floor plan | A small `Vec3` class (`x`, `y`, `z`, `add`, `set`, `copy`, `clone`, `distanceTo`, `multiplyScalar`). `config/plan.js` becomes `shared/src/plan.ts`; `W()` returns a `Vec3`. The two Three.js uses in the sim (the chat spot, the people group) are handled | Unit tests for `Vec3` and for `W`/`toPx` round trips; `W(223.5, 420)` equals today's `ENTRY` to the last digit. Check that no client code calls a Three.js-only method on a `W()` result. Golden master and nav cell count unchanged | S to M |
 | **3** | Character and people data | `character/spec.js` becomes `shared/src/character/spec.ts`. `people/data.js` (names, roles, activity categories) moves to `shared` | Unit tests: `normalizeSpec` round trip and bad input; `randomSpec` is repeatable with a seed; every option in `PARTS` is a valid colour | S |
@@ -57,10 +77,10 @@ Without this, a behaviour-preserving refactor of random, time-driven code can on
 
 ## 5. Decisions I need
 
-1. **Playwright as a development dependency** (about 170 MB browser download) for the browser runner. I recommend yes; it is the only way I can verify the browser app myself right now. [Yes]
-2. **Convert moved code to TypeScript as it moves** (with real types for `Person`, `Spot`, `Task`), or move it as JavaScript and type it later? I recommend converting now: those types become the shared language for the network protocol. [Convert as it moves]
-3. **Keep the simulation's state as module-level singletons** (as today, with a `reset()` for tests), or turn it into a `World` object passed everywhere? The server runs one world per process, so singletons are enough and the change is far smaller. [Singletons plus `reset()`]
-4. **How often do you want to review?** I suggest after steps 0, 4, 7 and 9. [As suggested]
+1. **Playwright as a development dependency** (about 120 MB headless browser download) for the browser runner. **Decided: yes.** It is installed.
+2. **Convert moved code to TypeScript as it moves** (with real types for `Person`, `Spot`, `Task`). **Decided: convert as it moves.**
+3. **Keep the simulation's state as module-level singletons** (as today, with a `reset()` for tests). **Decided: singletons plus `reset()`.**
+4. **Review points:** after steps 0, 4, 7 and 9. **Decided.** Step 0 is the first.
 
 ## 6. Risks
 

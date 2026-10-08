@@ -59,7 +59,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | Folder | What lives there |
 |---|---|
 | `config/plan.js` | Floor-plan data (`OUTER`, `WALLS`), plan→metre conversion (`W`, `wx`, `wz`, `toPx`), wall heights |
-| `core/util.js` | Small helpers: `rnd`, `pick`, `shuffle`, `angDiff`, `TAU` |
+| `core/util.js` | Small helpers: `angDiff`, `TAU`, and two random streams: the seedable simulation stream (`random`, `rnd`, `pick`, `shuffle`, `setSeed`) and the visual stream (`vrandom`, `vrnd`, `vpick`) |
 | `render/` | `renderer.js` (renderer, scene, camera, sun), `materials.js` (the `M` palette and `canvasTex`), `screens.js` (monitor/TV textures), `labels.js`, `lighting.js` (day/night) |
 | `world/helpers.js` | Geometry helpers (`box`, `cyl`, `frame`), the obstacle list `OBS`, the wall list `SOLIDS`, the shared `wall` height state |
 | `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |
@@ -148,7 +148,7 @@ The third-person camera runs an "arm" from the head to the wanted camera spot an
 
 ## Debug hook
 
-`window.__sim` exposes live state and a few functions (the sim, people, player, `ctl`, `interactables`, `wall`, the camera controller, `advance(n)` to step the sim without rendering, and more). It exists so the app can be driven from the browser console and from scripted checks. Treat it as **development only**.
+`window.__sim` exposes live state and a few functions (the sim, people, player, `ctl`, `interactables`, `wall`, the camera controller, `advance(n)` to step the sim without rendering, and more). It exists so the app can be driven from the browser console and from scripted checks. It also has `fingerprint()`, a stable summary of the whole simulation. Opening the app with `?seed=N` seeds the simulation stream and stops the live loop from advancing it, so `advance(n)` steps it repeatably; `tests/browser/verify.mjs` uses this to prove refactors change nothing. Treat it as **development only**.
 
 ## Known limits
 

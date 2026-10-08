@@ -4,7 +4,7 @@
 
 Questions that are still open are in [section 18](#18-open-questions).
 
-**Progress:** phase 0 (foundations) is done on the branch `phase-0/foundations`: npm workspaces, the client moved to `apps/client`, a TypeScript `shared` package, a NestJS server skeleton, tests, and a Docker stack (web, server, database) with a smoke test.
+**Progress:** phase 0 (foundations) is done on the branch `phase-0/foundations`: npm workspaces, the client moved to `apps/client`, a TypeScript `shared` package, a NestJS server skeleton, tests, and a Docker stack (web, server, database) with a smoke test. Phase 1 has started: the safety net (step 0 of [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md)) is done.
 
 ## 1. Decisions so far
 

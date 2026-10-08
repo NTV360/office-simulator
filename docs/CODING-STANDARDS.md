@@ -64,6 +64,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 - `update*` functions run every frame: no allocating vectors, arrays or closures in them. Reuse a scratch object created at module level.
 - Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`). The one exception today is Hazel's real-time 10-second rage timer.
+- **Randomness has two streams.** Code that decides what people do or look like uses the simulation stream (`random`, `rnd`, `pick`, `shuffle` from `core/util.js`); code that is only about how things are drawn uses the visual stream (`vrandom`, `vrnd`, `vpick`). Never call `Math.random` in simulation code, and never use the simulation stream in visual code: it would make seeded runs (`?seed=N`) irreproducible. The order of simulation draws is part of the behaviour.
 - Easing uses `1 - Math.exp(-dt * rate)`, not a fixed fraction, so it behaves the same at any frame rate.
 
 ## 8. UI and CSS
@@ -107,7 +108,7 @@ Automated tests cover only the shared and server code so far (`npm test`). The b
 3. The floor renders and people move. Press **Pause/Play**, change the speed, and move the **People** slider.
 4. Try every view: Angle, Plan, Follow, First person, Third person (and `V` between the two). Drag, wheel and a jump-to button should drop you into free camera. `Esc` exits first/third person.
 5. Select a person, press **Follow**, press **Find her** / **Make her angry** (Hazel).
-6. If you touched the sim, step it far from the console: `__sim.advance(3000)` a dozen times should not throw and the day should roll over.
+6. If you touched the sim, step it far from the console: `__sim.advance(3000)` a dozen times should not throw and the day should roll over. If you touched the simulation or anything it depends on, also run `npm run verify:browser` (and `npm run verify:browser:thorough` at the end of a phase 1 step): the recorded behaviour must not change unless you meant it to. See [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor).
 7. If you touched build order, nav, or furniture: compare `__sim.GC`, `__sim.GR` and the count of `__sim.NAV` walkable cells before and after. They should only change when you meant them to.
 8. `npm run build && npm start` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.
 
