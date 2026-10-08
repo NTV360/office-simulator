@@ -19,7 +19,7 @@ Questions that are still open are in [section 18](#18-open-questions).
 | Repo | One monorepo ([section 9](#9-repository-layout)) |
 | World clock | Keep the **fast day** (about 28.5 real minutes), as a setting that can change later |
 | Desk assignment | An **admin picks** each new account's desk (slot) |
-| What can be moved | Furniture rules in [section 8.8](#88-what-is-fixed-and-what-moves): the station tables, Main TV and its table, conference tables and the fridge are fixed; kitchen tables, chairs, desk items and light to medium objects move |
+| What can be moved | Furniture rules in [section 8.8](#88-what-is-fixed-and-what-moves): the station tables, the Main TV (the lounge one where people play), conference tables and a future fridge (none for now) are fixed; kitchen tables, chairs, desk items and light to medium objects move |
 
 ## 2. Goals and non-goals
 
@@ -237,7 +237,7 @@ object { id, type, x, y, z, rotation, owner (account or none), station (slot or 
 ### 8.4 Permissions
 
 - Whether a thing can move at all is its **mobility** (section 8.8). Fixed things never move for players.
-- Movable things at your station (monitor, keyboard, mug, chair) are yours to arrange. **Whether other people may also move them is still open** ([section 18](#18-open-questions)); until decided, the default is that only the station's owner and admins can move things at a station, and everything in shared areas is free for everybody.
+- **At a station, only its owner and admins can move things** (monitor, keyboard, mug, chair). Other people can look, and may sit if the seat is free. **Everything in shared areas** (lounge, kitchen and dining, conference chairs) **is free for everybody to move.** This is decided; an admin can open a station up for fun if the team wants a prank day.
 - Admins can move, lock, reset or delete anything, including fixed objects.
 - Every change is attributed (who moved what) and recent changes can be undone.
 
@@ -268,7 +268,7 @@ Tables (v1): `accounts`, `refresh_tokens`, `persons` (identity, spec, slot, last
 
 **The team's rules:**
 
-- **Fixed:** the tables of the **office stations A to H**, the **Main TV** and the **table it stands on**, the **tables in the conference rooms**, and the **fridge** (once there is one).
+- **Fixed:** the tables of the **office stations A to H**, the **Main TV** (the one in the lounge where people play; it stands on its own floor stand, **not on a table**), the **tables in the conference rooms**, and a **fridge** (none for now).
 - **Movable:** the **kitchen tables**, **all chairs**, **all desk items** (computers, monitors, keyboards and so on), and **light, small and medium objects** in general.
 
 Every type in the object catalogue carries `mobility: fixed | movable` and a **weight class**: *light* (carry with one hand: mug, keyboard, notebook), *medium* (two hands, slower: chair, stool, plant, small table), *heavy* (cannot be carried, so it is fixed). When a type is not covered by a rule above, the tie-breaker is: **built in, wall-mounted or heavy means fixed; light, small or medium means movable.**
@@ -280,12 +280,12 @@ Every type in the object catalogue carries `mobility: fixed | movable` and a **w
 | Station tables (named "Desk 01" to "Desk 08" in the code; they become **Stations A to H**) | fixed | stated |
 | Chairs at the stations and everywhere else (office, dining, conference, bar stools) | movable | stated |
 | Monitors, keyboards, mice, mugs, notebooks, small desk plants | movable | stated (desk items) |
-| Main TV (lounge) | fixed | stated |
-| The table the Main TV stands on (the lounge table in front of it; **please confirm this is the one you mean**) | fixed | stated |
+| Main TV (the lounge one where people play; it stands on its own floor stand) | fixed | stated |
+| The lounge table in front of the TV sofa | movable | *proposed*: a medium table, like the kitchen tables. (The Main TV is not on a table, so there is no fixed "TV table") |
 | Conference tables (three rooms) | fixed | stated |
 | Conference TVs and the credenzas under them | fixed | *proposed*: room fixtures |
 | Kitchen / dining tables (the six in the dining area) | movable | stated |
-| Fridge | fixed | stated. **There is no fridge in the office today**; add one if wanted |
+| Fridge | fixed | stated. **None for now**: there is no fridge in the office and the team decided not to add one yet. If one is added later it is a fixed object |
 | Counter top and sink cabinet | fixed | *proposed*: built in |
 | Coffee machine, water bottle and other things on the counter | movable | *proposed*: small |
 | Sofas and the couch | fixed | *proposed*: heavy |
@@ -532,18 +532,14 @@ The order lets you **see progress after every phase**. Phases 5 and 6 can swap w
 
 ## 18. Open questions
 
-**Already decided** (for the record): the fast day stays (as a setting); an admin picks each account's desk; local Docker first with EC2 later; no Render; the local host is a **Windows PC** and EC2 will be **Ubuntu**. See [section 1](#1-decisions-so-far).
+**Already decided** (for the record): the fast day stays (as a setting); an admin picks each account's desk; local Docker first with EC2 later; no Render; the local host is a **Windows PC** and EC2 will be **Ubuntu**; the furniture rules in [section 8.8](#88-what-is-fixed-and-what-moves) are accepted (the Main TV stands on its own stand, so there is no fixed TV table); **no fridge for now**; at stations only the owner and admins move things, shared areas are free. See [section 1](#1-decisions-so-far).
 
 Still open. Defaults in brackets are what this plan assumes.
 
-1. **Please confirm the "proposed" rows in [section 8.8](#88-what-is-fixed-and-what-moves)**: conference TVs and credenzas, counter and sink, sofas, armchairs, bar tables, plants, work-floor TVs, console and music gear, storage and lockers, booths, golf, darts, server rack. [As proposed]
-2. **Which table does the Main TV stand on?** I read it as the lounge table in front of the TV. [That one]
-3. **Fridge:** there is none today. Should one be added to the kitchen? [Yes, as a fixed object, when someone has time]
-4. **Rename "Desk 01" to "Desk 08" as Stations A to H** (in the status text and labels)? [Yes, in phase 1]
-5. **Other people's stuff:** may someone else move things at *your* station (monitor, mug, chair)? Throw things at you? [No at stations, yes in shared areas]
-6. **Can thrown objects hit people**, knock them back, or break? [No in v1]
-7. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
-8. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only for now]
+1. **Rename "Desk 01" to "Desk 08" as Stations A to H** (in the status text and labels)? This was not answered, so it stays as planned. [Yes, in phase 1]
+2. **Can thrown objects hit people**, knock them back, or break? [No in v1]
+3. **Moderation:** who can mute or ban, and what are the chat rules? [Admins]
+4. **Remote access:** will anyone play from home through a VPN? If so, voice and latency need a look. [Office network only for now]
 
 ## 19. First gameplay interactions (proposal)
 
