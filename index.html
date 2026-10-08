@@ -27,6 +27,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);ov
 .card{position:fixed;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:2}
 #more{display:flex;flex-direction:column;gap:12px}
 #moreBtn{display:none}
+.seg.hz{border-color:#9b4d62}
+.seg.hz button{color:#9b4d62;font-weight:700}
+.seg.hz button+button{border-left-color:#9b4d62}
+.seg.hz button:hover{background:#9b4d62;color:#fff}
+#rageHazel{color:#c8302c}
+#rageHazel:hover{background:#c8302c;color:#fff}
+#rageHazel:disabled{background:#c8302c;color:#fff;cursor:default;opacity:.9}
 .chips{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0}
 .btn.sm{padding:6px 8px;font-size:11.5px}
 .row .chips+*{flex:none}
@@ -118,6 +125,13 @@ body.fp #stage canvas{cursor:crosshair}
       <button type="button" data-speed="1" aria-pressed="true">1×</button>
       <button type="button" data-speed="3" aria-pressed="false">3×</button>
       <button type="button" data-speed="8" aria-pressed="false">8×</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="lbl">Hazel</span>
+    <div class="seg hz" role="group" aria-label="Hazel Sellote">
+      <button type="button" id="findHazel" title="Find Hazel Sellote">Find her</button>
+      <button type="button" id="rageHazel" title="Make Hazel angry for 10 seconds">Make her angry</button>
     </div>
   </div>
   <button class="btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="more">More options</button>
@@ -345,6 +359,9 @@ const M = {
   chalk: new THREE.MeshStandardMaterial({ color: 0x24302a, roughness: 1 }),
   rack: new THREE.MeshStandardMaterial({ color: 0x1c2228, roughness: .5, metalness: .4 }),
   rackGlass: new THREE.MeshStandardMaterial({ color: 0x0d1418, transparent: true, opacity: .55, roughness: .1, metalness: .3 }),
+  musicRug: new THREE.MeshStandardMaterial({ color: 0x8e5a4a, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }),
+  keyboardBody: new THREE.MeshStandardMaterial({ color: 0x1f2428, roughness: .4 }),
+  guitarBody: new THREE.MeshStandardMaterial({ color: 0xc98a4b, roughness: .45 }),
   rug: new THREE.MeshStandardMaterial({ color: 0xd9cdb8, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 }),
   featureWall: new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: .85 }),
   cabinet: new THREE.MeshStandardMaterial({ color: 0xe9dcc6, roughness: .7 }),
@@ -957,6 +974,17 @@ const BOARD_C = new THREE.Vector3(wx(351.8 + WALL_T / 2) + .1, 1.73, wz(925));
   });
 }
 // Wall-mounted server cabinet (replaces the plant by the column wall)
+function makeGuitar() {
+  const g = new THREE.Group();
+  const bodyM = M.guitarBody, darkM = M.chairBase;
+  const lower = new THREE.Mesh(new THREE.SphereGeometry(.19, 18, 12), bodyM); lower.scale.set(1, .85, .28); lower.position.x = -.06; lower.castShadow = true; g.add(lower);
+  const upper = new THREE.Mesh(new THREE.SphereGeometry(.14, 16, 10), bodyM); upper.scale.set(1, .85, .28); upper.position.x = .15; upper.castShadow = true; g.add(upper);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(.05, 16), darkM); hole.position.set(.06, 0, .056); g.add(hole);
+  const bridge = new THREE.Mesh(boxGeo(.03, .1, .015), darkM); bridge.position.set(-.1, 0, .055); g.add(bridge);
+  const neck = new THREE.Mesh(boxGeo(.46, .05, .025), M.diningWood2); neck.position.set(.5, 0, .03); g.add(neck);
+  const headstock = new THREE.Mesh(boxGeo(.14, .07, .02), darkM); headstock.position.set(.79, 0, .03); g.add(headstock);
+  return g;
+}
 const SERVER_LEDS = [];
 {
   const bx = 351.8 + WALL_T / 2;
@@ -974,6 +1002,48 @@ const SERVER_LEDS = [];
   }
   box(f, .03, .12, .02, M.steel, .25, 1.55, .515);           // door handle
   for (let i = 0; i < 4; i++) box(f, .014, .3 + i * .1, .014, [M.golfBlue, M.flag, M.golfBallY, M.white][i], -.2 + i * .04, 1.05 - i * .05, .2);  // patch cables
+}
+// Music corner by the east window: keyboard piano and an acoustic guitar anyone can play
+SEATS.music = [];
+const MUSIC = { notes: [], standGuitar: null };
+{
+  rectPlane(630, 503, 679, 572, M.musicRug, .006);
+  // keyboard on an X stand, player faces the window
+  const kx = 668, ky = 525; addObs(663, 507, 674, 543);
+  const k = frame(kx, ky, WST);
+  [[-.45, .4], [.45, -.4]].forEach(([x, r]) => { [-1, 1].forEach(sd => { const leg = new THREE.Mesh(boxGeo(.03, .9, .03), M.chairBase); leg.position.set(x * .9 + sd * .0, .42, 0); leg.rotation.x = r * sd; leg.castShadow = true; k.add(leg); }); });
+  box(k, 1.3, .03, .3, M.chairBase, 0, .78, 0);
+  box(k, 1.28, .09, .34, M.keyboardBody, 0, .84, 0);
+  const keysTex = canvasTex(512, 64, (g, w, h) => {
+    g.fillStyle = '#f7f7f5'; g.fillRect(0, 0, w, h); g.strokeStyle = '#9aa0a6'; g.lineWidth = 1;
+    const n = 36, kw = w / n; for (let i = 0; i <= n; i++) { g.beginPath(); g.moveTo(i * kw, 0); g.lineTo(i * kw, h); g.stroke(); }
+    g.fillStyle = '#15191d'; for (let i = 0; i < n; i++) { const m = i % 7; if (m === 2 || m === 6) continue; g.fillRect((i + 1) * kw - kw * .3, 0, kw * .6, h * .62); }
+  });
+  const keys = new THREE.Mesh(new THREE.PlaneGeometry(1.18, .15), new THREE.MeshStandardMaterial({ map: keysTex, roughness: .5 }));
+  keys.rotation.x = -Math.PI / 2; keys.position.set(0, .886, .09); k.add(keys);
+  box(k, .3, .02, .06, M.monitor, -.4, .89, -.08, false);
+  const stool = frame(652, ky, WST); cyl(stool, .19, .19, .06, M.chairSeat2, 0, .52, 0, 16); cyl(stool, .03, .03, .5, M.steel, 0, .25, 0, 8); cyl(stool, .2, .2, .02, M.chairBase, 0, .01, 0, 14);
+  SEATS.music.push(mkSpot('piano', 652, ky, E, { sit: true, hipY: .6, place: 'the keyboard' }));
+  // guitar stand + stool
+  const gs = frame(672, 556, WST);
+  box(gs, .3, .02, .25, M.chairBase, 0, .01, 0); box(gs, .03, .55, .03, M.chairBase, 0, .3, -.06);
+  const sg = makeGuitar(); sg.rotation.set(.12, Math.PI / 2, Math.PI / 2 - .05); sg.position.set(0, .45, .02); gs.add(sg); MUSIC.standGuitar = sg; sg.traverse(o => o.userData.dynamic = true);
+  addObs(667, 550, 677, 562);
+  const gstool = frame(648, 556, WST); cyl(gstool, .18, .18, .06, M.chairSeat2, 0, .52, 0, 16); cyl(gstool, .03, .03, .5, M.steel, 0, .25, 0, 8); cyl(gstool, .19, .19, .02, M.chairBase, 0, .01, 0, 14);
+  SEATS.music.push(mkSpot('guitar', 648, 556, WST, { sit: true, hipY: .6, place: 'the guitar' }));
+  // floating music notes
+  const noteTex = canvasTex(64, 64, (g) => { g.fillStyle = '#2f3a45'; g.font = 'bold 48px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♪', 32, 34); });
+  for (let i = 0; i < 6; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, transparent: true, depthWrite: false })); sp.scale.setScalar(.22); sp.visible = false; scene.add(sp); MUSIC.notes.push({ sp, seat: SEATS.music[i % 2], off: i * .7 }); }
+}
+function updateMusic(now) {
+  const gp = SEATS.music[1].occupant; MUSIC.standGuitar.visible = !gp;
+  for (const n of MUSIC.notes) {
+    const p = n.seat.occupant, playing = p && (p.state === 'doing' || p.state === 'player');
+    if (!playing) { n.sp.visible = false; continue; }
+    const t = ((now / 1000 + n.off) % 2.1) / 2.1;
+    n.sp.visible = true; n.sp.material.opacity = Math.sin(t * Math.PI);
+    n.sp.position.set(n.seat.pos.x + Math.sin(t * 6 + n.off) * .2, 1.3 + t * .9, n.seat.pos.z + Math.cos(t * 5 + n.off) * .15);
+  }
 }
 function updateDarts(now) {
   SERVER_LEDS.forEach((l, i) => { l.visible = Math.sin(now * .004 * (1 + (i % 5) * .37) + i * 1.7) > -.3; });
@@ -1106,7 +1176,7 @@ function buildLabels() {
   label('Conference 1', 190, 132, 2.9, .9); label('Conference 2', 330, 132, 2.9, .9); label('Conference 3', 168, 248, 2.9, .85);
   label('Lounge', 168, 345, 1.8, .85); label('TV lounge', 362, 318, 1.9, .85); label('Entrance', 223, 440, 1.2);
   label('Bar table', 450, 105, 1.7, .75); label('Bar table', 655, 207, 1.7, .75);
-  label('Booths', 582, 916, 2.9); label('Dining area', 544, 1030, 2.1); label('Mini golf', 667, 1018, 1.5, .8); label('Darts', 380, 925, 2.8, .8);
+  label('Booths', 582, 916, 2.9); label('Dining area', 544, 1030, 2.1); label('Mini golf', 667, 1018, 1.5, .8); label('Darts', 380, 925, 2.8, .8); label('Music corner', 655, 538, 2.0, .8);
   label('Counter top', 390, 1014, 1.8, .8); label('Sink', 395, 1072, 1.6, .8); label('Storage', 311, 1062, 2.4, .85); label('Locker 2', 508, 1103, 2.4, .8); label('Locker 1', 615, 1103, 2.4, .8);
 }
 
@@ -1181,7 +1251,7 @@ const FIRST = ['Ana', 'Marco', 'Liza', 'Paolo', 'Jessa', 'Carlo', 'Bea', 'Miguel
 const LAST = 'ABCDEFGLMNPRSTVY';
 const ROLES = [['Developer', 10], ['QA Engineer', 2], ['Designer', 2], ['Product Manager', 2], ['DevOps', 2], ['Support', 1]];
 const roleBag = ROLES.flatMap(([r, n]) => Array(n).fill(r));
-const VERB = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets' };
+const VERB = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets' };
 
 const CATS = {
   work: { name: 'At their desk', color: '#5a8fc7' },
@@ -1212,19 +1282,44 @@ function buildBody(look) {
   const hips = new THREE.Group(); hips.position.y = .88; root.add(hips);
   const pelvis = new THREE.Mesh(sph(.16), pants); pelvis.scale.set(1.05, .62, .78); pelvis.castShadow = true; hips.add(pelvis);
   const torso = new THREE.Group(); hips.add(torso);
+  if (look.skirt) {
+    const sk = new THREE.Mesh(new THREE.CylinderGeometry(.16, .27, .34, 20, 1, true), stdMat(look.skirt, .8)); sk.material.side = THREE.DoubleSide; sk.position.y = -.13; sk.castShadow = true; hips.add(sk);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(.165, .165, .04, 20), stdMat(look.skirt, .6)); band.position.y = .03; hips.add(band);
+  }
   const chest = new THREE.Mesh(new THREE.CapsuleGeometry(.155, .26, 4, 12), shirt); chest.position.y = .28; chest.scale.set(1.15, 1, .74); chest.castShadow = true; torso.add(chest);
   if (look.jacket) { const j = new THREE.Mesh(new THREE.CapsuleGeometry(.162, .22, 4, 12, ), stdMat(look.jacket)); j.position.y = .27; j.scale.set(1.17, 1, .77); j.castShadow = true; torso.add(j); const sh = new THREE.Mesh(sph(.06), shirt); sh.position.set(0, .45, .095); sh.scale.set(1, 1.4, .4); torso.add(sh); }
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(.048, .055, .1, 10), skin); neck.position.y = .55; torso.add(neck);
   const head = new THREE.Group(); head.position.y = .6; torso.add(head);
-  const skull = new THREE.Mesh(sph(.135, 20, 16), skin); skull.position.y = .13; skull.scale.set(1, 1.08, 1.02); skull.castShadow = true; head.add(skull);
-  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eyeMat); e.position.set(s * .047, .14, .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
+  const skull = new THREE.Mesh(look.cube ? boxGeo(.27, .29, .26) : sph(.135, 20, 16), skin); skull.position.y = .13; if (!look.cube) skull.scale.set(1, 1.08, 1.02); skull.castShadow = true; head.add(skull);
+  [-1, 1].forEach(s => { const e = new THREE.Mesh(sph(.017, 8, 6), eyeMat); e.position.set(s * .047, .14, look.cube ? .132 : .128); head.add(e); const ear = new THREE.Mesh(sph(.03, 8, 6), skin); ear.position.set(s * .135, .12, 0); ear.scale.set(.5, 1, .8); head.add(ear); });
   const nose = new THREE.Mesh(sph(.022, 8, 6), skin); nose.position.set(0, .11, .138); head.add(nose);
   // hair
   const capGeo = new THREE.SphereGeometry(.145, 20, 12, 0, TAU, 0, Math.PI * (look.style === 'buzz' ? .45 : .56));
-  const cap = new THREE.Mesh(capGeo, hair); cap.position.set(0, .14, -.008); cap.rotation.x = -.22; cap.scale.set(1, 1.08, 1.04); cap.castShadow = true; head.add(cap);
+  const cap = new THREE.Mesh(capGeo, hair); cap.visible = !look.cube; cap.position.set(0, .14, -.008); cap.rotation.x = -.22; cap.scale.set(1, 1.08, 1.04); cap.castShadow = true; head.add(cap);
   if (look.style === 'long') { const l = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .2, 4, 10), hair); l.position.set(0, .02, -.07); l.scale.set(1.12, 1, .55); l.castShadow = true; head.add(l); }
   if (look.style === 'bun') { const b = new THREE.Mesh(sph(.065), hair); b.position.set(0, .27, -.09); head.add(b); }
   if (look.style === 'curly') for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; const b = new THREE.Mesh(sph(.055, 8, 6), hair); b.position.set(Math.cos(a) * .11, .2 + Math.random() * .06, Math.sin(a) * .1 - .02); head.add(b); }
+  if (look.style === 'bob' && look.cube) {
+    // blocky, extra-thick bob for the cube head
+    const hb = (w, h, d, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, d), hair); m.position.set(x, y, z); m.castShadow = true; head.add(m); return m; };
+    hb(.33, .09, .32, 0, .3, -.005);          // crown
+    hb(.065, .27, .32, -.165, .15, -.005);    // right side, down to the jaw
+    hb(.065, .27, .32, .165, .15, -.005);     // left side
+    hb(.33, .29, .07, 0, .155, -.155);        // back
+    hb(.29, .065, .05, 0, .235, .14);         // heavy straight fringe
+  } else if (look.style === 'bob') {
+    const sideGeo = new THREE.SphereGeometry(.182, 24, 14, Math.PI / 2 + .9, TAU - 1.8, Math.PI * .22, Math.PI * .5);
+    const sides = new THREE.Mesh(sideGeo, hair); sides.position.set(0, .13, -.012); sides.scale.set(1.08, 1, 1.05); sides.castShadow = true; head.add(sides);
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(.172, 22, 12, 0, TAU, 0, Math.PI * .5), hair); crown.position.set(0, .14, -.01); crown.scale.set(1.06, 1.05, 1.06); crown.castShadow = true; head.add(crown);
+    const fringe = new THREE.Mesh(new THREE.SphereGeometry(.168, 18, 6, Math.PI / 2 - .95, 1.9, Math.PI * .16, Math.PI * .2), hair); fringe.position.set(0, .148, .004); head.add(fringe);
+  }
+  if (look.angry) {
+    const bm = stdMat('#1d1714', .6);
+    [-1, 1].forEach(sd => { const b = new THREE.Mesh(boxGeo(.05, .013, .012), bm); b.position.set(sd * .047, .18, .137); b.rotation.z = sd * .5; head.add(b); });
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(.024, .005, 6, 12, Math.PI), stdMat('#6b2a2a', .6)); mouth.position.set(0, .075, .137); head.add(mouth);
+    // flushed cheeks
+    [-1, 1].forEach(sd => { const c = new THREE.Mesh(sph(.018, 8, 6), stdMat('#d9705f', .8)); c.position.set(sd * .08, .11, .132); c.scale.set(1, .6, .4); head.add(c); });
+  }
   if (look.style === 'side') { const f = new THREE.Mesh(sph(.07, 10, 8), hair); f.position.set(.06, .23, .08); f.scale.set(1.4, .6, .9); head.add(f); }
   if (look.glasses) {
     const gm = stdMat('#20262b', .4); const tg = new THREE.TorusGeometry(.03, .006, 6, 16);
@@ -1237,6 +1332,7 @@ function buildBody(look) {
     [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .04, 14), hm); c.rotation.z = Math.PI / 2; c.position.set(s * .145, .12, 0); head.add(c); });
   }
   const sleeve = look.longSleeve ? (look.jacket ? stdMat(look.jacket) : shirt) : skin;
+  root.userData.chest = chest;
   const arm = side => {
     const sh = new THREE.Group(); sh.position.set(side * .205, .46, 0); torso.add(sh);
     const up = new THREE.Mesh(new THREE.CapsuleGeometry(.056, .17, 4, 10), look.jacket ? stdMat(look.jacket) : shirt); up.position.y = -.14; up.castShadow = true; sh.add(up);
@@ -1270,7 +1366,9 @@ function buildBody(look) {
   [-1, 1].forEach(sd => { const gp = new THREE.Mesh(sph(.03, 8, 6), pw); gp.position.set(sd * .066, -.006, -.03); gp.scale.set(1, .8, 1.5); pad.add(gp); });
   const tp = new THREE.Mesh(boxGeo(.065, .006, .035), pk); tp.position.set(0, .016, .005); pad.add(tp);
   pad.position.set(.08, -.07, .05); pad.visible = false; R.hand.add(pad);
-  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, ring };
+  const guitar = makeGuitar(); guitar.position.set(-.04, .14, .2); guitar.rotation.z = .35; guitar.scale.setScalar(.95); guitar.visible = false; torso.add(guitar);
+  const skinMeshes = []; root.traverse(o => { if (o.isMesh && o.material === skin) skinMeshes.push(o); });
+  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, guitar, ring, chest, skin, skinMeshes };
 }
 
 const people = [];
@@ -1286,20 +1384,26 @@ let logDirty = true;
 
 function makePerson() {
   const seat = deskPool.find(s => !s.owner); if (!seat) return null;
-  const role = pick(roleBag);
+  let role = pick(roleBag);
   const look = {
     skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), shoes: pick(SHOES), style: pick(STYLES),
     glasses: Math.random() < .28, headphones: Math.random() < (role === 'Developer' ? .3 : .1) ? pick(['#2b3138', '#e9ecef', '#c45f4b', '#3a7f86']) : null,
     longSleeve: Math.random() < .4, jacket: Math.random() < .18 ? pick(['#2f3a45', '#6b5a4a', '#41505e', '#7d8a72']) : null, scale: rnd(.93, 1.04),
   };
-  const first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length]; nameIdx++;
+  let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
+  if (nameIdx === 0) {
+    // Hazel: small, bob cut, permanently unimpressed
+    first = 'Hazel'; last = 'Sellote'; role = 'UX/UI Designer';
+    Object.assign(look, { style: 'bob', cube: true, hair: '#2b201b', scale: .7, skirt: '#2f3d6b', angry: true, glasses: false, headphones: null, jacket: null, shirt: '#9b4d62', pants: '#2a2228', skin: '#d9a27a' });
+  }
+  nameIdx++;
   const body = buildBody(look);
   const p = {
-    id: people.length, name: `${first} ${last}.`, role, look, body, seat,
+    id: people.length, name: `${first} ${last}`, role, look, body, seat,
     pos: seat.pos.clone(), face: seat.face, faceGoal: seat.face, speed: rnd(1.15, 1.45),
     state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
-    screenKind: role === 'Designer' ? 'design' : role === 'DevOps' ? 'dash' : 'code',
+    screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
   p.screenMat = pick(SCREENS[p.screenKind]);
   seat.owner = p;
@@ -1320,6 +1424,8 @@ function removePerson() {
 function scheduleDay(p) {
   p.arriveAt = rnd(7 * 60 + 50, 9 * 60 + 35); p.leaveAt = rnd(17 * 60 + 10, 18 * 60 + 50);
   p.lunchAt = rnd(11 * 60 + 45, 12 * 60 + 40); p.hadLunch = false; p.arrivedAt = null; p.coffees = 0;
+  // Hazel is always the last one out
+  if (p.name === 'Hazel Sellote') p.leaveAt = 19 * 60 + 2;
 }
 
 /* ---------- Tasks ---------- */
@@ -1363,6 +1469,11 @@ function coffee(p) {
 function sinkTrip(p) { const s = free(SEATS.sink)[0]; return !!s && goDo(p, { kind: 'sink', cat: 'pantry', anim: 'sink', spot: s, dur: rnd(1.5, 3) }); }
 function lockerTrip(p) { const s = free(SEATS.locker)[0]; return !!s && goDo(p, { kind: 'locker', cat: 'break', anim: 'locker', spot: s, dur: rnd(1, 2.5) }); }
 function sofaBreak(p) { const s = free(SEATS.lounge.filter(x => !x.game))[0]; return !!s && goDo(p, { kind: 'sofa', cat: 'break', anim: 'relax', spot: s, dur: rnd(6, 13) }); }
+function musicBreak(p) {
+  const s = free(SEATS.music)[0]; if (!s) return false;
+  const g = s.kind === 'guitar';
+  return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: q => { if (g) q.body.guitar.visible = true; }, onEnd: q => { q.body.guitar.visible = false; } });
+}
 function dartsBreak(p) {
   const s = free(SEATS.darts)[0]; if (!s) return false;
   return goDo(p, { kind: 'darts', cat: 'break', anim: 'darts', spot: s, dur: rnd(6, 12) });
@@ -1441,6 +1552,8 @@ function chooseNext(p) {
   if (r < .49 && gameBreak(p)) return;
   if (r < .53 && golfBreak(p)) return;
   if (r < .57 && dartsBreak(p)) return;
+  if (r < .61 && musicBreak(p)) return;
+  if (SEATS.music.some(x => x.occupant) && Math.random() < .05 && musicBreak(p)) return;
   if (SEATS.darts.some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
   if (SEATS.golf.some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
   { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .07 && gameBreak(p)) return; }
@@ -1525,6 +1638,8 @@ populate(40);
   const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: SEATS.booth[1], dur: 12, onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
   const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: SEATS.counter[0], dur: 5, onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => q.body.mug.visible = false });
   const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: SEATS.bar[0], dur: 6, onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false });
+  { const g = here()[0]; if (g) placeNow(g, { kind: 'piano', cat: 'break', anim: 'piano', spot: SEATS.music[0], dur: 12 }); }
+  { const g = here()[0]; if (g) placeNow(g, { kind: 'guitar', cat: 'break', anim: 'guitar', spot: SEATS.music[1], dur: 14, onStart: q => q.body.guitar.visible = true, onEnd: q => q.body.guitar.visible = false }); }
   SEATS.darts.forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'darts', cat: 'break', anim: 'darts', spot: sp, dur: 10 + i * 2 }); });
   SEATS.golf.forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'golf', cat: 'break', anim: 'putt', spot: sp, dur: 9 + i * 3, onStart: q => q.body.putter.visible = true, onEnd: q => q.body.putter.visible = false }); });
   [5, 6, 7].forEach((k, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'game', cat: 'break', anim: 'game', spot: SEATS.lounge[k], dur: 14 + i * 3, onStart: q => q.body.pad.visible = true, onEnd: q => q.body.pad.visible = false }); });
@@ -1535,6 +1650,7 @@ populate(40);
 /* ================= Animation ================= */
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
+  if (p.rageK > .3) return 'rage';
   if (p.state === 'player') return fp.sitting ? (p.task?.anim || 'listenSit') : (fp.moving ? 'walk' : 'stand');
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
@@ -1563,6 +1679,20 @@ function targetPose(p, k, T) {
     case 'talkSit': sit(); o.lean = .08; o.lShX = -.5; o.lEl = -.9; o.rShX = -.75 + Math.sin(T * 3.1) * .25; o.rEl = -1.1 + Math.sin(T * 4.3) * .3; o.rShZ = -.2; o.headX = Math.sin(T * 5) * .05; break;
     case 'relax': sit(); o.lean = -.18; o.lShX = o.rShX = -.25; o.lEl = o.rEl = -.6; o.headY = Math.sin(T * .3) * .5; o.headX = -.05; break;
     case 'phone': sit(); o.lean = .02; o.rShX = -.45; o.rShZ = .55; o.rEl = -2.55; o.lShX = -.4 + Math.sin(T * 2.2) * .15; o.lEl = -1.0; o.headY = Math.sin(T * .5) * .3; o.headX = -.05 + Math.sin(T * 4) * .03; break;
+    case 'piano': { sit(); o.lean = .1; o.lShX = -.75; o.rShX = -.75; o.lEl = -1.0 + Math.sin(T * 7) * .08; o.rEl = -1.0 + Math.sin(T * 8 + 1) * .08; o.lShZ = .05 + Math.sin(T * 1.3) * .18; o.rShZ = -.05 + Math.sin(T * 1.1 + 2) * .18; o.headX = .2; o.headY = Math.sin(T * .9) * .15; o.lean += Math.sin(T * 2) * .03; break; }
+    case 'guitar': { sit(); o.lean = .06; o.lShX = -1.05; o.lShZ = .55; o.lEl = -1.2 + Math.sin(T * 3) * .05; o.rShX = -.35; o.rShZ = -.15; o.rEl = -1.35 + Math.sin(T * 12) * .2; o.headX = .25; o.headY = .35 + Math.sin(T * 2) * .08; break; }
+    case 'rage': {
+      const roar = RAGE.t < 1.6;
+      o.hipY = .86 + Math.abs(Math.sin(T * 9)) * .02; o.lean = roar ? -.18 : .12 + Math.sin(T * 14) * .03;
+      if (roar) { o.lShZ = 1.25; o.rShZ = -1.25; o.lShX = -.3; o.rShX = -.3; o.lEl = o.rEl = -1.5; o.headX = -.45; }
+      else {
+        const s = Math.sin(T * 7);
+        o.lShX = -1.1 - s * .55; o.rShX = -1.1 + s * .55; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -1.7;
+        const st = Math.sin(T * 5); o.lHip = Math.min(0, st) * .7; o.lKnee = Math.max(0, -st) * 1.1; o.rHip = Math.min(0, -st) * .7; o.rKnee = Math.max(0, st) * 1.1;
+        o.headY = Math.sin(T * 3) * .5; o.headX = .1;
+      }
+      break;
+    }
     case 'darts': {
       const ph = (T + (p.task?.spot?.dartOff || 0)) % 6;
       o.lShX = -.3; o.lEl = -.6; o.headX = -.05; o.lean = .04;
@@ -1596,6 +1726,7 @@ function targetPose(p, k, T) {
   else if (k === 'talkSit' && p.task?.meeting) { const others = p.task.meeting.members.filter(q => q !== p); if (others.length) look = others[Math.floor(T / 2.5) % others.length].pos; }
   else if (k === 'talkStand' && p.task?.partner) look = p.task.partner.pos;
   else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && p.state !== 'player') look = LOUNGE_TV_POS;
+  if (k !== 'rage' && RAGE.on && HAZEL() && HAZEL() !== p && p.pos.distanceTo(HAZEL().pos) < 6) look = HAZEL().pos;
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;
 }
@@ -1613,6 +1744,7 @@ function applyPose(p, dt) {
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
+  if (p.rageK > .05) { p.animT += dt; return; }
   if (p.state === 'player') return;
   if (p.state === 'away') {
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
@@ -1845,6 +1977,8 @@ function statusText(p) {
     case 'storage': return going ? 'Heading to the storage room' : 'Grabbing supplies from storage';
     case 'sink': return going ? 'Taking a mug to the sink' : 'Washing a mug';
     case 'locker': return going ? `Going to ${where}` : `At ${where}`;
+    case 'piano': return going ? 'Heading to the keyboard' : 'Playing the keyboard';
+    case 'guitar': return going ? 'Grabbing the guitar' : 'Playing guitar';
     case 'darts': return going ? 'Heading to the dartboard' : 'Playing darts';
     case 'golf': return going ? 'Heading to the mini golf green' : 'Putting on the mini golf green';
     case 'game': return going ? 'Heading to the TV lounge for a game' : 'Playing PS5 in the TV lounge';
@@ -1892,6 +2026,14 @@ function setUiHidden(h) {
 $('uiToggle').onclick = () => setUiHidden(!document.body.classList.contains('ui-hidden'));
 addEventListener('keydown', e => { if (e.key.toLowerCase() === 'h' && e.target.tagName !== 'INPUT' && !e.metaKey && !e.ctrlKey) setUiHidden(!document.body.classList.contains('ui-hidden')); });
 try { if (localStorage.getItem('officeSimUiHidden') === '1') setUiHidden(true); } catch (_) {}
+$('findHazel').onclick = () => {
+  const h = people.find(q => q.name === 'Hazel Sellote'); if (!h) return;
+  if (fp.on) exitFP();
+  select(h);
+  if (h.state === 'away') { addLog(h.arrivedAt ? 'Hazel has already gone home' : `Hazel isn't in yet, due around ${fmt(h.arriveAt)}`); return; }
+  followP = h; view = 'follow'; setViewPressed('follow');
+  camGoal.dist = 7; camGoal.pitch = .7; camGoal.yaw = h.face + Math.PI + .5;
+};
 $('play').onclick = () => { sim.paused = !sim.paused; $('play').textContent = sim.paused ? 'Play' : 'Pause'; };
 document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { sim.speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
@@ -1904,6 +2046,48 @@ $('staff').oninput = e => {
 };
 addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('play').click(); } if (e.key === 'Escape') select(null); });
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+/* ================= Hazel rage mode ================= */
+const HAZEL = () => people.find(q => q.name === 'Hazel Sellote');
+const RAGE = { on: false, until: 0, t: 0, puffs: [], skinMat: new THREE.MeshStandardMaterial({ color: 0xd8432e, emissive: 0x8a1a0a, emissiveIntensity: .55, roughness: .55 }) };
+{
+  const puffTex = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
+  for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false })); sp.visible = false; scene.add(sp); RAGE.puffs.push({ sp, off: i / 8, side: i % 2 ? 1 : -1 }); }
+}
+function startRage() {
+  const h = HAZEL(); if (!h) return;
+  select(h);
+  if (h.state === 'away') { addLog(h.arrivedAt ? 'Hazel has gone home. She can stay angry tomorrow.' : `Hazel isn't in yet, due around ${fmt(h.arriveAt)}`); return; }
+  if (fp.on && fp.p !== h) exitFP();
+  RAGE.on = true; RAGE.until = performance.now() + 10000; RAGE.t = 0;
+  if (!fp.on) { followP = h; view = 'follow'; setViewPressed('follow'); camGoal.dist = 6.5; camGoal.pitch = .55; camGoal.yaw = h.face + .35; }
+  addLog('Hazel is FURIOUS');
+}
+function updateRage(dt, now) {
+  const h = HAZEL(); if (!h) return;
+  if (RAGE.on) { RAGE.t += dt; if (now >= RAGE.until || h.state === 'away') { RAGE.on = false; addLog('Hazel calmed down'); } }
+  const tgt = RAGE.on ? 1 : 0; h.rageK = (h.rageK || 0) + (tgt - (h.rageK || 0)) * (1 - Math.exp(-dt * 5));
+  const k = h.rageK, b = h.body;
+  b.root.scale.setScalar(h.look.scale * (1 + .14 * k));
+  b.chest.scale.set(1.15 * (1 + .75 * k), 1 + .12 * k, .74 * (1 + .55 * k));
+  [b.L, b.R].forEach((a, i) => { a.sh.scale.set(1 + .9 * k, 1 + .05 * k, 1 + .9 * k); a.sh.position.x = (i ? -1 : 1) * (.205 + .09 * k); });
+  [b.LL, b.RL].forEach(l => l.hp.scale.set(1 + .45 * k, 1, 1 + .45 * k));
+  const mat = k > .4 ? RAGE.skinMat : b.skin; b.skinMeshes.forEach(m => { if (m.material !== mat) m.material = mat; });
+  RAGE.skinMat.emissiveIntensity = .4 + Math.sin(now * .012) * .2;
+  // steam from the ears
+  const show = k > .3 && h.state !== 'away' && !(fp.on && fp.p === h);
+  const head = new THREE.Vector3(); b.head.getWorldPosition(head);
+  for (const p of RAGE.puffs) {
+    if (!show) { p.sp.visible = false; continue; }
+    const t = ((now / 900) + p.off) % 1, rgt = new THREE.Vector3(-Math.cos(h.face), 0, Math.sin(h.face)).multiplyScalar(p.side * (.16 + t * .25));
+    p.sp.visible = true; p.sp.position.copy(head).add(rgt); p.sp.position.y += .12 + t * .55;
+    p.sp.scale.setScalar(.12 + t * .35); p.sp.material.opacity = (1 - t) * .9 * k;
+  }
+  const btn = $('rageHazel');
+  if (RAGE.on) { btn.disabled = true; btn.textContent = `Calming down… ${Math.ceil((RAGE.until - now) / 1000)}s`; }
+  else if (btn.disabled) { btn.disabled = false; btn.textContent = 'Make her angry'; }
+}
+$('rageHazel').onclick = startRage;
 
 /* ================= First person ================= */
 const fp = { on: false, p: null, yaw: 0, pitch: 0, sitting: null, moving: false, eye: 1.6, savedWall: LOW_H, stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0, acc: 0 };
@@ -1943,22 +2127,22 @@ function seatOK(sp, p) {
 }
 function nearestSeat() {
   const p = fp.p; let best = null, bd = 1.15;
-  const all = [...SEATS.desk, ...Object.values(SEATS.conf).flat(), ...SEATS.dining, ...SEATS.lounge, ...SEATS.bar, ...SEATS.booth];
+  const all = [...SEATS.desk, ...Object.values(SEATS.conf).flat(), ...SEATS.dining, ...SEATS.lounge, ...SEATS.bar, ...SEATS.booth, ...SEATS.music];
   for (const sp of all) { if (!seatOK(sp, p)) continue; const d = Math.hypot(sp.pos.x - p.pos.x, sp.pos.z - p.pos.z); if (d < bd) { bd = d; best = sp; } }
   return best;
 }
 function sitDown(sp) {
   const p = fp.p; if (sp.shared) sp.occupant = p;
   fp.sitting = sp; p.pos.copy(sp.pos); fp.yaw = sp.face; fp.pitch = -.12;
-  const anim = sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
+  const anim = sp.kind === 'piano' ? 'piano' : sp.kind === 'guitar' ? 'guitar' : sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
   p.task = { kind: 'playerSit', spot: sp, anim };
-  p.body.pad.visible = !!sp.game; p.body.phone.visible = sp.kind === 'booth'; p.body.mug.visible = sp.kind === 'bar';
+  p.body.pad.visible = !!sp.game; p.body.guitar.visible = sp.kind === 'guitar'; p.body.phone.visible = sp.kind === 'booth'; p.body.mug.visible = sp.kind === 'bar';
 }
 function standUp() {
   const p = fp.p, sp = fp.sitting; if (!sp) return;
   if (sp.shared && sp.occupant === p) sp.occupant = null;
   p.pos.copy(sp.approach); fp.sitting = null; p.task = null;
-  p.body.pad.visible = p.body.phone.visible = p.body.mug.visible = false;
+  p.body.pad.visible = p.body.phone.visible = p.body.mug.visible = p.body.guitar.visible = false;
 }
 function toggleSit() { if (!fp.on) return; if (fp.sitting) standUp(); else { const sp = nearestSeat(); if (sp) sitDown(sp); } fpPrompts(); }
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2062,7 +2246,9 @@ function tick(now) {
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelsOn && !fp.on && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wallGoal - wallH) > .001) { wallH += (wallGoal - wallH) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wallH)); }
-  keyCam(dt); updateCamera(dt); if (fp.on) fpUpdate(dt); updateGolf(); updateDarts(now);
+  updateRage(dt, now);
+  keyCam(dt); updateCamera(dt);
+  if (RAGE.on && RAGE.t > .4) { const a = .035 * Math.min(1, (RAGE.until - now) / 1500); camera.position.x += (Math.random() - .5) * a; camera.position.y += (Math.random() - .5) * a; } if (fp.on) fpUpdate(dt); updateGolf(); updateDarts(now); updateMusic(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (fp.on && fp.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
