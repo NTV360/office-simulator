@@ -1,11 +1,11 @@
 import { rnd, shuffle } from '../core/util.js';
-import { makePerson, scheduleDay } from '../people/factory.js';
+import { makeHelper, makePerson, scheduleDay } from '../people/factory.js';
 import { roster } from '../people/roster.js';
 import { meetings } from './meetings.js';
 import { live, usesAttendance } from './live.js';
 import { DAY_START } from './schedule.js';
 import { addLog, people, sim } from './state.js';
-import { endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks.js';
+import { cleanNext, endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks.js';
 import { ENTRY } from '../world/entrance.js';
 import { interactables } from '../world/interactables.js';
 
@@ -34,12 +34,14 @@ function resetDay() {
 }
 function seatNow(p) {
   p.arrivedAt = p.arriveAt; p.body.root.visible = true; p.body.ring.visible = true;
+  if (p.helper) { p.state = 'idle'; cleanNext(p); return; } // no desk: straight to cleaning
   placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: rnd(2, 40) });
 }
 function arriveNow(p, quiet) {
   p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI; p.arrivedAt = sim.t;
   p.body.root.visible = true; p.body.ring.visible = true; p.task = null;
   if (!quiet) addLog(`${p.name} arrived`);
+  if (p.helper) { cleanNext(p); return; }
   if (Math.random() < .25 && lockerTrip(p)) return;
   if (!goWork(p)) p.state = 'away';
 }
@@ -57,6 +59,7 @@ function populate(n) {
 
 function initDay() {
   populate(roster.list ? roster.list.length : 40); // everyone on the staff list (as many as there are desks)
+  { const h = makeHelper(); if (sim.t >= h.arriveAt && sim.t < h.leaveAt) seatNow(h); } // our helper, cleaning
   // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion
   // (only if the day starts during office hours)
   if (sim.t > 9 * 60 + 15 && sim.t < 17 * 60) {

@@ -3,12 +3,14 @@ import { buildBody, disposeBody } from '../character/rig.js';
 import { normalizeSpec, randomSpec } from '../character/spec.js';
 import { FIRST, LAST, roleBag } from './data.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
+import { helperIdentity } from './helper.js';
 import { fullName, jobTitle, roster, simRole, unplacedEmployees } from './roster.js';
 import { SCREENS } from '../render/screens.js';
 import { deskPool, people, peopleGroup } from '../sim/state.js';
 import { liveSchedule, usesAttendance } from '../sim/live.js';
 import { DAY_END, shiftWindow } from '../sim/schedule.js';
 import { endTask, goWork } from '../sim/tasks.js';
+import { ENTRY } from '../world/entrance.js';
 import { select, selected } from '../ui/person.js';
 
 let nameIdx = 0;
@@ -17,18 +19,26 @@ function makePerson() {
   if (!deskPool.some(s => !s.owner)) return null;
   const placed = roster.list ? nextSeated() : (w => w && { who: w, seat: seatFor(w) })(madeUp());
   if (!placed?.seat) return null;
-  const { who, seat } = placed;
+  return createPerson(placed.who, placed.seat);
+}
+// Our helper (people/helper.js): not on the staff list and without a desk; she cleans all day instead.
+function makeHelper() {
+  const p = createPerson(helperIdentity(), null);
+  p.helper = true;
+  return p;
+}
+function createPerson(who, seat) {
   const { name, role, title, userId, department, shift, spec } = who;
-  const body = buildBody(spec);
+  const body = buildBody(spec), at = seat ?? { pos: ENTRY, face: Math.PI };
   const p = {
     id: people.length, name, role, title, userId, department, shift, spec, body, seat,
-    pos: seat.pos.clone(), face: seat.face, faceGoal: seat.face, speed: rnd(1.15, 1.45),
+    pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
     screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
   p.screenMat = pick(SCREENS[p.screenKind]);
-  seat.owner = p;
+  if (seat) seat.owner = p;
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   body.root.visible = false; body.ring.visible = false;
   peopleGroup.add(body.root); peopleGroup.add(body.ring);
@@ -84,14 +94,16 @@ function moveToDesk(p, seat) {
 function restylePerson(p, spec) {
   const old = p.body, body = buildBody(spec);
   body.root.visible = old.root.visible; body.ring.visible = old.ring.visible; body.ring.material = old.ring.material;
-  for (const k of ['mug', 'phone', 'pad', 'putter', 'guitar', 'bucket']) body[k].visible = old[k].visible;
+  for (const k of ['mug', 'phone', 'pad', 'putter', 'guitar', 'bucket', 'rag', 'mop']) body[k].visible = old[k].visible;
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   peopleGroup.remove(old.root, old.ring); peopleGroup.add(body.root, body.ring); disposeBody(old);
   p.spec = spec; p.body = body; p.pose = {};
 }
 
+// Remove the last employee (never the helper).
 function removePerson() {
-  const p = people.pop(); if (!p) return;
+  const i = people.findLastIndex(q => !q.helper); if (i < 0) return;
+  const [p] = people.splice(i, 1);
   endTask(p); p.seat.owner = null; p.seat.screen.material = SCREENS.off;
   peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring); disposeBody(p.body);
   if (selected === p) select(null);
@@ -106,4 +118,4 @@ function scheduleDay(p) {
   if (usesAttendance() && p.userId) liveSchedule(p); // Live: real clock-in and clock-out times instead
 }
 
-export { makePerson, moveToDesk, removePerson, restylePerson, scheduleDay, seatById };
+export { makeHelper, makePerson, moveToDesk, removePerson, restylePerson, scheduleDay, seatById };

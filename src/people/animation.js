@@ -1,5 +1,6 @@
 import { TAU, angDiff } from '../core/util.js';
 import { player } from '../player/player.js';
+import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
 /* ================= Animation ================= */
@@ -39,6 +40,10 @@ function targetPose(p, k, T) {
       o.hipY = .86 + .05 * Math.abs(Math.cos(p.walkPhase)); o.lean = .22;
       break;
     }
+    // the helper: wiping a table, wiping a window (arm up), mopping the floor
+    case 'wipe': o.lean = .35; o.hipY = .85; o.lShX = -.75; o.lEl = -.3; o.rShX = -1.05 + Math.cos(T * 6) * .18; o.rShZ = Math.sin(T * 6) * .35; o.rEl = -.25; o.headX = .35; break;
+    case 'windowWipe': o.rShX = -2.5 + Math.cos(T * 5) * .15; o.rShZ = -.25 + Math.sin(T * 5) * .4; o.rEl = -.2; o.lShX = -.3; o.lEl = -.4; o.headX = -.3; o.lean = -.04; break;
+    case 'mop': { const s = Math.sin(T * 3); o.lean = .18; o.lShX = -.75; o.lEl = -.5; o.rShX = -.55; o.rEl = -.4; o.lShZ = .1 + s * .3; o.rShZ = -.1 + s * .3; o.headX = .3; o.headY = s * .2; break; }
     case 'type': sit(); o.lean = .12; o.lShX = -.6; o.rShX = -.6; o.lEl = -1.2 + Math.sin(T * 13) * .06; o.rEl = -1.2 + Math.sin(T * 13 + 2) * .06; o.lShZ = -.05; o.rShZ = .05; o.headX = .1 + Math.sin(T * .4) * .05; o.headY = Math.sin(T * .23) * .15; break;
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;
     case 'listen': sit(); o.lean = -.03; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -1.0; o.headX = Math.sin(T * 2.1) * .04; break;
@@ -82,6 +87,7 @@ function targetPose(p, k, T) {
   else if (k === 'talkSit' && p.task?.meeting) { const others = p.task.meeting.members.filter(q => q !== p); if (others.length) look = others[Math.floor(T / 2.5) % others.length].pos; }
   else if (k === 'talkStand' && p.task?.partner) look = p.task.partner.pos;
   else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && p.state !== 'player') look = LOUNGE_TV_POS;
+  else if (p.state === 'doing' && (p.task?.kind === 'tv' || (p.task?.kind === 'lunch' && p.task.spot?.kind === 'dining'))) look = DINING_TV_POS; // watching the dining TV
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;
 }

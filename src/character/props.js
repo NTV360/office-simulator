@@ -27,7 +27,8 @@ function makeBucket() {
   return g;
 }
 
-// The props activities put in the right hand: a mug, a phone, a game pad, a putter and the bucket. Positions are
+// The props activities put in the right hand: a mug, a phone, a game pad, a putter, the bucket, and the
+// helper's cloth and mop. Positions are
 // offsets in metres from the hand; the rig attaches them. All start hidden.
 function makeHeldProps() {
   const mug = new THREE.Mesh(new THREE.CylinderGeometry(.04, .035, .09, 12), stdMat('#ffffff', .4)); mug.position.set(0, -.05, .05);
@@ -43,7 +44,13 @@ function makeHeldProps() {
   const tp = new THREE.Mesh(boxGeo(.065, .006, .035), pk); tp.position.set(0, .016, .005); pad.add(tp);
   pad.position.set(.08, -.07, .05);
   const bucket = makeBucket(); bucket.position.set(0, -.32, .02); // hangs from the hand by its handle
-  const held = { mug, phone, pad, putter, bucket };
+  // the helper's cleaning cloth and mop
+  const rag = new THREE.Mesh(boxGeo(.12, .02, .09), stdMat('#3a8fd0', .9)); rag.position.set(0, -.05, .05);
+  const mop = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, 1.15, 6), stdMat('#c6ced4', .3)); pole.position.y = -.45; mop.add(pole);
+  const mopHead = new THREE.Mesh(boxGeo(.3, .06, .1), stdMat('#e9ecef', .95)); mopHead.position.y = -1.03; mop.add(mopHead);
+  mop.position.set(0, .1, .06); mop.rotation.x = .35;
+  const held = { mug, phone, pad, putter, bucket, rag, mop };
   for (const p of Object.values(held)) p.visible = false;
   return held;
 }

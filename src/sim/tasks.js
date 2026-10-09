@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toPx } from '../config/plan.js';
+import { W, toPx } from '../config/plan.js';
 import { rnd, shuffle } from '../core/util.js';
 import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
@@ -7,6 +7,7 @@ import { onBreak } from './schedule.js';
 import { addLog, people, sim } from './state.js';
 import { ENTRY, EXIT } from '../world/entrance.js';
 import { BUCKET } from '../world/furniture/kitchen.js';
+import { WINDOWS } from '../world/walls.js';
 import { interactables } from '../world/interactables.js';
 
 /* ---------- Tasks ---------- */
@@ -66,6 +67,11 @@ function golfBreak(p) {
 function gameBreak(p) {
   const s = free(interactables.of('lounge').filter(x => x.game))[0]; if (!s) return false;
   return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => q.body.pad.visible = true, onEnd: q => q.body.pad.visible = false });
+}
+// Watch the movie on the dining TV from a dining seat (breaks only).
+function tvBreak(p) {
+  const s = free(interactables.of('dining')).sort((a, b) => a.pos.z - b.pos.z)[0]; // the rows nearest the TV first
+  return !!s && goDo(p, { kind: 'tv', cat: 'break', anim: 'relax', spot: s, dur: rnd(8, 20) });
 }
 function storageTrip(p) { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
 function barTrip(p) { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false }); }
@@ -174,6 +180,7 @@ function runQueued(p, k) {
 // sofa only during their breaks (the lunch hour, 15:00 and 17:00 for the day shift; see sim/schedule.js).
 function chooseNext(p) {
   while (p.queue.length) { if (runQueued(p, p.queue.shift())) return; }
+  if (p.helper) return cleanNext(p);
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
   if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) { p.hadLunch = true; if (lunch(p)) return; }
@@ -183,6 +190,50 @@ function chooseNext(p) {
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }
 }
+// ----- the helper (people/helper.js): she cleans all day -----
+// Jobs: wipe a table (standing at one of its chairs), wipe a window (just inside an outer-wall window),
+// mop a patch of open floor, organise the storage room or lockers. Each picks a real, walkable spot.
+const CLEAN = {
+  table: { anim: 'wipe', prop: 'rag', weight: .35 },
+  window: { anim: 'windowWipe', prop: 'rag', weight: .25 },
+  floor: { anim: 'mop', prop: 'mop', weight: .25 },
+  organize: { anim: 'locker', prop: null, weight: .15 },
+};
+const at = (px, py, face, place) => { const v = W(px, py); return { kind: 'clean', pos: v, approach: v, face, shared: false, place }; };
+function cleanSpot(job) {
+  if (job === 'table') {
+    const s = shuffle(['conf', 'dining', 'bar'].flatMap(k => interactables.of(k)).filter(x => !x.occupant))[0];
+    return s && { kind: 'clean', pos: s.pos.clone(), approach: s.approach, face: s.face, shared: false, place: s.place || 'a table' };
+  }
+  if (job === 'organize') { const s = shuffle([...interactables.of('storage'), ...interactables.of('locker')])[0]; return s && { ...s, kind: 'clean', shared: false }; }
+  for (let i = 0; i < 12; i++) {
+    if (job === 'window') {
+      const [vert, line, a, b] = WINDOWS[Math.floor(Math.random() * WINDOWS.length)], t = a + 6 + Math.random() * (b - a - 12);
+      // just inside the glass, facing it: east wall (x 682) faces east, north wall (y 71) faces north
+      const [px, py, face] = vert ? [line - 14, t, Math.PI / 2] : [t, line + 14, Math.PI];
+      if (walkPx(px, py)) return at(px, py, face, 'the windows');
+    } else {
+      const s = shuffle(interactables.of('desk'))[0], [x0, y0] = toPx(s.approach), px = x0 + (Math.random() - .5) * 50, py = y0 + (Math.random() - .5) * 50;
+      if (walkPx(px, py)) return at(px, py, Math.random() * Math.PI * 2, 'the floor');
+    }
+  }
+  return null;
+}
+function cleanNext(p) {
+  const t = sim.t;
+  if (t >= p.leaveAt) return leave(p);
+  if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) {
+    p.hadLunch = true; const d = free(interactables.of('dining'))[0];
+    if (d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(20, 30) })) return;
+  }
+  let r = Math.random(), job = 'table';
+  for (const [k, c] of Object.entries(CLEAN)) { if (r < c.weight) { job = k; break; } r -= c.weight; }
+  const spot = cleanSpot(job), c = CLEAN[job];
+  const show = (q, on) => { if (c.prop) q.body[c.prop].visible = on; };
+  if (spot && goDo(p, { kind: 'clean', job, cat: 'clean', anim: c.anim, spot, dur: rnd(4, 10), onStart: q => show(q, true), onEnd: q => show(q, false) })) return;
+  p.until = sim.t + .5; // nothing free right now: try again shortly
+}
+
 // Working hours: mostly staying at the desk, sometimes an errand that is part of work.
 function work(p) {
   const r = Math.random();
@@ -202,8 +253,8 @@ function play(p) {
   if (interactables.of('darts').some(x => x.occupant) && Math.random() < .3 && dartsBreak(p)) return true;
   if (interactables.of('golf').some(x => x.occupant) && Math.random() < .3 && golfBreak(p)) return true;
   { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .35 && gameBreak(p)) return true; }
-  const games = shuffle([gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak]), rest = shuffle([barTrip, coffee, snack, chat]);
+  const games = shuffle([gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak, tvBreak, tvBreak]), rest = shuffle([barTrip, coffee, snack, chat]);
   return [...games, ...rest].some(f => f(p));
 }
 
-export { arrive, chooseNext, endTask, goDo, goWork, lockerTrip, placeNow, putBucketBack, returnFromToilet, whiteboard };
+export { arrive, chooseNext, cleanNext, endTask, goDo, goWork, lockerTrip, placeNow, putBucketBack, returnFromToilet, whiteboard };

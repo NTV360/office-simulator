@@ -10,7 +10,7 @@ import { N } from '../world/furniture/basics.js';
 // time it is needed and then stays where it was left. Its look is made in the character lab
 // (ui/creator.js) and kept in this browser.
 const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC), sitting: null, moving: false };
-const PROPS = ['mug', 'phone', 'pad', 'putter', 'guitar', 'bucket'];
+const PROPS = ['mug', 'phone', 'pad', 'putter', 'guitar', 'bucket', 'rag', 'mop'];
 
 function makeBody(spec) {
   const body = buildBody(spec);

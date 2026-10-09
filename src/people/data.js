@@ -13,6 +13,7 @@ const CATS = {
   lunch: { name: 'Lunch', color: '#d66f5a' },
   break: { name: 'Breaks & games', color: '#9a7cc4' },
   chat: { name: 'Chatting', color: '#33aeb0' },
+  clean: { name: 'Cleaning', color: '#6d8fa0' },
   walk: { name: 'Walking', color: '#8796a2' },
 };
 

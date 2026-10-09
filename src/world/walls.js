@@ -93,4 +93,4 @@ function buildWalls() {
   solidBlock(266.3, 322.55, 312.3, 368.55, M.featureWall, FULL_H, M.deskEdge);
 }
 
-export { wallSeg, buildWalls };
+export { WINDOWS, buildWalls, wallSeg };
