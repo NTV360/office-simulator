@@ -1,5 +1,6 @@
 // Smoke test for a running stack: node scripts/smoke.mjs   (or: npm run smoke)
 // Checks that the page and its files are served and that the server reports a healthy database.
+// SMOKE_SIGNUP_CODE: the sign-up code, if the server requires one.
 // Target: SMOKE_URL, else http://localhost:$WEB_PORT (default 8080).
 
 const base = (process.env.SMOKE_URL || `http://localhost:${process.env.WEB_PORT || 8080}`).replace(/\/$/, '');
@@ -56,7 +57,7 @@ try {
 
     // (a fixed account, created the first time and logged into after that)
     const creds = { username: 'smoke_user', password: 'smoke-test-pass-1' };
-    let auth = await json('/api/auth/register', creds);
+    let auth = await json('/api/auth/register', { ...creds, signupCode: process.env.SMOKE_SIGNUP_CODE });
     if (auth.status === 409) auth = await json('/api/auth/login', creds);
     const cookie = (auth.headers.get('set-cookie') || '').split(';')[0];
     check('accounts: the smoke account can log in', auth.ok && cookie.startsWith('office_session='), `status ${auth.status}`);
