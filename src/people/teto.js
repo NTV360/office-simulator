@@ -6,11 +6,13 @@ import { addLog, deskPool, people } from '../sim/state.js';
 import { endTask } from '../sim/tasks.js';
 import { TETO_SEAT } from '../world/furniture/desks.js';
 
-// Kasane Teto: a hand-made character with her own 3D model, never more than one. Without the staff list she is the
-// 15th person made; with it she comes in after every employee has a desk, if one is left (see makePerson), so she
-// never takes an employee's place. She sits at Desk F8 unless an employee has chosen it.
-// Her card (ui/teto.js) lets you make her do the Tetoris dance or play as her.
+// Kasane Teto: a hand-made character with her own 3D model, never more than one. With the staff list she is
+// TETO_EMPLOYEE's character: that employee keeps their own name, role and photo but looks like Teto, and sits at
+// Desk F8 unless someone else chose it. If they aren't on the list, she comes in as herself after every employee
+// has a desk, if one is left (see makePerson), so she never takes an employee's place. Without the staff list she
+// is the 15th person made. Her card (ui/teto.js) lets you make her do the Tetoris dance or play as her.
 const TETO_NAME = 'Kasane Teto';
+const TETO_EMPLOYEE = 'John Michael Lim'; // the employee who is Teto in the office
 const TETO_ROLE = 'Software Engineer QA Senior';
 const TETO_INDEX = 14;
 // Her look on the shared rig, shown until her own model has loaded.
@@ -21,9 +23,12 @@ const TETO_LOOK = {
 };
 
 const hasTeto = () => people.some(q => q.isTeto);
+const isTetoEmployee = e => `${e.firstName} ${e.lastName}`.trim().toLowerCase() === TETO_EMPLOYEE.toLowerCase();
+// The desk for the employee who is Teto: their own choice, else F8 unless another employee chose it.
+const tetoEmployeeDesk = e => e.desk ?? ((roster.list ?? []).some(o => o.desk === TETO_SEAT && o.userId !== e.userId) ? null : TETO_SEAT);
 // Without the staff list: is the next made-up person Teto? With it: is she still to come, once the staff are in?
 const isTetoNext = () => !roster.list && people.length === TETO_INDEX && !hasTeto();
-const tetoAfterStaff = () => !!roster.list && !hasTeto();
+const tetoAfterStaff = () => !!roster.list && !hasTeto() && !roster.list.some(isTetoEmployee);
 const npcTeto = () => people.find(q => q.isTeto);
 const tetoSpec = () => normalizeSpec(TETO_LOOK);
 // Who she is, in the shape makePerson expects.
@@ -76,4 +81,4 @@ function updateDance(t, dt, now) {
   else if (t.danceK <= .3 && t.heldProps) { t.heldProps.forEach(k => b[k].visible = true); t.heldProps = null; }
 }
 
-export { TETORIS, TETO_NAME, attachTeto, isTetoNext, npcTeto, startDance, stepAway, tetoAfterStaff, tetoSeat, tetoSpec, tetoWho, updateDance };
+export { TETORIS, TETO_NAME, attachTeto, isTetoEmployee, isTetoNext, npcTeto, startDance, stepAway, tetoAfterStaff, tetoEmployeeDesk, tetoSeat, tetoSpec, tetoWho, updateDance };

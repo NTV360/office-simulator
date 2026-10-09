@@ -5,7 +5,7 @@ import { FIRST, LAST, roleBag } from './data.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { helperIdentity } from './helper.js';
 import { fullName, jobTitle, roster, simRole, unplacedEmployees } from './roster.js';
-import { attachTeto, isTetoNext, tetoAfterStaff, tetoSeat, tetoWho } from './teto.js';
+import { attachTeto, isTetoEmployee, isTetoNext, tetoAfterStaff, tetoEmployeeDesk, tetoSeat, tetoWho } from './teto.js';
 import { SCREENS } from '../render/screens.js';
 import { deskPool, people, peopleGroup } from '../sim/state.js';
 import { liveSchedule, usesAttendance } from '../sim/live.js';
@@ -58,7 +58,8 @@ function employee(e) {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ?? randomSpec(role, seededRandom(e.userId));
   if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
-  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
+  const teto = isTetoEmployee(e); // looks like Kasane Teto (people/teto.js)
+  return { name, role, title, userId: e.userId, department: e.department, desk: teto ? tetoEmployeeDesk(e) : e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec, isTeto: teto };
 }
 // The next employee not yet in the office who has a desk to go to (one without a free desk is skipped).
 function nextSeated() {
@@ -104,6 +105,7 @@ function restylePerson(p, spec) {
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   peopleGroup.remove(old.root, old.ring); peopleGroup.add(body.root, body.ring); disposeBody(old);
   p.spec = spec; p.body = body; p.pose = {};
+  if (p.isTeto) attachTeto(p); // still Teto with any saved look
 }
 
 // Remove the last employee (never the helper).

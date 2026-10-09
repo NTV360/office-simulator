@@ -50,7 +50,7 @@ function playAsTeto() {
   if (atDesk) sitDown(p, n.seat);
   attachTeto(p, () => AS_TETO.on);
   setView('third');
-  $('fpWho').textContent = 'Walking as Kasane Teto';
+  $('fpWho').textContent = `Walking as ${n.name}`;
   $('fpCreator').hidden = true; // her look isn't yours to edit
   addLog('You are playing as Teto');
 }
@@ -84,8 +84,10 @@ function updateTeto(dt, now) {
   const t = TETO(); if (!t) return;
   if (TETORIS.on && t === player.person) t.animT += dt; // the player is not stepped by the sim, so keep the beat going here
   updateDance(t, dt, now);
-  // she has no profile photo, so her avatar is a picture of her own model (redrawn once the model has loaded)
-  if (n && !n.portrait) { n.photo = portrait(n); if (selected === n) select(n); }
+  // without a profile photo, her avatar is a picture of her own model (redrawn once the model has loaded)
+  if (n && !n.portrait) { const pic = portrait(n); if (!n.photo || n.photo === n.tetoPic) n.photo = pic; n.tetoPic = pic; if (selected === n) select(n); }
+  const play = $('pPlay'), label = selected?.userId ? 'Play as Teto' : 'Play as her'; // an employee who is Teto, or Teto herself
+  if (play.textContent !== label) play.textContent = label;
   const btn = $('pDance');
   if (TETORIS.on) { btn.disabled = true; btn.textContent = `Spinning… ${Math.ceil((TETORIS.until - now) / 1000)}s`; }
   else if (btn.disabled) { btn.disabled = false; btn.textContent = 'Tetoris dance'; }
