@@ -1,0 +1,18 @@
+/* Online mode: the login and sign-up screen, and the little account box. */
+.login-screen { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(214, 220, 224, .86); backdrop-filter: blur(6px); }
+.login-card { width: min(360px, 100%); padding: 24px; border-radius: 14px; background: #fff; box-shadow: 0 10px 40px rgba(20, 30, 40, .18); font-family: system-ui, sans-serif; color: #1c242b; }
+.login-card h2 { margin: 2px 0 14px; font-size: 22px; letter-spacing: .04em; }
+.login-card .eyebrow { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6c7a86; }
+.login-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.login-tab { flex: 1; padding: 7px 8px; border: 1px solid #cfd8de; border-radius: 8px; background: #f1f4f6; font: inherit; font-size: 13px; cursor: pointer; }
+.login-tab[aria-pressed="true"] { background: #1c242b; color: #fff; border-color: #1c242b; }
+.login-row { display: block; margin: 10px 0; font-size: 12px; color: #4b5964; }
+.login-row input { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #b9c5cd; border-radius: 8px; font: inherit; font-size: 15px; box-sizing: border-box; }
+.login-row input:focus { outline: 2px solid #3e6e9c; outline-offset: 1px; }
+.login-note { min-height: 1.3em; margin: 0 0 4px; font-size: 13px; color: #b0412e; }
+.login-hint { margin: 0 0 10px; font-size: 12px; color: #6c7a86; min-height: 1em; }
+.login-form .btn { width: 100%; }
+#accountBox { position: fixed; left: 12px; bottom: 44px; z-index: 30; display: flex; align-items: center; gap: 8px; padding: 3px 4px 3px 12px; border-radius: 999px; font: 12px/1.6 system-ui, sans-serif; color: #e9eef2; background: rgba(20, 24, 28, .78); }
+#accountBox button { padding: 2px 10px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .16); color: inherit; font: inherit; cursor: pointer; }
+#accountBox button:hover { background: rgba(255, 255, 255, .28); }
+@media (max-width: 640px) { #accountBox { bottom: 48px; } }

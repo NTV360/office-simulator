@@ -45,23 +45,49 @@ try {
   const meBody = await me.json().catch(() => null);
   check('accounts: /api/auth/me says "not logged in" to a stranger', me.status === 401 && meBody?.code === 'unauthenticated', `status ${me.status}`);
 
-  // realtime: connect through the proxy exactly as a browser does, say hello, expect the welcome and a stream of snapshots
+  // realtime: log in as a smoke-test account, ask for a ticket, connect through the proxy exactly as a browser does
   try {
     const { io } = await import('socket.io-client');
     const { encode, decode, PROTOCOL_VERSION } = await import('../packages/shared/dist/index.js');
-    const got = { welcome: null, snapshots: 0 };
-    const socket = io(base, { transports: ['websocket'], reconnection: false });
-    socket.on('m', data => {
-      const m = decode(new Uint8Array(data));
-      if (m.type === 'welcome') got.welcome = m;
-      if (m.type === 'snapshot') got.snapshots++;
+    const json = (path, body, cookie) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+
+    const anon = await json('/api/play/ticket');
+    check('accounts: a ticket is refused without a login', anon.status === 401, `status ${anon.status}`);
+
+    // (a fixed account, created the first time and logged into after that)
+    const creds = { username: 'smoke_user', password: 'smoke-test-pass-1' };
+    let auth = await json('/api/auth/register', creds);
+    if (auth.status === 409) auth = await json('/api/auth/login', creds);
+    const cookie = (auth.headers.get('set-cookie') || '').split(';')[0];
+    check('accounts: the smoke account can log in', auth.ok && cookie.startsWith('office_session='), `status ${auth.status}`);
+    const ticketRes = await json('/api/play/ticket', undefined, cookie);
+    const ticket = (await ticketRes.json().catch(() => ({}))).ticket;
+    check('accounts: a logged-in account gets a ticket', ticketRes.ok && typeof ticket === 'string', `status ${ticketRes.status}`);
+
+    const open = hello => new Promise((resolve, reject) => {
+      const got = { welcome: null, snapshots: 0, kick: null };
+      const socket = io(base, { transports: ['websocket'], reconnection: false });
+      socket.on('m', data => {
+        const m = decode(new Uint8Array(data));
+        if (m.type === 'welcome') got.welcome = m;
+        if (m.type === 'snapshot') got.snapshots++;
+        if (m.type === 'kick') got.kick = m.reason;
+      });
+      socket.on('connect', () => { socket.emit('m', encode({ type: 'hello', version: PROTOCOL_VERSION, ticket: hello })); setTimeout(() => { socket.close(); resolve(got); }, 1500); });
+      socket.on('connect_error', reject);
+      setTimeout(() => reject(new Error('no connection in 5 s')), 5000);
     });
-    await new Promise((res, rej) => { socket.on('connect', res); socket.on('connect_error', rej); setTimeout(() => rej(new Error('no connection in 5 s')), 5000); });
-    socket.emit('m', encode({ type: 'hello', version: PROTOCOL_VERSION }));
-    await new Promise(r => setTimeout(r, 1500));
-    socket.close();
+
+    const nobody = await open('');
+    check('realtime: a connection without a ticket is turned away', nobody.welcome === null && /ticket/.test(nobody.kick || ''), nobody.kick || 'no reason');
+
+    const got = await open(ticket);
     check('realtime: the welcome arrives through the proxy', !!got.welcome && got.welcome.people.length > 0, got.welcome ? got.welcome.people.length + ' people' : 'none');
     check('realtime: snapshots stream (about 20 a second)', got.snapshots >= 15, got.snapshots + ' in 1.5 s');
+
+    const reuse = await open(ticket);
+    check('realtime: a ticket cannot be used twice', reuse.welcome === null && /ticket/.test(reuse.kick || ''), reuse.kick || 'no reason');
+    await json('/api/auth/logout', undefined, cookie);
   } catch (err) {
     check('realtime connection', false, err.message);
   }

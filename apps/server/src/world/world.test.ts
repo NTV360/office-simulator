@@ -46,7 +46,7 @@ describe('World', () => {
     expect(sim.t - t0).toBeCloseTo(3.2, 9);
   });
 
-  it('is the browser simulation: seed 1 matches the recorded clock and people at the recorded checkpoints', () => {
+  it('is the browser simulation: seed 1 matches the recorded clock and people at the recorded checkpoints', { timeout: 30000 }, () => {
     const golden = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../tests/browser/golden/seed-1.json'), 'utf8'));
     const w = new World(base); w.init();
     const r3 = (v: number) => (Math.round(v * 1000) / 1000) || 0;

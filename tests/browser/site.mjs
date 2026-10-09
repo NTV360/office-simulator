@@ -51,13 +51,45 @@ function collectErrors(page) {
   return errors;
 }
 
-async function openPage(browser, url, query = '') {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// A server behind the site (the Docker stack)? Asked from Node, so the browser console stays clean.
+const serverCache = new Map();
+async function serverBehind(url) {
+  if (!serverCache.has(url)) {
+    try {
+      // (a plain static preview answers every path with the page itself, so look for the world, not just a 200)
+      const r = await fetch(url + '/api/world');
+      serverCache.set(url, r.ok && typeof (await r.json()).tick === 'number');
+    } catch { serverCache.set(url, false); }
+  }
+  return serverCache.get(url);
+}
+
+/** The password every test account uses. */
+const TEST_PASSWORD = 'verify-test-pass-1';
+
+/** Give this browser context a logged-in session for the account, creating the account the first time. */
+async function loginAs(context, url, username, password = TEST_PASSWORD) {
+  const body = { username, password };
+  let r = await context.request.post(url + '/api/auth/login', { data: body });
+  if (r.status() === 401) r = await context.request.post(url + '/api/auth/register', { data: body });
+  if (!r.ok()) throw new Error(`could not log in as ${username}: ${r.status()} ${await r.text()}`);
+}
+
+/**
+ * Open the page and wait until it is ready. If a server is behind the site and the page will go online (no ?seed, no ?offline),
+ * it is logged in first: as `opts.login` if given, else as the shared test account verify_a. Pass `login: null` to stay logged out.
+ */
+async function openPage(browser, url, query = '', opts = {}) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
   const errors = collectErrors(page);
+  const online = !/seed=|offline/.test(query) && await serverBehind(url);
+  const login = opts.login === undefined ? (online ? 'verify_a' : null) : opts.login;
+  if (login) await loginAs(context, url, login, opts.password);
   await page.goto(`${url}/${query}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__simReady === true, null, { timeout: 90000 });
-  return { page, errors };
+  return { page, errors, context };
 }
 
 
-export { sleep, freePort, findVite, startSite, collectErrors, openPage };
+export { sleep, freePort, findVite, startSite, collectErrors, openPage, loginAs, TEST_PASSWORD };

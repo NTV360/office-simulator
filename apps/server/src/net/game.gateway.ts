@@ -2,6 +2,11 @@ import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { DecodeError, NONE, PROTOCOL_VERSION, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import { addressKey } from '../auth/http';
+import { parseTrustProxy } from '../app.config';
+import { AuthProvider } from '../auth/auth.provider';
+import type { SessionEnd } from '../auth/auth.service';
+import { TicketService } from '../auth/tickets';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -10,15 +15,21 @@ export const WIRE_EVENT = 'm';
 const PLAYING = 'playing';
 
 export interface GatewayOptions {
-  /** A client must say hello within this long or it is dropped. */
+  /** A client must say hello (with a valid ticket) within this long or it is dropped. */
   helloTimeoutMs: number;
   maxClients: number;
+  /** How many connections from one address may be waiting to say hello at once (a flood of silent sockets is the cheap attack). */
+  maxUnjoinedPerAddress: number;
+  /** How often open connections have their session checked again (a session can expire or be ended while connected). */
+  sweepMs: number;
   /** Messages per second one client may send before it is dropped. */
   maxMessagesPerSecond: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
   maxClients: Number(env.MAX_CLIENTS) || 200,
+  maxUnjoinedPerAddress: Number(env.MAX_UNJOINED_PER_ADDRESS) || 20,
+  sweepMs: Number(env.SESSION_SWEEP_MS) || 60_000,
   maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
 });
 
@@ -35,8 +46,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private readonly log = new Logger('Gateway');
   private broadcaster!: Broadcaster;
   private readonly options = gatewayOptions(process.env);
+  /** The one live connection of each account. */
+  private readonly byAccount = new Map<number, Socket>();
+  private sweepTimer: NodeJS.Timeout | null = null;
 
-  constructor(@Inject(WorldService) private readonly worlds: WorldService) {}
+  constructor(
+    @Inject(WorldService) private readonly worlds: WorldService,
+    @Inject(AuthProvider) private readonly auth: AuthProvider,
+    @Inject(TicketService) private readonly tickets: TicketService,
+  ) {}
 
   afterInit(): void {
     const world = this.worlds.world;
@@ -44,6 +62,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p)));
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
     simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
+    this.auth.onSessionEnd(e => this.onSessionEnd(e));
+    this.sweepTimer = setInterval(() => { void this.sweep(); }, this.options.sweepMs);
+    this.sweepTimer.unref();
     world.onTick(tick => {
       if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
         this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
@@ -54,13 +75,19 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   handleConnection(socket: Socket): void {
     if (this.server.engine.clientsCount > this.options.maxClients) { this.kick(socket, 'the server is full'); return; }
+    const address = this.addressOf(socket);
+    socket.data.address = address;
+    if (this.unjoinedFrom(address) > this.options.maxUnjoinedPerAddress) { this.kick(socket, 'too many connections from your address'); return; }
     const timer = setTimeout(() => this.kick(socket, 'no hello'), this.options.helloTimeoutMs);
     socket.once('disconnect', () => clearTimeout(timer));
     socket.data.timer = timer;
     socket.on(WIRE_EVENT, (data: unknown) => this.onMessage(socket, data));
   }
 
-  handleDisconnect(): void { /* nothing to clean up: a viewer has no state on the server */ }
+  handleDisconnect(socket: Socket): void {
+    const id = socket.data.accountId as number | undefined;
+    if (id !== undefined && this.byAccount.get(id) === socket) this.byAccount.delete(id);
+  }
 
   private onMessage(socket: Socket, data: unknown): void {
     try {
@@ -91,12 +118,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private handle(socket: Socket, msg: ClientMessage): void {
     switch (msg.type) {
       case 'hello':
-        if (socket.data.joined) return;
-        if (msg.version !== PROTOCOL_VERSION) { this.kick(socket, `protocol version ${msg.version}, the server speaks ${PROTOCOL_VERSION}`); return; }
-        clearTimeout(socket.data.timer);
-        socket.data.joined = true;
-        socket.join(PLAYING);
-        socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, NONE));
+        void this.join(socket, msg.version, msg.ticket);
         return;
       case 'ping':
         socket.emit(WIRE_EVENT, encode({ type: 'pong', ts: msg.ts }));
@@ -105,6 +127,98 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.kick(socket, 'unexpected message');
     }
   }
+
+  /** Admit a client that has said hello: right version, a valid one-time ticket, a live session, an enabled account. */
+  private async join(socket: Socket, version: number, ticket: string): Promise<void> {
+    if (socket.data.joined || socket.data.joining) return;
+    socket.data.joining = true;
+    try {
+      if (version !== PROTOCOL_VERSION) { this.kick(socket, `protocol version ${version}, the server speaks ${PROTOCOL_VERSION}`); return; }
+      if (!this.auth.available) { this.kick(socket, 'accounts are not available on this server'); return; }
+      const redeemed = this.tickets.redeem(ticket); // used up now, whatever happens next
+      if (!redeemed) { this.kick(socket, 'invalid or expired ticket'); return; }
+      // From here on this socket belongs to that account and session, so a logout that lands while we are still checking
+      // (the awaits below) can find it and end it.
+      socket.data.accountId = redeemed.accountId;
+      socket.data.sessionHash = redeemed.sessionHash;
+      const auth = this.auth.require();
+      if (!(await auth.sessionAlive(redeemed.sessionHash))) { this.kick(socket, 'your session has ended; log in again'); return; }
+      const account = await auth.accountById(redeemed.accountId);
+      if (!account || account.disabled) { this.kick(socket, 'your session has ended; log in again'); return; }
+      if (!socket.connected || socket.data.ended) { if (socket.connected) this.kick(socket, 'you have been logged out'); return; } // they left, or were logged out, while we were checking
+
+      // one connection per account: a second login takes over, so nobody drives a character from two tabs
+      const old = this.byAccount.get(account.id);
+      if (old && old !== socket) this.kick(old, 'you logged in from somewhere else');
+      this.byAccount.set(account.id, socket);
+      socket.data.username = account.username;
+
+      clearTimeout(socket.data.timer);
+      socket.data.joined = true;
+      socket.join(PLAYING);
+      socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, NONE));
+    } catch (err) {
+      this.log.error(`joining failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.kick(socket, 'server error');
+    } finally {
+      socket.data.joining = false;
+    }
+  }
+
+  /** A logout, a password change or a disabled account ends the connections that session opened. */
+  private onSessionEnd(e: SessionEnd): void {
+    // every socket of the account, including one that is still being admitted
+    for (const socket of this.server.sockets.sockets.values()) {
+      if (socket.data.accountId !== e.accountId) continue;
+      const mine = socket.data.sessionHash as string | undefined;
+      const affected = e.hash !== undefined ? mine === e.hash : e.except !== undefined ? mine !== e.except : true;
+      if (!affected) continue;
+      socket.data.ended = true;
+      if (socket.data.joined) this.kick(socket, 'you have been logged out');
+    }
+  }
+
+  /**
+   * Check every open connection's session again, and drop the ones that have ended (expired, or the account was disabled).
+   * Runs every minute; also callable directly.
+   */
+  async sweep(): Promise<number> {
+    if (!this.auth.available) return 0;
+    const auth = this.auth.require();
+    let dropped = 0;
+    for (const socket of [...this.server.sockets.sockets.values()]) {
+      const hash = socket.data.sessionHash as string | undefined;
+      if (!socket.data.joined || !hash) continue;
+      try {
+        if (!(await auth.sessionAlive(hash))) { this.kick(socket, 'your session has ended; log in again'); dropped++; }
+      } catch { /* a database hiccup must not drop anyone: try again next time */ }
+    }
+    return dropped;
+  }
+
+  /** The address a connection really comes from: with proxies in front (TRUST_PROXY), the one the nearest proxy reports. */
+  private addressOf(socket: Socket): string {
+    const trust = parseTrustProxy(process.env.TRUST_PROXY);
+    const forwarded = socket.handshake.headers['x-forwarded-for'];
+    if (typeof trust === 'number' && trust > 0 && typeof forwarded === 'string') {
+      const hops = forwarded.split(',').map(s => s.trim()).filter(Boolean);
+      const at = hops[hops.length - trust];
+      if (at) return addressKey(at);
+    }
+    return addressKey(socket.handshake.address);
+  }
+
+  private unjoinedFrom(address: string): number {
+    let n = 0;
+    for (const s of this.server.sockets.sockets.values()) if (!s.data.joined && s.data.address === address) n++;
+    return n;
+  }
+
+  /** How many accounts are connected (used by tests and the status page). */
+  get connectedAccounts(): number { return this.byAccount.size; }
+
+  /** Stop the periodic check (the app is shutting down). */
+  onModuleDestroy(): void { if (this.sweepTimer) clearInterval(this.sweepTimer); }
 
   private broadcast(bytes: Uint8Array): void { this.server.to(PLAYING).emit(WIRE_EVENT, bytes); }
 

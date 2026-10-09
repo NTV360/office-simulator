@@ -45,7 +45,7 @@ const welcome = (): Welcome => ({
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 1 }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 3, ticket: 'abc_DEF-123' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });
@@ -92,7 +92,7 @@ describe('round trips', () => {
 
 describe('bad input is refused with a DecodeError, never anything else', () => {
   const samples: Message[] = [
-    { type: 'hello', version: 1 }, { type: 'ping', ts: 5 }, { type: 'kick', reason: 'bye' }, { type: 'leave', id: 3 },
+    { type: 'hello', version: 3, ticket: 'abc' }, { type: 'ping', ts: 5 }, { type: 'kick', reason: 'bye' }, { type: 'leave', id: 3 },
     { type: 'event', kind: 'announce', simTime: 5, text: 'hi' }, { type: 'person', info: info(), snap: snap({ spot: ONE_OFF_SPOT, oneOff: { x: 1, z: 2, face: 0, place: 'p' } }) },
     welcome(), { type: 'snapshot', tick: 1, simTime: 2, day: 1, speed: 1, paused: false, full: true, people: [snap()], meetings: [{ room: 1, topic: 't', start: 1, end: 2, speaker: NONE, members: [1, 2, 3] }] },
   ];

@@ -2,12 +2,13 @@ import { ArgumentsHost, Catch, ExceptionFilter, Inject, Injectable, Logger, OnAp
 import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
 import { PgAccountStore } from './account-store';
-import { AuthError, AuthService } from './auth.service';
+import { AuthError, AuthService, type SessionEnd } from './auth.service';
 
 /** Builds the AuthService on the database, applies the migrations it needs, creates the first admin, and cleans up old sessions. */
 @Injectable()
 export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdown {
   private service: AuthService | null = null;
+  private readonly endListeners: Array<(e: SessionEnd) => void> = [];
   private timer: NodeJS.Timeout | null = null;
   private readonly log = new Logger('Auth');
 
@@ -22,7 +23,10 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
   get available(): boolean { return this.service !== null; }
 
   /** Use this service instead of the database one (tests give it an in-memory store). */
-  useService(service: AuthService): void { this.service = service; }
+  useService(service: AuthService): void { this.service = service; service.onSessionEnd(e => this.endListeners.forEach(fn => fn(e))); }
+
+  /** Hear about sessions ending, whichever service instance is current. */
+  onSessionEnd(fn: (e: SessionEnd) => void): void { this.endListeners.push(fn); }
 
   async onApplicationBootstrap(): Promise<void> {
     const pool = this.db.pool;
@@ -37,7 +41,7 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
     const boot = await service.bootstrapAdmin(process.env.ADMIN_USERNAME, process.env.ADMIN_PASSWORD);
     if (boot === 'created') this.log.log(`created the first admin account "${process.env.ADMIN_USERNAME}"`);
     else if (boot === 'refused') this.log.error('ADMIN_USERNAME / ADMIN_PASSWORD were refused (the name is taken or invalid, or the password is too weak); no admin was created');
-    this.service = service;
+    this.useService(service);
     this.timer = setInterval(() => { service.purgeExpired().catch(() => {}); }, 60 * 60_000);
   }
 

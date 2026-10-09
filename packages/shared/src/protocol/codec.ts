@@ -37,6 +37,7 @@ function writeName(w: Writer, table: readonly string[], value: string): void {
   if (i >= 0) w.u8(i); else { if (value.length > MAX_NAME) throw new RangeError('name too long for the protocol'); w.u8(CUSTOM); w.str(value); }
 }
 const MAX_NAME = 64;
+const MAX_TICKET = 128;
 function readName(r: Reader, table: readonly string[], what: string): string {
   const i = r.u8();
   if (i === CUSTOM) { const s = r.str(); if (s.length > MAX_NAME) throw new DecodeError(`${what} name too long`); return s; }
@@ -138,7 +139,10 @@ function readLayout(r: Reader): LayoutCheck { return { spots: r.u16(), hash: r.u
 export function encode(msg: Message): Uint8Array {
   const w = new Writer();
   switch (msg.type) {
-    case 'hello': w.u8(T.hello).u8(msg.version); break;
+    case 'hello':
+      if (msg.ticket.length > MAX_TICKET) throw new RangeError('ticket too long for the protocol');
+      w.u8(T.hello).u8(msg.version).str(msg.ticket);
+      break;
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
@@ -174,7 +178,7 @@ export function decode(bytes: Uint8Array): Message {
   const type = r.u8();
   let msg: Message;
   switch (type) {
-    case T.hello: msg = { type: 'hello', version: r.u8() }; break;
+    case T.hello: { const version = r.u8(), ticket = r.str(); if (ticket.length > MAX_TICKET) throw new DecodeError('ticket too long'); msg = { type: 'hello', version, ticket }; break; }
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;

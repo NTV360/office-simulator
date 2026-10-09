@@ -54,7 +54,7 @@ describe('reading refuses what a hostile sender could put in', () => {
 
 describe('decodeClient only accepts what a client may send', () => {
   it('hello and ping', () => {
-    expect(decodeClient(encode({ type: 'hello', version: 1 }))).toEqual({ type: 'hello', version: 1 });
+    expect(decodeClient(encode({ type: 'hello', version: 3, ticket: 'tkt' }))).toEqual({ type: 'hello', version: 3, ticket: 'tkt' });
     expect(decodeClient(encode({ type: 'ping', ts: 5 }))).toEqual({ type: 'ping', ts: 5 });
   });
   it('nothing else, and the rest is not even parsed', () => {

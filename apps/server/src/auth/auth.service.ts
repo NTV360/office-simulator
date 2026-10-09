@@ -20,9 +20,14 @@ export interface AuthOptions {
   signupCode?: string;
   now?: () => number;
   sessionMs?: number;
+  /** Per-address allowances (sign-ups per 10 minutes, logins per minute). Tests that make many accounts raise them. */
+  limits?: { registers?: number; logins?: number };
 }
 
 export interface Context { ip: string; userAgent: string | null }
+
+/** Sessions of an account ended: one (`hash`), all but one (`except`), or all (neither). Open realtime connections listen for this. */
+export interface SessionEnd { accountId: number; hash?: string; except?: string }
 
 /** The account as it is shown to its owner and to the page. Never includes anything secret. */
 export interface PublicAccount {
@@ -55,14 +60,15 @@ export class AuthService {
   private readonly loginsByIp: RateLimiter;
   private readonly registersByIp: RateLimiter;
   private readonly passwordChanges: RateLimiter;
+  private readonly endListeners: Array<(e: SessionEnd) => void> = [];
 
   constructor(private readonly store: AccountStore, private readonly opts: AuthOptions = {}) {
     this.now = opts.now ?? Date.now;
     this.sessionMs = opts.sessionMs ?? 7 * DAY;
     this.failuresByNameAndIp = new RateLimiter(5, 15 * 60_000, this.now);
     this.failuresByName = new RateLimiter(25, 15 * 60_000, this.now);
-    this.loginsByIp = new RateLimiter(30, 60_000, this.now);
-    this.registersByIp = new RateLimiter(5, 10 * 60_000, this.now);
+    this.loginsByIp = new RateLimiter(opts.limits?.logins ?? 30, 60_000, this.now);
+    this.registersByIp = new RateLimiter(opts.limits?.registers ?? 5, 10 * 60_000, this.now);
     this.passwordChanges = new RateLimiter(5, 15 * 60_000, this.now);
     void warmDummy();
   }
@@ -117,7 +123,7 @@ export class AuthService {
     if (!found) return null;
     const t = this.now();
     if (found.session.expiresAt.getTime() <= t || t - found.session.createdAt.getTime() > MAX_SESSION_AGE) { await this.store.deleteSession(hash); return null; }
-    if (found.account.disabled) { await this.store.deleteAccountSessions(found.account.id); return null; }
+    if (found.account.disabled) { await this.store.deleteAccountSessions(found.account.id); this.ended({ accountId: found.account.id }); return null; }
     if (t - found.session.lastSeenAt.getTime() > 60 * 60_000) {
       // renewed, but never past 30 days from when it was made
       const until = Math.min(t + this.sessionMs, found.session.createdAt.getTime() + MAX_SESSION_AGE);
@@ -127,7 +133,33 @@ export class AuthService {
   }
 
   async logout(token: string | undefined): Promise<void> {
-    if (token) await this.store.deleteSession(sha256(token));
+    if (!token) return;
+    const hash = sha256(token);
+    const found = await this.store.sessionByHash(hash);
+    await this.store.deleteSession(hash);
+    if (found) this.ended({ accountId: found.account.id, hash: hash.toString('hex') });
+  }
+
+  /** Listen for sessions ending (logout, a password change, an account being disabled). */
+  onSessionEnd(fn: (e: SessionEnd) => void): void { this.endListeners.push(fn); }
+  private ended(e: SessionEnd): void { for (const fn of this.endListeners) { try { fn(e); } catch { /* a listener must not break a logout */ } } }
+
+  /** The account with this id (used when a ticket is redeemed), or null. */
+  accountById(id: number): Promise<Account | null> { return this.store.byId(id); }
+
+  /** Is the session with this hash (hex) still alive? */
+  async sessionAlive(hashHex: string): Promise<boolean> {
+    if (!/^[0-9a-f]{64}$/.test(hashHex)) return false;
+    const found = await this.store.sessionByHash(Buffer.from(hashHex, 'hex'));
+    if (!found || found.account.disabled) return false;
+    const t = this.now();
+    return found.session.expiresAt.getTime() > t && t - found.session.createdAt.getTime() <= MAX_SESSION_AGE;
+  }
+
+  /** End every session of an account (an admin disabling it, for example). */
+  async endAllSessions(accountId: number): Promise<void> {
+    await this.store.deleteAccountSessions(accountId);
+    this.ended({ accountId });
   }
 
   /** Change your own password. Every other session of the account ends. */
@@ -142,6 +174,7 @@ export class AuthService {
     if (next === current) throw new AuthError('weak', 'choose a different password from the old one');
     await this.store.setPassword(account.id, await hashPassword(next as string), false);
     await this.store.deleteAccountSessions(account.id, currentToken ? sha256(currentToken) : undefined);
+    this.ended({ accountId: account.id, except: currentToken ? sha256(currentToken).toString('hex') : undefined });
   }
 
   /** At start-up: if there is no admin and the environment names one, create it. Returns what happened. */

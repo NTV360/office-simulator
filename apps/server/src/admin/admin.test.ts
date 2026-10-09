@@ -7,6 +7,10 @@ import { PROTOCOL_VERSION, decode, encode, hasSlot, people, setSeed, sim, type M
 import { AppModule } from '../app.module';
 import { configureApp } from '../app.config';
 import { parseSettingsUpdate } from './settings';
+import { MemoryAccountStore } from '../auth/account-store';
+import { AuthProvider } from '../auth/auth.provider';
+import { AuthService } from '../auth/auth.service';
+import { sessionFor, ticketFor } from '../test-support';
 
 process.env.WORLD_SEED = '1';
 delete process.env.DATABASE_URL;
@@ -20,6 +24,7 @@ async function boot() {
   configureApp(app);
   await app.listen(0, '127.0.0.1');
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+  app.get(AuthProvider).useService(new AuthService(new MemoryAccountStore(), { limits: { registers: 1000, logins: 1000 } })); // players log in to watch
 }
 beforeEach(async () => { process.env.ADMIN_TOKEN = TOKEN; await boot(); });
 afterEach(async () => { await app.close(); setSeed(null); delete process.env.ADMIN_TOKEN; });
@@ -124,7 +129,7 @@ describe('viewers see admin changes', () => {
     const got: Message[] = [];
     socket.on('m', (d: ArrayBuffer) => got.push(decode(new Uint8Array(d))));
     await new Promise(r => socket.on('connect', () => r(null)));
-    socket.emit('m', encode({ type: 'hello', version: PROTOCOL_VERSION }));
+    socket.emit('m', encode({ type: 'hello', version: PROTOCOL_VERSION, ticket: await ticketFor(base, await sessionFor(base, 'watcher')) }));
     await sleep(300);
     await call('PUT', '/api/admin/settings', { speed: 3, paused: true, slots: 38 });
     await call('POST', '/api/admin/announce', { text: 'Fire drill at 3pm' });

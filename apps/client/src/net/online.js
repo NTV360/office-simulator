@@ -1,11 +1,13 @@
 import { io } from 'socket.io-client';
+import { getAccount, logout, mintTicket, showLogin } from './login.js';
 import {
   CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
 // server sends (through the shared Mirror), smooths people between snapshots, and keeps the clock running between them.
-// See docs/PHASE-2-BREAKDOWN.md, step 6.
+// See docs/PHASE-2-BREAKDOWN.md, step 6. Since phase 3 it needs an account: log in (or register), ask for a one-time ticket,
+// and say it in the first message.
 
 const DELAY_MS = 150; // people are drawn this far in the past, so there are always two snapshots to blend between
 const SNAP_DISTANCE = 2.5; // a jump bigger than this (metres) is a teleport, not a walk
@@ -62,15 +64,60 @@ export function startOnline() {
   // ?trace keeps what the server said at its last few keyframes, for scripted checks (see tests/browser/verify.mjs)
   const tracing = new URLSearchParams(location.search).has('trace');
   const net = { mirror, rttMs: null, connected: false, layoutOk: true, fatal: null, snapshots: 0, trace: new Map() };
+  net.account = null;
   lockServerControls();
   setStatus('wait', 'Connecting to the server…');
 
-  const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000 });
+  const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
 
-  socket.on('connect', () => { net.connected = true; send({ type: 'hello', version: PROTOCOL_VERSION }); });
+  // Make sure someone is logged in (showing the login screen if not), then open the connection.
+  let loggingIn = null; // one login at a time, however many things ask for it
+  function logIn(note = '') {
+    loggingIn ??= (async () => {
+      try {
+        let account = note ? null : await getAccount(base);
+        if (!account) { setStatus('wait', 'Please log in'); account = await showLogin(base, note); }
+        net.account = account;
+        showAccountBox(account);
+        setStatus('wait', 'Connecting to the server…');
+        socket.connect();
+      } finally { loggingIn = null; }
+    })();
+    return loggingIn;
+  }
+
+  function showAccountBox(account) {
+    let box = document.getElementById('accountBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'accountBox';
+      box.append(document.createElement('span'), document.createElement('button'));
+      box.lastChild.textContent = 'Log out';
+      box.lastChild.addEventListener('click', async () => {
+        net.fatal = null;
+        socket.disconnect();
+        await logout(base);
+        mirror.clear();
+        await logIn('You are logged out.');
+      });
+      document.body.append(box);
+    }
+    box.firstChild.textContent = account.username;
+  }
+
+  socket.on('connect', async () => {
+    net.connected = true;
+    // a fresh ticket for every connection, including each automatic reconnect
+    let got = await mintTicket(base);
+    while (got.retryable && socket.connected && !net.fatal) { await new Promise(r => setTimeout(r, 2000)); got = await mintTicket(base); } // busy or no network: wait, do not log out
+    if (!socket.connected) return;
+    if (got.loggedOut) { socket.disconnect(); await logIn('Your session has ended. Please log in again.'); return; }
+    send({ type: 'hello', version: PROTOCOL_VERSION, ticket: got.ticket });
+  });
   socket.on('disconnect', () => { net.connected = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
   socket.on('connect_error', () => { if (!net.fatal) setStatus('wait', 'Cannot reach the server, retrying…'); });
+  void logIn();
 
   socket.on('m', data => {
     let msg;
@@ -107,9 +154,10 @@ export function startOnline() {
       case 'event': pushEvent(msg); break;
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':
+        socket.disconnect();
+        if (/logged out|session/.test(msg.reason)) { void logIn('Your session has ended. Please log in again.'); break; } // log in and the connection comes back
         net.fatal = msg.reason;
         setStatus('bad', `Disconnected: ${msg.reason}`);
-        socket.disconnect();
         break;
     }
   });

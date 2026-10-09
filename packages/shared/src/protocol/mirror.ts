@@ -49,6 +49,13 @@ export class Mirror {
     for (const { snap } of w.people) this.link(this.people.get(snap.id)!, snap);
   }
 
+  /** Forget everyone (a logout: the next welcome starts from nothing). */
+  clear(): void {
+    for (const p of [...this.people.values()]) this.drop(p);
+    this.meetingIndex.clear();
+    this.meetings = [];
+  }
+
   applySnapshot(s: Snapshot): void {
     this.clock = { ...this.clock, tick: s.tick, simTime: s.simTime, day: s.day, speed: s.speed, paused: s.paused };
     const listed = new Set<number>();

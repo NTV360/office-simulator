@@ -46,7 +46,7 @@ try {
   check('a fresh server starts a new office', first.persistence.enabled && !first.persistence.restored && first.staff === 40, `${first.staff} staff`);
 
   browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const a = await openPage(browser, base, '?trace'), b = await openPage(browser, base, '?trace');
+  const a = await openPage(browser, base, '?trace', { login: 'e2e_a' }), b = await openPage(browser, base, '?trace', { login: 'e2e_b' });
   await Promise.all([a, b].map(p => p.page.waitForFunction(() => window.__sim.net && window.__sim.net.snapshots > 30, null, { timeout: 20000 })));
   await sleep(2500);
 
@@ -79,7 +79,7 @@ try {
   const ra = await keyframe(a.page);
   check('the open browsers reconnected on their own and show the same 30 people', ra.status === 'ok' && JSON.stringify(ra.names) === JSON.stringify(before.names), `status ${ra.status}`);
   check('their clock carries on after the restart', ra.clock >= before.clock);
-  const c = await openPage(browser, base, '?trace');
+  const c = await openPage(browser, base, '?trace', { login: 'e2e_c' });
   await c.page.waitForFunction(() => window.__sim.net && window.__sim.net.snapshots > 5, null, { timeout: 20000 });
   check('a new browser sees the same people too', JSON.stringify(await names(c.page)) === JSON.stringify(before.names));
   // people are not all on one default spot

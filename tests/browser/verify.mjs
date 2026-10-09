@@ -18,6 +18,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const goldenDir = path.join(root, 'tests/browser/golden');
 const outDir = path.join(root, 'tests/browser/out');
 const record = process.argv.includes('--record');
+const screenshotOf = (page, name) => page.screenshot({ path: path.join(outDir, name) }).catch(() => {});
 
 const ALL_SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const thorough = process.argv.includes('--thorough');
@@ -243,18 +244,19 @@ try {
   await a.page.close(); await b.page.close();
 
   // online mode: two browsers watching one server
-  const probe = await openPage(browser, site.url, '?trace');
+  const probe = await openPage(browser, site.url, '?trace', { login: null });
   const isOnline = await probe.page.evaluate(() => window.__sim.online);
   await probe.page.close();
   if (isOnline) {
     console.log('\nonline mode (two browsers, one server)');
-    const p1 = await openPage(browser, site.url, '?trace'), p2 = await openPage(browser, site.url, '?trace');
+    const p1 = await openPage(browser, site.url, '?trace', { login: 'verify_a' }), p2 = await openPage(browser, site.url, '?trace', { login: 'verify_b' });
     const ready = p => p.page.waitForFunction(() => window.__sim.net && window.__sim.net.snapshots > 25, null, { timeout: 15000 });
     await Promise.all([ready(p1), ready(p2)]);
     await sleep(2500); // a few keyframes
     const view = p => p.page.evaluate(() => ({
       people: window.__sim.people.filter(x => x.controller === 'ai').length,
       shown: window.__sim.people.filter(x => x.controller === 'ai' && x.body && x.body.root.visible).length,
+      present: window.__sim.people.filter(x => x.controller === 'ai' && x.state !== 'away').length,
       status: document.getElementById('netStatus')?.className,
       statusText: document.getElementById('netStatus')?.textContent,
       locked: [...document.querySelectorAll('#staff, #play, [data-speed]')].every(e => e.disabled),
@@ -264,7 +266,8 @@ try {
     }));
     const [v1, v2] = await Promise.all([view(p1), view(p2)]);
     if (v1.people === 40 && v2.people === 40) pass('both pages show the 40 people the server has'); else fail(`people: ${v1.people} and ${v2.people}`);
-    if (v1.shown > 20 && v2.shown > 20) pass(`bodies are drawn (${v1.shown} and ${v2.shown} visible)`); else fail(`few bodies visible: ${v1.shown}, ${v2.shown}`);
+    // (how many are in the building depends on the time of day the server is at, so compare with who is in, not a fixed number)
+    if (v1.present > 3 && v1.shown === v1.present && v2.shown === v2.present) pass(`bodies are drawn for everyone who is in (${v1.shown} and ${v2.shown} visible)`); else fail(`bodies drawn: ${v1.shown} of ${v1.present} in, ${v2.shown} of ${v2.present}`);
     if (v1.status === 'ok' && v2.status === 'ok') pass(`the status says "${v1.statusText}"`); else fail(`status: ${v1.status} / ${v2.status}`);
     if (v1.locked && v2.locked && v1.layoutOk && v2.layoutOk) pass('server-owned controls are locked, and both offices match the server'); else fail('controls not locked or layout mismatch');
     if (Math.abs(v1.clock - v2.clock) < 1) pass(`the two clocks agree (${v1.clock.toFixed(2)} and ${v2.clock.toFixed(2)})`); else fail(`clocks differ: ${v1.clock} vs ${v2.clock}`);
@@ -290,6 +293,43 @@ try {
     [...p1.errors, ...p2.errors].forEach(e => fail(e));
     if (!p1.errors.length && !p2.errors.length) pass('no errors in either browser console');
     await p1.page.close(); await p2.page.close();
+
+    // the login screen, as a person uses it
+    console.log('\nthe login screen');
+    const uname = 'ui_' + (Date.now() % 1e7);
+    const u = await openPage(browser, site.url, '?trace', { login: null });
+    const screenShown = await u.page.waitForSelector('#loginScreen', { timeout: 10000 }).then(() => true, () => false);
+    if (screenShown && !(await u.page.evaluate(() => window.__sim.people.length))) pass('without a session the login screen shows and no office is drawn yet'); else fail('the login screen did not appear first');
+    await u.page.fill('#loginName', uname);
+    await u.page.fill('#loginPass', 'short');
+    await u.page.click('.login-tab:nth-child(2)');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => /at least 8/.test(document.querySelector('.login-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a weak password is refused with the reason, on the screen'), () => fail('no weak-password message'));
+    await u.page.fill('#loginPass', 'a-fine-long-password');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => window.__sim.net.snapshots > 10 && !document.getElementById('loginScreen'), null, { timeout: 20000 }).then(() => pass('registering from the screen logs in and the office appears'), () => fail('registering did not lead to the office'));
+    const box = await u.page.evaluate(() => ({ name: document.querySelector('#accountBox span')?.textContent, people: window.__sim.people.length, status: document.getElementById('netStatus')?.className }));
+    if (box.name === uname && box.people >= 40 && box.status === 'ok') pass(`the account box shows "${box.name}" and the status is online`); else fail(`account box: ${JSON.stringify(box)}`);
+
+    // logging out brings the screen back and empties the office; a wrong password is refused; the right one returns
+    await u.page.click('#accountBox button');
+    await u.page.waitForSelector('#loginScreen', { timeout: 8000 }).then(() => pass('logging out shows the login screen again'), () => fail('no login screen after logout'));
+    if ((await u.page.evaluate(() => window.__sim.people.length)) === 0) pass('the office is cleared on logout'); else fail('people remained after logout');
+    await u.page.fill('#loginName', uname);
+    await u.page.fill('#loginPass', 'wrong-password-here');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => /invalid username or password/.test(document.querySelector('.login-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a wrong password gets the plain "invalid username or password"'), () => fail('no wrong-password message'));
+    await u.page.fill('#loginPass', 'a-fine-long-password');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => window.__sim.net.snapshots > 5 && window.__sim.people.length >= 40, null, { timeout: 20000 }).then(() => pass('logging back in returns to the office'), () => fail('did not return to the office'));
+
+    // the same account from a second browser takes over, and the first is told why
+    const second = await openPage(browser, site.url, '?trace', { login: uname, password: 'a-fine-long-password' });
+    await second.page.waitForFunction(() => window.__sim.net.snapshots > 5, null, { timeout: 20000 });
+    await u.page.waitForFunction(() => /somewhere else/.test(document.getElementById('netStatus')?.textContent || ''), null, { timeout: 10000 }).then(() => pass('a second login takes over and the first browser is told "logged in from somewhere else"'), () => fail('the first browser was not told'));
+    await screenshotOf(u.page, 'login-kicked.png');
+    [...u.errors, ...second.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+    await u.page.close(); await second.page.close();
   }
 } finally {
   await browser.close();
