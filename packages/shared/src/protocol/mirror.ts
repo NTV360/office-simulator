@@ -41,6 +41,7 @@ export class Mirror {
   /** Replace everything with the server's picture. */
   applyWelcome(w: Welcome): void {
     for (const p of [...this.people.values()]) this.drop(p);
+    this.meetingIndex.clear();
     this.you = w.you;
     this.clock = { tick: w.tick, tickRate: w.tickRate, simTime: w.simTime, day: w.day, speed: w.speed, paused: w.paused };
     for (const { info, snap } of w.people) this.create(info, snap);
@@ -98,6 +99,9 @@ export class Mirror {
 
   private drop(p: Person): void {
     this.people.delete(p.id);
+    this.meetingIndex.delete(p.id);
+    // nobody should keep describing someone who has gone: take them out of the meetings too
+    for (const m of this.meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }
     this.hooks.removed(p);
   }
 
@@ -112,7 +116,7 @@ export class Mirror {
     PROP_KEYS.forEach((k, i) => { p.props[k] = !!(snap.props & (1 << i)); });
     if (snap.kind === '') { p.task = null; return; }
     const spot: TaskSpot | undefined = snap.spot === ONE_OFF_SPOT
-      ? oneOffSpot(snap)
+      ? (snap.oneOff ? oneOffSpot(snap) : undefined)
       : snap.spot > 0 ? this.spots[snap.spot - 1] : undefined;
     if (!spot) { p.task = null; return; }
     // a new task object only when the task changed, so code that compares task objects keeps working

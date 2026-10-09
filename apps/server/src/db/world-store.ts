@@ -14,8 +14,19 @@ export class WorldStore {
       return parseSavedWorld(raw);
     } catch (err) {
       const reason = err instanceof SaveError ? err.message : String(err);
-      await this.pool.query('INSERT INTO world_state_rejected (data, reason) VALUES ($1, $2)', [JSON.stringify(raw), reason]);
-      await this.pool.query('DELETE FROM world_state WHERE id = 1');
+      // one transaction: the save is either still where it was, or safely set aside and removed, never both lost or doubled
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('INSERT INTO world_state_rejected (data, reason) VALUES ($1, $2)', [JSON.stringify(raw), reason]);
+        await client.query('DELETE FROM world_state WHERE id = 1');
+        await client.query('COMMIT');
+      } catch (moveErr) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw moveErr;
+      } finally {
+        client.release();
+      }
       throw new SaveError(`the saved world could not be read (${reason}); it was kept in world_state_rejected`);
     }
   }

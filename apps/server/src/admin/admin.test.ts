@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION, decode, encode, isStaff, people, setSeed, sim, type Message } from '@office/shared';
 import { AppModule } from '../app.module';
+import { configureApp } from '../app.config';
 import { parseSettingsUpdate } from './settings';
 
 process.env.WORLD_SEED = '1';
@@ -16,7 +17,7 @@ const TOKEN = 'test-token-123';
 
 async function boot() {
   app = await NestFactory.create(AppModule, { logger: false });
-  app.setGlobalPrefix('api');
+  configureApp(app);
   await app.listen(0, '127.0.0.1');
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
 }
@@ -147,5 +148,18 @@ describe('viewers see admin changes', () => {
 describe('parseSettingsUpdate', () => {
   it('keeps only valid values', () => {
     expect(parseSettingsUpdate({ slots: 3, speed: 100, paused: false })).toEqual({ slots: 3, speed: 8, paused: false });
+  });
+});
+
+describe('behind a proxy', () => {
+  it('lockouts are per real client address, so one bad actor cannot lock out the admin', async () => {
+    await app.close();
+    process.env.TRUST_PROXY = '1';
+    await boot();
+    const from = (ip: string, token: string) => fetch(base + '/api/admin/settings', { headers: { authorization: `Bearer ${token}`, 'x-forwarded-for': ip } });
+    for (let i = 0; i < 10; i++) expect((await from('203.0.113.9', 'guess' + i)).status).toBe(403);
+    expect((await from('203.0.113.9', 'guess')).status).toBe(429);
+    expect((await from('198.51.100.7', TOKEN)).status).toBe(200); // the admin, from somewhere else, is unaffected
+    delete process.env.TRUST_PROXY;
   });
 });

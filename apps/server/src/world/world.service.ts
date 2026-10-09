@@ -1,84 +1,72 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { interactables, isStaff, people, serializeWorld, setStaffCount, sim, simEvents, type SavedWorld } from '@office/shared';
+import { SaveError, interactables, isStaff, people, setStaffCount, sim, simEvents, type SavedWorld } from '@office/shared';
 import type { Settings, SettingsUpdate } from '../admin/settings';
 import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
 import { WorldStore } from '../db/world-store';
+import { Persistence, loadForBoot, type PersistenceStatus } from './persistence';
 import { World, readWorldOptions, type WorldStatus } from './world';
-
-export interface PersistenceStatus {
-  /** Whether the world is being saved. False without a database, or if the database was unreachable at start-up. */
-  enabled: boolean;
-  /** Why it is off, if it is. */
-  reason?: string;
-  restored: boolean;
-  saves: number;
-  lastSavedAt: string | null;
-  lastError: string | null;
-}
-
-const BOOT_ATTEMPTS = 10;
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /** Owns the one World of this process: restores it from the database (or starts fresh), runs its tick loop, saves it, stops it on shutdown. */
 @Injectable()
 export class WorldService implements OnApplicationBootstrap, OnApplicationShutdown {
   readonly world = new World(readWorldOptions(process.env));
   private readonly log = new Logger('World');
-  private store: WorldStore | null = null;
+  private persistence = new Persistence(null, this.log);
+  private restored = false;
   private saveTimer: NodeJS.Timeout | null = null;
-  private saving: Promise<void> | null = null;
-  private readonly persistence: PersistenceStatus = { enabled: false, restored: false, saves: 0, lastSavedAt: null, lastError: null };
 
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    const saved = await this.loadSaved();
-    this.world.init(saved);
+    const boot = await this.boot();
     this.world.start();
     const s = this.world.status();
-    this.log.log(`world running: ${s.staff} staff at ${s.tickRate} Hz, speed ${s.speed}${s.paused ? ' (paused)' : ''}, ${this.persistence.restored ? 'restored from the database' : 'fresh'}`);
-    if (this.store) {
+    this.log.log(`world running: ${s.staff} staff at ${s.tickRate} Hz, speed ${s.speed}${s.paused ? ' (paused)' : ''}, ${this.restored ? 'restored from the database' : 'fresh'}`);
+    if (boot.store && this.persistence.status.enabled) {
       const every = Number(process.env.SAVE_INTERVAL_MS) || 10_000;
-      this.saveTimer = setInterval(() => { void this.saveNow(); }, every);
+      this.saveTimer = setInterval(() => { if (!this.persistence.busy) void this.persistence.saveNow(); }, every);
     }
   }
 
   async onApplicationShutdown(): Promise<void> {
     if (this.saveTimer) clearInterval(this.saveTimer);
     this.world.stop();
-    await this.saveNow(); // the last state, so a restart continues from here
+    await this.persistence.saveNow(); // the last state, so a restart continues from here
   }
 
-  /** Read the saved world, if there is a database. Saving is only switched on once this has worked (see below). */
-  private async loadSaved(): Promise<SavedWorld | null> {
+  /** Read the save (if any), build the world from it, and only then switch saving on. */
+  private async boot(): Promise<{ store: object | null }> {
     const pool = this.db.pool;
-    if (!pool) { this.persistence.reason = 'no DATABASE_URL'; return null; }
-    if (process.env.RESET_WORLD === 'true') this.log.warn('RESET_WORLD is set: the saved world will be replaced by a fresh one');
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= BOOT_ATTEMPTS; attempt++) {
-      try {
-        const applied = await runMigrations(pool);
-        if (applied.length) this.log.log(`database migrations applied: ${applied.join(', ')}`);
-        const store = new WorldStore(pool);
-        let saved: SavedWorld | null = null;
-        if (process.env.RESET_WORLD !== 'true') {
-          try { saved = await store.load(); } catch (err) { this.log.error(String(err instanceof Error ? err.message : err)); }
-        }
-        this.store = store;
-        this.persistence.enabled = true;
-        this.persistence.restored = saved !== null;
-        return saved;
-      } catch (err) {
-        lastErr = err;
-        this.log.warn(`database not ready (attempt ${attempt}/${BOOT_ATTEMPTS}): ${err instanceof Error ? err.message : String(err)}`);
-        await sleep(2000);
-      }
+    if (!pool) { this.world.init(null); this.persistence.disable('no DATABASE_URL'); return { store: null }; }
+    const reset = process.env.RESET_WORLD === 'true';
+    if (reset) this.log.warn('RESET_WORLD is set: the saved world will be replaced by a fresh one');
+
+    const boot = await loadForBoot(async () => {
+      const applied = await runMigrations(pool);
+      if (applied.length) this.log.log(`database migrations applied: ${applied.join(', ')}`);
+      const store = new WorldStore(pool);
+      return reset ? { load: async () => null, save: (w: SavedWorld) => store.save(w) } : store;
+    }, this.log);
+
+    if (!boot.store) { this.world.init(null); this.persistence.disable(boot.reason ?? 'database unavailable'); return { store: null }; }
+
+    let saved = boot.saved;
+    try {
+      this.world.init(saved);
+    } catch (err) {
+      if (!(err instanceof SaveError)) throw err;
+      // The save is readable but this office cannot be built from it (for example a desk it names no longer exists).
+      // Leave the save exactly as it is, run a fresh world, and do not save over it until someone has looked.
+      this.log.error(`the saved world cannot be restored: ${err.message}. Running a fresh world WITHOUT saving; the save has been left untouched.`);
+      saved = null;
+      this.world.init(null);
+      this.persistence.disable(`the saved world cannot be restored: ${err.message}`);
+      return { store: null };
     }
-    // Never save over a world we could not read: starting fresh and saving later could destroy the real one.
-    this.persistence.reason = `database unreachable at start-up: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`;
-    this.log.error(`${this.persistence.reason}. Running WITHOUT saving; restart the server once the database is back.`);
-    return null;
+    this.restored = saved !== null;
+    this.persistence = new Persistence(boot.store, this.log);
+    return { store: boot.store };
   }
 
   /** The settings an admin can change, as they are now. */
@@ -92,7 +80,7 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
     if (update.paused !== undefined) sim.paused = update.paused;
     if (update.slots !== undefined) setStaffCount(update.slots);
     this.log.log(`admin changed settings: ${JSON.stringify(update)}`);
-    await this.saveNow();
+    await this.persistence.saveNow(); // waits for any save in progress and then saves again, so this change is in the database
     return this.settings();
   }
 
@@ -102,29 +90,8 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
     simEvents.emit('announce', text);
   }
 
-  /** Save the world now. One save at a time; a failure is recorded and logged, never thrown. */
-  saveNow(): Promise<void> {
-    if (!this.store) return Promise.resolve();
-    if (this.saving) return this.saving;
-    const store = this.store;
-    this.saving = (async () => {
-      try {
-        await store.save(serializeWorld());
-        this.persistence.saves++;
-        this.persistence.lastSavedAt = new Date().toISOString();
-        this.persistence.lastError = null;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (this.persistence.lastError !== msg) this.log.error(`saving the world failed: ${msg}`);
-        this.persistence.lastError = msg;
-      } finally {
-        this.saving = null;
-      }
-    })();
-    return this.saving;
-  }
-
   status(): WorldStatus & { persistence: PersistenceStatus } {
-    return { ...this.world.status(), persistence: { ...this.persistence } };
+    const s = { ...this.persistence.status, restored: this.restored };
+    return { ...this.world.status(), persistence: s };
   }
 }

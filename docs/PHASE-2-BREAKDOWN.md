@@ -1,6 +1,6 @@
 # Phase 2 breakdown: server and persistence
 
-**Status: in progress. Steps 0 to 6 are done; step 7 is next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
+**Status: done. All of steps 0 to 7 are done; phase 2 is complete.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
 
 **Done when (from the plan):** two browsers see the same office, and a server restart brings back the same people, positions and clock. Players, accounts and prediction are phases 3 and 4; here every browser is a **viewer**.
 
@@ -25,7 +25,7 @@
 | **4** (**done**) | Persistence | Prisma schema and migration; the world is saved on an interval and on shutdown, and restored at boot (people, desks, schedules, positions, clock, day, settings) | Test: save, rebuild a fresh world from the database, and compare. Docker: restart the server container and the same people appear |
 | **5** (**done**) | Admin settings | Slot count, pause, speed changeable at runtime through `/api/admin/*`, guarded by an `ADMIN_TOKEN` from the environment (real accounts come in phase 3); changes are saved and broadcast | Tests: auth required, values clamped, change shows up in snapshots and survives a restart |
 | **6** (**done**) | Viewer client | An online mode: connect, apply `welcome`, interpolate snapshots, draw. The client does not step the simulation in this mode. Offline mode stays as it is | Browser runner: two pages connected to one server show the same positions and clock; the offline recordings are unchanged |
-| **7** | Docker and end to end | Compose wires the server to the database and the proxy for `/socket.io`; a single script starts the stack, connects two browsers, restarts the server and checks the office came back | `npm run e2e` passes against the compose stack |
+| **7** (**done**) | Docker and end to end | Compose wires the server to the database and the proxy for `/socket.io`; a single script starts the stack, connects two browsers, restarts the server and checks the office came back | `npm run e2e` passes against the compose stack |
 
 ## 3. How each step is checked
 
@@ -120,3 +120,32 @@ A fresh review of the first four steps found, and the follow-up commit fixed: a 
 6. **A fresh welcome replaces everything**, so a dropped connection that reconnects shows the current world with no duplicates. A keyframe repairs a missed leave. A record for someone unknown is ignored and counted.
 7. **Verified in the real stack** by the browser runner: two headless browsers on the Docker site show the same 40 people, identical positions, states and tasks at every shared keyframe, agreeing clocks, drawn bodies, a working ledger and info card, locked controls, and no console errors. The offline recordings are unchanged.
 8. **Local only for now:** the first or third person camera still works online, but your own character is not sent to the server, so nobody else sees it. That arrives with accounts and players (phases 3 and 4).
+
+### Review of steps 4 to 6, and what it changed
+
+A second read-only review found several ways a good save could be lost or a client left in a stale state. All were fixed, each with a test:
+
+1. **A failed read at start-up was treated as "no save".** Only an unreadable save now means "start fresh"; a dropped connection or timeout is retried, and if the database never answers saving stays off (`loadForBoot` in `apps/server/src/world/persistence.ts`).
+2. **A save the office cannot be rebuilt from** (for example a desk that no longer exists after a layout change) used to crash the server on every start. Now the save is left exactly as it is, the server runs a fresh world, saving is switched off with the reason in `/api/world`, and nothing is overwritten.
+3. **Moving an unreadable save aside** is one transaction (it can no longer be duplicated or half done).
+4. **Saves are a queue that always writes the latest state.** A shutdown or an admin change that arrives during a periodic save waits for it and then saves again, so the state at that moment is what is in the database.
+5. **A world that would not read back is never written** (NaN turns into null in JSON): the save is checked first and the old one is kept.
+6. **The admin lockout works behind the proxy.** `TRUST_PROXY=1` (set in compose, since Caddy is one hop) makes the address the real client's, so one bad actor cannot lock out the admin; the failure table no longer grows without bound; the token comparison no longer reveals its length.
+7. **The client copy:** a person who leaves is taken out of the meetings they were in, a damaged chat place cannot break a snapshot, per-person bookkeeping is cleaned up, the follow camera lets go of someone who has left, and the ping timer stops after a fatal error.
+
+### Step 7
+
+1. **`npm run e2e`** (`scripts/e2e.mjs`) is the plan's "done when" as a script. It starts its **own** copy of the stack (its own compose project, port 18080 and database, so it does not touch yours), opens two browsers, and checks: a fresh server starts a new office; two browsers show the same people and identical positions, states and tasks at every shared keyframe; an admin change (30 staff at 3x) reaches both; after `docker compose restart server` the office is restored (same people, speed, clock continuing from where it stopped), the open browsers reconnect by themselves, and a new browser sees the same people; and after a hard kill (no chance to save on the way out) the office is still there and at most about one save interval of clock is lost.
+2. **Compose passes every server setting** through (`TICK_RATE`, `SLOT_COUNT`, `SIM_SPEED`, `SIM_PAUSED`, `WORLD_SEED`, `ADMIN_TOKEN`, `RESET_WORLD`, `SAVE_INTERVAL_MS`, `TRUST_PROXY`); `.env.example` documents them.
+3. **Everything phase 2 added is checked automatically:** unit tests (protocol, mirror, broadcaster, admin, persistence rules), `npm run test:db` (a throwaway PostgreSQL), the smoke test (page, API, world, realtime through the proxy), the browser runner against the Docker site (including two browsers on one server), and `npm run e2e`.
+
+## 7. After phase 2
+
+Phase 3 (accounts and takeover) builds on this directly: the `Person` already has a `controller`; the protocol has a `you` field in the welcome and a `person` message for joins; the admin token becomes admin accounts; and the saved world gains an accounts table next to `world_state`. Known loose ends carried forward:
+
+- The player's own character is local to the browser; sending it to the server (inputs, prediction) is phase 4.
+- A person's ids are their staff index; players will need ids that cannot collide with staff.
+- The look travels as JSON in the welcome (about 12 KB for 40 people); a binary form is possible if the welcome ever matters.
+- A full snapshot record is about 42 bytes; the measured stream is about 8.5 KB per second per viewer for 40 staff. Compact deltas are available if 100 players plus the crowd need them.
+- Restore resumes people idle where they stood (documented, deliberate).
+- Prisma was not adopted (plain SQL migrations); revisit with accounts.

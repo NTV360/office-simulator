@@ -19,7 +19,8 @@
     "check:docs": "node scripts/check-docs.mjs",
     "check:mutations": "node scripts/mutation-check.mjs",
     "layout:dump": "node scripts/dump-layout.mjs",
-    "test:db": "node scripts/test-db.mjs"
+    "test:db": "node scripts/test-db.mjs",
+    "e2e": "node scripts/e2e.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

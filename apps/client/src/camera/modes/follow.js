@@ -20,7 +20,7 @@ const followMode = {
   exit() { this.target = null; },
   update(dt, ctrl) {
     const t = this.target;
-    if (t && t.state === 'away') { ctrl.setView('free'); ctrl.update(dt); return; }
+    if (t && (t.state === 'away' || !people.includes(t))) { ctrl.setView('free'); ctrl.update(dt); return; }
     if (t) camGoal.target.set(t.pos.x, 0.8, t.pos.z);
     orbitStep(dt, t ? 5 : 7);
   },

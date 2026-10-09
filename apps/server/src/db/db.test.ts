@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SaveError, people, serializeWorld, setSeed, sim, isStaff } from '@office/shared';
 import { AppModule } from '../app.module';
+import { configureApp } from '../app.config';
 import { World } from '../world/world';
 import { MIGRATIONS_DIR, runMigrations } from './migrate';
 import { WorldStore } from './world-store';
@@ -95,6 +96,37 @@ d('the world store', () => {
   });
 });
 
+d('safety when something is wrong', () => {
+  beforeEach(async () => { await runMigrations(pool); });
+
+  it('moving an unreadable save aside is all or nothing', async () => {
+    await pool.query("INSERT INTO world_state (id, data) VALUES (1, '{\"version\": 1}')");
+    await pool.query('DROP TABLE world_state_rejected'); // so the first half of the move cannot work
+    await expect(new WorldStore(pool).load()).rejects.toThrow();
+    expect((await pool.query('SELECT count(*)::int AS n FROM world_state')).rows[0].n).toBe(1); // still there
+  });
+
+  it('a save this office cannot be rebuilt from is left untouched, saving stays off, and the server still starts', async () => {
+    process.env.DATABASE_URL = url;
+    const w = new World({ tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 2 }); w.init();
+    const bad = JSON.parse(JSON.stringify(serializeWorld()));
+    bad.people[0].slot = 'desk:999';
+    await new WorldStore(pool).save(bad);
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApp(app);
+    await app.listen(0, '127.0.0.1');
+    const port = (app.getHttpServer().address() as { port: number }).port;
+    const status = await (await fetch(`http://127.0.0.1:${port}/api/world`)).json() as { staff: number; persistence: { enabled: boolean; reason?: string; restored: boolean } };
+    await new Promise(r => setTimeout(r, 800));
+    await app.close();
+    expect(status.staff).toBe(40);
+    expect(status.persistence).toMatchObject({ enabled: false, restored: false });
+    expect(status.persistence.reason).toMatch(/desk:999/);
+    const row = (await pool.query('SELECT data FROM world_state WHERE id = 1')).rows[0].data;
+    expect(row.people[0].slot).toBe('desk:999'); // exactly as it was: nothing replaced it
+  }, 30000);
+});
+
 d('the running server', () => {
   beforeEach(async () => { await runMigrations(pool); });
   process.env.SAVE_INTERVAL_MS = '300';
@@ -102,8 +134,7 @@ d('the running server', () => {
   async function boot() {
     process.env.DATABASE_URL = url;
     const app = await NestFactory.create(AppModule, { logger: false });
-    app.setGlobalPrefix('api');
-    app.enableShutdownHooks();
+    configureApp(app);
     await app.listen(0, '127.0.0.1');
     const port = (app.getHttpServer().address() as { port: number }).port;
     return { app, status: async () => (await fetch(`http://127.0.0.1:${port}/api/world`)).json() as Promise<{ persistence: { enabled: boolean; restored: boolean; saves: number }; staff: number; day: number; simTime: number }> };

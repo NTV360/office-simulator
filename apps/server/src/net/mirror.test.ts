@@ -155,4 +155,19 @@ describe('Mirror', () => {
     expect(got.some(g => !g[1])).toBe(true);
     expect(p0.pos.x).toBe(startX); // the hook did not move them: that is the hook job
   });
+
+  it('a person who leaves is taken out of the meetings, and a damaged one-off place does not break the snapshot', () => {
+    connect();
+    let inMeeting: Person | undefined;
+    for (let i = 1; i <= 12000 && !inMeeting; i++) { tick(); inMeeting = [...mirror.people.values()].find(p => p.task?.meeting && p.task.meeting.members.length > 1); }
+    expect(inMeeting).toBeDefined();
+    const meeting = inMeeting!.task!.meeting!;
+    mirror.applyLeave(inMeeting!.id);
+    expect(meeting.members).not.toContain(inMeeting);
+    expect(meeting.speaker).not.toBe(inMeeting);
+    const other = [...mirror.people.values()][0];
+    const bad = { ...personSnap(other, mirror.meetings), spot: 0xffff, kind: 'chat', anim: 'talkStand', cat: 'chat' };
+    expect(() => mirror.applySnapshot({ type: 'snapshot', tick: 9, simTime: 1, day: 1, speed: 1, paused: false, full: false, people: [bad], meetings: [] })).not.toThrow();
+    expect(other.task).toBeNull();
+  }, 60000);
 });

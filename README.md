@@ -20,11 +20,11 @@ Web (the built client), server and database, as one command. Needs Docker Deskto
 
 ```
 docker compose up --build    # then open http://localhost:8080
-npm run smoke                # checks the page, its files, the server and the database
+npm run smoke                # checks the page, its files, the server, the database and a realtime connection
 docker compose down          # stop (the database is kept)
 ```
 
-Details and troubleshooting: [docs/LOCAL-DOCKER.md](docs/LOCAL-DOCKER.md).
+In the stack the server runs the office and every browser watches the same one; it is saved and comes back after a restart. `npm run e2e` proves that end to end. Details, the admin API and troubleshooting: [docs/LOCAL-DOCKER.md](docs/LOCAL-DOCKER.md).
 
 ## Controls
 

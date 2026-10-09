@@ -29,6 +29,19 @@ Open **http://localhost:8080**. Change the port by putting `WEB_PORT=9000` in a 
 
 Start order is enforced by health checks: the database must be healthy before the server starts, and the server before the web container.
 
+## What the stack does now
+
+- `server` runs the office simulation (the same code as the browser, in `packages/shared`) at 20 ticks a second, restores it from the database at start-up, saves it every 10 seconds and when it stops, and streams it to every browser. `GET /api/world` shows the clock, who is in, tick times and the saving status.
+- The `web` image is built with `VITE_ONLINE=1`, so the page is a **viewer** of the server's office: every browser sees the same people. Open the page with `?offline` to run a private copy instead.
+- Staff count, clock speed and pause belong to the server. An admin changes them through `/api/admin/*` with the `ADMIN_TOKEN` from `.env` (leave it empty and the admin API does not exist):
+
+```
+curl -X PUT http://localhost:8080/api/admin/settings -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"slots": 30, "speed": 3}'
+curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
+```
+
+- The saved world lives in the database (`world_state`). `docker compose restart server` brings the same office back. To start over with a fresh office, set `RESET_WORLD=true` for one start (or `docker compose down -v` to wipe the database).
+
 ## Defaults and secrets
 
 The compose file has development defaults (database user `office`, password `office_dev_password`). They are fine on your own PC. **For anything other people can reach, copy `.env.example` to `.env` and set a real `POSTGRES_PASSWORD`.**
@@ -47,6 +60,14 @@ curl http://localhost:8080/api/health                    # {"status":"ok","db":"
 `npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`.
 
 For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 npm run verify:browser`. It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
+
+## Checking the whole thing
+
+```
+npm run smoke        # page, files, health, the running world, a realtime connection through the proxy
+npm run test:db      # database tests against a throwaway PostgreSQL (needs Docker)
+npm run e2e          # its OWN copy of the stack: two browsers, an admin change, a restart, a hard kill
+```
 
 ## Troubleshooting
 

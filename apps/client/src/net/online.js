@@ -114,7 +114,10 @@ export function startOnline() {
     }
   });
 
-  setInterval(() => { if (net.connected) send({ type: 'ping', ts: performance.now() }); }, 3000);
+  const pinger = setInterval(() => {
+    if (net.fatal) { clearInterval(pinger); return; }
+    if (net.connected) send({ type: 'ping', ts: performance.now() });
+  }, 3000);
 
   function syncClock() {
     const c = mirror.clock;
