@@ -30,6 +30,8 @@ export interface GatewayOptions {
   maxMessagesPerSecond: number;
   /** The same for a client that is playing: inputs come about 20 times a second, plus the occasional sit, stand and ping. */
   maxJoinedMessagesPerSecond: number;
+  /** How long after a connection goes away "X left" is put in the activity log (and not at all if they are back by then). */
+  leaveLogMs: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
@@ -38,6 +40,7 @@ export const gatewayOptions = (env: Record<string, string | undefined>): Gateway
   sweepMs: Number(env.SESSION_SWEEP_MS) || 60_000,
   maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
   maxJoinedMessagesPerSecond: Number(env.MAX_JOINED_MESSAGES_PER_SECOND) || 60,
+  leaveLogMs: Number(env.LEAVE_LOG_MS) || 5000,
 });
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
@@ -65,12 +68,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   ) {}
 
   private chat!: ChatService;
+  private readonly leaveTimers = new Map<number, NodeJS.Timeout>();
   private emotes!: EmoteService;
   private rage!: RageService;
 
   afterInit(): void {
     const world = this.worlds.world;
-    this.rage = new RageService({ hazelPresent: () => people.some(p => p.name === HAZEL_NAME && p.state !== 'away') });
+    this.rage = new RageService({ hazelPresent: () => people.some(p => p.name === HAZEL_NAME && p.controller === 'ai' && p.state !== 'away') });
     this.emotes = new EmoteService({ personOf: id => this.players.manager().speaker(id)?.personId ?? null });
     this.chat = new ChatService({
       speaker: id => this.players.manager().speaker(id),
@@ -110,7 +114,14 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const id = socket.data.accountId as number | undefined;
     if (id !== undefined && this.byAccount.get(id) === socket) {
       this.byAccount.delete(id);
-      if (socket.data.joined) { this.players.manager().detach(id); addLog(`${socket.data.username} left`); } // (everybody sees it in the activity log); their person stays for the grace period, then goes back to autopilot
+      if (socket.data.joined) {
+        this.players.manager().detach(id); // their person stays for the grace period, then goes back to autopilot
+        // "left" is said a few seconds later, and not at all if they are back by then (a blink of the network is not news)
+        const name = socket.data.username as string;
+        const timer = setTimeout(() => { this.leaveTimers.delete(id); addLog(`${name} left`); }, this.options.leaveLogMs);
+        timer.unref();
+        this.leaveTimers.set(id, timer);
+      }
     }
   }
 
@@ -165,9 +176,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       case 'rage': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.rage.trigger();
+        const r = this.rage.trigger(socket.data.accountId);
         if (r.ok) { this.broadcast(encode({ type: 'event', kind: 'rage', simTime: sim.t, text: '' })); return; } // everybody, at the same moment
-        const notice = r.reason === 'away' ? "Hazel isn't in the office right now." : `Hazel is still calming down. Try again in ${r.secondsLeft} s.`;
+        const notice = r.reason === 'away' ? "Hazel isn't in the office right now."
+          : r.reason === 'you-again' ? `You made her angry a little while ago. Try again in ${Math.ceil(r.secondsLeft / 60)} min.`
+          : `Hazel is still calming down. Try again in ${r.secondsLeft} s.`;
         socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
         return;
       }
@@ -226,7 +239,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       socket.data.joined = true;
       socket.join(PLAYING);
       socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, person.id));
-      addLog(`${account.username} joined`); // (everybody sees it in the activity log)
+      const quick = this.leaveTimers.get(account.id);
+      if (quick) { clearTimeout(quick); this.leaveTimers.delete(account.id); } else addLog(`${account.username} joined`); // (everybody sees it in the activity log)
     } catch (err) {
       this.log.error(`joining failed: ${err instanceof Error ? err.message : String(err)}`);
       if (attachedId !== undefined && this.byAccount.get(attachedId) !== socket) this.players.manager().detach(attachedId); // do not leave a session with nobody behind it
@@ -267,6 +281,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (notice && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
       return;
     }
+    if (this.byAccount.get(socket.data.accountId) !== socket) return; // (taken over or logged out while the line was being checked)
     const bytes = encode({ type: 'chat', from: result.from, name: result.name, text: result.text });
     for (const accountId of result.to) { const s = this.byAccount.get(accountId); if (s && s.data.joined) s.emit(WIRE_EVENT, bytes); }
   }
@@ -324,7 +339,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   get connectedAccounts(): number { return this.byAccount.size; }
 
   /** Stop the periodic check (the app is shutting down). */
-  onModuleDestroy(): void { if (this.sweepTimer) clearInterval(this.sweepTimer); }
+  onModuleDestroy(): void { if (this.sweepTimer) clearInterval(this.sweepTimer); for (const t of this.leaveTimers.values()) clearTimeout(t); }
 
   private broadcast(bytes: Uint8Array): void { this.server.to(PLAYING).emit(WIRE_EVENT, bytes); }
 

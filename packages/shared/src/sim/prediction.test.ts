@@ -46,6 +46,20 @@ describe('the reconciler', () => {
     expect(r.reconcile({ seq: 0, x: 8, z: 5 }, { x: 5.1, z: 5 })).toMatchObject({ kind: 'pull' });
   });
 
+  it('a repeated ack for the same input (the server kept using it) does not pull a running player backwards', () => {
+    const r = new Reconciler();
+    r.record(7, 10, 0);
+    expect(r.reconcile({ seq: 7, x: 10.1, z: 0 }, { x: 10.7, z: 0 }, false)).toEqual({ kind: 'none' }); // compared with the history: fine
+    // the server kept using input 7 for two more ticks (10.4, then 10.7) while the person on screen ran on, a metre ahead
+    expect(r.reconcile({ seq: 7, x: 10.4, z: 0 }, { x: 11.4, z: 0 }, false)).toEqual({ kind: 'none' });
+    expect(r.reconcile({ seq: 7, x: 10.7, z: 0 }, { x: 11.8, z: 0 }, false)).toEqual({ kind: 'none' });
+    // someone standing still is a different matter: there the person on screen should be where the server says
+    const still = new Reconciler();
+    still.record(7, 10, 0);
+    still.reconcile({ seq: 7, x: 10, z: 0 }, { x: 10, z: 0 }, true);
+    expect(still.reconcile({ seq: 7, x: 12, z: 0 }, { x: 10, z: 0 }, true)).toMatchObject({ kind: 'pull' });
+  });
+
   it('ignores an ack older than one it has already used, and rubbish', () => {
     const r = new Reconciler();
     r.record(1, 0, 0); r.record(2, 0, 0);

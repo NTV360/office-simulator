@@ -52,11 +52,17 @@ export class Reconciler {
    * The server says that after input `ack.seq` the person was at (ack.x, ack.z). `current` is where the predicted person is now.
    * Returns what to do. The history is kept consistent: after a pull, later inputs are shifted by the same amount, so the next ack
    * is not corrected a second time for the same difference.
+   *
+   * `idle` says whether the player has been standing still for a moment. The server repeats an ack, at a newer position, while it keeps
+   * using the same input; the history for that input is already used up, and the person on screen is by now ahead of the server by the
+   * distance covered in a round trip. Comparing with that would pull a running player backwards, so without history a moving player is
+   * left alone: only someone standing still is compared with where they are now.
    */
-  reconcile(ack: AckLike, current: Pos): Correction {
+  reconcile(ack: AckLike, current: Pos, idle = true): Correction {
     if (!Number.isFinite(ack.x) || !Number.isFinite(ack.z) || ack.seq < this.newest) return { kind: 'none' };
     this.newest = ack.seq;
     const at = this.trail.find(e => e.seq === ack.seq);
+    if (!at && !idle) { this.trail = this.trail.filter(e => e.seq > ack.seq); return { kind: 'none' }; }
     // an input we still remember: compare with where we were when we sent it. Otherwise (nothing sent for a while, or an input from
     // before we started keeping history) compare with where we are now.
     const ref = at ?? current;

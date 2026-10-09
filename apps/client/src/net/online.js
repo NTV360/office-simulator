@@ -243,7 +243,8 @@ export function startOnline() {
         const me = player.person;
         if (!me || msg.tick === undefined) break;
         net.pred.acks++;
-        const c = reconciler.reconcile(msg, me.pos);
+        const idle = performance.now() - player.online.lastMovedAt > 400; // standing still for a moment
+        const c = reconciler.reconcile(msg, me.pos, idle);
         if (c.kind === 'pull') { me.pos.x += c.dx; me.pos.z += c.dz; net.pred.pulls++; }
         else if (c.kind === 'snap') { me.pos.x = c.x; me.pos.z = c.z; net.pred.snaps++; }
         if (c.kind !== 'none') { net.pred.lastError = c.error; net.pred.maxError = Math.max(net.pred.maxError, c.error); }

@@ -26,7 +26,7 @@ function textureFor(text) {
   g.fillText(text, w / 2, h / 2 + 1);
   const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace;
   entry = { map, aspect: w / h };
-  if (textures.size >= MAX_TEXTURES) { const [oldest] = textures.keys(); textures.get(oldest).map.dispose(); textures.delete(oldest); }
+  if (textures.size >= MAX_TEXTURES) { const [oldest] = textures.keys(); textures.delete(oldest); } // (freed when the last label using it goes: see dropNameTag)
   textures.set(text, entry);
   return entry;
 }
@@ -38,7 +38,9 @@ function dropNameTag(p) {
   const tag = p.nameTag;
   if (!tag) return;
   tag.parent?.remove(tag);
-  tag.material.dispose(); // (the texture is shared and cached)
+  const map = tag.material.map;
+  tag.material.dispose();
+  if (![...textures.values()].some(e => e.map === map)) map.dispose(); // (a texture still in the cache is shared with other labels)
   p.nameTag = null;
 }
 

@@ -59,7 +59,7 @@ try {
   await sleep(800);
   const pred = await C.page.evaluate(() => { const p = window.__sim.player.person, s = p._buf[p._buf.length - 1]; return { ...window.__sim.net.pred, gap: Math.hypot(p.pos.x - s.x, p.pos.z - s.z) }; });
   const catEnd = await personOf(C.page, 'tog_cat');
-  check('Cat walked a long way with the keys and the server never had to snap her back', Math.hypot(catEnd.x - catStart.x, catEnd.z - catStart.z) > 15 && pred.snaps === 0 && pred.gap < 0.5, `${Math.hypot(catEnd.x - catStart.x, catEnd.z - catStart.z).toFixed(0)} m, ${pred.pulls} pulls, ${pred.acks} acks`);
+  check('Cat walked a long way with the keys and the server never had to snap her back', Math.hypot(catEnd.x - catStart.x, catEnd.z - catStart.z) > 15 && pred.acks > 20 && pred.snaps === 0 && pred.gap < 0.5, `${Math.hypot(catEnd.x - catStart.x, catEnd.z - catStart.z).toFixed(0)} m, ${pred.pulls} pulls, ${pred.acks} acks`);
 
   // ---- 4. Ana and Ben sit down in the lounge; everyone sees them seated
   const anaSat = await sitDownSomewhere(A.page);

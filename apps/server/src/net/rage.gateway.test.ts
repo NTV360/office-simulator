@@ -1,30 +1,41 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { HAZEL_NAME, encode, people, setSeed, type Message } from '@office/shared';
-import { RAGE_COOLDOWN_MS, RageService } from '../play/shared-events';
+import { RAGE_COOLDOWN_MS, RAGE_PER_PLAYER_MS, RageService } from '../play/shared-events';
 import { bootTestServer, connect, enter, isKick, isWelcome, sleep, type Client, type TestServer } from '../test-support';
 
 describe('RageService', () => {
   it('starts when Hazel is in, then not again for a minute, for anybody', () => {
     let t = 10_000_000;
     const s = new RageService({ hazelPresent: () => true }, () => t);
-    expect(s.trigger()).toEqual({ ok: true });
+    expect(s.trigger(1)).toEqual({ ok: true });
     t += 1000;
-    expect(s.trigger()).toEqual({ ok: false, reason: 'cooldown', secondsLeft: 59 });
+    expect(s.trigger(2)).toEqual({ ok: false, reason: 'cooldown', secondsLeft: 59 });
     t += RAGE_COOLDOWN_MS - 1001;
-    expect(s.trigger()).toMatchObject({ ok: false, reason: 'cooldown', secondsLeft: 1 });
+    expect(s.trigger(2)).toMatchObject({ ok: false, reason: 'cooldown', secondsLeft: 1 });
     t += 2;
-    expect(s.trigger()).toEqual({ ok: true });
+    expect(s.trigger(2)).toEqual({ ok: true });
+  });
+  it('and the same player can start one only every five minutes, so one player cannot keep her angry all day', () => {
+    let t = 10_000_000;
+    const s = new RageService({ hazelPresent: () => true }, () => t);
+    expect(s.trigger(1)).toEqual({ ok: true });
+    t += RAGE_COOLDOWN_MS + 1;
+    expect(s.trigger(1)).toMatchObject({ ok: false, reason: 'you-again' }); // the minute is over, but it is the same player
+    expect(s.trigger(2)).toEqual({ ok: true }); // somebody else may
+    t += RAGE_PER_PLAYER_MS;
+    expect(s.trigger(1)).toEqual({ ok: true });
   });
   it('does not start when Hazel is away, and that does not use up the cooldown', () => {
     let present = false;
     const s = new RageService({ hazelPresent: () => present }, () => 5_000_000);
-    expect(s.trigger()).toEqual({ ok: false, reason: 'away' });
+    expect(s.trigger(1)).toEqual({ ok: false, reason: 'away' });
     present = true;
-    expect(s.trigger()).toEqual({ ok: true });
+    expect(s.trigger(1)).toEqual({ ok: true });
   });
 });
 
 process.env.WORLD_SEED = '1';
+process.env.LEAVE_LOG_MS = '600'; // ("X left" is said this long after they go, in these tests)
 let server: TestServer;
 let base: string;
 const open: Array<{ close(): void }> = [];
@@ -81,9 +92,24 @@ describe('joins and leaves are shared events too', () => {
     await sleep(500);
     expect(logs()).toContain('jl_guest joined');
     guest.socket.close();
-    await sleep(600);
+    await sleep(300);
+    expect(logs()).not.toContain('jl_guest left'); // said a moment later, not at once
+    await sleep(500);
     expect(logs()).toContain('jl_guest left');
     expect(logs().filter(t => t === 'jl_guest joined')).toHaveLength(1);
     watcher.socket.close();
+  });
+
+  it('a blink of the network is not news: back within the moment, nobody is told they left or joined', async () => {
+    const watcher = await player('jl_watch2');
+    const logs = () => watcher.messages.filter((m): m is Extract<Message, { type: 'event' }> => m.type === 'event' && m.kind === 'log').map(m => m.text);
+    const first = await player('jl_blink');
+    await sleep(300);
+    first.socket.close();
+    const again = await player('jl_blink'); // straight back
+    await sleep(900);
+    expect(logs().filter(t => t === 'jl_blink joined')).toHaveLength(1);
+    expect(logs()).not.toContain('jl_blink left');
+    again.socket.close(); watcher.socket.close();
   });
 });

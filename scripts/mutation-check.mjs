@@ -40,6 +40,8 @@ const MUTATIONS = [
   ['an emote that is not on the list is accepted', 'apps/server/src/play/emotes.ts', "if (typeof kind !== 'string' || !(EMOTE_KINDS as readonly string[]).includes(kind)) return { ok: false, reason: 'bad' };", ''],
   ['the rage can start again at once', 'apps/server/src/play/shared-events.ts', 'if (left > 0) return', 'if (left > 1e12) return'],
   ['the rage starts while Hazel is away', 'apps/server/src/play/shared-events.ts', "if (!this.lookup.hazelPresent()) return { ok: false, reason: 'away' };", ''],
+  ['a running player is pulled back by a repeated ack', sim + 'prediction.ts', 'if (!at && !idle) {', 'if (false) {'],
+  ['one player can keep the rage going all day', 'apps/server/src/play/shared-events.ts', "if (mine > 0) return { ok: false, reason: 'you-again', secondsLeft: Math.ceil(mine / 1000) };", ''],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
