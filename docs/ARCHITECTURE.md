@@ -31,38 +31,38 @@ In practice:
 
 **Known exceptions.** These exist today. They are debt, not precedent. Do not add more; if you need to, ask.
 
-| Where | Goes "up" to | Why it exists |
-|---|---|---|
-| `render/labels.js` | `world/furniture/desks.js` | labels each desk island |
-| `render/lighting.js` | `sim/state.js` | light follows the sim clock |
-| `character/rig.js` | `people/data.js` | the activity-ring colours come from `CATS` |
-| `people/factory.js` | `ui/person.js` | deselects a removed person |
-| `people/animation.js` | `player/player.js` | the player's pose depends on sitting/moving |
-| `people/hazel.js` | `camera/`, `player/`, `ui/` | Hazel's HUD buttons, camera follow and rage effects live in one feature module |
+| Where                 | Goes "up" to                | Why it exists                                                                  |
+| --------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| `render/labels.js`    | `world/furniture/desks.js`  | labels each desk island                                                        |
+| `render/lighting.js`  | `sim/state.js`              | light follows the sim clock                                                    |
+| `character/rig.js`    | `people/data.js`            | the activity-ring colours come from `CATS`                                     |
+| `people/factory.js`   | `ui/person.js`              | deselects a removed person                                                     |
+| `people/animation.js` | `player/player.js`          | the player's pose depends on sitting/moving                                    |
+| `people/hazel.js`     | `camera/`, `player/`, `ui/` | Hazel's HUD buttons, camera follow and rage effects live in one feature module |
 
 Some function-level cycles also exist (for example `camera/controller.js` and `player/control.js` call each other). They are fine as long as no module **reads another module's value at import time** (see [CODING-STANDARDS.md](CODING-STANDARDS.md#2-no-work-at-import-time)).
 
 ## Folder map (`src/`)
 
-| Folder | What lives there |
-|---|---|
-| `config/plan.js` | Floor-plan data (`OUTER`, `WALLS`), plan→metre conversion (`W`, `wx`, `wz`, `toPx`), wall heights |
-| `core/util.js` | Small helpers: `rnd`, `pick`, `shuffle`, `angDiff`, `TAU` |
-| `render/` | `renderer.js` (renderer, scene, camera, sun), `materials.js` (the `M` palette and `canvasTex`), `screens.js` (monitor/TV textures), `labels.js`, `lighting.js` (day/night) |
-| `world/helpers.js` | Geometry helpers (`box`, `cyl`, `frame`), the obstacle list `OBS`, the wall list `SOLIDS`, the shared `wall` height state |
-| `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls |
-| `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
-| `world/interactables.js` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')` |
-| `nav/` | `grid.js` (walkable grid built from the obstacles), `astar.js` (pathfinding) |
-| `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
-| `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
-| `sim/` | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
-| `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
-| `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
-| `fp/` | The first-person camera (eye height, head bob) |
-| `ui/` | HUD controls, the headcount ledger, the selected-person card |
-| `styles/` | CSS split by UI area, imported in order by `main.js` |
-| `assets/` | Static files imported by code (the logo) |
+| Folder                                                             | What lives there                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/plan.js`                                                   | Floor-plan data (`OUTER`, `WALLS`), plan→metre conversion (`W`, `wx`, `wz`, `toPx`), wall heights                                                                                                                                                             |
+| `core/util.js`                                                     | Small helpers: `rnd`, `pick`, `shuffle`, `angDiff`, `TAU`                                                                                                                                                                                                     |
+| `render/`                                                          | `renderer.js` (renderer, scene, camera, sun), `materials.js` (the `M` palette and `canvasTex`), `screens.js` (monitor/TV textures), `labels.js`, `lighting.js` (day/night)                                                                                    |
+| `world/helpers.js`                                                 | Geometry helpers (`box`, `cyl`, `frame`), the obstacle list `OBS`, the wall list `SOLIDS`, the shared `wall` height state                                                                                                                                     |
+| `world/floor.js`, `walls.js`, `doors.js`, `entrance.js`, `bake.js` | The building shell, and `bake` which merges static meshes into few draw calls                                                                                                                                                                                 |
+| `world/furniture/*.js`                                             | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs                                                           |
+| `world/interactables.js`                                           | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')`                                                                                                                          |
+| `nav/`                                                             | `grid.js` (walkable grid built from the obstacles, plus a block under every chair), `astar.js` (pathfinding)                                                                                                                                                  |
+| `character/`                                                       | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry                                                                                    |
+| `people/`                                                          | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `bump.js` (head-on walkers stop and scratch their heads), `hazel.js` (the special character) |
+| `sim/`                                                             | `state.js` (`sim`, `people`, log), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement)                                                                                                                      |
+| `player/`                                                          | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js`                                                                                                      |
+| `camera/`                                                          | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking)                                                            |
+| `fp/`                                                              | The first-person camera (eye height, head bob)                                                                                                                                                                                                                |
+| `ui/`                                                              | HUD controls, the headcount ledger, the selected-person card                                                                                                                                                                                                  |
+| `styles/`                                                          | CSS split by UI area, imported in order by `main.js`                                                                                                                                                                                                          |
+| `assets/`                                                          | Static files imported by code (the logo)                                                                                                                                                                                                                      |
 
 ## How the app starts
 
@@ -90,19 +90,19 @@ Each frame, in this order:
 
 State is held in a few exported plain objects. **Mutate their properties; never reassign an imported variable** (ES modules forbid it, and it hides who changes what).
 
-| State | Owner | Notes |
-|---|---|---|
-| `sim` | `sim/state.js` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
-| `people` | `sim/state.js` | The NPC list. The player is **not** in it |
-| `logState`, `log` | `sim/state.js` | Event log shown in the ledger; set `logState.dirty` to redraw |
-| `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed |
-| `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
-| `camState`, `camGoal` | `camera/state.js` | Orbit camera: smoothed result and where input wants it |
-| `wall` | `world/helpers.js` | `{ h, goal }` wall height and its target |
-| `labelState` | `render/labels.js` | `{ on }` |
-| `interactables` | `world/interactables.js` | The registry of usable spots |
-| `OBS`, `SOLIDS` | `world/helpers.js` | Obstacle rects (nav) and wall rects (camera collision), in plan pixels |
-| `RAGE` | `people/hazel.js` | Hazel's rage-mode state |
+| State                 | Owner                    | Notes                                                                                                                |
+| --------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `sim`                 | `sim/state.js`           | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight                                               |
+| `people`              | `sim/state.js`           | The NPC list. The player is **not** in it                                                                            |
+| `logState`, `log`     | `sim/state.js`           | Event log shown in the ledger; set `logState.dirty` to redraw                                                        |
+| `player`              | `player/player.js`       | `{ person, spec, sitting, moving }`. `person` is null until first needed                                             |
+| `ctl`                 | `player/control.js`      | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
+| `camState`, `camGoal` | `camera/state.js`        | Orbit camera: smoothed result and where input wants it                                                               |
+| `wall`                | `world/helpers.js`       | `{ h, goal }` wall height and its target                                                                             |
+| `labelState`          | `render/labels.js`       | `{ on }`                                                                                                             |
+| `interactables`       | `world/interactables.js` | The registry of usable spots                                                                                         |
+| `OBS`, `SOLIDS`       | `world/helpers.js`       | Obstacle rects (nav) and wall rects (camera collision), in plan pixels                                               |
+| `RAGE`                | `people/hazel.js`        | Hazel's rage-mode state                                                                                              |
 
 ## Coordinates
 
