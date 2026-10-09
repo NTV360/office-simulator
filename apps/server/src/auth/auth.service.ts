@@ -175,6 +175,9 @@ export class AuthService {
     const problem = passwordProblem(chosen, account.username);
     if (problem) throw new AuthError('weak', problem);
     await this.store.setPassword(id, await hashPassword(chosen as string), true);
+    // a person locked out by wrong passwords is let back in by the reset (it is how an admin helps them)
+    this.failuresByName.reset(account.usernameLower);
+    this.failuresByNameAndIp.resetPrefix(account.usernameLower + '|');
     await this.endAllSessions(id);
     return { account: (await this.store.byId(id))!, password: chosen as string };
   }

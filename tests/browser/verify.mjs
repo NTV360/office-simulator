@@ -413,7 +413,9 @@ try {
     const actx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const ap = await actx.newPage();
     const aerrors = collectErrors(ap);
-    await ap.goto(site.url + '/admin', { waitUntil: 'load' });
+    const adminResp = await ap.goto(site.url + '/admin', { waitUntil: 'load' });
+    const hh = adminResp.headers();
+    if (hh['cache-control'] === 'no-store' && /frame-ancestors 'none'/.test(hh['content-security-policy'] || '') && hh['x-content-type-options'] === 'nosniff') pass('the admin page is served no-store with a strict content policy'); else fail('admin headers: ' + JSON.stringify(hh));
     await ap.waitForSelector('#adminPassword', { timeout: 10000 }).then(() => pass('/admin asks for the admin password'), () => fail('/admin shows no password box'));
     await ap.fill('#adminPassword', 'definitely-not-the-password');
     await ap.keyboard.press('Enter');

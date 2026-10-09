@@ -12,6 +12,15 @@
 	# the admin page (a second page of the site)
 	@admin path /admin /admin/
 	rewrite @admin /admin.html
+	# nothing about the admin page or its answers (they carry passwords) is kept by the browser or a cache, and nothing else may embed it
+	@adminPage path /admin /admin/ /admin.html
+	header @adminPage {
+		Cache-Control "no-store"
+		Content-Security-Policy "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+	}
+	header /api/admin/* Cache-Control "no-store"
 
 	handle /api/* {
 		reverse_proxy server:3000

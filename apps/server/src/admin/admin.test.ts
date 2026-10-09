@@ -35,7 +35,7 @@ afterEach(async () => { await app.close(); setSeed(null); delete process.env.ADM
 const call = async (method: string, path: string, body?: unknown, token: string | null = TOKEN) => {
   const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { status: r.status, json: () => r.json() as Promise<any> };
+  return { status: r.status, headers: r.headers, json: () => r.json() as Promise<any> };
 };
 const world = async () => (await fetch(base + '/api/world')).json() as Promise<{ staff: number; speed: number; paused: boolean; simTime: number }>;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -301,5 +301,33 @@ describe('managing accounts: passwords, disabling, many at once', () => {
     await makeUser('marco');
     const list = await (await call('GET', '/api/admin/users')).json();
     expect(list[0]).toMatchObject({ username: 'marco', mustChangePassword: true, hasLook: false, disabled: false });
+  });
+});
+
+describe('after the review of the admin page', () => {
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+  it('answers that carry a password are marked no-store', async () => {
+    const created = await call('POST', '/api/admin/users', { username: 'marco' });
+    expect(created.headers.get('cache-control')).toBe('no-store');
+    const id = (await created.json()).account.id;
+    expect((await call('POST', `/api/admin/users/${id}/password`, {})).headers.get('cache-control')).toBe('no-store');
+    expect((await call('POST', '/api/admin/users/bulk', { usernames: ['zed_1'] })).headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('a reset lets someone back in who was locked out by wrong passwords', async () => {
+    const id = ((await (await call('POST', '/api/admin/users', { username: 'locked_out', password: 'first-password-1' })).json()) as { account: { id: number } }).account.id;
+    for (let i = 0; i < 6; i++) await post('/api/auth/login', { username: 'locked_out', password: `wrong-guess-${i}x` });
+    expect((await post('/api/auth/login', { username: 'locked_out', password: 'first-password-1' })).status).toBe(429); // locked, even with the right one
+    const { password } = await (await call('POST', `/api/admin/users/${id}/password`, {})).json();
+    expect((await post('/api/auth/login', { username: 'locked_out', password })).status).toBe(200);
+  });
+
+  it('only one bulk creation runs at a time', async () => {
+    const names = Array.from({ length: 12 }, (_, i) => `bulk_a${i}`);
+    const other = Array.from({ length: 3 }, (_, i) => `bulk_b${i}`);
+    const [a, b] = await Promise.all([call('POST', '/api/admin/users/bulk', { usernames: names }), call('POST', '/api/admin/users/bulk', { usernames: other })]);
+    expect([a.status, b.status].sort()).toEqual([201, 409]);
+    expect((await call('POST', '/api/admin/users/bulk', { usernames: ['after_it'] })).status).toBe(201); // free again
   });
 });

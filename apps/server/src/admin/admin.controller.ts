@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, ConflictException, Controller, Get, Inject, Injectable, NotFoundException, Param, PipeTransform, Post, Put, UseGuards,
+  BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, UseGuards,
 } from '@nestjs/common';
 import { HAZEL_NAME, interactables, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
@@ -29,9 +29,16 @@ function asHttp(err: unknown): never {
   throw new ConflictException(err.message);
 }
 
+/** What an answer with a password in it must carry: nothing keeps a copy of it. */
+const NO_STORE = 'no-store';
+
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
+  // what admins do, for the log (never a password)
+  private readonly log = new Logger('Admin');
+  private bulkRunning = false;
+
   constructor(
     @Inject(WorldService) private readonly worlds: WorldService,
     @Inject(PlayService) private readonly play: PlayService,
@@ -71,31 +78,39 @@ export class AdminController {
 
   /** Make an account for a person in the office. There is no sign-up page: this is the only way accounts come to exist. They choose their own password at first login. */
   @Post('users')
+  @Header('Cache-Control', NO_STORE)
   async createUser(@Body() body: unknown): Promise<{ account: PublicAccount; password?: string }> {
     const b = (body ?? {}) as { username?: unknown; password?: unknown };
     const generated = b.password === undefined || b.password === '' ? generatePassword() : undefined; // no password given: make one, and say it
     const account = await this.auth.require().createAccount({ username: b.username, password: generated ?? b.password, mustChange: true });
+    this.log.log(`made account ${account.username} (id ${account.id})`);
     return { account: publicAccount(account), ...(generated ? { password: generated } : {}) };
   }
 
   /** Make many accounts at once (the whole office): each gets a generated first password, returned once, to hand out. */
   @Post('users/bulk')
+  @Header('Cache-Control', NO_STORE)
   async createUsers(@Body() body: unknown): Promise<{ results: Array<{ username: string; ok: boolean; id?: number; password?: string; code?: string; message?: string }> }> {
     const names = (body as { usernames?: unknown } | null)?.usernames;
     if (!Array.isArray(names) || names.length < 1 || names.length > 200 || names.some(n => typeof n !== 'string')) throw new BadRequestException('send { "usernames": ["ana", "ben"] } with 1 to 200 names');
-    const auth = this.auth.require();
-    const results = [];
-    for (const name of names as string[]) {
-      const password = generatePassword();
-      try {
-        const account = await auth.createAccount({ username: name, password, mustChange: true });
-        results.push({ username: account.username, ok: true, id: account.id, password });
-      } catch (err) {
-        if (!(err instanceof AuthError)) throw err;
-        results.push({ username: name.slice(0, 40), ok: false, code: err.code, message: err.message });
+    if (this.bulkRunning) throw new ConflictException('another bulk creation is still running; wait a moment'); // (each one is a slow hash)
+    this.bulkRunning = true;
+    try {
+      const auth = this.auth.require();
+      const results = [];
+      for (const name of names as string[]) {
+        const password = generatePassword();
+        try {
+          const account = await auth.createAccount({ username: name, password, mustChange: true });
+          results.push({ username: account.username, ok: true, id: account.id, password });
+        } catch (err) {
+          if (!(err instanceof AuthError)) throw err;
+          results.push({ username: name.slice(0, 40), ok: false, code: err.code, message: err.message });
+        }
       }
-    }
-    return { results };
+      this.log.log(`bulk: made ${results.filter(r => r.ok).length} of ${results.length} accounts`);
+      return { results };
+    } finally { this.bulkRunning = false; }
   }
 
   /**
@@ -103,8 +118,10 @@ export class AdminController {
    * Its owner must choose their own at the next login, and their sessions and connections end now.
    */
   @Post('users/:id/password')
+  @Header('Cache-Control', NO_STORE)
   async resetPassword(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ username: string; password: string }> {
     const { account, password } = await this.auth.require().adminSetPassword(id, (body as { password?: unknown } | null)?.password);
+    this.log.log(`set a new password for ${account.username} (id ${id})`);
     return { username: account.username, password };
   }
 
@@ -114,6 +131,7 @@ export class AdminController {
     const disabled = (body as { disabled?: unknown } | null)?.disabled;
     if (typeof disabled !== 'boolean') throw new BadRequestException('send { "disabled": true } or { "disabled": false }');
     const account = await this.auth.require().setDisabled(id, disabled);
+    this.log.log(`${disabled ? 'disabled' : 'enabled'} account ${account.username} (id ${id})`);
     return { id: account.id, disabled: account.disabled };
   }
 

@@ -24,6 +24,9 @@ export class RateLimiter {
   /** Forget a key (for example after a successful login). */
   reset(key: string): void { this.hits.delete(key); }
 
+  /** Forget every key that starts with `prefix` (all addresses for one username, for example). */
+  resetPrefix(prefix: string): void { for (const k of this.hits.keys()) if (k.startsWith(prefix)) this.hits.delete(k); }
+
   private prune(t: number): void {
     for (const [k, v] of this.hits) if (!v.some(x => t - x < this.windowMs)) this.hits.delete(k);
   }

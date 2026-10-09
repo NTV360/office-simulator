@@ -36,6 +36,7 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
   }
 
   private async start(): Promise<void> {
+    if (process.env.ADMIN_TOKEN && !process.env.TRUST_PROXY) this.log.warn('ADMIN_TOKEN is set but TRUST_PROXY is not: behind a proxy, every client looks like one address and ten wrong admin passwords from anyone lock the admin out');
     const pool = this.db.pool;
     if (!pool) { this.log.warn('no DATABASE_URL: accounts are switched off'); return; }
     for (let attempt = 1; ; attempt++) {

@@ -33,13 +33,14 @@ const problem = r => (r.body && r.body.message) || `Something went wrong (${r.st
 /** Copy text. (navigator.clipboard needs https; this page is often plain http on the office network, so fall back.) */
 async function copyText(text) {
   try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch { /* fall through */ }
-  const t = el('textarea', { style: 'position:fixed;left:-9999px' }); t.value = text; document.body.append(t); t.select();
+  const t = el('textarea'); t.style.position = 'fixed'; t.style.left = '-9999px'; t.value = text; document.body.append(t); t.select();
   let ok = false; try { ok = document.execCommand('copy'); } catch { /* no */ } t.remove(); return ok;
 }
 const csv = rows => rows.map(r => r.map(c => /[",\n]/.test(String(c ?? '')) ? `"${String(c).replace(/"/g, '""')}"` : String(c ?? '')).join(',')).join('\n') + '\n';
 function download(name, text) {
   const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/csv' })), download: name });
   document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 const when = d => (d ? new Date(d).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'never');
 
@@ -93,7 +94,7 @@ function showMain() {
   statsHost = el('span', { class: 'a-stats', id: 'adminStats' });
   tableHost = el('div', { id: 'adminAccounts' });
   const refresh = el('button', { type: 'button', class: 'a-btn', id: 'adminRefresh', onclick: async () => { await reload(); } }, 'Refresh');
-  const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); showLogin(); } }, 'Log out');
+  const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); ui.panel.clear(); ui.picked.clear(); accounts = []; showLogin(); } }, 'Log out');
   bulkResult = el('div', { id: 'bulkResult' });
   app.replaceChildren(
     el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
