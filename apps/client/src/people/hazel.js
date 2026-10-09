@@ -2,7 +2,7 @@ import { addLog, people } from '@office/shared';
 import * as THREE from 'three';
 import { follow } from '../camera/controller.js';
 import { camGoal } from '../camera/state.js';
-import { exitPlay } from '../player/control.js';
+import { ctl, exitPlay } from '../player/control.js';
 import { canvasTex } from '../render/materials.js';
 import { camera, scene } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
@@ -21,8 +21,12 @@ function initHazel() {
     const puffTex = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
     for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false })); sp.visible = false; scene.add(sp); RAGE.puffs.push({ sp, off: i / 8, side: i % 2 ? 1 : -1 }); }
   $('findHazel').onclick = findHazel;
-  $('rageHazel').onclick = startRage;
+  $('rageHazel').onclick = () => (rageRequest ? rageRequest() : startRage());
 }
+
+// Online, the button asks the server, which decides and tells every page at once (`startRage({ shared: true })`); offline it just starts.
+let rageRequest = null;
+const setRageRequest = fn => { rageRequest = fn; };
 
 function findHazel() {
   const h = HAZEL(); if (!h) return;
@@ -33,13 +37,15 @@ function findHazel() {
   camGoal.dist = 7; camGoal.pitch = .7; camGoal.yaw = h.face + Math.PI + .5;
 }
 
-function startRage() {
+function startRage({ shared = false } = {}) {
   const h = HAZEL(); if (!h) return;
-  select(h);
+  // a rage the server started for everybody does not take over the camera of someone who is walking about
+  const steering = shared && ctl.active;
+  if (!steering) select(h);
   if (h.state === 'away') { addLog(h.arrivedAt ? 'Hazel has gone home. She can stay angry tomorrow.' : `Hazel isn't in yet, due around ${fmt(h.arriveAt)}`); return; }
-  exitPlay();
+  if (!steering) exitPlay();
   RAGE.on = true; RAGE.until = performance.now() + 10000; RAGE.t = 0;
-  follow(h); camGoal.dist = 6.5; camGoal.pitch = .55; camGoal.yaw = h.face + .35;
+  if (!steering) { follow(h); camGoal.dist = 6.5; camGoal.pitch = .55; camGoal.yaw = h.face + .35; }
   addLog('Hazel is FURIOUS');
 }
 function updateRage(dt, now) {
@@ -72,4 +78,4 @@ function rageShake(now) {
   if (RAGE.on && RAGE.t > .4) { const a = .035 * Math.min(1, (RAGE.until - now) / 1500); camera.position.x += (Math.random() - .5) * a; camera.position.y += (Math.random() - .5) * a; }
 }
 
-export { HAZEL, RAGE, initHazel, rageShake, updateRage };
+export { HAZEL, RAGE, initHazel, rageShake, setRageRequest, startRage, updateRage };

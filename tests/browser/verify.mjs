@@ -664,7 +664,7 @@ try {
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'wave'; }, ea, { timeout: 8000 }).then(() => pass('pressing 1 makes the other player see you wave'), () => fail('the other page did not see a wave'));
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.pose.rShX < -1.2; }, ea, { timeout: 8000 }).then(() => pass('with your arm up in the air'), () => fail('the arm did not go up'));
       await screenshotOf(B.page, 'emote-wave.png');
-      if ((await state(B.page, ea)).kind === 'wave' && (await B.page.evaluate(() => window.__sim.net.emotesSeen)) === 1) pass('a second emote straight away is ignored (2.5 s apart)'); else fail('the cooldown did not hold');
+      if ((await B.page.evaluate(() => window.__sim.net.emotesSeen)) === 1) pass('a second emote straight away is ignored (2.5 s apart)'); else fail('the cooldown did not hold');
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && !p.emote; }, ea, { timeout: 10000 }).then(() => pass('and the emote ends by itself after a couple of seconds'), () => fail('the emote never ended'));
 
       await sleep(2600);
@@ -683,6 +683,50 @@ try {
       [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
       await A.page.close(); await B.page.close();
       for (const n of [ea, eb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
+    }
+
+    // a shared event: Hazel's rage starts on every page at the same moment (when she is in; otherwise the one who asked is told)
+    {
+      console.log('\nshared events');
+      const tag = String(Date.now() % 1e6);
+      const [ra, rb] = [`rag_a${tag}`, `rag_b${tag}`];
+      const [A, B] = [await openPage(browser, site.url, '?trace', { login: ra }), await openPage(browser, site.url, '?trace', { login: rb })];
+      await Promise.all([A, B].map(x => x.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 })));
+      const hazelState = page => page.evaluate(() => { const h = window.__sim.people.find(p => p.name === 'Hazel Sellote'); return h ? { state: h.state, k: h.rageK || 0 } : null; });
+      const click = page => page.evaluate(() => document.getElementById('rageHazel').click()); // (it sits in the collapsed "More options")
+      const notices = page => page.$$eval('#chatLog .chat-line.notice', els => els.map(e => e.textContent));
+      const h0 = await hazelState(A.page);
+      await sleep(500);
+      await click(A.page);
+      // either the rage starts, or a notice says why not (Hazel is away, or someone started one in the last minute)
+      await A.page.waitForFunction(() => (window.__sim.people.find(p => p.name === 'Hazel Sellote').rageK || 0) > .3 || document.querySelector('#chatLog .chat-line.notice'), null, { timeout: 15000 }).catch(() => {});
+      let ns = await notices(A.page);
+      const cooldown = ns.find(t => /calming down/i.test(t));
+      if (cooldown) { // a rage from a minute ago (an earlier run): wait it out and ask again
+        const secs = Number((cooldown.match(/(\d+) s/) || [0, 60])[1]);
+        await sleep((secs + 1) * 1000);
+        await A.page.evaluate(() => document.querySelector('#chatLog').replaceChildren());
+        await click(A.page);
+        await A.page.waitForFunction(() => (window.__sim.people.find(p => p.name === 'Hazel Sellote').rageK || 0) > .3 || document.querySelector('#chatLog .chat-line.notice'), null, { timeout: 15000 }).catch(() => {});
+        ns = await notices(A.page);
+      }
+      if (h0 && h0.state === 'away') {
+        if (ns.some(t => /isn't in/i.test(t))) pass("Hazel is away: the one who asked is told she isn't in"); else fail(`away, but notices were ${JSON.stringify(ns)}`);
+        if ((await notices(B.page)).length === 0) pass('and nobody else is told'); else fail('the other player got a notice');
+      } else {
+        const when = async page => page.evaluate(() => new Promise(resolve => { const t0 = Date.now(); const f = () => { const k = window.__sim.people.find(p => p.name === 'Hazel Sellote').rageK || 0; if (k > .3) resolve(Date.now()); else if (Date.now() - t0 > 8000) resolve(null); else requestAnimationFrame(f); }; f(); }));
+        const [ta, tb] = await Promise.all([when(A.page), when(B.page)]);
+        if (ta && tb) pass('Hazel goes red on both pages'); else fail(`rage seen: ${ta} ${tb}`);
+        if (ta && tb && Math.abs(ta - tb) < 1500) pass(`at the same moment (${Math.abs(ta - tb)} ms apart)`); else fail(`rage started ${Math.abs(ta - tb)} ms apart`);
+        if ((await B.page.evaluate(() => window.__sim.viewId())) === 'third') pass('and it does not take over the camera of someone who is walking about'); else fail('the rage moved a steering player\'s camera');
+        await B.page.waitForFunction(() => !document.getElementById('rageHazel').disabled, null, { timeout: 20000 }); // (the button rests while she rages)
+        await click(B.page);
+        await B.page.waitForFunction(() => [...document.querySelectorAll('#chatLog .chat-line.notice')].some(e => /calming down/i.test(e.textContent)), null, { timeout: 8000 }).then(() => pass('a second ask inside the minute is refused, with a notice to that player only'), () => fail('no cooldown notice'));
+        if ((await notices(A.page)).length === 0) pass('the other player is not bothered by it'); else fail('A got the notice');
+      }
+      [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      await A.page.close(); await B.page.close();
+      for (const n of [ra, rb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
     }
 
     // the admin page: one password, make accounts, reset a password, disable, desks

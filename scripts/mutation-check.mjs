@@ -38,6 +38,8 @@ const MUTATIONS = [
   ['chat keeps direction-changing characters', 'apps/server/src/play/chat.ts', "raw.replace(UNWANTED, ' ')", 'raw'],
   ['emotes have no cooldown', 'apps/server/src/play/emotes.ts', "if (!this.limiter.allow(String(accountId))) return { ok: false, reason: 'cooldown' };", ''],
   ['an emote that is not on the list is accepted', 'apps/server/src/play/emotes.ts', "if (typeof kind !== 'string' || !(EMOTE_KINDS as readonly string[]).includes(kind)) return { ok: false, reason: 'bad' };", ''],
+  ['the rage can start again at once', 'apps/server/src/play/shared-events.ts', 'if (left > 0) return', 'if (left > 1e12) return'],
+  ['the rage starts while Hazel is away', 'apps/server/src/play/shared-events.ts', "if (!this.lookup.hazelPresent()) return { ok: false, reason: 'away' };", ''],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
@@ -52,7 +54,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'apps/server/src/net/rage.gateway.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

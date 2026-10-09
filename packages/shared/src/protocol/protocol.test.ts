@@ -45,13 +45,14 @@ const welcome = (): Welcome => ({
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'rage' }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });
   it('event', () => {
     const m: Message = { type: 'event', kind: 'log', simTime: 600.5, text: 'Ana arrived' };
     expect(decode(encode(m))).toEqual(m);
+    for (const kind of ['announce', 'day', 'notice', 'rage'] as const) { const e: Message = { type: 'event', kind, simTime: 1, text: kind === 'rage' ? '' : 'x' }; expect(decode(encode(e))).toEqual(e); }
   });
   it('person (joined)', () => {
     const m = decode(encode({ type: 'person', info: info(), snap: snap() }));

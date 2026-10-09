@@ -1,7 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, PROTOCOL_VERSION, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, HAZEL_NAME, PROTOCOL_VERSION, addLog, decodeClient, encode, people, sim, simEvents, type ClientMessage } from '@office/shared';
 import { addressKey } from '../auth/http';
 import { parseTrustProxy } from '../app.config';
 import { AuthProvider } from '../auth/auth.provider';
@@ -10,6 +10,7 @@ import { TicketService } from '../auth/tickets';
 import { ChatService, type SayResult } from '../play/chat';
 import { EmoteService } from '../play/emotes';
 import { PlayService } from '../play/play.service';
+import { RageService } from '../play/shared-events';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -65,9 +66,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   private chat!: ChatService;
   private emotes!: EmoteService;
+  private rage!: RageService;
 
   afterInit(): void {
     const world = this.worlds.world;
+    this.rage = new RageService({ hazelPresent: () => people.some(p => p.name === HAZEL_NAME && p.state !== 'away') });
     this.emotes = new EmoteService({ personOf: id => this.players.manager().speaker(id)?.personId ?? null });
     this.chat = new ChatService({
       speaker: id => this.players.manager().speaker(id),
@@ -107,7 +110,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const id = socket.data.accountId as number | undefined;
     if (id !== undefined && this.byAccount.get(id) === socket) {
       this.byAccount.delete(id);
-      if (socket.data.joined) this.players.manager().detach(id); // their person stays for the grace period, then goes back to autopilot
+      if (socket.data.joined) { this.players.manager().detach(id); addLog(`${socket.data.username} left`); } // (everybody sees it in the activity log); their person stays for the grace period, then goes back to autopilot
     }
   }
 
@@ -159,6 +162,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         void this.say(socket, msg.text);
         return;
+      case 'rage': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const r = this.rage.trigger();
+        if (r.ok) { this.broadcast(encode({ type: 'event', kind: 'rage', simTime: sim.t, text: '' })); return; } // everybody, at the same moment
+        const notice = r.reason === 'away' ? "Hazel isn't in the office right now." : `Hazel is still calming down. Try again in ${r.secondsLeft} s.`;
+        socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
+        return;
+      }
       case 'emote': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
@@ -214,6 +226,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       socket.data.joined = true;
       socket.join(PLAYING);
       socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, person.id));
+      addLog(`${account.username} joined`); // (everybody sees it in the activity log)
     } catch (err) {
       this.log.error(`joining failed: ${err instanceof Error ? err.message : String(err)}`);
       if (attachedId !== undefined && this.byAccount.get(attachedId) !== socket) this.players.manager().detach(attachedId); // do not leave a session with nobody behind it

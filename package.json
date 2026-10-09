@@ -21,7 +21,8 @@
     "layout:dump": "node scripts/dump-layout.mjs",
     "test:db": "node scripts/test-db.mjs",
     "e2e": "node scripts/e2e.mjs",
-    "e2e:accounts": "node scripts/e2e-accounts.mjs"
+    "e2e:accounts": "node scripts/e2e-accounts.mjs",
+    "e2e:together": "node scripts/e2e-together.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

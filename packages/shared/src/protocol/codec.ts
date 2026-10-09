@@ -11,7 +11,7 @@ import {
 const STATES: PersonState[] = ['away', 'idle', 'walking', 'doing', 'controlled'];
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
-const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
+const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice', 'rage'];
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
@@ -20,7 +20,7 @@ export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'pian
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, rage: 0x07,
   welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89,
 } as const;
 
@@ -146,6 +146,7 @@ export function encode(msg: Message): Uint8Array {
       break;
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
     case 'say': if (msg.text.length > MAX_CHAT) throw new RangeError('chat line too long for the protocol'); w.u8(T.say).str(msg.text); break;
+    case 'rage': w.u8(T.rage); break;
     case 'emote': w.u8(T.emote).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'emoted': w.u8(T.emoted).u16(msg.from).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
@@ -174,9 +175,9 @@ export function encode(msg: Message): Uint8Array {
   return w.bytes();
 }
 
-/** Decode a message from a client: only hello, ping, input, act, say and emote are accepted, and nothing else is parsed. */
+/** Decode a message from a client: only hello, ping, input, act, say, emote and rage are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.rage)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -189,6 +190,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.hello: { const version = r.u8(), ticket = r.str(); if (ticket.length > MAX_TICKET) throw new DecodeError('ticket too long'); msg = { type: 'hello', version, ticket }; break; }
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
     case T.say: { const text = r.str(); if (text.length > MAX_CHAT) throw new DecodeError('chat line too long'); msg = { type: 'say', text }; break; }
+    case T.rage: msg = { type: 'rage' }; break;
     case T.emote: msg = { type: 'emote', kind: readIndex(r, EMOTE_KINDS, 'emote') }; break;
     case T.emoted: { const from = r.u16(); msg = { type: 'emoted', from, kind: readIndex(r, EMOTE_KINDS, 'emote') }; break; }
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
@@ -224,4 +226,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'rage'; }
