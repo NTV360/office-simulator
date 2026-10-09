@@ -75,11 +75,15 @@ export class World {
   private timer: NodeJS.Timeout | null = null;
   private nextAt = 0;
   private readonly now: () => number;
+  private readonly listeners: Array<(tick: number) => void> = [];
 
   constructor(options: WorldOptions, now: () => number = () => performance.now()) {
     this.options = { ...options };
     this.now = now;
   }
+
+  /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. */
+  onTick(fn: (tick: number) => void): void { this.listeners.push(fn); }
 
   /** Build the office from the layout data and start a live mid-morning. */
   init(): void {
@@ -101,7 +105,10 @@ export class World {
     const t0 = this.now();
     if (!sim.paused) stepSim(1 / this.options.tickRate);
     this.tick++;
-    this.durations.push(this.now() - t0);
+    for (const fn of this.listeners) {
+      try { fn(this.tick); } catch (err) { console.error('tick listener failed:', err); }
+    }
+    this.durations.push(this.now() - t0); // includes building and sending the snapshot
     if (this.durations.length > WINDOW) this.durations.shift();
   }
 

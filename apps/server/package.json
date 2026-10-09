@@ -13,14 +13,18 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.2.7",
+    "@nestjs/websockets": "^11.2.7",
     "@office/shared": "*",
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.11.0"
+    "@types/pg": "^8.11.0",
+    "socket.io-client": "^4.8.4"
   }
 }

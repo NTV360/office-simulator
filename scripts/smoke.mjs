@@ -39,6 +39,27 @@ try {
   check('the world is running: ticks and the clock advance', w2.tick > w1.tick && (w2.paused || w2.simTime !== w1.simTime), `tick ${w1.tick} to ${w2.tick}`);
   check('the office has its staff', w2.staff > 0 && w2.desks === 70, `${w2.staff} staff, ${w2.desks} desks`);
   check('ticks fit their budget', w2.tickMs.avgMs < 10, `avg ${w2.tickMs.avgMs.toFixed(2)} ms, max ${w2.tickMs.maxMs.toFixed(2)} ms`);
+
+  // realtime: connect through the proxy exactly as a browser does, say hello, expect the welcome and a stream of snapshots
+  try {
+    const { io } = await import('socket.io-client');
+    const { encode, decode, PROTOCOL_VERSION } = await import('../packages/shared/dist/index.js');
+    const got = { welcome: null, snapshots: 0 };
+    const socket = io(base, { transports: ['websocket'], reconnection: false });
+    socket.on('m', data => {
+      const m = decode(new Uint8Array(data));
+      if (m.type === 'welcome') got.welcome = m;
+      if (m.type === 'snapshot') got.snapshots++;
+    });
+    await new Promise((res, rej) => { socket.on('connect', res); socket.on('connect_error', rej); setTimeout(() => rej(new Error('no connection in 5 s')), 5000); });
+    socket.emit('m', encode({ type: 'hello', version: PROTOCOL_VERSION }));
+    await new Promise(r => setTimeout(r, 1500));
+    socket.close();
+    check('realtime: the welcome arrives through the proxy', !!got.welcome && got.welcome.people.length > 0, got.welcome ? got.welcome.people.length + ' people' : 'none');
+    check('realtime: snapshots stream (about 20 a second)', got.snapshots >= 15, got.snapshots + ' in 1.5 s');
+  } catch (err) {
+    check('realtime connection', false, err.message);
+  }
 } catch (err) {
   check(`could not reach ${base}`, false, err.message);
 }
