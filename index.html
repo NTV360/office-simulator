@@ -11,90 +11,120 @@
 <body>
 <div id="stage" aria-label="3D office floor simulation"></div>
 
-<section class="card" id="hud" aria-label="Simulation controls">
-  <div>
-    <div class="eyebrow">Floor plan · Draft 07 · 3D</div>
-    <h1>Office Floor Sim</h1>
-  </div>
+<!-- Top left: the clock and how time runs -->
+<section class="card" id="hud" aria-label="Clock">
+  <div class="brand"><span class="eyebrow">NTV360</span><h1>Office Floor</h1></div>
   <div class="clock">
     <div id="clock">09:25</div>
     <div id="phase">Day 1<br>Morning focus</div>
   </div>
-  <div class="row">
-    <span class="lbl">Clock</span>
-    <div class="seg" role="group" aria-label="Clock">
-      <button type="button" data-mode="sim" aria-pressed="true" title="The office's own faster clock, every employee on their shift">Simulate</button>
-      <button type="button" data-mode="live" aria-pressed="false" title="The actual time in the office, who is in from attendance">Live</button>
-    </div>
+  <div class="seg full" role="group" aria-label="Clock">
+    <button type="button" data-mode="sim" aria-pressed="true" title="The office's own faster clock, every employee on their shift">Simulate</button>
+    <button type="button" data-mode="live" aria-pressed="false" title="The actual time in the office, who is in from attendance">Live</button>
   </div>
-  <div class="row" id="simRow">
+  <div class="timebar" id="simRow">
     <div class="seg" role="group" aria-label="Simulated time">
       <button type="button" data-simtime="day" aria-pressed="true">Day</button>
       <button type="button" data-simtime="night" aria-pressed="false">Night</button>
     </div>
-    <button class="btn primary" id="play" type="button">Pause</button>
+    <button class="icon-btn primary" id="play" type="button" aria-label="Pause" title="Pause (Space)">
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+    </button>
     <div class="seg" role="group" aria-label="Simulation speed">
       <button type="button" data-speed="1" aria-pressed="true">1×</button>
       <button type="button" data-speed="3" aria-pressed="false">3×</button>
       <button type="button" data-speed="8" aria-pressed="false">8×</button>
     </div>
   </div>
-  <button class="btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="more">More options</button>
-  <div id="more">
-  <div class="row">
-    <label class="lbl" for="staff">People</label>
-    <input type="range" id="staff" min="8" max="70" value="40">
-    <span id="staffVal">40</span>
-  </div>
-  <div class="row">
-    <span class="lbl">View</span>
+</section>
+
+<!-- Bottom centre: the everyday actions; the rest sits in pop-ups -->
+<nav class="card" id="dock" aria-label="Controls">
+  <div class="dock-group">
+    <span class="dock-lbl">View</span>
     <div class="seg" role="group" aria-label="Camera view">
       <button type="button" data-view="angle" aria-pressed="true">Angle</button>
       <button type="button" data-view="top" aria-pressed="false">Plan</button>
       <button type="button" data-view="follow" aria-pressed="false">Follow</button>
     </div>
   </div>
-  <div class="row">
-    <span class="lbl">Walk</span>
+  <div class="dock-group">
+    <span class="dock-lbl">Walk</span>
     <div class="seg" role="group" aria-label="Walk around as your character">
-      <button type="button" data-view="fp" aria-pressed="false">First person</button>
-      <button type="button" data-view="third" aria-pressed="false">Third person</button>
+      <button type="button" data-view="fp" aria-pressed="false" title="First person">1st</button>
+      <button type="button" data-view="third" aria-pressed="false" title="Third person">3rd</button>
     </div>
   </div>
-  <div class="row">
-    <span class="lbl">You</span>
-    <button type="button" class="btn sm" id="openCreator" title="Change how your character looks">Character lab</button>
-  </div>
-  <div class="row">
-    <span class="lbl">Go to</span>
-    <div class="chips" role="group" aria-label="Jump to an area">
-      <button type="button" class="btn sm" data-go="pantry">Pantry &amp; dining</button>
-      <button type="button" class="btn sm" data-go="booths">Booths</button>
-      <button type="button" class="btn sm" data-go="desks">Desks</button>
-      <button type="button" class="btn sm" data-go="meeting">Meeting rooms</button>
-      <button type="button" class="btn sm" data-go="lounge">Lounge</button>
-      <button type="button" class="btn sm" data-go="golf">Mini golf</button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button type="button" class="dock-btn" id="openCreator" title="Edit employees' characters and desks">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Character lab</span>
+  </button>
+  <div class="pop-wrap">
+    <button type="button" class="dock-btn" data-pop="goPop" aria-expanded="false" aria-controls="goPop">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Go to</span>
+    </button>
+    <div class="card pop" id="goPop" hidden role="menu" aria-label="Jump to an area">
+      <div class="pop-title">Jump to</div>
+      <div class="pop-grid">
+        <button type="button" class="btn" data-go="desks" role="menuitem">Desks</button>
+        <button type="button" class="btn" data-go="meeting" role="menuitem">Meeting rooms</button>
+        <button type="button" class="btn" data-go="lounge" role="menuitem">Lounge</button>
+        <button type="button" class="btn" data-go="booths" role="menuitem">Booths</button>
+        <button type="button" class="btn" data-go="pantry" role="menuitem">Pantry &amp; dining</button>
+        <button type="button" class="btn" data-go="golf" role="menuitem">Mini golf</button>
+      </div>
     </div>
   </div>
-  <div class="row">
-    <span class="lbl">Turn</span>
-    <div class="seg" role="group" aria-label="Turn and zoom the camera">
-      <button type="button" data-cam="left" aria-label="Turn left">↺ Left</button>
-      <button type="button" data-cam="right" aria-label="Turn right">Right ↻</button>
-      <button type="button" data-cam="in" aria-label="Zoom in">＋</button>
-      <button type="button" data-cam="out" aria-label="Zoom out">－</button>
+  <div class="pop-wrap">
+    <button type="button" class="dock-btn icon-only" data-pop="setPop" aria-expanded="false" aria-controls="setPop" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+    <div class="card pop" id="setPop" hidden aria-label="Settings">
+      <div class="pop-title">Settings</div>
+      <div class="pop-row">
+        <label class="pop-lbl" for="staff">People</label>
+        <input type="range" id="staff" min="8" max="70" value="40">
+        <span id="staffVal">40</span>
+      </div>
+      <div class="pop-row">
+        <span class="pop-lbl">Show</span>
+        <div class="seg" role="group" aria-label="Display toggles">
+          <button type="button" id="tWalls" aria-pressed="false">Full walls</button>
+          <button type="button" id="tLabels" aria-pressed="true">Labels</button>
+        </div>
+      </div>
+      <div class="pop-row">
+        <span class="pop-lbl">Camera</span>
+        <div class="seg" role="group" aria-label="Turn and zoom the camera">
+          <button type="button" data-cam="left" aria-label="Turn left" title="Turn left (Q)">↺</button>
+          <button type="button" data-cam="right" aria-label="Turn right" title="Turn right (E)">↻</button>
+          <button type="button" data-cam="in" aria-label="Zoom in" title="Zoom in (+)">＋</button>
+          <button type="button" data-cam="out" aria-label="Zoom out" title="Zoom out (−)">－</button>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="row">
-    <span class="lbl">Show</span>
-    <div class="seg" role="group" aria-label="Display toggles">
-      <button type="button" id="tWalls" aria-pressed="false">Full walls</button>
-      <button type="button" id="tLabels" aria-pressed="true">Labels</button>
+  <div class="pop-wrap help-wrap">
+    <button type="button" class="dock-btn icon-only" data-pop="helpPop" aria-expanded="false" aria-controls="helpPop" aria-label="Help" title="Help">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6"/></svg>
+    </button>
+    <div class="card pop pop-right" id="helpPop" hidden aria-label="Help">
+      <div class="pop-title">Getting around</div>
+      <dl class="keys">
+        <dt>Drag</dt><dd>move around</dd>
+        <dt>Right-drag · Shift-drag</dt><dd>turn and tilt</dd>
+        <dt>Wheel · pinch</dt><dd>zoom</dd>
+        <dt>WASD · arrows</dt><dd>move</dd>
+        <dt>Q · E</dt><dd>turn</dd>
+        <dt>Space</dt><dd>pause (Simulate)</dd>
+        <dt>H</dt><dd>hide controls</dd>
+        <dt>F</dt><dd>fullscreen</dd>
+      </dl>
+      <p class="pop-note">Click anyone to see what they're doing and to edit their character. Walk the floor in first or third person.</p>
     </div>
   </div>
-  </div>
-  <div class="hint">Drag (or swipe two fingers on a trackpad) to move around. Right-drag or Shift-drag turns and tilts. Pinch or use the mouse wheel to zoom. On touch: one finger moves, two fingers pinch, twist and tilt. Keys: WASD or arrows, Q/E to turn, H to hide controls, F for fullscreen. Click anyone to see what they're up to, pick First or Third person to walk the floor, or open the Character lab to change how you look.</div>
-</section>
+</nav>
 
 <aside class="card" id="ledger" aria-label="Who is doing what">
   <div class="ledger-head"><span class="eyebrow">On the floor</span><span id="present">0 / 0</span></div>
@@ -102,10 +132,6 @@
   <ul id="log" aria-live="polite"></ul>
 </aside>
 
-<div id="officeSearch" role="search">
-  <div id="officeMatches" role="listbox" aria-label="Matching employees" hidden></div>
-  <input type="search" id="officeSearchInput" placeholder="Search an employee in the office…" autocomplete="off" aria-label="Search an employee in the office">
-</div>
 
 <section class="card" id="person" hidden aria-label="Selected person">
   <div id="pAvatar"></div>
@@ -122,9 +148,21 @@
   </div>
 </section>
 
-<div id="topButtons">
-  <button class="btn" id="uiToggle" type="button" aria-pressed="false" title="Hide controls (H)">Hide controls</button>
-  <button class="btn" id="fsToggle" type="button" aria-pressed="false" title="Fullscreen (F)" hidden>Fullscreen</button>
+<!-- Top centre: find someone, hide the controls, fullscreen -->
+<div id="topBar">
+  <div id="officeSearch" role="search">
+    <svg class="search-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input type="search" id="officeSearchInput" placeholder="Find an employee…" autocomplete="off" aria-label="Find an employee in the office">
+    <div id="officeMatches" role="listbox" aria-label="Matching employees" hidden></div>
+  </div>
+  <button class="icon-btn" id="uiToggle" type="button" aria-pressed="false" aria-label="Hide controls" title="Hide controls (H)">
+    <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.1 9.5 6.1a17 17 0 0 1-2.6 3.3M6.6 6.7A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1"/></svg>
+  </button>
+  <button class="icon-btn" id="fsToggle" type="button" aria-pressed="false" aria-label="Fullscreen" title="Fullscreen (F)" hidden>
+    <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+  </button>
 </div>
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>

@@ -1,13 +1,51 @@
-.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.lbl{font:500 10.5px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);width:56px;flex:none}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--chip)}
-.seg button,.btn{font:600 12px/1 var(--f-body);color:var(--ink);background:transparent;border:0;padding:8px 10px;cursor:pointer}
+/* Shared controls: segmented groups, buttons, icon buttons, sliders. */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--chip);flex:none}
+.seg.full{display:flex}
+.seg.full button{flex:1}
+.seg button,.btn{font:600 12px/1 var(--f-body);color:var(--ink);background:transparent;border:0;padding:8px 11px;cursor:pointer;white-space:nowrap}
 .seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.btn{border:1px solid var(--line);border-radius:8px;background:var(--chip)}
+.btn{border:1px solid var(--line);border-radius:9px;background:var(--chip)}
+.btn:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);min-width:74px}
+.btn.sm{padding:6px 8px;font-size:11.5px}
+.icon-btn{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--line);border-radius:9px;background:var(--chip);color:var(--ink);cursor:pointer;flex:none}
+.icon-btn:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+.icon-btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.icon-btn svg,.dock-btn svg,.search-i{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#play svg{fill:currentColor;stroke:none}
+#play .i-play,#play.paused .i-pause{display:none}
+#play.paused .i-play{display:block}
+.icon-btn .i-off,.icon-btn[aria-pressed="true"] .i-on{display:none}
+.icon-btn[aria-pressed="true"] .i-off{display:block}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
 #staffVal{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;width:24px;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0}
 .hint{font-size:11.5px;color:var(--muted);line-height:1.4}
+
+/* Bottom centre: the dock. Groups with small labels, then action buttons that open pop-ups. */
+#dock{left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;padding:8px 10px;max-width:calc(100vw - 32px)}
+.dock-group{display:flex;align-items:center;gap:7px}
+.dock-lbl{font:500 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.dock-sep{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
+.dock-btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;font:600 12px/1 var(--f-body);color:var(--ink);background:transparent;border:1px solid transparent;border-radius:9px;cursor:pointer;white-space:nowrap}
+.dock-btn:hover,.dock-btn[aria-expanded="true"]{background:var(--chip);border-color:var(--line)}
+.dock-btn.icon-only{width:34px;padding:0;justify-content:center}
+
+/* Pop-ups opened from the dock: they rise above it. */
+.pop-wrap{position:relative}
+.pop{position:absolute;bottom:calc(100% + 14px);left:50%;transform:translateX(-50%);width:max-content;max-width:min(340px,calc(100vw - 32px));padding:14px;display:flex;flex-direction:column;gap:12px;z-index:4}
+.pop.pop-right{left:auto;right:-10px;transform:none}
+.pop[hidden]{display:none}
+.pop-title{font:500 10.5px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pop-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pop-grid .btn{text-align:left;padding:9px 11px}
+.pop-row{display:flex;align-items:center;gap:10px;min-width:280px}
+.pop-lbl{font-size:12px;color:var(--muted);width:56px;flex:none}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:12px}
+.keys dt{font:500 11px var(--f-mono);color:var(--ink);white-space:nowrap}
+.keys dd{margin:0;color:var(--muted)}
+.pop-note{margin:0;font-size:12px;color:var(--muted);line-height:1.45;max-width:260px}

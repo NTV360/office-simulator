@@ -1,14 +1,13 @@
-/* Employee search: a box in the bottom-left corner; matches open upward. The person card sits above it. */
-#officeSearch{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:324px;z-index:2}
+/* Employee search in the top bar; matches drop down below it. */
+#officeSearch{position:relative;width:260px}
+.search-i{position:absolute;z-index:1;left:12px;top:10.5px;color:var(--muted);pointer-events:none}
 #officeSearchInput{width:100%;box-sizing:border-box;font:500 13px var(--f-body);color:var(--ink);background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:11px 14px}
+  border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);height:38px;padding:0 12px 0 36px}
 #officeSearchInput:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#officeMatches{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:grid;gap:3px;padding:6px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+#officeMatches{position:absolute;left:0;right:0;top:calc(100% + 6px);display:grid;gap:3px;padding:6px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .os-match{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-align:left;font:500 13px var(--f-body);color:var(--ink);background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 9px;cursor:pointer}
 .os-match:hover,.os-match:focus-visible{background:var(--chip);border-color:var(--line)}
 .os-info{font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 div.os-info{padding:6px 9px}
-#person{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
-body.ui-hidden #officeSearch,body.fp #officeSearch,body.tp #officeSearch{display:none}
-@media (max-width:760px){#officeSearch{left:12px;right:72px;width:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}#person{bottom:calc(66px + env(safe-area-inset-bottom,0px))!important}}
+body.fp #officeSearch,body.tp #officeSearch{display:none}
