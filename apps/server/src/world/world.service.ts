@@ -4,6 +4,8 @@ import type { Settings, SettingsUpdate } from '../admin/settings';
 import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
 import { WorldStore } from '../db/world-store';
+import { PgEmployeeStore } from '../employees/employee-store';
+import { setRoster, syncRoster } from '../employees/roster-sync';
 import { Persistence, loadForBoot, type PersistenceStatus } from './persistence';
 import { World, readWorldOptions, type WorldStatus } from './world';
 
@@ -55,9 +57,15 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
 
     if (!boot.store) { this.world.init(null); this.persistence.disable(boot.reason ?? 'database unavailable'); return { store: null }; }
 
+    // the staff list (from the employee records, as last imported): the office is made of it
+    let staff: Awaited<ReturnType<PgEmployeeStore['list']>> = [];
+    try { staff = await new PgEmployeeStore(pool).list(); } catch (err) { this.log.error(`could not read the staff list: ${err instanceof Error ? err.message : String(err)}; made-up staff are used`); }
+    setRoster(staff);
+
     let saved = boot.saved;
     try {
       this.world.init(saved);
+      if (saved && staff.length) { const r = syncRoster(staff); if (r.added || r.removed || r.updated || r.replaced) this.log.log(`staff list applied to the saved world: ${r.added} in, ${r.removed} out, ${r.updated} changed, ${r.replaced} made-up replaced`); }
     } catch (err) {
       if (!(err instanceof SaveError)) throw err;
       // The save is readable but this office cannot be built from it (for example a desk it names no longer exists).

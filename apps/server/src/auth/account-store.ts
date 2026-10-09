@@ -14,6 +14,8 @@ export interface Account {
   muted: boolean;
   /** The desk an admin gave this account (a spot id such as 'desk:12'), or null while it is waiting for one. */
   slotSpot: string | null;
+  /** The employee this account plays (their id in the staff list), or null. Logging in takes over that employee's person. */
+  employeeId: string | null;
   spec: unknown | null;
   createdAt: Date;
   lastLoginAt: Date | null;
@@ -42,6 +44,8 @@ export interface AccountStore {
   list(): Promise<Account[]>;
   /** Give the account a desk (a spot id) or take it away (null). 'taken' if another account has that desk, 'missing' if there is no such account. */
   setSlot(id: number, slotSpot: string | null): Promise<'ok' | 'taken' | 'missing'>;
+  /** Link the account to an employee (or null to unlink). 'taken' if another account has that employee, 'missing' if there is no such account or employee. */
+  setEmployee(id: number, employeeId: string | null): Promise<'ok' | 'taken' | 'missing'>;
   /** Remember the account's character look (already normalised). */
   setSpec(id: number, spec: unknown): Promise<void>;
   /** Disable or enable the account (a disabled account cannot log in). */
@@ -64,11 +68,11 @@ export interface AccountStore {
 
 interface AccountRow {
   id: number; username: string; username_lower: string; password_hash: string; role: Role; disabled: boolean;
-  must_change_password: boolean; muted: boolean; slot_spot: string | null; spec: unknown | null; created_at: Date; last_login_at: Date | null;
+  must_change_password: boolean; muted: boolean; slot_spot: string | null; employee_id: string | null; spec: unknown | null; created_at: Date; last_login_at: Date | null;
 }
 const toAccount = (r: AccountRow): Account => ({
   id: r.id, username: r.username, usernameLower: r.username_lower, passwordHash: r.password_hash, role: r.role, disabled: r.disabled,
-  mustChangePassword: r.must_change_password, muted: r.muted, slotSpot: r.slot_spot, spec: r.spec, createdAt: r.created_at, lastLoginAt: r.last_login_at,
+  mustChangePassword: r.must_change_password, muted: r.muted, slotSpot: r.slot_spot, employeeId: r.employee_id, spec: r.spec, createdAt: r.created_at, lastLoginAt: r.last_login_at,
 });
 
 export class PgAccountStore implements AccountStore {
@@ -121,6 +125,18 @@ export class PgAccountStore implements AccountStore {
       return r.rowCount === 0 ? 'missing' : 'ok';
     } catch (err) {
       if ((err as { code?: string }).code === '23505') return 'taken'; // another account already has that desk
+      throw err;
+    }
+  }
+
+  async setEmployee(id: number, employeeId: string | null): Promise<'ok' | 'taken' | 'missing'> {
+    try {
+      const r = await this.pool.query('UPDATE accounts SET employee_id = $2 WHERE id = $1', [id, employeeId]);
+      return r.rowCount === 0 ? 'missing' : 'ok';
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === '23505') return 'taken'; // another account already plays that employee
+      if (code === '23503') return 'missing'; // no such employee
       throw err;
     }
   }
@@ -188,7 +204,7 @@ export class MemoryAccountStore implements AccountStore {
   async create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'> {
     const lower = a.username.toLowerCase();
     for (const x of this.accounts.values()) if (x.usernameLower === lower) return 'taken';
-    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, muted: false, slotSpot: null, spec: null, createdAt: new Date(), lastLoginAt: null };
+    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, muted: false, slotSpot: null, employeeId: null, spec: null, createdAt: new Date(), lastLoginAt: null };
     this.accounts.set(acc.id, acc);
     return { ...acc };
   }
@@ -203,6 +219,16 @@ export class MemoryAccountStore implements AccountStore {
     if (!a) return 'missing' as const;
     if (slotSpot !== null && [...this.accounts.values()].some(x => x.id !== id && x.slotSpot === slotSpot)) return 'taken' as const;
     a.slotSpot = slotSpot;
+    return 'ok' as const;
+  }
+  /** Which employees exist (the tests that link accounts fill this in; null: any id is accepted). */
+  knownEmployees: Set<string> | null = null;
+  async setEmployee(id: number, employeeId: string | null) {
+    const a = this.accounts.get(id);
+    if (!a) return 'missing' as const;
+    if (employeeId !== null && this.knownEmployees && !this.knownEmployees.has(employeeId)) return 'missing' as const;
+    if (employeeId !== null && [...this.accounts.values()].some(x => x.id !== id && x.employeeId === employeeId)) return 'taken' as const;
+    a.employeeId = employeeId;
     return 'ok' as const;
   }
   async setSpec(id: number, spec: unknown) { this.accounts.get(id)!.spec = spec; }

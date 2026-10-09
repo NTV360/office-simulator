@@ -15,6 +15,8 @@ import { PgAccountStore } from '../auth/account-store';
 import { AuthProvider } from '../auth/auth.provider';
 import { AuthService } from '../auth/auth.service';
 import { createHash } from 'node:crypto';
+import { PgEmployeeStore } from '../employees/employee-store';
+import { employeeStoreContract, imp } from '../employees/employee-store.contract';
 
 // These need a real PostgreSQL. `npm run test:db` starts a throwaway one in Docker and sets TEST_DATABASE_URL;
 // without it they are skipped.
@@ -30,16 +32,16 @@ beforeEach(async () => { if (url) await reset(); });
 
 d('migrations', () => {
   it('create the tables, once, and are recorded', async () => {
-    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql']);
+    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql']);
     expect(await runMigrations(pool)).toEqual([]);
     const tables = (await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).rows.map(r => r.table_name);
-    expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations', 'accounts', 'sessions', 'audit_log']));
-    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(3);
+    expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations', 'accounts', 'sessions', 'audit_log', 'employees']));
+    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(4);
   });
 
   it('two servers starting together apply each migration once', async () => {
     const results = await Promise.all([runMigrations(pool), runMigrations(pool), runMigrations(pool)]);
-    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql']);
+    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql']);
   });
 
   it('a failing migration rolls back completely and is not recorded', async () => {
@@ -51,6 +53,29 @@ d('migrations', () => {
     expect(half.rows[0].t).toBeNull();
     expect((await pool.query("SELECT name FROM schema_migrations ORDER BY name")).rows.map(r => r.name)).toEqual(['001_world_state.sql']);
     fs.rmSync(dir, { recursive: true });
+  });
+});
+
+employeeStoreContract('the PostgreSQL employee store', async () => { await runMigrations(pool); return new PgEmployeeStore(pool); }, !url);
+
+d('employees and accounts', () => {
+  beforeEach(async () => { await runMigrations(pool); });
+  it('an account can be linked to an employee, once; deleting the employee unlinks it; unlinking is allowed', async () => {
+    const employees = new PgEmployeeStore(pool), accounts = new PgAccountStore(pool);
+    await employees.applyImport([imp(1), imp(2)]);
+    const a = await accounts.create({ username: 'Ana', passwordHash: 'x', role: 'player' }), b = await accounts.create({ username: 'Ben', passwordHash: 'x', role: 'player' });
+    if (a === 'taken' || b === 'taken') throw new Error('taken');
+    const e1 = (await employees.list())[0].userId;
+    expect(await accounts.setEmployee(a.id, e1)).toBe('ok');
+    expect((await accounts.byId(a.id))!.employeeId).toBe(e1);
+    expect(await accounts.setEmployee(b.id, e1)).toBe('taken'); // one account per employee
+    expect(await accounts.setEmployee(b.id, '00000000-0000-4000-8000-0000000000ff')).toBe('missing'); // no such employee
+    expect(await accounts.setEmployee(999, e1)).toBe('missing');
+    expect(await accounts.setEmployee(a.id, null)).toBe('ok');
+    expect((await accounts.byId(a.id))!.employeeId).toBeNull();
+    await accounts.setEmployee(a.id, e1);
+    await pool.query('DELETE FROM employees WHERE user_id = $1', [e1]);
+    expect((await accounts.byId(a.id))!.employeeId).toBeNull(); // (the account stays; the link goes)
   });
 });
 

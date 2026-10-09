@@ -1,5 +1,5 @@
 import {
-  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, setSeed, sim, stepSim,
+  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
 
@@ -105,8 +105,8 @@ export class World {
       restoreWorld(saved);
     } else {
       initState();
-      const slots = clampSlotCount(this.options.slotCount, interactables.of('desk').length);
-      initDay(slots);
+      // with a staff list the office is everyone on it (as many as there are desks); without one, the configured number of made-up staff
+      initDay(roster.list ? undefined : clampSlotCount(this.options.slotCount, interactables.of('desk').length));
       sim.speed = this.options.speed;
       sim.paused = this.options.paused;
     }

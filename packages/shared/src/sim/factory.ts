@@ -8,7 +8,7 @@ import { liveSchedule, usesAttendance } from './live';
 import { hasSlot, isAi } from './person';
 import { newProps } from './props';
 import { interactables, type Spot } from './interactables';
-import { fullName, jobTitle, roster, simRole, unplacedEmployees } from './roster';
+import { fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
 import { DAY_END, shiftWindow, type Shift } from './schedule';
 import { allocatePersonId, counters, deskPool, meetings, people, sim } from './state';
 import { endTask, goWork } from './tasks';
@@ -105,14 +105,25 @@ export function moveToDesk(p: Person, seat: Spot | null): boolean {
   return true;
 }
 
+/** Can this person be removed from the office? Not one who belongs to an account, and not one a human is driving. */
+const removable = (p: Person): boolean => isAi(p) && hasSlot(p) && p.owner === undefined;
+
 /**
  * Remove the most recently added unclaimed staff member. A person who belongs to an account, and anyone a human is
  * driving, is never removed. Their desk is free again.
  */
 export function removeStaff(): Person | null {
-  const removable = (p: Person) => isAi(p) && hasSlot(p) && p.owner === undefined;
   let i = people.length - 1; while (i >= 0 && !removable(people[i])) i--;
-  if (i < 0) return null;
+  return i < 0 ? null : takeOut(i);
+}
+
+/** Remove this particular staff member (same rule: never one who belongs to an account or is driven). Returns whether they were removed. */
+export function removePerson(p: Person): boolean {
+  const i = people.indexOf(p);
+  return i >= 0 && removable(p) && takeOut(i) !== null;
+}
+
+function takeOut(i: number): Person {
   const [p] = people.splice(i, 1);
   endTask(p); if (p.slot) p.slot.owner = null;
   // nobody may keep pointing at someone who has gone: take them out of the meetings and any chat at their desk
@@ -120,6 +131,29 @@ export function removeStaff(): Person | null {
   for (const q of people) { if (q.chatWith === p) q.chatWith = null; if (q.task?.partner === p) delete q.task.partner; }
   simEvents.emit('personRemoved', p);
   return p;
+}
+
+/**
+ * Bring a person in line with their employee record: name, title, department, role, shift, the look chosen for them, and the desk they chose
+ * (a swap with an ordinary NPC; never with someone who belongs to an account or is driven). Viewers are told if anything changed. Returns whether it did.
+ */
+export function applyEmployee(p: Person, e: Employee): boolean {
+  const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase();
+  let changed = false;
+  const set = <K extends keyof Person>(key: K, value: Person[K]): void => { if (p[key] !== value) { p[key] = value; changed = true; } };
+  set('name', hazel ? HAZEL_NAME : fullName(e)); set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department));
+  const a = p.shift ?? null, b = e.shift;
+  if (a === null || b === null ? a !== b : a.code !== b.code || a.start !== b.start || a.end !== b.end) { p.shift = b; changed = true; }
+  if (e.character) {
+    const spec = normalizeSpec(hazel ? { ...e.character, angry: true } : e.character);
+    if (JSON.stringify(spec) !== JSON.stringify(p.spec)) { p.spec = spec; changed = true; }
+  }
+  if (changed) simEvents.emit('personUpdated', p);
+  if (e.desk) {
+    const seat = seatById(e.desk), other = seat?.owner as Person | null | undefined;
+    if (seat && seat !== p.slot && (!other || (isAi(other) && other.owner === undefined))) { if (moveToDesk(p, seat)) changed = true; }
+  }
+  return changed;
 }
 
 /**
