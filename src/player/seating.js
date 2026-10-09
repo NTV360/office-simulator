@@ -17,7 +17,7 @@ function nearestSeat(p) {
 function sitDown(p, sp) {
   if (sp.shared) sp.occupant = p;
   player.sitting = sp; p.pos.copy(sp.pos); ctl.yaw = sp.face; ctl.pitch = -.12;
-  const anim = sp.kind === 'piano' ? 'piano' : sp.kind === 'guitar' ? 'guitar' : sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
+  const anim = sp.kind === 'piano' ? 'piano' : sp.kind === 'guitar' ? 'guitar' : sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p || (p.isTeto && sp.owner?.isTeto) ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
   p.task = { kind: 'playerSit', spot: sp, anim };
   p.body.pad.visible = !!sp.game; p.body.guitar.visible = sp.kind === 'guitar'; p.body.phone.visible = sp.kind === 'booth'; p.body.mug.visible = sp.kind === 'bar';
 }
