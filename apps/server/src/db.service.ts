@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 /** The connection to Postgres. In phase 0 it only answers "is the database reachable?". */
 @Injectable()
 export class DbService implements OnModuleDestroy {
-  private readonly pool: Pool | null;
+  readonly pool: Pool | null;
 
   constructor() {
     const url = process.env.DATABASE_URL;

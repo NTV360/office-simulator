@@ -1,6 +1,5 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { WorldService } from './world.service';
-import type { WorldStatus } from './world';
 
 @Controller('world')
 export class WorldController {
@@ -8,7 +7,7 @@ export class WorldController {
 
   /** A summary of the running world: the clock, who is in, and how long ticks take. */
   @Get()
-  get(): WorldStatus {
+  get() {
     return this.worlds.status();
   }
 }

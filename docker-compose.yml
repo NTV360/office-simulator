@@ -38,6 +38,8 @@ services:
       SIM_SPEED: "${SIM_SPEED:-1}"
       SIM_PAUSED: "${SIM_PAUSED:-false}"
       WORLD_SEED: "${WORLD_SEED:-}"
+      RESET_WORLD: "${RESET_WORLD:-false}"
+      SAVE_INTERVAL_MS: "${SAVE_INTERVAL_MS:-10000}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-office}:${POSTGRES_PASSWORD:-office_dev_password}@db:5432/${POSTGRES_DB:-office}"
     depends_on:
       db:

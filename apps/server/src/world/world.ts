@@ -1,5 +1,6 @@
 import {
-  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, isStaff, resetSim, setSeed, sim, stepSim,
+  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, isStaff, resetSim, restoreWorld, setSeed, sim, stepSim,
+  type SavedWorld,
 } from '@office/shared';
 
 // The world the server runs: the shared simulation, stepped at a fixed rate. The simulation keeps its state in
@@ -87,16 +88,23 @@ export class World {
   /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. */
   onTick(fn: (tick: number) => void): void { this.listeners.push(fn); }
 
-  /** Build the office from the layout data and start a live mid-morning. */
-  init(): void {
+  /**
+   * Build the office from the layout data. With a saved world, restore it (the saved clock, speed and pause win over the
+   * settings); otherwise start a live mid-morning with the configured number of staff.
+   */
+  init(saved: SavedWorld | null = null): void {
     resetSim();
     loadLayout(officeLayout);
     setSeed(this.options.seed ?? null);
-    initState();
-    const slots = clampSlotCount(this.options.slotCount, interactables.of('desk').length);
-    initDay(slots);
-    sim.speed = this.options.speed;
-    sim.paused = this.options.paused;
+    if (saved) {
+      restoreWorld(saved);
+    } else {
+      initState();
+      const slots = clampSlotCount(this.options.slotCount, interactables.of('desk').length);
+      initDay(slots);
+      sim.speed = this.options.speed;
+      sim.paused = this.options.paused;
+    }
     this.tick = 0;
     this.durations.length = 0;
     this.lateTicks = 0;

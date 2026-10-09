@@ -50,3 +50,4 @@ export * from './sim/testing';
 export * from './layout/layout';
 export * from './layout/office';
 export * from './protocol';
+export * from './sim/persist';
