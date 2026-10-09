@@ -1,11 +1,13 @@
 import { randomSpec } from '../character/spec';
+import { clampSlotCount } from '../server-defaults';
 import { TAU, pick, random, rnd } from '../util';
 import { FIRST, LAST, SCREEN_VARIANTS, roleBag, type ScreenKind } from './data';
 import { simEvents } from './events';
 import { HAZEL_LEAVE_AT, HAZEL_NAME, applyHazel } from './hazel';
 import { isStaff } from './person';
 import { newProps } from './props';
-import { counters, deskPool, people } from './state';
+import { interactables } from './interactables';
+import { counters, deskPool, people, sim } from './state';
 import { endTask } from './tasks';
 import type { Person } from './types';
 
@@ -43,6 +45,23 @@ export function removeStaff(): Person | null {
   endTask(p); if (p.slot) p.slot.owner = null;
   simEvents.emit('personRemoved', p);
   return p;
+}
+
+/**
+ * Change how many staff there are: add people at free desks or remove the most recent, never beyond the number of desks.
+ * Someone added during the working day arrives within a few minutes instead of waiting for their scheduled time.
+ * Returns the new number of staff.
+ */
+export function setStaffCount(requested: number): number {
+  const target = clampSlotCount(requested, interactables.of('desk').length);
+  const count = () => people.filter(isStaff).length;
+  while (count() < target) {
+    const p = makeStaff();
+    if (!p) break;
+    if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50) p.arriveAt = sim.t + rnd(.1, 4);
+  }
+  while (count() > target) removeStaff();
+  return count();
 }
 
 /** Pick today's arrival, lunch and leaving times. */

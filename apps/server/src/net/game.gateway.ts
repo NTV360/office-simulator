@@ -1,7 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, NONE, PROTOCOL_VERSION, decodeClient, encode, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, NONE, PROTOCOL_VERSION, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -43,6 +43,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.broadcaster = new Broadcaster({ tickRate: world.options.tickRate });
     simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p)));
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
+    simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
     world.onTick(tick => {
       if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
         this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it

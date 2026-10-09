@@ -138,4 +138,18 @@ d('the running server', () => {
     await two.app.close();
     delete process.env.RESET_WORLD;
   }, 30000);
+
+  it('admin changes (staff, speed, pause) survive a restart', async () => {
+    process.env.ADMIN_TOKEN = 'tok';
+    const one = await boot();
+    const base = (one.app.getHttpServer().address() as { port: number }).port;
+    const r = await fetch(`http://127.0.0.1:${base}/api/admin/settings`, { method: 'PUT', headers: { authorization: 'Bearer tok', 'content-type': 'application/json' }, body: JSON.stringify({ slots: 25, speed: 3, paused: true }) });
+    expect(r.status).toBe(200);
+    await one.app.close();
+    const two = await boot();
+    const s = await two.status() as unknown as { staff: number; speed: number; paused: boolean; persistence: { restored: boolean } };
+    expect(s).toMatchObject({ staff: 25, speed: 3, paused: true, persistence: { restored: true } });
+    await two.app.close();
+    delete process.env.ADMIN_TOKEN;
+  }, 30000);
 });

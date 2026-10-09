@@ -1,6 +1,6 @@
 # Phase 2 breakdown: server and persistence
 
-**Status: in progress. Steps 0 to 4 are done; steps 5 to 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
+**Status: in progress. Steps 0 to 5 are done; steps 6 and 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
 
 **Done when (from the plan):** two browsers see the same office, and a server restart brings back the same people, positions and clock. Players, accounts and prediction are phases 3 and 4; here every browser is a **viewer**.
 
@@ -23,7 +23,7 @@
 | **2** (**done**) | The protocol | `shared/src/protocol`: encode/decode for `welcome`, `snapshot`, `event`, `spec`, `ping/pong`, with change-only person records | Round-trip tests, size checks against the plan's budget, bad input is rejected |
 | **3** (**done**) | Realtime gateway | Socket.IO (websocket only) gateway: a viewer connects, gets `welcome` (full world), then `volatile` snapshots each tick and events; clean disconnect | Node integration test with `socket.io-client`: two clients receive the same tick; a slow client does not block |
 | **4** (**done**) | Persistence | Prisma schema and migration; the world is saved on an interval and on shutdown, and restored at boot (people, desks, schedules, positions, clock, day, settings) | Test: save, rebuild a fresh world from the database, and compare. Docker: restart the server container and the same people appear |
-| **5** | Admin settings | Slot count, pause, speed changeable at runtime through `/api/admin/*`, guarded by an `ADMIN_TOKEN` from the environment (real accounts come in phase 3); changes are saved and broadcast | Tests: auth required, values clamped, change shows up in snapshots and survives a restart |
+| **5** (**done**) | Admin settings | Slot count, pause, speed changeable at runtime through `/api/admin/*`, guarded by an `ADMIN_TOKEN` from the environment (real accounts come in phase 3); changes are saved and broadcast | Tests: auth required, values clamped, change shows up in snapshots and survives a restart |
 | **6** | Viewer client | An online mode: connect, apply `welcome`, interpolate snapshots, draw. The client does not step the simulation in this mode. Offline mode stays as it is | Browser runner: two pages connected to one server show the same positions and clock; the offline recordings are unchanged |
 | **7** | Docker and end to end | Compose wires the server to the database and the proxy for `/socket.io`; a single script starts the stack, connects two browsers, restarts the server and checks the office came back | `npm run e2e` passes against the compose stack |
 
@@ -100,3 +100,12 @@ A fresh review of the first four steps found, and the follow-up commit fixed: a 
 5. **Hostile or damaged saves.** `parseSavedWorld` checks every field (types, ranges, duplicate ids and desks, desks the office does not have); 20 tests cover it.
 6. **Tested against a real database.** `npm run test:db` starts a throwaway PostgreSQL in Docker and runs the migration, store and full-server tests (save on shutdown, restore on the next start, `RESET_WORLD`). Without Docker those tests skip.
 7. **Checked in the real stack.** After `docker compose restart server` the log says `restored from the database`, the same 40 people are back, and the clock continued from where it stopped.
+
+### Step 5
+
+1. **The API.** `GET /api/admin/settings`, `PUT /api/admin/settings` with any of `{ "slots": n, "speed": x, "paused": b }`, and `POST /api/admin/announce` with `{ "text": "..." }`. All need `Authorization: Bearer <ADMIN_TOKEN>`. Without `ADMIN_TOKEN` in the environment the admin API does not exist (404).
+2. **Guarding it.** The token is compared in constant time; ten failures from one address in a minute lock that address out for the rest of the minute (even with the right token); requests are validated by hand (unknown fields, wrong types, fractions, negatives and bad JSON get a 400 with the reason). `slots` is clamped to the number of desks (70), `speed` to 0.25 to 8.
+3. **One way to change the number of staff.** The client's staff slider had the "add someone mid-day and they arrive in a few minutes" logic inline. It is now `setStaffCount` in the shared package, used by both the slider and the server, with tests.
+4. **Effects reach everyone.** Speed and pause are in every snapshot; staff added or removed are announced as `person`/`leave` messages (the gateway already listened for the simulation's events); an announcement is a new simulation event and arrives as an `event` of kind `announce`.
+5. **Saved at once.** Each change triggers a save, and a test with a real database shows slots, speed and pause surviving a restart. Checked in the Docker stack too (30 staff at 3x came back after `docker compose restart server`).
+6. **Still to come with accounts (phase 3):** the shared token is replaced by admin accounts; `kick`, `assign-slot` and `reset-password` need accounts to mean anything.

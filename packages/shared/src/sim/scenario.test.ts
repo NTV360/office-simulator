@@ -7,7 +7,7 @@ import { findPath } from '../nav/astar';
 import { setSeed } from '../util';
 import { simEvents } from './events';
 import { initDay } from './day';
-import { makeStaff, removeStaff } from './factory';
+import { makeStaff, removeStaff, setStaffCount } from './factory';
 import { interactables } from './interactables';
 import { isStaff } from './person';
 import { PROP_KEYS } from './props';
@@ -237,6 +237,36 @@ describe('slots', () => {
     expect(you.pos.x).toBe(ENTRY.x);
     expect([you.face, you.animT]).toEqual([0, 0]); // not turned or animated by the simulation
     while (removeStaff());
+    expect(people).toEqual([you]);
+  });
+});
+
+describe('setStaffCount', () => {
+  it('adds and removes staff up to the number of desks, and reports the result', () => {
+    start(1);
+    expect(setStaffCount(25)).toBe(25);
+    expect(setStaffCount(33)).toBe(33);
+    expect(staff()).toHaveLength(33);
+    expect(setStaffCount(10)).toBe(10);
+    expect(interactables.of('desk').filter(d => d.owner)).toHaveLength(10);
+    expect(setStaffCount(5000)).toBe(40); // the test office has 40 desks
+    expect(setStaffCount(-3)).toBe(0);
+    expect(setStaffCount(NaN)).toBe(0);
+  });
+  it('someone added during the working day turns up within a few minutes', () => {
+    start(1);
+    setStaffCount(38); // free two desks, then add them back at 9:25
+    const before = new Set(staff());
+    setStaffCount(40);
+    const added = staff().filter(p => !before.has(p));
+    expect(added).toHaveLength(2);
+    for (const p of added) expect(p.arriveAt - sim.t).toBeLessThan(4.1);
+  });
+  it('leaves a human-controlled person alone', () => {
+    start(1);
+    const you = { id: -1, name: 'You', role: 'You', controller: 'account', state: 'controlled', pos: ENTRY.clone() } as unknown as Person;
+    people.push(you);
+    setStaffCount(0);
     expect(people).toEqual([you]);
   });
 });

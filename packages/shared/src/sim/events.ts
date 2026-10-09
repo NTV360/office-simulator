@@ -6,10 +6,12 @@ export interface SimEvents {
   personAdded: Person;
   /** A staff member was removed (their desk is free again). */
   personRemoved: Person;
+  /** An admin announcement for everyone. */
+  announce: string;
 }
 
 type Listeners = { [K in keyof SimEvents]: Array<(p: SimEvents[K]) => void> };
-const listeners: Listeners = { personAdded: [], personRemoved: [] };
+const listeners: Listeners = { personAdded: [], personRemoved: [], announce: [] };
 
 export const simEvents = {
   /** Listen to an event. Returns a function that stops listening. */
@@ -21,5 +23,5 @@ export const simEvents = {
     for (const fn of listeners[name].slice()) fn(arg);
   },
   /** Drop every listener (tests). */
-  clear(): void { listeners.personAdded.length = 0; listeners.personRemoved.length = 0; },
+  clear(): void { listeners.personAdded.length = 0; listeners.personRemoved.length = 0; listeners.announce.length = 0; },
 };

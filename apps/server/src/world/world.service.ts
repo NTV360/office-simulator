@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { serializeWorld, type SavedWorld } from '@office/shared';
+import { interactables, isStaff, people, serializeWorld, setStaffCount, sim, simEvents, type SavedWorld } from '@office/shared';
+import type { Settings, SettingsUpdate } from '../admin/settings';
 import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
 import { WorldStore } from '../db/world-store';
@@ -78,6 +79,27 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
     this.persistence.reason = `database unreachable at start-up: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`;
     this.log.error(`${this.persistence.reason}. Running WITHOUT saving; restart the server once the database is back.`);
     return null;
+  }
+
+  /** The settings an admin can change, as they are now. */
+  settings(): Settings {
+    return { slots: people.filter(isStaff).length, maxSlots: interactables.of('desk').length, speed: sim.speed, paused: sim.paused, tickRate: this.world.options.tickRate };
+  }
+
+  /** Apply an admin's change, save it straight away, and return the settings as they now stand. Viewers see it in the next snapshots. */
+  async applySettings(update: SettingsUpdate): Promise<Settings> {
+    if (update.speed !== undefined) sim.speed = update.speed;
+    if (update.paused !== undefined) sim.paused = update.paused;
+    if (update.slots !== undefined) setStaffCount(update.slots);
+    this.log.log(`admin changed settings: ${JSON.stringify(update)}`);
+    await this.saveNow();
+    return this.settings();
+  }
+
+  /** Show a message to everyone connected. */
+  announce(text: string): void {
+    this.log.log(`admin announcement: ${text}`);
+    simEvents.emit('announce', text);
   }
 
   /** Save the world now. One save at a time; a failure is recorded and logged, never thrown. */
