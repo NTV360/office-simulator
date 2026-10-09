@@ -15,7 +15,7 @@ export function tryMeeting(): void {
     if (meetings.some(m => m.room === room)) continue;
     if (random() > (lunchHour ? .01 : .05)) continue;
     const cap = interactables.conf(room).length;
-    const n = room === 2 ? 2 + Math.floor(random() * 4) : 3 + Math.floor(random() * 6);
+    const n = random() < .2 ? 2 : 3 + Math.floor(random() * 6); // now and then just two people: a 1:1
     const pool = shuffle(people.filter(p => isAi(p) && p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));

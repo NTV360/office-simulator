@@ -4,7 +4,9 @@ import { initDay } from '../sim/day';
 import { interactables } from '../sim/interactables';
 import { hasSlot } from '../sim/person';
 import { ENTRY } from '../sim/spots';
-import { initState, meetings, people, resetSim, sim } from '../sim/state';
+import { deskPool, initState, meetings, people, resetSim, sim } from '../sim/state';
+import { parseSavedWorld, restoreWorld, serializeWorld } from '../sim/persist';
+import { handBack, takeControl } from '../sim/takeover';
 import { setStaffCount } from '../sim/factory';
 import { stepSim } from '../sim/step';
 import { setSeed } from '../util';
@@ -88,5 +90,54 @@ describe('who sits where', () => {
     expect(staff()).toHaveLength(80);
     setStaffCount(9);
     expect(staff().map(p => p.role).sort().filter(r => ['HR', 'CTO', 'Cleaner'].includes(r))).toEqual(['CTO', 'CTO', 'Cleaner', 'HR', 'HR', 'HR', 'HR', 'HR']);
+  });
+});
+
+describe('role desks and the rest of the system', () => {
+  it('a world saved under the old layout (70 desks) still restores, and the new desks are filled as the office grows', () => {
+    setSeed(5); initState(); initDay(40);
+    const saved = serializeWorld();
+    saved.deskOrder = saved.deskOrder.filter(id => Number(id.split(':')[1]) < 70); // what the old layout knew
+    for (const p of saved.people) { if (p.role === 'HR' || p.role === 'CTO' || p.role === 'Cleaner') p.role = 'Developer'; }
+    // (people on the new desks did not exist in an old save: drop them)
+    saved.people = saved.people.filter(p => Number(p.slot.split(':')[1]) < 70);
+    const again = parseSavedWorld(JSON.parse(JSON.stringify(saved)));
+    resetSim(); loadLayout(officeLayout);
+    restoreWorld(again);
+    expect(deskPool).toHaveLength(80);
+    expect(new Set(deskPool.slice(70).map(d => d.id))).toEqual(new Set(['desk:70', 'desk:71', 'desk:72', 'desk:73', 'desk:74', 'desk:75', 'desk:76', 'desk:77', 'desk:78', 'desk:79'])); // the unknown desks, at the end
+    setStaffCount(80);
+    expect(staff()).toHaveLength(80);
+    expect(staff().filter(p => p.role === 'HR')).toHaveLength(5);
+    expect(staff().filter(p => p.role === 'CTO')).toHaveLength(2);
+    expect(staff().filter(p => p.role === 'Cleaner')).toHaveLength(1);
+  });
+
+  it('an account can take over the person at an HR desk and give them back: the role stays', () => {
+    setSeed(6); initState(); initDay(40);
+    const hr = staff().find(p => p.role === 'HR')!;
+    takeControl(hr);
+    expect(hr.role).toBe('HR');
+    expect(hr.slot!.role).toBe('HR');
+    handBack(hr);
+    expect(hr.role).toBe('HR');
+    expect(people.filter(p => p.slot === hr.slot)).toHaveLength(1);
+  });
+});
+
+describe('the furniture does not crowd anything', () => {
+  const px = (s: { pos: { x: number; z: number } }) => ({ x: s.pos.x / 0.041 + 397.85, y: s.pos.z / 0.041 + 577.05 });
+  it('the cleaner\'s chair is clear of the storage spots', () => {
+    const chair = px(desks().find(d => d.role === 'Cleaner')!);
+    for (const s of interactables.of('storage')) { const o = px(s); expect(Math.hypot(o.x - chair.x, o.y - chair.y) * 0.041, s.id).toBeGreaterThan(0.4); }
+  });
+  it('every laptop is on a table: the chair\'s forward point lands inside the conference table', () => {
+    const tableOf = (role: string): [number, number, number, number][] => role === 'HR' ? [[305, 105, 355, 160]] : [[158, 96, 174, 168], [205, 96, 221, 168]];
+    for (const d of desks().filter(x => x.role === 'HR' || x.role === 'CTO')) {
+      const p = px(d);
+      const reach = (d.role === 'CTO' ? .57 : (Math.abs(d.face) === Math.PI / 2 ? .65 : .85)) / 0.041; // as built in stations.js
+      const lx = p.x + Math.sin(d.face) * reach, ly = p.y + Math.cos(d.face) * reach;
+      expect(tableOf(d.role!).some(([x1, y1, x2, y2]) => lx > x1 - 1 && lx < x2 + 1 && ly > y1 - 1 && ly < y2 + 1), `${d.id} laptop at ${lx.toFixed(0)},${ly.toFixed(0)}`).toBe(true);
+    }
   });
 });

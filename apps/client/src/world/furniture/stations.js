@@ -35,7 +35,7 @@ function buildStations() {
   station(294, 147, E, HR, 'HR', .65);
   station(366, 118, WST, HR, 'HR', .65);
   station(366, 147, WST, HR, 'HR', .65);
-  station(366, 92, Math.atan2(330 - 366, 132 - 92), HR, 'HR', .6);
+  station(366, 92, Math.atan2(330 - 366, 132 - 92), HR, 'HR', .85); // (further out: the table's corner is a way off from this chair)
   // CTOs: the two chairs at the north end of Conference 1's tables
   station(183, 107, WST, CTO, 'CTO', .57);
   station(230, 107, WST, CTO, 'CTO', .57);

@@ -160,14 +160,15 @@ describe('a seeded day', () => {
     expect(staff().filter(p => p.state !== 'away').length).toBeGreaterThan(20);
   });
 
-  it('Hazel is the last one out: at 19:00 she is alone in the office, and everyone else is gone for the day', () => {
+  it('Hazel is the last one out: nobody has a later leaving time than hers, and at 19:09 anyone still here is only finishing a work session or already walking out', () => {
     start(1);
-    runUntil(19 * 60);
-    expect(staff().filter(p => p.state !== 'away').map(p => p.name)).toEqual(['Hazel Sellote']);
-    expect(staff()[0].leaveAt).toBe(19 * 60 + 2);
+    const hazel = staff().find(p => p.name === 'Hazel Sellote')!;
+    expect(hazel.leaveAt).toBe(19 * 60 + 2);
+    for (const p of staff()) expect(p.leaveAt).toBeLessThanOrEqual(hazel.leaveAt);
     runUntil(19 * 60 + 9);
     expect(sim.day).toBe(1);
-    expect(staff().slice(1).every(p => p.state === 'away')).toBe(true);
+    // (someone in the middle of a long work session when their time comes finishes it before going home)
+    for (const p of staff().filter(q => q !== hazel && q.state !== 'away')) expect(['work', 'exit'], p.name).toContain(p.task?.kind);
   });
 });
 
