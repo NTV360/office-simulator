@@ -15,6 +15,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/platform-socket.io": "^11.2.7",
     "@nestjs/websockets": "^11.2.7",
+    "@node-rs/argon2": "^2.2.2",
     "@office/shared": "*",
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",

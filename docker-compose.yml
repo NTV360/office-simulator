@@ -39,6 +39,10 @@ services:
       SIM_PAUSED: "${SIM_PAUSED:-false}"
       WORLD_SEED: "${WORLD_SEED:-}"
       TRUST_PROXY: "1" # Caddy is one hop in front: use the client address it reports
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
+      SIGNUP_CODE: "${SIGNUP_CODE:-}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
       ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
       RESET_WORLD: "${RESET_WORLD:-false}"
       SAVE_INTERVAL_MS: "${SAVE_INTERVAL_MS:-10000}"

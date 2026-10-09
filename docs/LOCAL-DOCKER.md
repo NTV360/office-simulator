@@ -40,6 +40,7 @@ curl -X PUT http://localhost:8080/api/admin/settings -H "Authorization: Bearer <
 curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
 ```
 
+- Accounts: put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` and the first start creates that admin (change the password after the first login). `SIGNUP_CODE` makes registering need a code. Accounts, sessions and the audit log are in the same database. Passwords are stored only as argon2id hashes.
 - The saved world lives in the database (`world_state`). `docker compose restart server` brings the same office back. To start over with a fresh office, set `RESET_WORLD=true` for one start (or `docker compose down -v` to wipe the database).
 
 ## Defaults and secrets

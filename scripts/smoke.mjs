@@ -40,6 +40,11 @@ try {
   check('the office has its staff', w2.staff > 0 && w2.desks === 70, `${w2.staff} staff, ${w2.desks} desks`);
   check('ticks fit their budget', w2.tickMs.avgMs < 10, `avg ${w2.tickMs.avgMs.toFixed(2)} ms, max ${w2.tickMs.maxMs.toFixed(2)} ms`);
 
+  // accounts: the auth routes are wired (an anonymous caller is told "not logged in", not 404 or 500)
+  const me = await fetch(base + '/api/auth/me');
+  const meBody = await me.json().catch(() => null);
+  check('accounts: /api/auth/me says "not logged in" to a stranger', me.status === 401 && meBody?.code === 'unauthenticated', `status ${me.status}`);
+
   // realtime: connect through the proxy exactly as a browser does, say hello, expect the welcome and a stream of snapshots
   try {
     const { io } = await import('socket.io-client');

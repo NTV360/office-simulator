@@ -11,6 +11,10 @@ import { configureApp } from '../app.config';
 import { World } from '../world/world';
 import { MIGRATIONS_DIR, runMigrations } from './migrate';
 import { WorldStore } from './world-store';
+import { PgAccountStore } from '../auth/account-store';
+import { AuthProvider } from '../auth/auth.provider';
+import { AuthService } from '../auth/auth.service';
+import { createHash } from 'node:crypto';
 
 // These need a real PostgreSQL. `npm run test:db` starts a throwaway one in Docker and sets TEST_DATABASE_URL;
 // without it they are skipped.
@@ -26,16 +30,16 @@ beforeEach(async () => { if (url) await reset(); });
 
 d('migrations', () => {
   it('create the tables, once, and are recorded', async () => {
-    expect(await runMigrations(pool)).toEqual(['001_world_state.sql']);
+    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql']);
     expect(await runMigrations(pool)).toEqual([]);
     const tables = (await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).rows.map(r => r.table_name);
-    expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations']));
-    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(1);
+    expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations', 'accounts', 'sessions', 'audit_log']));
+    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(2);
   });
 
   it('two servers starting together apply each migration once', async () => {
     const results = await Promise.all([runMigrations(pool), runMigrations(pool), runMigrations(pool)]);
-    expect(results.flat()).toEqual(['001_world_state.sql']);
+    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql']);
   });
 
   it('a failing migration rolls back completely and is not recorded', async () => {
@@ -124,6 +128,114 @@ d('safety when something is wrong', () => {
     expect(status.persistence.reason).toMatch(/desk:999/);
     const row = (await pool.query('SELECT data FROM world_state WHERE id = 1')).rows[0].data;
     expect(row.people[0].slot).toBe('desk:999'); // exactly as it was: nothing replaced it
+  }, 30000);
+});
+
+
+d('accounts in PostgreSQL', () => {
+  beforeEach(async () => { await runMigrations(pool); });
+  const sha = (s: string) => createHash('sha256').update(s).digest();
+
+  it('usernames are unique whatever the capitals, decided by the database itself', async () => {
+    const store = new PgAccountStore(pool);
+    const a = await store.create({ username: 'Ana', passwordHash: 'h', role: 'player' });
+    expect(a).toMatchObject({ username: 'Ana', usernameLower: 'ana', role: 'player', disabled: false, slotSpot: null, spec: null });
+    expect(await store.create({ username: 'ANA', passwordHash: 'h', role: 'player' })).toBe('taken');
+    const racing = await Promise.all(Array.from({ length: 6 }, () => store.create({ username: 'Race', passwordHash: 'h', role: 'player' })));
+    expect(racing.filter(r => r !== 'taken')).toHaveLength(1);
+  });
+
+  it('the table itself refuses names that are not 3 to 24 characters or not lower-cased in the key', async () => {
+    await expect(pool.query("INSERT INTO accounts (username, username_lower, password_hash) VALUES ('ab', 'ab', 'h')")).rejects.toThrow();
+    await expect(pool.query("INSERT INTO accounts (username, username_lower, password_hash) VALUES ('Abc', 'Abc', 'h')")).rejects.toThrow();
+    await expect(pool.query("INSERT INTO accounts (username, username_lower, password_hash, role) VALUES ('abc', 'abc', 'h', 'god')")).rejects.toThrow();
+  });
+
+  it('finds accounts by name and id, counts admins, changes passwords', async () => {
+    const store = new PgAccountStore(pool);
+    const p = await store.create({ username: 'Pat', passwordHash: 'h1', role: 'player' }) as { id: number };
+    await store.create({ username: 'Boss', passwordHash: 'h', role: 'admin' });
+    expect((await store.byLower('pat'))?.id).toBe(p.id);
+    expect((await store.byId(p.id))?.username).toBe('Pat');
+    expect(await store.byLower('nobody')).toBeNull();
+    expect(await store.countAdmins()).toBe(1);
+    await store.setPassword(p.id, 'h2', true);
+    expect(await store.byId(p.id)).toMatchObject({ passwordHash: 'h2', mustChangePassword: true });
+  });
+
+  it('sessions: found by hash, renewed, deleted singly, per account, and when expired; removed with the account', async () => {
+    const store = new PgAccountStore(pool);
+    const a = await store.create({ username: 'Sess', passwordHash: 'h', role: 'player' }) as { id: number };
+    const future = new Date(Date.now() + 3600_000), past = new Date(Date.now() - 1000);
+    await store.createSession(a.id, sha('t1'), future, 'ua');
+    await store.createSession(a.id, sha('t2'), future, null);
+    await store.createSession(a.id, sha('t3'), past, null);
+    expect((await store.sessionByHash(sha('t1')))?.account.username).toBe('Sess');
+    expect(await store.sessionByHash(sha('nope'))).toBeNull();
+    const later = new Date(Date.now() + 7200_000);
+    await store.touchSession(sha('t1'), new Date(), later);
+    expect((await store.sessionByHash(sha('t1')))?.session.expiresAt.getTime()).toBe(later.getTime());
+    expect(await store.deleteExpiredSessions(new Date())).toBe(1);
+    await store.deleteAccountSessions(a.id, sha('t1'));
+    expect(await store.sessionByHash(sha('t2'))).toBeNull();
+    expect(await store.sessionByHash(sha('t1'))).not.toBeNull();
+    await store.deleteSession(sha('t1'));
+    expect(await store.sessionByHash(sha('t1'))).toBeNull();
+    await store.createSession(a.id, sha('t4'), future, null);
+    await pool.query('DELETE FROM accounts WHERE id = $1', [a.id]);
+    expect((await pool.query('SELECT count(*)::int AS n FROM sessions')).rows[0].n).toBe(0); // cascades
+  });
+
+  it('neither the password nor the session token is stored, only hashes', async () => {
+    const svc = new AuthService(new PgAccountStore(pool));
+    const { token } = await svc.register({ username: 'Hashy', password: 'a-very-long-secret' }, { ip: '1', userAgent: null });
+    const dump = JSON.stringify((await pool.query("SELECT a.*, encode(s.token_hash, 'hex') AS th FROM accounts a JOIN sessions s ON s.account_id = a.id")).rows);
+    expect(dump).not.toContain(token);
+    expect(dump).not.toContain('a-very-long-secret');
+    expect(dump).toContain('$argon2id$');
+    expect(dump).toContain(sha(token).toString('hex'));
+  });
+
+  it('the running server: the first admin is created from the environment, can log in, and the cookie works', async () => {
+    process.env.DATABASE_URL = url;
+    process.env.ADMIN_USERNAME = 'boss';
+    process.env.ADMIN_PASSWORD = 'a-long-admin-pass';
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApp(app);
+    await app.listen(0, '127.0.0.1');
+    const base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+    expect(app.get(AuthProvider).available).toBe(true);
+    const json = (path: string, body: unknown, cookie?: string) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(body) });
+    const login = await json('/api/auth/login', { username: 'Boss', password: 'a-long-admin-pass' });
+    expect(login.status).toBe(200);
+    expect(((await login.json()) as { account: object }).account).toMatchObject({ username: 'boss', role: 'admin' });
+    const cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const me = await fetch(base + '/api/auth/me', { headers: { cookie } });
+    expect(me.status).toBe(200);
+    const reg = await json('/api/auth/register', { username: 'newbie', password: 'another-long-pass' });
+    expect(reg.status).toBe(201);
+    // restart: the admin is not created twice, and the session survives (it is in the database)
+    await app.close();
+    const again = await NestFactory.create(AppModule, { logger: false });
+    configureApp(again);
+    await again.listen(0, '127.0.0.1');
+    const base2 = `http://127.0.0.1:${(again.getHttpServer().address() as { port: number }).port}`;
+    expect((await fetch(base2 + '/api/auth/me', { headers: { cookie } })).status).toBe(200);
+    expect((await pool.query("SELECT count(*)::int AS n FROM accounts WHERE role = 'admin'")).rows[0].n).toBe(1);
+    await again.close();
+    delete process.env.ADMIN_USERNAME; delete process.env.ADMIN_PASSWORD;
+  }, 40000);
+
+  it('a weak admin password in the environment creates no admin', async () => {
+    process.env.DATABASE_URL = url;
+    process.env.ADMIN_USERNAME = 'boss';
+    process.env.ADMIN_PASSWORD = 'short';
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApp(app);
+    await app.listen(0, '127.0.0.1');
+    expect((await pool.query('SELECT count(*)::int AS n FROM accounts')).rows[0].n).toBe(0);
+    await app.close();
+    delete process.env.ADMIN_USERNAME; delete process.env.ADMIN_PASSWORD;
   }, 30000);
 });
 
