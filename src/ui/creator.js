@@ -18,11 +18,13 @@ import { $ } from './dom.js';
 // here. Edits go to a draft spec and a desk choice; Save stores both in character_information for that
 // employee (through the API), restyles them and moves them to that desk in the office. Without a staff list (API unavailable) it edits the player's own look.
 // The preview has its own small renderer, made the first time the lab opens.
-const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, target: null, desk: null };
+const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, target: null, desk: null, deskIsland: null, folds: new Set(['employee', 'desk']) };
 const STYLE_LABEL = { chibi: 'Chibi', blocky: 'Blocky' };
 const SLOT_LABELS = { head: 'Head', face: 'Face', body: 'Body', back: 'Back', hand: 'Hands' };
 
-const words = s => s.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+// Option names as people read them: 'longsleeve' → 'Long sleeve', 'widePants' → 'Wide pants'.
+const NICE = { tshirt: 'T-shirt', longsleeve: 'Long sleeve', tanktop: 'Tank top', hightops: 'High-tops', fullBeard: 'Full beard', santaHat: 'Santa hat' };
+const words = s => NICE[s] ?? s.replace(/([A-Z])/g, ' $1').toLowerCase().replace(/^./, c => c.toUpperCase());
 const clone = o => JSON.parse(JSON.stringify(o));
 
 // ----- preview stage -----
@@ -69,7 +71,7 @@ function openCreator(userId = null) {
   creator.open = true; $('creator').hidden = false;
   creator.target = employeeById(userId) ? userId : null;
   creator.draft = roster.list ? lookOf(creator.target) : clone(player.spec);
-  creator.desk = deskOf(creator.target);
+  creator.desk = deskOf(creator.target); creator.deskIsland = null;
   if (!creator.stage) creator.stage = makeStage();
   creator.stage.resize(); creator.stage.clock.getDelta();
   rebuild();
@@ -139,51 +141,56 @@ const live = fn => (value, isLive) => { fn(value); edited(); rebuild(!isLive); }
 const MAX_MATCHES = 8;
 function employeePicker() {
   const e = employeeById(creator.target);
-  if (e) return section('Employee',
+  if (e) return fold('employee', 'Employee', fullName(e),
     el('div', { class: 'cl-me' },
       el('div', {}, el('div', { class: 'cl-me-name' }, fullName(e)), el('div', { class: 'cl-note' }, jobTitle(e))),
       el('button', { type: 'button', class: 'btn sm', on: { click: () => { creator.target = null; rebuild(); $('creatorSearch').focus(); } } }, 'Change')));
   const results = el('div', { class: 'cl-matches', id: 'creatorMatches', role: 'listbox', 'aria-label': 'Matching employees' });
   const search = el('input', { type: 'search', id: 'creatorSearch', placeholder: 'Search an employee…', autocomplete: 'off', 'aria-label': 'Search an employee',
     on: { input: ev => showMatches(results, ev.target.value), keydown: ev => { if (ev.key === 'Enter') results.querySelector('button')?.click(); } } });
-  return section('Employee', search, results, el('div', { class: 'cl-note' }, 'Find the employee whose character you want to edit, or click them in the office.'));
+  return fold('employee', 'Employee', 'Pick an employee', search, results, el('div', { class: 'cl-note' }, 'Find the employee whose character you want to edit, or click them in the office.'));
 }
-// "Desk": where this employee sits, picked on a map of the desks laid out as on the floor (like choosing
-// cinema seats). Seats other employees chose can't be picked; department desks (the HR office) only by that
-// department. Picking a seat someone sits at without having chosen it swaps them.
-const MAP_W = 340; // px; the map scales the floor plan to this width and scrolls vertically
+// "Desk": where this employee sits. First pick a desk group (A-H, the HR office), then a seat in it, shown
+// like cinema seats: the chairs on each side of the desk in their real order. Seats other employees chose
+// can't be picked; department desks (the HR office) only by that department. Picking a seat someone sits
+// at without having chosen it swaps them.
+function seatState(e, s) {
+  if (s.id === creator.desk) return 'mine';
+  if (roster.list.some(o => o.desk === s.id && o.userId !== e.userId)) return 'taken';
+  if (s.island.department && s.island.department !== e.department) return 'taken';
+  const sitter = seatById(s.id)?.owner;
+  return sitter && sitter.userId !== e.userId ? 'used' : 'free';
+}
 function deskPicker(e) {
-  const seats = deskSeats();
-  const xs = seats.map(s => s.px).concat(DESK_ISLANDS.flatMap(i => [i.rect[0], i.rect[2]]));
-  const ys = seats.map(s => s.py).concat(DESK_ISLANDS.flatMap(i => [i.rect[1], i.rect[3]]));
-  const pad = 14, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, k = MAP_W / (Math.max(...xs) + pad - x0);
-  const at = (x, y) => `left:${((x - x0) * k).toFixed(1)}px;top:${((y - y0) * k).toFixed(1)}px`;
-  const map = el('div', { class: 'cl-seatmap', id: 'creatorSeatMap', role: 'radiogroup', 'aria-label': 'Desk', style: `width:${MAP_W}px;height:${((Math.max(...ys) + pad - y0) * k).toFixed(0)}px` },
-    DESK_ISLANDS.map(isl => { const [a, b, c, d] = isl.rect; return el('div', { class: 'cl-island' + (isl.department ? ' dept' : ''), style: `${at(a, b)};width:${((c - a) * k).toFixed(1)}px;height:${((d - b) * k).toFixed(1)}px` }, isl.department ? 'HR' : isl.id); }),
-    seats.map(s => el('button', { type: 'button', class: 'cl-seat', 'data-desk': s.id, role: 'radio', style: at(s.px, s.py), on: { click: () => pickDesk(e, s.id) } })));
-  const none = el('button', { type: 'button', class: 'btn sm', id: 'creatorAnyDesk', on: { click: () => pickDesk(e, null) } }, 'Any free desk');
-  const legend = el('div', { class: 'cl-legend' }, [['mine', 'Selected'], ['free', 'Free'], ['used', 'Occupied (swaps)'], ['taken', 'Taken']].map(([c, t]) => el('span', {}, el('i', { class: 'cl-seat ' + c }), t)));
-  const note = el('div', { class: 'cl-note', id: 'creatorDeskNote' });
-  const sec = section('Desk', el('div', { class: 'cl-deskhead' }, note, none), el('div', { class: 'cl-seatwrap' }, map), legend);
-  // once in the page: colour the seats and scroll the map (not the panel) to the selected one
-  queueMicrotask(() => { paintSeats(e); const m = map.querySelector('.mine'), w = map.parentElement; if (m) w.scrollTop = m.offsetTop - w.clientHeight / 2; });
-  return sec;
+  const seats = deskSeats(), cur = deskSeat(creator.desk);
+  const islands = DESK_ISLANDS.filter(isl => !isl.department || isl.department === e.department || cur?.island === isl);
+  const shown = islands.find(i => i.id === creator.deskIsland) ?? cur?.island ?? islands[0];
+  creator.deskIsland = shown.id;
+  const open = isl => seats.filter(s => s.island === isl && seatState(e, s) !== 'taken').length; // pickable: free, or a swap
+  const groups = el('div', { class: 'cl-islands', role: 'tablist', 'aria-label': 'Desk group' }, islands.map(isl => el('button', {
+    type: 'button', class: 'cl-isl', role: 'tab', 'aria-selected': String(isl === shown), title: isl.name,
+    on: { click: () => { creator.deskIsland = isl.id; renderPanel(); } } }, el('b', {}, isl.department ? 'HR' : isl.id), el('span', {}, `${open(isl)} open`))));
+  const row = side => el('div', { class: 'cl-seatrow' }, seats.filter(s => s.island === shown && s.py < shown.rect[1] === (side === 'top')).map(s =>
+    el('button', { type: 'button', class: 'cl-seat', 'data-desk': s.id, role: 'radio', on: { click: () => pickDesk(e, s.id) } }, String(s.number))));
+  const map = el('div', { class: 'cl-seatmap', id: 'creatorSeatMap', role: 'radiogroup', 'aria-label': shown.name },
+    shown.sides.includes('top') ? row('top') : null, el('div', { class: 'cl-deskbar' }, shown.name), shown.sides.includes('bottom') ? row('bottom') : null);
+  const legend = el('div', { class: 'cl-legend' }, [['mine', 'Selected'], ['free', 'Free'], ['used', 'Someone sits here (swaps)'], ['taken', 'Taken']].map(([c, t]) => el('span', {}, el('i', { class: 'cl-dot ' + c }), t)));
+  const any = el('button', { type: 'button', class: 'btn sm', id: 'creatorAnyDesk', on: { click: () => pickDesk(e, null) } }, 'Any free desk');
+  queueMicrotask(() => paintSeats(e));
+  return fold('desk', 'Desk', el('span', { id: 'creatorDeskSum' }, cur ? cur.label : 'Any free desk'), groups, map, el('div', { class: 'cl-deskfoot' }, legend, any));
 }
-// Colour every seat for this employee and show the choice; called again after each pick.
+// Colour this group's seats for the employee and show the choice; called again after each pick.
 function paintSeats(e) {
   const map = $('creatorSeatMap'); if (!map) return;
-  const chosenBy = id => roster.list.find(o => o.desk === id && o.userId !== e.userId);
   for (const b of map.querySelectorAll('.cl-seat')) {
-    const s = deskSeat(b.dataset.desk), taken = chosenBy(s.id), sitter = seatById(s.id)?.owner;
-    const deptOnly = s.island.department && s.island.department !== e.department;
-    const state = s.id === creator.desk ? 'mine' : taken || deptOnly ? 'taken' : sitter && sitter.userId !== e.userId ? 'used' : 'free';
-    b.className = 'cl-seat ' + state; b.disabled = state === 'taken';
-    b.setAttribute('aria-checked', String(state === 'mine'));
-    const who = taken ? `${fullName(taken)}'s desk` : deptOnly ? `${s.island.department} only` : sitter && sitter.userId !== e.userId ? `${sitter.name} sits here` : state === 'mine' ? 'selected' : 'free';
+    const s = deskSeat(b.dataset.desk), state = seatState(e, s);
+    const taken = roster.list.find(o => o.desk === s.id && o.userId !== e.userId), sitter = seatById(s.id)?.owner;
+    b.className = 'cl-seat ' + state; b.disabled = state === 'taken'; b.setAttribute('aria-checked', String(state === 'mine'));
+    const who = taken ? `${fullName(taken)}'s desk` : state === 'taken' ? `${s.island.department} only` : state === 'used' ? `${sitter.name} sits here` : state === 'mine' ? 'selected' : 'free';
     b.title = `${s.label} · ${who}`; b.setAttribute('aria-label', b.title);
   }
   const cur = deskSeat(creator.desk);
-  $('creatorDeskNote').textContent = cur ? cur.label : 'Any free desk (picked automatically)';
+  $('creatorDeskSum').textContent = cur ? cur.label : 'Any free desk';
   $('creatorAnyDesk').setAttribute('aria-pressed', String(!creator.desk));
 }
 function pickDesk(e, id) { creator.desk = id; paintSeats(e); }
@@ -201,7 +208,7 @@ function showMatches(box, query) {
 }
 function pickEmployee(userId) {
   creator.target = userId;
-  creator.draft = lookOf(userId); creator.desk = deskOf(userId);
+  creator.draft = lookOf(userId); creator.desk = deskOf(userId); creator.deskIsland = null;
   rebuild();
 }
 
@@ -218,7 +225,16 @@ function el(tag, attrs = {}, ...kids) {
 }
 const chip = (label, pressed, onclick, title) => el('button', { type: 'button', class: 'btn sm', 'aria-pressed': String(!!pressed), title, on: { click: onclick } }, label);
 const row = (label, ...content) => el('div', { class: 'cl-row' }, el('div', { class: 'cl-lbl' }, label), el('div', {}, ...content));
-const section = (title, ...content) => el('section', {}, el('h3', {}, title), ...content);
+// A collapsible group: the header shows the title and a one-line summary of the current choice.
+// Which groups are open is remembered while the lab is in use.
+function fold(key, title, summary, ...content) {
+  const d = el('details', { class: 'cl-fold', open: creator.folds.has(key), on: { toggle: ev => { if (ev.target.open) creator.folds.add(key); else creator.folds.delete(key); } } },
+    el('summary', {}, el('span', { class: 'fold-title' }, title), el('span', { class: 'fold-sum' }, summary)),
+    el('div', { class: 'fold-body' }, ...content));
+  return d;
+}
+const dot = c => el('i', { class: 'fold-dot', style: `background:${hexOf(c)}` });
+const sum = (...parts) => el('span', {}, ...parts.filter(Boolean).flatMap((x, i) => i ? [' · ', x] : [x]));
 const segmented = (values, current, onPick) => el('div', { class: 'chips' }, values.map(v => chip(words(v), v === current, () => onPick(v))));
 const hexOf = c => (typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : c || '#888888');
 function colorInput(id, value, onInput, onChange) {
@@ -242,11 +258,9 @@ function renderPanel() {
   panel.replaceChildren(
     roster.list ? employeePicker() : null,
     employeeById(creator.target) ? deskPicker(employeeById(creator.target)) : null,
-    section('Style',
-      row('Type', segmented(TYPES, d.type, v => { d.type = v; rebuild(); })),
-      notes.length ? el('div', { class: 'cl-note' }, `In this style: ${notes.join(' · ')}. Switch back to restore.`) : null),
-
-    section('Presets',
+    fold('look', 'Style & presets', sum(STYLE_LABEL[d.type], presets.some(p => p.spec.name === d.name) ? d.name : 'Custom'),
+      row('Style', segmented(TYPES, d.type, v => { d.type = v; rebuild(); })),
+      notes.length ? el('div', { class: 'cl-note' }, `In this style: ${notes.join(' · ')}. Switch back to restore.`) : null,
       ...TYPES.map(type => el('div', { class: 'cl-stack' },
         el('div', { class: 'cl-lbl' }, `${STYLE_LABEL[type]} designs`),
         el('div', { class: 'cl-presets' }, presets.filter(p => p.type === type).map(p => chip(p.spec.name, d.name === p.spec.name && d.type === type, () => load(p.spec)))))),
@@ -256,7 +270,7 @@ function renderPanel() {
         el('button', { type: 'button', class: 'btn sm', on: { click: () => load(presets.find(p => p.type === d.type && p.key === 'defaultMale').spec) } }, 'Default male'),
         el('button', { type: 'button', class: 'btn sm', on: { click: () => load(presets.find(p => p.type === d.type && p.key === 'defaultFemale').spec) } }, 'Default female'))),
 
-    section('Body',
+    fold('body', 'Body', sum(dot(view.skin), words(view.body), `${view.build} build`, `${view.height} height`),
       row('Body', segmented(o.body, view.body, v => { d.body = v; if (v === 'male' && view.top.style === 'dress') setPart('top', 'style', 'tshirt'); edited(); rebuild(); })),
       row('Build', segmented(o.build, view.build, v => { d.build = v; edited(); rebuild(); })),
       row('Height', segmented(o.height, view.height, v => { d.height = v; edited(); rebuild(); })),
@@ -270,7 +284,7 @@ function renderPanel() {
           : el('label', { class: 'cl-toggle' }, el('input', { type: 'checkbox', checked: !!view.freckles, on: { change: e => { d.freckles = e.target.checked; edited(); rebuild(); } } }), 'Freckles'),
         view.body === 'female' ? el('div', { class: 'cl-colorline' }, 'Lips', colorInput('lips', d.lips ?? '#c4566a', live(v => { d.lips = v; }))) : null)),
 
-    section('Hair',
+    fold('hair', 'Hair', sum(view.hair.style === 'none' ? null : dot(view.hair.color), view.hair.style === 'none' ? 'Bald' : words(view.hair.style), view.facialHair.style !== 'none' ? words(view.facialHair.style) : null),
       row('Style', segmented(o.hair, view.hair.style, v => { setPart('hair', 'style', v); edited(); rebuild(); })),
       row('Color', swatches('hairColor', o.palettes.hair, view.hair.color, live(v => setPart('hair', 'color', v)))),
       row('Facial', segmented(o.facialHair, view.facialHair.style, v => { setPart('facialHair', 'style', v); edited(); rebuild(); })),
@@ -282,13 +296,13 @@ function renderPanel() {
     view.top.style === 'dress' ? null : clothing('Bottom', 'bottom', o.bottom),
     clothing('Shoes', 'shoes', o.shoes),
 
-    section('Accessories',
+    fold('acc', 'Accessories', accs().length ? accs().map(a => words(a.type)).join(', ') : 'None',
       ...Object.entries(groupBySlot(o.accessories)).map(([slot, items]) => row(SLOT_LABELS[slot] ?? words(slot),
         el('div', { class: 'chips' }, items.map(a => chip(words(a.name), hasAcc(a.name), () => toggleAcc(a.name, o.accessories)))))),
       activeAccessories(o.accessories),
       (creator.stage.hero.inner.warnings ?? []).length ? el('div', { class: 'cl-note' }, creator.stage.hero.inner.warnings.join(' · ')) : null),
 
-    section('Share',
+    fold('share', 'Share', 'Copy or paste a character',
       el('textarea', { id: 'creatorJson', readonly: true, 'aria-label': 'Character config', spellcheck: 'false' }),
       el('div', { class: 'cl-actions' },
         el('button', { type: 'button', class: 'btn sm', id: 'creatorCopy', on: { click: copyJson } }, 'Copy config'),
@@ -300,7 +314,7 @@ function renderPanel() {
 
 function clothing(title, key, styles) {
   const d = creator.draft, part = creator.view[key], accent = d[key]?.accent;
-  return section(title,
+  return fold(key, title, sum(part.style === 'bare' ? null : dot(part.color), words(part.style)),
     row('Style', segmented(styles, part.style, v => { setPart(key, 'style', v); edited(); rebuild(); })),
     part.style === 'bare' ? null : row('Color', el('div', { class: 'cl-colorline' },
       colorInput(key + 'Color', part.color, live(v => setPart(key, 'color', v))),
