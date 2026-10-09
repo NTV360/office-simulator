@@ -29,6 +29,7 @@ function beginControl(mode, p, hud) {
 const PLAY_VIEWS = new Set(['fp', 'third']);
 // Stop steering. Stand up unless we are just swapping between first and third person.
 function endControl(nextId) {
+  lastDriveAt = null;
   const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId) && !player.online) standUp(p); // (online you stay in your seat until you stand up)
   player.controlling = false;
   document.body.classList.remove(ctl.mode);
@@ -91,6 +92,7 @@ function driveLocomotion(dt, p) {
 // by the same rules. So that the keys answer at once, your person is also moved here, right now, with the same shared collision and
 // speed (prediction); the server's `ack` messages are compared with that and pull it back if the two ever disagree (net/online.js).
 // Whether you are seated is read from what the server says (it decides), and it stands you up when you walk.
+let lastDriveAt = null; // when driveOnline last ran (null while you are not steering)
 function driveOnline(dt, p) {
   let f = 0, r = 0, turn = 0;
   if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
@@ -113,8 +115,12 @@ function driveOnline(dt, p) {
   // predict: move now, exactly as the server will (the direction, the speed, in steps no longer than a quarter of a metre)
   let moved = 0;
   const stick = Math.hypot(mx, mz);
+  // The server walks you in real time; the page limits one frame to 0.05 s (dt). When frames are slow (a busy computer) that would make
+  // the prediction slower than the server, so use the time that really passed, up to a quarter of a second.
+  const nowMs = performance.now(), elapsed = lastDriveAt === null ? dt : Math.min(.25, Math.max(dt, (nowMs - lastDriveAt) / 1000));
+  lastDriveAt = nowMs;
   if (!seat && stick > .08 && player.online.predicting) {
-    const speed = (run ? RUN_SPEED : WALK_SPEED) * Math.min(1, stick) * dt;
+    const speed = (run ? RUN_SPEED : WALK_SPEED) * Math.min(1, stick) * elapsed;
     const steps = Math.max(1, Math.ceil(speed / .25));
     for (let i = 0; i < steps; i++) moved += stepPlayer(p, mx / stick * speed / steps, mz / stick * speed / steps, people);
     if (moved > 0) player.online.movedNow();

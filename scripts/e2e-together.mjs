@@ -129,7 +129,7 @@ try {
   // ---- 11. Ana logs out: everyone sees it in the activity log, and her person is gone after the grace period
   await A.page.click('#accountBox button:last-child');
   await A.page.waitForSelector('#loginScreen', { timeout: 8000 });
-  const sawLeave = await C.page.waitForFunction(() => document.body.innerText.includes('tog_ana left'), null, { timeout: 10000 }).then(() => true, () => false);
+  const sawLeave = await C.page.waitForFunction(() => window.__sim.log.some(l => l.msg.includes('tog_ana left')), null, { timeout: 10000 }).then(() => true, () => false);
   check('the others see "tog_ana left" in the activity log', sawLeave);
   const gone = await C.page.waitForFunction(() => !window.__sim.people.find(p => p.name === 'tog_ana'), null, { timeout: 30000 }).then(() => true, () => false);
   check('and her person is gone from their office after the grace period', gone);
