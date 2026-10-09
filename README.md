@@ -4,11 +4,16 @@ A 3D office floor simulation (Three.js, built with Vite). Staff follow daily sch
 
 This is an npm-workspaces monorepo: `apps/client` (the browser app), `apps/server` (NestJS), `packages/shared` (code both use), plus `docker/` for the local stack.
 
+## Start here (new to the project)
+
+Read [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) (set up, run the multiplayer game on your PC, what to test before a PR), then [docs/MULTIPLAYER-HOW-TO.md](docs/MULTIPLAYER-HOW-TO.md) (how to build a feature that every player sees the same). The short version of running it:
+
 ## Run it
 
 ```
 npm install
-npm run dev        # the browser app on http://localhost:5173
+npm run dev        # the browser app on http://localhost:5173 (a private office, no server)
+npm run dev:online # the multiplayer game with fast reloads: database in Docker, the server, the page. Open http://localhost:5173/?online
 npm run build      # builds shared, client and server
 npm test           # unit tests (shared and server)
 npm run typecheck
@@ -38,6 +43,8 @@ Start with [`docs/`](docs/README.md). It sets the standard for how this codebase
 
 | | |
 |---|---|
+| [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) | set up, run it, test it before a PR |
+| [docs/MULTIPLAYER-HOW-TO.md](docs/MULTIPLAYER-HOW-TO.md) | build a feature that works for every player: what is client-only, shared or server-owned, and the rules that keep every screen the same |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | repository layout, layers, folder map, startup order, state ownership |
 | [docs/CODING-STANDARDS.md](docs/CODING-STANDARDS.md) | rules for new code and the checklist before you push |
 | [docs/HOW-TO.md](docs/HOW-TO.md) | recipes: furniture, activities, camera views, looks, HUD controls |

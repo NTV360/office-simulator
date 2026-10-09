@@ -101,6 +101,8 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 ## Before you push
 
+Which checks to run for which kind of change is in [GETTING-STARTED.md](GETTING-STARTED.md#test-before-you-ask-for-a-review); how to write something other players see is in [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md). The list below is the full manual checklist.
+
 Automated tests cover only the shared and server code so far (`npm test`). The browser app has none yet, so changes to it are checked by hand in a real browser. Do all of these:
 
 1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (`npm run check:mutations` after changing the simulation, `npm run test:db` after changing anything that touches the database, and `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` against the Docker stack after changing the protocol, the server or online mode).
