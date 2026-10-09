@@ -1,6 +1,6 @@
 # Phase 4: players together, in steps
 
-**Status: in progress. Step 1 is done; step 2 is next.** This turns phase 4 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) ("Players together") into steps that are each built and checked before the next, the way phases 2 and 3 were ([PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md)).
+**Status: in progress. Steps 1 and 2 are done; step 3 is next.** This turns phase 4 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) ("Players together") into steps that are each built and checked before the next, the way phases 2 and 3 were ([PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md)).
 
 **Done when (from the plan):** many people walk and sit together, and everyone sees and hears the same things. In practice: your own movement answers the keys at once, you can tell who is who, you can talk to people near you, you can wave, and what happens in the office (an announcement, Hazel's rage) happens for everyone at the same moment.
 
@@ -22,7 +22,7 @@ Other people are drawn interpolated about 150 ms in the past; the server owns mo
 | # | Step | What gets built | Proof |
 |---|---|---|---|
 | **1** (**done**) | Prediction and reconciliation | `ack` message (protocol 5); server sends it; the shared reconciler; the client moves you at once and corrects against the ack; your own person is no longer drawn from the 150 ms buffer | Reconciler unit tests (small error ignored, big error pulled in, teleport snaps, history trimmed); server tests for the ack; a browser check that a key press moves you within one frame and that after a long walk the page and the server agree |
-| **2** | Name labels | A small text label over every person a human drives (and a toggle for everyone), drawn crisply, hidden when far or behind walls of the camera's view, never showing markup from the server | Browser check that labels show the right names, follow people and can be switched off |
+| **2** (**done**) | Name labels | A small text label over every person a human drives (and a toggle for everyone), drawn crisply, hidden when far or behind walls of the camera's view, never showing markup from the server | Browser check that labels show the right names, follow people and can be switched off |
 | **3** | Local chat | `chat` message in both directions; the server's range, rate and length rules; the chat panel and bubbles; an admin mute; the muted column | Server tests (range, rate limit, length, control characters, mute, a muted account hears nothing wrong), a browser check with three players at different distances |
 | **4** | Emotes | `emote` message; the server's cooldown; four poses; shown to everyone | Server tests; a browser check that a second browser sees the pose |
 | **5** | Shared events | Hazel's rage as a server event with a cooldown; the event message carries a start time; every client shows it together | Server tests; a browser check that two browsers show the rage at the same time |
@@ -46,3 +46,10 @@ Other people are drawn interpolated about 150 ms in the past; the server owns mo
 4. **Measured** in a real (very slow, software-rendered) browser against the Docker stack: with prediction the first movement shows within about a frame of the key press (22 to 264 ms at 4 to 9 frames a second); without it 369 to 1129 ms. After a 1.6 s walk the person and the server agree to within a centimetre once stopped, the server never snaps you, and the biggest disagreement was 0.45 m (before the threshold was raised from 0.4 to 0.5).
 5. **Verified.** 8 reconciler tests (small difference ignored, half-pull, convergence, snap, nothing-sent, old and bad acks, history limit and reset, and a simulated network with 100 ms each way where the server never has to pull), protocol round trips and the "a client may not send an ack" test, 4 server tests (the ack carries the input number and position and never goes backwards; only the player gets it; a standing player hears about once a second; after a server-side teleport the ack says where they really are), 3 new mutation entries (all caught), and a browser check of the points in 4.
 6. **Low frame rates.** The main loop limits one frame to 0.05 s, so at fewer than 20 frames a second the predicted person walks slower than the server's (which uses real time); the reconciler then pulls it forward in small steps. On a normal screen this does not happen.
+
+### Step 2: name labels (done)
+
+1. **What shows.** A small dark pill with the person's name floats over every person **a human is driving** (an account's person or a guest), drawn as a camera-facing sprite on the person's own body (`apps/client/src/people/nametags.js`, called each frame from `syncBody`). **Not** over the autopilot people (there would be 80 of them), **not** over yourself while you are steering, and not over anyone who is away. It is gone as soon as the person is handed back to the autopilot or removed (a guest who leaves), and follows a rename or a new look.
+2. **Safe.** The name is drawn onto a canvas with `fillText`, so nothing the server sends is ever read as markup; textures are cached per name (at most 200) and a label's own material is disposed when it goes.
+3. **The Names button** (HUD, next to Labels, under More options) turns them all off and on.
+4. **Verified in a real browser** (two players): the label shows over the other player with the right name and is attached to their body; none over yourself while steering, none over any NPC; the button switches them off and on; when the other player leaves, the label goes with them.

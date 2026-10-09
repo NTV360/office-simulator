@@ -4,6 +4,7 @@ import { zoomAt } from '../camera/orbit.js';
 import { camGoal } from '../camera/state.js';
 import { FULL_H, LOW_H, setStaffCount, sim } from '@office/shared';
 import { updateScreens } from '../people/screens.js';
+import { nameState } from '../people/nametags.js';
 import { labelState } from '../render/labels.js';
 import { camera, renderer } from '../render/renderer.js';
 import { $ } from './dom.js';
@@ -30,6 +31,7 @@ function initControls() {
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
   $('tWalls').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); wall.goal = on ? FULL_H : LOW_H; };
   $('tLabels').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); labelState.on = on; };
+  $('tNames').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); nameState.on = on; };
   $('staff').oninput = e => {
     const n = +e.target.value; $('staffVal').textContent = n;
     setStaffCount(n);

@@ -539,6 +539,33 @@ try {
       await adminJson(site.url, 'POST', `/api/admin/users/${(await adminJson(site.url, 'GET', '/api/admin/users')).body.find(a => a.username === name).id}/disabled`, { disabled: true });
     }
 
+    // name labels over people a human is playing
+    {
+      console.log('\nname labels');
+      const tag = String(Date.now() % 1e6);
+      const [na, nb] = [`lab_a${tag}`, `lab_b${tag}`];
+      const A = await openPage(browser, site.url, '?trace', { login: na });
+      const B = await openPage(browser, site.url, '?trace', { login: nb });
+      await Promise.all([A, B].map(x => x.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 })));
+      const tagOf = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.nameTag ? { text: p.nameTag.userData.text, parent: p.nameTag.parent === p.body.root } : null; }, name);
+      await A.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.nameTag; }, nb, { timeout: 15000 }).then(() => pass('another player has a name label over them'), () => fail('no label over the other player'));
+      const t = await tagOf(A.page, nb);
+      if (t && t.text === nb && t.parent) pass('it says their name and is attached to their body'); else fail(`label: ${JSON.stringify(t)}`);
+      if ((await tagOf(A.page, na)) === null) pass('you have none over yourself while you steer'); else fail('a label over your own person');
+      const npcTags = await A.page.evaluate(() => window.__sim.people.filter(p => p.controller === 'ai' && p.nameTag).length);
+      if (npcTags === 0) pass('and none over the autopilot people'); else fail(`${npcTags} labels over NPCs`);
+      await screenshotOf(A.page, 'name-labels.png');
+      await A.page.evaluate(() => document.getElementById('tNames').click()); // (it sits in the collapsed "More options")
+      await A.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && !p.nameTag; }, nb, { timeout: 5000 }).then(() => pass('the Names button turns them off'), () => fail('labels stayed after switching off'));
+      await A.page.evaluate(() => document.getElementById('tNames').click()); // (it sits in the collapsed "More options")
+      await A.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.nameTag; }, nb, { timeout: 5000 }).then(() => pass('and on again'), () => fail('labels did not come back'));
+      await B.page.click('#accountBox button:last-child');
+      await A.page.waitForFunction(n => !window.__sim.people.find(x => x.name === n), nb, { timeout: 30000 }).then(() => pass('when they leave, the label goes with them'), () => fail('the person or label stayed'));
+      [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      await A.page.close(); await B.page.close();
+      for (const n of [na, nb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
+    }
+
     // the admin page: one password, make accounts, reset a password, disable, desks
     console.log('\nthe admin page');
     const tag = String(Date.now() % 1e6);
