@@ -14,6 +14,14 @@ import { people, sim } from '../sim/state.js';
 import { $ } from './dom.js';
 import { select } from './person.js';
 import { wall } from '../world/helpers.js';
+// Fullscreen for the whole page (the HUD stays usable). The button only shows where the browser supports it.
+function toggleFullscreen() {
+  try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); } catch (_) {}
+}
+function syncFullscreen() {
+  const on = !!document.fullscreenElement, b = $('fsToggle');
+  b.textContent = on ? 'Exit fullscreen' : 'Fullscreen'; b.setAttribute('aria-pressed', String(on)); b.title = (on ? 'Exit fullscreen' : 'Fullscreen') + ' (F)';
+}
 function setUiHidden(h) {
   document.body.classList.toggle('ui-hidden', h);
   const b = $('uiToggle'); b.textContent = h ? 'Show controls' : 'Hide controls'; b.setAttribute('aria-pressed', String(h)); b.title = (h ? 'Show' : 'Hide') + ' controls (H)';
@@ -28,6 +36,10 @@ function initControls() {
   document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTo(b.dataset.go));
   document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => { const k = b.dataset.cam; if (k === 'left') { camGoal.yaw += Math.PI / 4; freeCam(); } if (k === 'right') { camGoal.yaw -= Math.PI / 4; freeCam(); } if (k === 'in') zoomAt(.82); if (k === 'out') zoomAt(1.22); });
   $('uiToggle').onclick = () => setUiHidden(!document.body.classList.contains('ui-hidden'));
+  $('fsToggle').hidden = !document.fullscreenEnabled;
+  $('fsToggle').onclick = toggleFullscreen;
+  document.addEventListener('fullscreenchange', syncFullscreen);
+  addEventListener('keydown', e => { if (e.key.toLowerCase() === 'f' && document.fullscreenEnabled && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) && !e.metaKey && !e.ctrlKey && !e.altKey) toggleFullscreen(); });
   addEventListener('keydown', e => { if (e.key.toLowerCase() === 'h' && e.target.tagName !== 'INPUT' && !e.metaKey && !e.ctrlKey) setUiHidden(!document.body.classList.contains('ui-hidden')); });
   try { if (localStorage.getItem('officeSimUiHidden') === '1') setUiHidden(true); } catch (_) {}
   // Live follows the real clock (and attendance); Simulate runs the office's own faster clock for everyone,

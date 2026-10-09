@@ -93,7 +93,7 @@
     </div>
   </div>
   </div>
-  <div class="hint">Drag (or swipe two fingers on a trackpad) to move around. Right-drag or Shift-drag turns and tilts. Pinch or use the mouse wheel to zoom. On touch: one finger moves, two fingers pinch, twist and tilt. Keys: WASD or arrows, Q/E to turn, H to hide controls. Click anyone to see what they're up to, pick First or Third person to walk the floor, or open the Character lab to change how you look.</div>
+  <div class="hint">Drag (or swipe two fingers on a trackpad) to move around. Right-drag or Shift-drag turns and tilts. Pinch or use the mouse wheel to zoom. On touch: one finger moves, two fingers pinch, twist and tilt. Keys: WASD or arrows, Q/E to turn, H to hide controls, F for fullscreen. Click anyone to see what they're up to, pick First or Third person to walk the floor, or open the Character lab to change how you look.</div>
 </section>
 
 <aside class="card" id="ledger" aria-label="Who is doing what">
@@ -122,7 +122,10 @@
   </div>
 </section>
 
-<button class="btn" id="uiToggle" type="button" aria-pressed="false" title="Hide controls (H)">Hide controls</button>
+<div id="topButtons">
+  <button class="btn" id="uiToggle" type="button" aria-pressed="false" title="Hide controls (H)">Hide controls</button>
+  <button class="btn" id="fsToggle" type="button" aria-pressed="false" title="Fullscreen (F)" hidden>Fullscreen</button>
+</div>
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>
