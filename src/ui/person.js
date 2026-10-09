@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB } from '../people/data.js';
 import { scene } from '../render/renderer.js';
+import { openCreator } from './creator.js';
 import { $ } from './dom.js';
 
 /* ================= Selection + UI ================= */
@@ -10,13 +11,15 @@ const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.Me
 
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
-  if (p) { $('pAvatar').style.background = p.spec.shirt; $('pAvatar').style.borderColor = p.spec.hair; }
+  if (p) { $('pAvatar').style.background = p.spec.top.color; $('pAvatar').style.borderColor = p.spec.hair.color; }
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }
 const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (p.state === 'player') return 'Controlled by you';
+  if (p.toiletUntil) return 'Deploying to the toilet';
+  if (p.absent) return 'Not in today';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;
   const t = p.task; if (!t) return 'Getting settled';
   const going = p.state === 'walking';
@@ -39,16 +42,23 @@ function statusText(p) {
     case 'lunch': return going ? `Bringing lunch to ${where}` : `Having lunch at ${where}`;
     case 'lunchDesk': return going ? 'Taking lunch back to the desk' : `Eating lunch at ${where}`;
     case 'chat': return going ? `Walking over to ${t.partner.name.split(' ')[0]}` : `Chatting with ${t.partner.name.split(' ')[0]}`;
+    case 'snack': return going ? 'Getting a snack' : 'Grabbing a snack from the cabinet';
+    case 'snackDesk': return going ? `Taking a snack back to ${where}` : `Having a snack at ${where}`;
+    case 'whiteboard': return going ? 'Heading to the whiteboard' : t.anim === 'present' ? 'Leading a whiteboard discussion' : `Discussing at the whiteboard with ${t.partner.name.split(' ')[0]}`;
+    case 'bucket': return 'Running for the bucket';
+    case 'toilet': return 'Deploying to the toilet';
+    case 'bucketBack': return 'Putting the bucket back';
     case 'exit': return 'Heading home';
   }
   return '';
 }
 function renderPerson() {
   const p = selected; if (!p) return;
-  $('pName').textContent = p.name; $('pRole').textContent = `${p.role} · ${p.seat.place}`;
+  $('pName').textContent = p.name; $('pRole').textContent = `${p.title ?? p.role} · ${p.seat.label ?? p.seat.place}`;
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
+  $('pEdit').hidden = !p.userId; // only real employees have a saved character
 }
 
 
@@ -59,6 +69,7 @@ function initPerson() {
   scene.add(selRing);
   $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
+  $('pEdit').onclick = () => { if (selected?.userId) openCreator(selected.userId); };
 }
 
 export { fmt, renderPerson, selRing, select, selected, statusText, initPerson };

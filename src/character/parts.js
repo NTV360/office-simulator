@@ -1,64 +1,27 @@
 import * as THREE from 'three';
-import { TAU } from '../core/util.js';
 import { boxGeo } from '../world/helpers.js';
 import { sph, stdMat } from './gfx.js';
 
-// Appearance parts. Each takes the head group and the CharacterSpec and adds meshes to it.
-// Add a new hair style by adding an entry here and its name to STYLE_OPTIONS in spec.js.
-const HAIR_STYLES = {
-  short: {},
-  buzz: { cap: .45 },
-  long: { extra: (head, hair) => { const l = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .2, 4, 10), hair); l.position.set(0, .02, -.07); l.scale.set(1.12, 1, .55); l.castShadow = true; head.add(l); } },
-  bun: { extra: (head, hair) => { const b = new THREE.Mesh(sph(.065), hair); b.position.set(0, .27, -.09); head.add(b); } },
-  curly: { extra: (head, hair) => { for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; const b = new THREE.Mesh(sph(.055, 8, 6), hair); b.position.set(Math.cos(a) * .11, .2 + Math.random() * .06, Math.sin(a) * .1 - .02); head.add(b); } } },
-  bob: { extra: (head, hair, spec) => {
-    if (spec.cube) {
-      // blocky, extra-thick bob for the cube head
-      const hb = (w, h, d, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, d), hair); m.position.set(x, y, z); m.castShadow = true; head.add(m); return m; };
-      hb(.33, .09, .32, 0, .3, -.005);          // crown
-      hb(.065, .27, .32, -.165, .15, -.005);    // right side, down to the jaw
-      hb(.065, .27, .32, .165, .15, -.005);     // left side
-      hb(.33, .29, .07, 0, .155, -.155);        // back
-      hb(.29, .065, .05, 0, .235, .14);         // heavy straight fringe
-    } else {
-      const sideGeo = new THREE.SphereGeometry(.182, 24, 14, Math.PI / 2 + .9, TAU - 1.8, Math.PI * .22, Math.PI * .5);
-      const sides = new THREE.Mesh(sideGeo, hair); sides.position.set(0, .13, -.012); sides.scale.set(1.08, 1, 1.05); sides.castShadow = true; head.add(sides);
-      const crown = new THREE.Mesh(new THREE.SphereGeometry(.172, 22, 12, 0, TAU, 0, Math.PI * .5), hair); crown.position.set(0, .14, -.01); crown.scale.set(1.06, 1.05, 1.06); crown.castShadow = true; head.add(crown);
-      const fringe = new THREE.Mesh(new THREE.SphereGeometry(.168, 18, 6, Math.PI / 2 - .95, 1.9, Math.PI * .16, Math.PI * .2), hair); fringe.position.set(0, .148, .004); head.add(fringe);
-    }
-  } },
-  side: { extra: (head, hair) => { const f = new THREE.Mesh(sph(.07, 10, 8), hair); f.position.set(.06, .23, .08); f.scale.set(1.4, .6, .9); head.add(f); } },
-};
+// Face parts the character pack does not have. The pack draws hair, faces, clothes and accessories;
+// add new looks there (pack/README.md, "Adding your own parts") and use this file only for our own.
 
-function addHair(head, spec) {
-  const style = HAIR_STYLES[spec.style] || HAIR_STYLES.short, hair = stdMat(spec.hair, .9);
-  const capGeo = new THREE.SphereGeometry(.145, 20, 12, 0, TAU, 0, Math.PI * (style.cap ?? .56));
-  const cap = new THREE.Mesh(capGeo, hair); cap.position.set(0, .14, -.008); cap.rotation.x = -.22; cap.scale.set(1, 1.08, 1.04); cap.castShadow = true; cap.visible = !spec.cube; head.add(cap);
-  if (style.extra) style.extra(head, hair, spec);
-}
+const ray = new THREE.Raycaster(), back = new THREE.Vector3(0, 0, -1), from = new THREE.Vector3();
 
-// A furious face: brows, a frown and flushed cheeks.
-function addAngry(head, spec) {
-  if (!spec.angry) return;
+// A furious face over the pack's own: slanted brows, a frown and flushed cheeks. `faceMeshes` are the
+// head's skin meshes; the character stands at rest at the origin facing +z, so parts are placed in world
+// space on the face surface (found with a ray from the front) and then attached to the head.
+function addAngry(head, faceMeshes) {
+  const face = new THREE.Box3(); faceMeshes.forEach(m => face.expandByObject(m));
+  const w = face.max.x - face.min.x, h = face.max.y - face.min.y, cy = face.min.y + h * .5;
+  const onFace = (m, x, y, out = .006) => {
+    ray.set(from.set(x, y, face.max.z + 1), back);
+    const hit = ray.intersectObjects(faceMeshes, false)[0];
+    m.position.set(x, y, (hit ? hit.point.z : face.max.z) + out); head.attach(m);
+  };
   const bm = stdMat('#1d1714', .6);
-  [-1, 1].forEach(sd => { const b = new THREE.Mesh(boxGeo(.05, .013, .012), bm); b.position.set(sd * .047, .18, .137); b.rotation.z = sd * .5; head.add(b); });
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.024, .005, 6, 12, Math.PI), stdMat('#6b2a2a', .6)); mouth.position.set(0, .075, .137); head.add(mouth);
-  // flushed cheeks
-  [-1, 1].forEach(sd => { const c = new THREE.Mesh(sph(.018, 8, 6), stdMat('#d9705f', .8)); c.position.set(sd * .08, .11, .132); c.scale.set(1, .6, .4); head.add(c); });
+  [-1, 1].forEach(sd => { const b = new THREE.Mesh(boxGeo(w * .26, h * .06, .012), bm); b.rotation.z = sd * .5; onFace(b, sd * w * .2, cy + h * .2); });
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(w * .09, h * .02, 6, 12, Math.PI), stdMat('#6b2a2a', .6)); onFace(mouth, 0, cy - h * .24);
+  [-1, 1].forEach(sd => { const c = new THREE.Mesh(sph(.018, 8, 6), stdMat('#d9705f', .8)); c.scale.set(w * 5, w * 3, 1.5); onFace(c, sd * w * .3, cy - h * .08, 0); });
 }
 
-function addGlasses(head, spec) {
-  if (!spec.glasses) return;
-    const gm = stdMat('#20262b', .4); const tg = new THREE.TorusGeometry(.03, .006, 6, 16);
-    [-1, 1].forEach(s => { const t = new THREE.Mesh(tg, gm); t.position.set(s * .048, .14, .137); head.add(t); });
-    const br = new THREE.Mesh(boxGeo(.03, .006, .006), gm); br.position.set(0, .145, .14); head.add(br);
-}
-
-function addHeadphones(head, spec) {
-  if (!spec.headphones) return;
-    const hm = stdMat(spec.headphones, .5);
-    const band = new THREE.Mesh(new THREE.TorusGeometry(.152, .014, 6, 18, Math.PI), hm); band.position.y = .13; head.add(band);
-    [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .04, 14), hm); c.rotation.z = Math.PI / 2; c.position.set(s * .145, .12, 0); head.add(c); });
-}
-
-export { HAIR_STYLES, addAngry, addGlasses, addHair, addHeadphones };
+export { addAngry };

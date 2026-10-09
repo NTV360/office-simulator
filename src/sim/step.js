@@ -3,21 +3,22 @@ import { angDiff } from '../core/util.js';
 import { walkPx } from '../nav/grid.js';
 import { SCREENS } from '../render/screens.js';
 import { arriveNow } from './day.js';
+import { breakIndex } from './schedule.js';
 import { people, sim } from './state.js';
-import { arrive, chooseNext } from './tasks.js';
+import { arrive, chooseNext, returnFromToilet } from './tasks.js';
 import { interactables } from '../world/interactables.js';
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
-  if (p.rageK > .05) { p.animT += dt; return; }
   if (p.state === 'player') return;
   if (p.state === 'away') {
+    if (p.toiletUntil) { if (sim.t >= p.toiletUntil) returnFromToilet(p); return; }
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
     return;
   }
   p.animT += dt * Math.min(sim.speed, 2.5);
   if (p.state === 'walking' && p.path) {
-    let step = p.speed * dt * sim.speed, moved = 0;
+    let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1), moved = 0; // running for the bucket
     while (step > 1e-6 && p.pi < p.path.length) {
       const tg = p.path[p.pi], dx = tg.x - p.pos.x, dz = tg.z - p.pos.z, d = Math.hypot(dx, dz);
       if (d > .02) p.faceGoal = Math.atan2(dx, dz);
@@ -38,6 +39,8 @@ function stepPerson(p, dt, sdt) {
     }
     if (p.pi >= p.path.length) arrive(p);
   } else if (p.state === 'doing') {
+    // a break starting stops desk work right away (once per break), so people get up and play
+    if (p.task?.kind === 'work') { const b = breakIndex(p, sim.t), key = sim.day * 10 + b; if (b >= 0 && p.breakKey !== key) { p.breakKey = key; p.until = sim.t; } }
     if (sim.t >= p.until) {
       const wasExit = p.task?.kind === 'exit';
       if (!wasExit) chooseNext(p);

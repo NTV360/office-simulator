@@ -1,3 +1,4 @@
+import { eyeHeight } from '../../character/rig.js';
 import { angDiff } from '../../core/util.js';
 import { beginControl, ctl, driveLocomotion, endControl, tickPrompts } from '../../player/control.js';
 import { player, spawnPlayer } from '../../player/player.js';
@@ -28,7 +29,7 @@ const thirdPersonMode = {
     ctl.pitchMin = -.75; ctl.pitchMax = .7; ctl.pitch = -.14;
     ctl.keyHook = k => { if (k === 'c') tp.side = -tp.side; };
     ctl.wheelHook = dy => { tp.dist = Math.max(tp.minDist, Math.min(tp.maxDist, tp.dist * Math.exp(dy * .0008))); };
-    tp.clear = 1; tp.sideNow = tp.side; tp.head = (player.sitting ? 1.15 : 1.55) * p.spec.scale;
+    tp.clear = 1; tp.sideNow = tp.side; tp.head = eyeHeight(p.body, player.sitting?.hipY);
     camera.fov = 55; camera.near = .1; camera.updateProjectionMatrix();
     p.body.root.visible = true;
     $('crosshair').hidden = false;
@@ -48,7 +49,7 @@ const thirdPersonMode = {
     else { if (dx || dz) p.faceGoal = Math.atan2(dx, dz); p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12)); }
 
     tp.sideNow += (tp.side - tp.sideNow) * (1 - Math.exp(-dt * 8));
-    const headGoal = (player.sitting ? 1.15 : 1.55) * p.spec.scale; tp.head += (headGoal - tp.head) * (1 - Math.exp(-dt * 8));
+    const headGoal = eyeHeight(p.body, player.sitting?.hipY); tp.head += (headGoal - tp.head) * (1 - Math.exp(-dt * 8));
     const yaw = ctl.yaw, pit = ctl.pitch, cp = Math.cos(pit), sp = Math.sin(pit);
     const dirX = Math.sin(yaw) * cp, dirY = sp, dirZ = Math.cos(yaw) * cp;       // where the camera looks
     const rightX = -Math.cos(yaw), rightZ = Math.sin(yaw);

@@ -4,11 +4,13 @@ import { initGrid } from './nav/grid.js';
 import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
 import { initState } from './sim/state.js';
-import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
+import { initCreator } from './ui/creator.js';
 import { initControl } from './player/control.js';
+import { initPlayer } from './player/player.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
+import { initSearch } from './ui/search.js';
 import { buildBake } from './world/bake.js';
 import { buildDoors } from './world/doors.js';
 import { buildEntrance } from './world/entrance.js';
@@ -29,6 +31,7 @@ import { buildServer } from './world/furniture/server.js';
 import { buildStorage } from './world/furniture/storage.js';
 import { buildWorkfloor } from './world/furniture/workfloor.js';
 import { buildWalls } from './world/walls.js';
+import { buildWhiteboards } from './world/furniture/whiteboard.js';
 
 // The order below is the order the scene is assembled in. It matters: furniture registers interactables and
 // the obstacle list, the nav grid reads those obstacles, and people are seated at the desks.
@@ -38,6 +41,7 @@ export function bootstrap() {
   buildWalls();
   buildDoors();
   buildDesks();
+  buildWhiteboards();
   buildConference();
   buildLounge();
   buildGame();
@@ -57,10 +61,10 @@ export function bootstrap() {
   initLabels();
   // navigation reads the obstacles registered by the world
   initGrid();
-  // simulation
+  // simulation; the player's saved look is loaded before anything could spawn them
+  initPlayer();
   initState();
   initDay();
-  initHazel();
   // input and UI
   initCamera();
   initInput();
@@ -68,4 +72,6 @@ export function bootstrap() {
   initLedger();
   initControls();
   initControl();
+  initCreator();
+  initSearch();
 }

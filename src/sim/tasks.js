@@ -3,8 +3,10 @@ import { toPx } from '../config/plan.js';
 import { rnd, shuffle } from '../core/util.js';
 import { findPath } from '../nav/astar.js';
 import { walkPx } from '../nav/grid.js';
+import { onBreak } from './schedule.js';
 import { addLog, people, sim } from './state.js';
-import { EXIT } from '../world/entrance.js';
+import { ENTRY, EXIT } from '../world/entrance.js';
+import { BUCKET } from '../world/furniture/kitchen.js';
 import { interactables } from '../world/interactables.js';
 
 /* ---------- Tasks ---------- */
@@ -71,6 +73,57 @@ function booth(p) {
   const s = free(interactables.of('booth'))[0]; if (!s) return false;
   return goDo(p, { kind: 'phone', cat: 'phone', anim: 'phone', spot: s, dur: rnd(7, 18), onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
 }
+// "Deploying to the toilet": run to the green bucket by the counter, grab it and run out of the office.
+// They come back a few minutes later (see returnFromToilet), put the bucket back and get back to work.
+function bucketRun(p) {
+  const s = interactables.of('bucket')[0]; if (!s || s.occupant || BUCKET.carrier) return false;
+  const ok = goDo(p, { kind: 'bucket', cat: 'walk', anim: 'stand', spot: s, dur: .3, run: true, onStart: q => {
+    BUCKET.carrier = q; BUCKET.mesh.visible = false; q.body.bucket.visible = true;
+    addLog(`${q.name} is Deploying to the toilet`);
+  } });
+  if (ok) p.queue.push('toilet');
+  return ok;
+}
+function toiletExit(p) {
+  return goDo(p, { kind: 'toilet', cat: 'walk', anim: 'stand', spot: EXIT, dur: 0, run: true, onStart: q => {
+    endTask(q); q.state = 'away'; q.task = null; q.body.root.visible = false; q.body.ring.visible = false;
+    q.toiletUntil = sim.t + rnd(5, 11);
+  } });
+}
+// Back in through the front door, bucket in hand, to put it back.
+function returnFromToilet(p) {
+  p.toiletUntil = null; p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI;
+  p.body.root.visible = true; p.body.ring.visible = true;
+  const s = interactables.of('bucket')[0];
+  if (!goDo(p, { kind: 'bucketBack', cat: 'walk', anim: 'stand', spot: s, dur: .3, onStart: putBucketBack })) putBucketBack(p);
+}
+function putBucketBack(p) {
+  p.body.bucket.visible = false; if (BUCKET.carrier === p) BUCKET.carrier = null; BUCKET.mesh.visible = true;
+}
+
+// Grab a snack from the cabinet above the sink, then eat it back at the desk.
+function snack(p) {
+  const s = free(interactables.of('snack'))[0]; if (!s) return false;
+  const ok = goDo(p, { kind: 'snack', cat: 'pantry', anim: 'locker', spot: s, dur: rnd(1, 2) });
+  if (ok) p.queue.push('snackDesk');
+  return ok;
+}
+// Start a discussion at a free whiteboard with one or two colleagues who are at their desks.
+function whiteboard(p) {
+  if (!p) return false;
+  const boards = shuffle([...new Set(interactables.of('whiteboard').map(s => s.group))]);
+  const group = boards.find(g => interactables.of(g).every(s => !s.occupant)); if (!group) return false;
+  const [lead, ...rest] = interactables.of(group);
+  const mates = shuffle(people.filter(q => q !== p && q.state === 'doing' && q.task?.kind === 'work' && !q.chatWith && !q.meeting))
+    .sort((a, b) => (a.department && a.department === p.department ? 0 : 1) - (b.department && b.department === p.department ? 0 : 1))
+    .slice(0, 1 + Math.floor(Math.random() * 2));
+  if (!mates.length) return false;
+  const until = sim.t + rnd(10, 22);
+  if (!goDo(p, { kind: 'whiteboard', cat: 'meeting', anim: 'present', spot: lead, until })) return false;
+  mates.forEach((q, i) => goDo(q, { kind: 'whiteboard', cat: 'meeting', anim: 'talkStand', spot: rest[i], until, partner: p }));
+  addLog(`${p.name.split(' ')[0]} started a whiteboard discussion`);
+  return true;
+}
 function chat(p) {
   const cands = shuffle(people.filter(q => q !== p && q.state === 'doing' && q.task?.kind === 'work' && !q.chatWith));
   cands.sort((a, b) => (a.seat.place === p.seat.place ? 0 : 1) - (b.seat.place === p.seat.place ? 0 : 1));
@@ -111,33 +164,46 @@ function runQueued(p, k) {
   if (k === 'sink') return sinkTrip(p);
   if (k === 'bar') return barTrip(p);
   if (k === 'exit') { goExit(p); return true; }
+  if (k === 'toilet') { if (!toiletExit(p)) returnFromToilet(p); return true; }
+  if (k === 'snackDesk') return goDo(p, { kind: 'snackDesk', cat: 'pantry', anim: 'eat', spot: p.seat, dur: rnd(3, 7) });
   if (k === 'dining') { const d = free(interactables.of('dining'))[0]; return !!d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(22, 38) }); }
   return false;
 }
+// What someone does next. During their shift: work, plus meetings (sim/meetings.js), whiteboard
+// discussions, chats at desks, calls in the booths, coffee and snacks. Games, music, darts, golf and the
+// sofa only during their breaks (the lunch hour, 15:00 and 17:00 for the day shift; see sim/schedule.js).
 function chooseNext(p) {
   while (p.queue.length) { if (runQueued(p, p.queue.shift())) return; }
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
-  if (!p.hadLunch && t >= p.lunchAt && t < 14 * 60) { p.hadLunch = true; if (lunch(p)) return; }
-  if (p.task && p.task.kind !== 'work') { if (goWork(p)) return; }
-  const r = Math.random();
-  if (r < .14 && coffee(p)) return;
-  if (r < .25 && chat(p)) return;
-  if (r < .31 && booth(p)) return;
-  if (r < .35 && sofaBreak(p)) return;
-  if (r < .38 && lockerTrip(p)) return;
-  if (r < .41 && sinkTrip(p)) return;
-  if (r < .44 && storageTrip(p)) return;
-  if (r < .49 && gameBreak(p)) return;
-  if (r < .53 && golfBreak(p)) return;
-  if (r < .57 && dartsBreak(p)) return;
-  if (r < .61 && musicBreak(p)) return;
-  if (interactables.of('music').some(x => x.occupant) && Math.random() < .05 && musicBreak(p)) return;
-  if (interactables.of('darts').some(x => x.occupant) && Math.random() < .07 && dartsBreak(p)) return;
-  if (interactables.of('golf').some(x => x.occupant) && Math.random() < .06 && golfBreak(p)) return;
-  { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .07 && gameBreak(p)) return; }
+  if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) { p.hadLunch = true; if (lunch(p)) return; }
+  if (onBreak(p, t)) { if (play(p)) return; }
+  else if (p.task && p.task.kind !== 'work') { if (goWork(p)) return; }
+  else if (work(p)) return;
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }
 }
+// Working hours: mostly staying at the desk, sometimes an errand that is part of work.
+function work(p) {
+  const r = Math.random();
+  if (r < .06) return coffee(p);
+  if (r < .10) return snack(p);
+  if (r < .17) return chat(p);
+  if (r < .22) return booth(p);
+  if (r < .26) return whiteboard(p);
+  if (r < .28) return sinkTrip(p);
+  if (r < .30) return storageTrip(p);
+  if (r < .31) return bucketRun(p);
+  return false;
+}
+// Breaks: everybody plays. Joining a game or a group that is already going is likely; when the games are
+// full, people take whatever is free (the bar table, coffee, a snack, a chat) instead of going back to work.
+function play(p) {
+  if (interactables.of('darts').some(x => x.occupant) && Math.random() < .3 && dartsBreak(p)) return true;
+  if (interactables.of('golf').some(x => x.occupant) && Math.random() < .3 && golfBreak(p)) return true;
+  { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && Math.random() < .35 && gameBreak(p)) return true; }
+  const games = shuffle([gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak]), rest = shuffle([barTrip, coffee, snack, chat]);
+  return [...games, ...rest].some(f => f(p));
+}
 
-export { arrive, chooseNext, endTask, goDo, goWork, lockerTrip, placeNow };
+export { arrive, chooseNext, endTask, goDo, goWork, lockerTrip, placeNow, putBucketBack, returnFromToilet, whiteboard };

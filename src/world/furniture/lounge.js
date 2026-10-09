@@ -23,12 +23,12 @@ function sofa(x1, y1, x2, y2, face, seats, place, aps, single = false) {
 
 
 function buildLounge() {
-  sofa(150, 309, 198, 325, SO, [[158.5, 318.5], [174, 318.5], [189.5, 318.5]], 'the lounge sofa', [[158.5, 336], [174, 336], [189.5, 336]]);
+  sofa(156, 333, 204, 349, SO, [[164.5, 342.5], [180, 342.5], [195.5, 342.5]], 'the lounge sofa', [[164.5, 360], [180, 360], [195.5, 360]]);
   sofa(116.5, 342, 134, 369, E, [[125.5, 349], [125.5, 362]], 'the couch', [[143, 349], [143, 362]]);
   // NTV360 brand wall above the entrance sofa (stays full height so the logo reads in every view)
   {
-    const x1 = 144, x2 = 204, y = 305 + WALL_T / 2 + .6, cx = wx((x1 + x2) / 2), z = wz(y), w = (x2 - x1) * S;
-    addObs(x1, 305, x2, y + .8);
+    const x1 = 150, x2 = 210, y = 329 + WALL_T / 2 + .6, cx = wx((x1 + x2) / 2), z = wz(y), w = (x2 - x1) * S;
+    addObs(x1, 329, x2, y + .8);
     box(staticRoot, w, 2.7, .05, M.brandPanel, cx, 1.35, z);
     box(staticRoot, w + .02, .04, .07, M.cap, cx, 2.72, z, false);
     const logoImg = new Image();
@@ -41,14 +41,17 @@ function buildLounge() {
     // soft wall-wash light strip above the logo
     box(staticRoot, lw + .2, .025, .06, M.white, cx, 2.5, z + .04, false);
   }
-  sofa(340.7, 336.3, 382.9, 350.7, N, [[350, 342], [362, 342], [374, 342]], 'the TV sofa', [[333, 343], [390, 344], [390, 344]]);
-  sofa(339.3, 280.2, 355.4, 295.7, SO, [[347.35, 287]], 'an armchair', [[347.35, 268]], true);
-  sofa(363.2, 280.2, 379.3, 295.7, SO, [[371.25, 287]], 'an armchair', [[371.25, 268]], true);
-  sofa(387.9, 296.0, 403.4, 312.1, WST, [[396, 304]], 'an armchair', [[412, 304]], true);
-  sofa(387.9, 320.5, 403.4, 336.6, WST, [[396, 328.5]], 'an armchair', [[412, 328.5]], true);
-  table(340.1, 309.1, 380.6, 329.1, M.diningWood, M.diningWood2, .42);
-  box(staticRoot, .22, .03, .3, pick(M.notebook), wx(352), .425, wz(318), false);
-  cyl(staticRoot, .05, .04, .1, M.white, wx(368), .47, wz(316), 10, false);
+  // The TV lounge (sofa, armchairs, table; TV and its wall in game.js and walls.js) sits toward the entrance,
+  // leaving room for Desk D and the walkway to the HR office
+  sofa(340.7, 360.3, 382.9, 374.7, N, [[350, 366], [362, 366], [374, 366]], 'the TV sofa', [[333, 367], [390, 368], [390, 368]]);
+  // the two armchairs facing the coffee table, kept clear of Desk D's chairs
+  sofa(339.3, 310.2, 355.4, 325.7, SO, [[347.35, 317]], 'an armchair', [[347.35, 298]], true);
+  sofa(363.2, 310.2, 379.3, 325.7, SO, [[371.25, 317]], 'an armchair', [[371.25, 298]], true);
+  sofa(387.9, 320.0, 403.4, 336.1, WST, [[396, 328]], 'an armchair', [[412, 328]], true);
+  sofa(387.9, 344.5, 403.4, 360.6, WST, [[396, 352.5]], 'an armchair', [[412, 352.5]], true);
+  table(340.1, 333.1, 380.6, 353.1, M.diningWood, M.diningWood2, .42);
+  box(staticRoot, .22, .03, .3, pick(M.notebook), wx(352), .425, wz(342), false);
+  cyl(staticRoot, .05, .04, .1, M.white, wx(368), .47, wz(340), 10, false);
 }
 
 export { buildLounge };
