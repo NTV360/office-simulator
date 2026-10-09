@@ -35,7 +35,7 @@ function createPerson(who, seat) {
     id: people.length, name, role, title, userId, department, shift, photo: photo ?? null, spec, body, seat,
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
-    pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
+    pose: {}, scratch: 0, bumpCd: 0, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
     screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
   p.screenMat = pick(SCREENS[p.screenKind]);

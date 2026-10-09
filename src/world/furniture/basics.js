@@ -6,8 +6,11 @@ import { addObs, box, cyl, frame } from '../helpers.js';
 import { interactables } from '../interactables.js';
 
 /* ================= Furniture ================= */
+const SIT_REAR = .5; // metres behind a seat: where a sitter lines up before stepping in
 function mkSpot(kind, px, py, face, o = {}) {
-  return interactables.add({ kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53, place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group });
+  const pos = W(px, py), fwd = new THREE.Vector3(Math.sin(face), 0, Math.cos(face));
+  const approach = o.ap ? W(o.ap[0], o.ap[1]) : o.sit ? pos.clone().addScaledVector(fwd, -SIT_REAR) : pos.clone();
+  return interactables.add({ kind, pos, approach, face, sit: !!o.sit, hipY: o.hipY ?? .53, place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group });
 }
 const E = Math.PI / 2, WST = -Math.PI / 2, N = Math.PI, SO = 0; // facing directions: east, west, north, south
 

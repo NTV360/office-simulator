@@ -1,5 +1,5 @@
 import { W, toPx } from '../config/plan.js';
-import { CS, GC, GR, GX0, GY0, NAV, cellOf, nearestWalk, walkPx } from './grid.js';
+import { CS, GC, GR, GX0, GY0, cellOf, isOpen, nearestWalk, walkPx } from './grid.js';
 
 const NCELLS = GC * GR, gS = new Float32Array(NCELLS), from = new Int32Array(NCELLS), seen = new Uint32Array(NCELLS), shut = new Uint32Array(NCELLS); let gen = 0;
 function astar(s, t) {
@@ -15,8 +15,8 @@ function astar(s, t) {
     const cx = cur % GC, cy = cur / GC | 0;
     for (const [dx, dy, cost] of DIRS) {
       const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= GC || ny >= GR) continue;
-      const ni = ny * GC + nx; if (!NAV[ni]) continue;
-      if (dx && dy && (!NAV[cy * GC + nx] || !NAV[ny * GC + cx])) continue;
+      const ni = ny * GC + nx; if (!isOpen(ni)) continue;
+      if (dx && dy && (!isOpen(cy * GC + nx) || !isOpen(ny * GC + cx))) continue;
       const ng = gS[cur] + cost;
       if (seen[ni] !== gen || ng < gS[ni]) { seen[ni] = gen; gS[ni] = ng; from[ni] = cur; push(ni, ng + H(ni)); }
     }
@@ -25,7 +25,7 @@ function astar(s, t) {
   const out = []; for (let i = ti; i !== -1; i = from[i]) out.push(i); return out.reverse();
 }
 function los(a, b) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.ceil(Math.hypot(dx, dy) / 1.8);
+  const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.ceil(Math.hypot(dx, dy) / .9);
   for (let i = 1; i < n; i++) if (!walkPx(a[0] + dx * i / n, a[1] + dy * i / n)) return false;
   return true;
 }
