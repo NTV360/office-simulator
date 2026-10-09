@@ -1,18 +1,21 @@
-import type { CharacterSpec } from '../character/spec';
-import type { Vec3 } from '../vec3';
-import type { Spot } from './interactables';
-import type { Controller } from './person';
-import type { HeldProps } from './props';
-import type { ScreenKind } from './data';
-import type { Shift } from './schedule';
-import type { CharacterMechanicsState } from './character-state';
-import type { InventoryState } from './inventory';
+import type { CharacterSpec } from "../character/spec";
+import type { Vec3 } from "../vec3";
+import type { CharacterMechanicsState } from "./character-state";
+import type { ScreenKind } from "./data";
+import type { Spot } from "./interactables";
+import type { InventoryState } from "./inventory";
+import type { Controller } from "./person";
+import type { HeldProps } from "./props";
+import type { Shift } from "./schedule";
 
 /** What a person is doing right now. 'controlled' people are driven by a human, not by the simulation. */
-export type PersonState = 'away' | 'idle' | 'walking' | 'doing' | 'controlled';
+export type PersonState = "away" | "idle" | "walking" | "doing" | "controlled";
 
 /** A place a task happens at. Usually a registered Spot; a chat is a one-off spot next to a colleague's desk. */
-export type TaskSpot = Pick<Spot, 'kind' | 'pos' | 'approach' | 'face' | 'shared' | 'place'> & { occupant?: unknown; game?: boolean; [extra: string]: unknown };
+export type TaskSpot = Pick<
+  Spot,
+  "kind" | "pos" | "approach" | "face" | "shared" | "place"
+> & { occupant?: unknown; game?: boolean; [extra: string]: unknown };
 
 export interface Task {
   kind: string;
@@ -74,6 +77,10 @@ export interface Person {
   queue: string[];
   walkPhase: number;
   animT: number;
+  /** Seconds left in a scratch-head stop after bumping into somebody (sim/bump.ts). */
+  scratch?: number;
+  /** Cooldown before this person can be stopped by a bump again. */
+  bumpCd?: number;
   pose: Record<string, unknown>;
   arriveAt: number;
   leaveAt: number;

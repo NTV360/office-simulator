@@ -1,22 +1,22 @@
-import { OX, OY, S } from '../plan';
-import { findPath } from '../nav/astar';
-import { navVersion, walkPx } from '../nav/grid';
-import { angDiff } from '../util';
-import { arriveNow, newDay } from './day';
-import type { Spot } from './interactables';
-import { live, tickLive } from './live';
-import { tickMeetings, tryMeeting } from './meetings';
-import { isDriven, isHelper } from './person';
-import { DAY_END, breakIndex } from './schedule';
-import { CLOCK, people, sim } from './state';
-import { arrive, chooseNext, returnFromToilet } from './tasks';
-import type { Person } from './types';
+import { findPath } from "../nav/astar";
+import { navVersion, walkPx } from "../nav/grid";
+import { OX, OY, S } from "../plan";
+import { angDiff } from "../util";
+import { arriveNow, newDay } from "./day";
+import type { Spot } from "./interactables";
+import { live, tickLive } from "./live";
+import { tickMeetings, tryMeeting } from "./meetings";
+import { isDriven, isHelper } from "./person";
+import { DAY_END, breakIndex } from "./schedule";
+import { CLOCK, people, sim } from "./state";
+import { arrive, chooseNext, returnFromToilet } from "./tasks";
+import type { Person } from "./types";
 
 /* ================= Simulation step ================= */
 // The walk grid each walker's route was last checked against. When it changes (a table or a sofa was moved), a route that now crosses a
 // blocked cell is planned again to the same place; if there is no way round, the old route stands. (Not saved: a restored walker checks again.)
 const checkedAt = new WeakMap<Person, number>();
-const REROUTE_ENDS = { start: .35, end: .6 } as const;
+const REROUTE_ENDS = { start: 0.35, end: 0.6 } as const;
 function reroute(p: Person): void {
   const v = navVersion();
   if (checkedAt.get(p) === v) return;
@@ -26,59 +26,103 @@ function reroute(p: Person): void {
   // The ends do not count: the start may be a seat being left, and the end is often a seat beside its table.
   const pts = [{ x: p.pos.x, z: p.pos.z }, ...path.slice(p.pi)];
   let total = 0;
-  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
-  let blocked = false, run = 0;
+  for (let i = 1; i < pts.length; i++)
+    total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+  let blocked = false,
+    run = 0;
   for (let i = 1; i < pts.length && !blocked; i++) {
-    const a = pts[i - 1], b = pts[i], len = Math.hypot(b.x - a.x, b.z - a.z);
-    for (let t = 0; t < len && !blocked; t += .1, run += .1) {
+    const a = pts[i - 1],
+      b = pts[i],
+      len = Math.hypot(b.x - a.x, b.z - a.z);
+    for (let t = 0; t < len && !blocked; t += 0.1, run += 0.1) {
       if (run < REROUTE_ENDS.start || run > total - REROUTE_ENDS.end) continue;
       const k = t / len;
-      blocked = !walkPx((a.x + (b.x - a.x) * k) / S + OX, (a.z + (b.z - a.z) * k) / S + OY);
+      blocked = !walkPx(
+        (a.x + (b.x - a.x) * k) / S + OX,
+        (a.z + (b.z - a.z) * k) / S + OY,
+      );
     }
   }
   if (!blocked) return;
   const again = findPath(p.pos, path[path.length - 1]);
-  if (again) { p.path = again; p.pi = 0; }
+  if (again) {
+    p.path = again;
+    p.pi = 0;
+  }
 }
 
 export function stepPerson(p: Person, dt: number): void {
   if (isDriven(p)) return;
-  if (p.state === 'away') {
-    if (p.toiletUntil) { if (sim.t >= p.toiletUntil) returnFromToilet(p); return; }
+  if (p.state === "away") {
+    if (p.toiletUntil) {
+      if (sim.t >= p.toiletUntil) returnFromToilet(p);
+      return;
+    }
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
     return;
   }
   p.animT += dt * Math.min(sim.speed, 2.5);
-  if (p.state === 'walking' && p.path) reroute(p);
-  if (p.state === 'walking' && p.path) {
-    let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1), moved = 0; // running for the bucket
+  if ((p.scratch ?? 0) > 0) return; // stopped for a scratch-head beat after a bump (sim/bump.ts)
+  if (p.state === "walking" && p.path) reroute(p);
+  if (p.state === "walking" && p.path) {
+    let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1),
+      moved = 0; // running for the bucket
     while (step > 1e-6 && p.pi < p.path.length) {
-      const tg = p.path[p.pi], dx = tg.x - p.pos.x, dz = tg.z - p.pos.z, d = Math.hypot(dx, dz);
-      if (d > .02) p.faceGoal = Math.atan2(dx, dz);
-      if (d <= step) { p.pos.x = tg.x; p.pos.z = tg.z; step -= d; moved += d; p.pi++; }
-      else { p.pos.x += dx / d * step; p.pos.z += dz / d * step; moved += step; step = 0; }
+      const tg = p.path[p.pi],
+        dx = tg.x - p.pos.x,
+        dz = tg.z - p.pos.z,
+        d = Math.hypot(dx, dz);
+      if (d > 0.02) p.faceGoal = Math.atan2(dx, dz);
+      if (d <= step) {
+        p.pos.x = tg.x;
+        p.pos.z = tg.z;
+        step -= d;
+        moved += d;
+        p.pi++;
+      } else {
+        p.pos.x += (dx / d) * step;
+        p.pos.z += (dz / d) * step;
+        moved += step;
+        step = 0;
+      }
     }
     p.walkPhase += moved * 4.6;
     // gentle avoidance while in open floor
     if (p.pi < p.path.length - 1 && moved > 0) {
       for (const q of people) {
-        if (q === p || q.state !== 'walking') continue;
-        const dx = p.pos.x - q.pos.x, dz = p.pos.z - q.pos.z, d = Math.hypot(dx, dz);
-        if (d > 0 && d < .5) {
-          const push = Math.min((.5 - d) * .35, moved * .5), nx = p.pos.x + dx / d * push, nz = p.pos.z + dz / d * push;
-          if (walkPx(nx / S + OX, nz / S + OY)) { p.pos.x = nx; p.pos.z = nz; }
+        if (q === p || q.state !== "walking") continue;
+        const dx = p.pos.x - q.pos.x,
+          dz = p.pos.z - q.pos.z,
+          d = Math.hypot(dx, dz);
+        if (d > 0 && d < 0.5) {
+          const push = Math.min((0.5 - d) * 0.35, moved * 0.5),
+            nx = p.pos.x + (dx / d) * push,
+            nz = p.pos.z + (dz / d) * push;
+          if (walkPx(nx / S + OX, nz / S + OY)) {
+            p.pos.x = nx;
+            p.pos.z = nz;
+          }
         }
       }
     }
     if (p.pi >= p.path.length) arrive(p);
-  } else if (p.state === 'doing') {
+  } else if (p.state === "doing") {
     // a break starting stops desk work right away (once per break), so people get up and play
-    if (p.task?.kind === 'work') { const b = breakIndex(p, sim.t), key = sim.day * 10 + b; if (b >= 0 && p.breakKey !== key) { p.breakKey = key; p.until = sim.t; } }
+    if (p.task?.kind === "work") {
+      const b = breakIndex(p, sim.t),
+        key = sim.day * 10 + b;
+      if (b >= 0 && p.breakKey !== key) {
+        p.breakKey = key;
+        p.until = sim.t;
+      }
+    }
     if (sim.t >= p.until) {
-      const wasExit = p.task?.kind === 'exit';
+      const wasExit = p.task?.kind === "exit";
       if (!wasExit) chooseNext(p);
     }
-  } else if (p.state === 'idle') { if (!isHelper(p) || sim.t >= p.until) chooseNext(p); } // (the helper waits when nothing is free: see cleanNext)
+  } else if (p.state === "idle") {
+    if (!isHelper(p) || sim.t >= p.until) chooseNext(p);
+  } // (the helper waits when nothing is free: see cleanNext)
   const k = 1 - Math.exp(-dt * 10 * Math.min(sim.speed, 3));
   p.face += angDiff(p.face, p.faceGoal) * k;
 }
@@ -89,16 +133,24 @@ export function stepPerson(p: Person, dt: number): void {
  */
 export function screenState(s: Spot): string {
   const p = s.owner as Person | null | undefined;
-  if (!p || p.state === 'away') return 'off';
-  return (p.state === 'doing' && p.task?.spot === s && p.task.kind === 'work') ? p.screenKind + ':' + p.screenVariant : 'lock';
+  if (!p || p.state === "away") return "off";
+  return p.state === "doing" && p.task?.spot === s && p.task.kind === "work"
+    ? p.screenKind + ":" + p.screenVariant
+    : "lock";
 }
 
 /** Advance the whole simulation by dt real seconds: the clock, meetings, the day roll-over, and every person. */
 export function stepSim(dt: number): void {
-  if (live.mode === 'live') { if (tickLive()) newDay(); } // the real office clock
+  if (live.mode === "live") {
+    if (tickLive()) newDay();
+  } // the real office clock
   else sim.t += dt * sim.speed * CLOCK;
-  if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); }
+  if (Math.floor(sim.t) !== sim.lastMinute) {
+    sim.lastMinute = Math.floor(sim.t);
+    tryMeeting();
+  }
   tickMeetings();
   if (sim.t >= DAY_END) newDay();
+  updateBumps(dt);
   for (const p of people) stepPerson(p, dt);
 }
