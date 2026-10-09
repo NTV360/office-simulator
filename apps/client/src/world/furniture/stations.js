@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { SCREENS, registerScreen } from '../../render/screens.js';
-import { E, WST, mkSpot, officeChair } from './basics.js';
+import { E, WST, mkSpot } from './basics.js';
 import { addObs, box, dynamic, frame, staticRoot } from '../helpers.js';
 import { placeObject } from '../objects.js';
 
@@ -25,7 +25,6 @@ function laptop(f, spotId, fwd, top) {
 function station(px, py, face, place, role, fwd, top = TABLE_TOP) {
   const spot = mkSpot('desk', px, py, face, { sit: true, place, shared: false, role });
   const f = frame(px, py, face);
-  officeChair(f, M.chairSeat2);
   placeObject('chair-office', px, py, face, { variant: 1, spot: spot.id, station: spot.id });
   laptop(f, spot.id, fwd, top);
   return spot;

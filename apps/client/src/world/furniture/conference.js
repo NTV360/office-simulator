@@ -1,6 +1,6 @@
 import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
-import { E, N, SO, WST, mkSpot, officeChair } from './basics.js';
+import { E, N, SO, WST, mkSpot } from './basics.js';
 import { cabinet } from './cabinet.js';
 import { tv } from './tv.js';
 import { addObs, box, frame, staticRoot } from '../helpers.js';
@@ -14,7 +14,6 @@ function table(x1, y1, x2, y2, top = M.confTable, legs = M.dark, h = .74) {
 }
 function confSeat(n, px, py, face) {
   const spot = mkSpot('conf', px, py, face, { sit: true, place: `Conference ${n}`, room: n });
-  officeChair(frame(px, py, face), M.chairSeat2);
   placeObject('chair-office', px, py, face, { variant: 1, spot: spot.id });
 }
 

@@ -11,6 +11,7 @@ import { initControl } from './player/control.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { buildBake } from './world/bake.js';
+import { initObjectViews } from './render/objects.js';
 import { buildDoors } from './world/doors.js';
 import { buildEntrance } from './world/entrance.js';
 import { buildFloor } from './world/floor.js';
@@ -57,6 +58,7 @@ export function bootstrap({ simulate = true } = {}) {
   buildPlants();
   buildEntrance();
   buildBake();
+  initObjectViews(); // the chairs and desk things: drawn instanced, from the object data (not baked)
   initLabels();
   // navigation reads the obstacles registered by the world
   initGrid(OBS);

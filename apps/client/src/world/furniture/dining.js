@@ -1,6 +1,6 @@
 import { W } from '@office/shared';
 import { M } from '../../render/materials.js';
-import { E, WST, mkSpot, woodChair } from './basics.js';
+import { E, WST, mkSpot } from './basics.js';
 import { table } from './conference.js';
 import { cyl, frame, staticRoot } from '../helpers.js';
 import { placeObject } from '../objects.js';
@@ -10,7 +10,6 @@ function diningTable(x1, y1, x2, y2, ys) {
   table(x1, y1, x2, y2, M.diningWood, M.diningWood2);
   for (const y of ys) for (const [px, face] of [[x1 - 8, E], [x2 + 8, WST]]) {
     const spot = mkSpot('dining', px, y, face, { sit: true, hipY: .52, place: 'the dining area' });
-    woodChair(frame(px, y, face));
     placeObject('chair-wood', px, y, face, { spot: spot.id });
   }
 }

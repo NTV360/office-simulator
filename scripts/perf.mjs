@@ -24,5 +24,21 @@ try {
       requestAnimationFrame(f);
     }));
   }
+  // 1000 more chairs and stools, then 200 of them moving every frame (the worst a busy office could ask for)
+  await page.evaluate(() => { window.__sim.setView('angle'); });
+  const measure = (shake) => page.evaluate(([shake]) => new Promise(resolve => {
+    const w = window.__sim, r = w.renderer, times = []; let last = performance.now(), n = 0, k = 0;
+    const f = () => {
+      const t = performance.now(); times.push(t - last); last = t;
+      if (shake) w.shakeObjects(shake === 1 ? [] : w.__stress.slice(0, 200), k++);
+      if (++n < 90) requestAnimationFrame(f);
+      else { times.shift(); times.sort((a, b) => a - b); resolve({ calls: r.info.render.calls, triangles: r.info.render.triangles, frameMs: +(times.reduce((a, b) => a + b, 0) / times.length).toFixed(1), p95Ms: +times[Math.floor(times.length * .95)].toFixed(1) }); }
+    };
+    requestAnimationFrame(f);
+  }), [shake]);
+  out.stress1000 = await page.evaluate(() => { window.__sim.__stress = window.__sim.stressObjects(1000); return window.__sim.objectDrawCalls(); });
+  await sleep(800);
+  out.withThousand = await measure(0);
+  out.withThousandMoving200 = await measure(2);
   console.log(JSON.stringify(out, null, 1));
 } finally { await browser.close(); site.stop(); }

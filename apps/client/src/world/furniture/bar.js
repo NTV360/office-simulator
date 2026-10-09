@@ -1,6 +1,6 @@
 import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
-import { E, N, SO, WST, barStool, mkSpot } from './basics.js';
+import { E, N, SO, WST, mkSpot } from './basics.js';
 import { addObs, box, cyl, frame, staticRoot } from '../helpers.js';
 import { placeObject } from '../objects.js';
 
@@ -10,7 +10,7 @@ function barTable(x1, y1, x2, y2, stools) {
   const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
   box(staticRoot, w, .05, d, M.barTop, cx, 1.03, cz);
   cyl(staticRoot, .05, .05, 1.0, M.steel, cx, .5, cz, 10); box(staticRoot, w * .6, .03, d * .6, M.chairBase, cx, .015, cz);
-  stools.forEach(([px, py, face]) => { const spot = mkSpot('bar', px, py, face, { sit: true, hipY: .76, place: 'the bar table' }); barStool(frame(px, py, face)); placeObject('stool-bar', px, py, face, { spot: spot.id }); });
+  stools.forEach(([px, py, face]) => { const spot = mkSpot('bar', px, py, face, { sit: true, hipY: .76, place: 'the bar table' }); placeObject('stool-bar', px, py, face, { spot: spot.id }); });
 }
 
 
