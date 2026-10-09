@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adminCreate, collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
+import { adminCreate, adminJson, collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const goldenDir = path.join(root, 'tests/browser/golden');
@@ -321,7 +321,7 @@ try {
     if (box.name === uname && box.people >= 40 && box.status === 'ok') pass(`the account box shows "${box.name}" and the status is online`); else fail(`account box: ${JSON.stringify(box)}`);
 
     // logging out brings the screen back and empties the office; a wrong password is refused; the right one returns
-    await u.page.click('#accountBox button');
+    await u.page.click('#accountBox button:last-child');
     await u.page.waitForSelector('#loginScreen', { timeout: 8000 }).then(() => pass('logging out shows the login screen again'), () => fail('no login screen after logout'));
     if ((await u.page.evaluate(() => window.__sim.people.length)) === 0) pass('the office is cleared on logout'); else fail('people remained after logout');
     await u.page.fill('#loginName', uname);
@@ -339,6 +339,71 @@ try {
     await screenshotOf(u.page, 'login-kicked.png');
     [...u.errors, ...second.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
     await u.page.close(); await second.page.close();
+
+    // character creation: an account with a desk makes its character on first login; everybody sees it; it can be changed later
+    console.log('\ncharacter creation');
+    const cname = 'char_' + (Date.now() % 1e7);
+    await adminCreate(site.url, cname, 'first-pass-from-admin-1');
+    const accounts = (await adminJson(site.url, 'GET', '/api/admin/users')).body;
+    const cid = accounts.find(a => a.username === cname).id;
+    const freeDesk = (await adminJson(site.url, 'GET', '/api/admin/slots')).body.find(s => s.status === 'unclaimed').spot;
+    const assigned = await adminJson(site.url, 'POST', `/api/admin/users/${cid}/assign-slot`, { spot: freeDesk });
+    if (assigned.status === 201) pass('an admin gave the new account a desk'); else fail(`assign-slot: ${assigned.status}`);
+    const watcher = await openPage(browser, site.url, '?trace');
+    const c = await openPage(browser, site.url, '?trace', { login: cname });
+    const creatorShown = await c.page.waitForSelector('#creatorScreen', { timeout: 20000 }).then(() => true, () => false);
+    if (creatorShown) pass('the first login after a desk is given opens character creation'); else fail('character creation did not open');
+    if (await c.page.evaluate(() => document.getElementById('creatorCancel').hidden)) pass('it cannot be skipped the first time'); else fail('the first-time page can be cancelled');
+    const drawn = () => c.page.evaluate(() => new Promise(done => requestAnimationFrame(() => {
+      const src = document.getElementById('creatorPreview');
+      const copy = document.createElement('canvas'); copy.width = src.width; copy.height = src.height;
+      const g = copy.getContext('2d'); g.drawImage(src, 0, 0);
+      const d = g.getImageData(0, 0, copy.width, copy.height).data;
+      let n = 0, red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { n++; if (d[i] > 150 && d[i + 1] < 120 && d[i + 2] < 110) red++; }
+      done({ n, red });
+    })));
+    const before = await drawn();
+    if (before.n > 1500) pass(`the live preview draws the character (${before.n} pixels)`); else fail(`the preview looks empty (${before.n} pixels)`);
+    await c.page.click('[data-key="shirt"][data-color="#c45f4b"]');
+    await c.page.click('[data-style="bun"]');
+    await c.page.check('#creator-glasses');
+    await c.page.fill('#creatorHeight', '1.08');
+    await sleep(300);
+    const after = await drawn();
+    if (after.red > before.red + 200) pass('the preview changes at once when a choice is made (red shirt)'); else fail(`preview did not change: red ${before.red} to ${after.red}`);
+    await screenshotOf(c.page, 'character-creator.png');
+    await c.page.click('#creatorSave');
+    await c.page.waitForFunction(() => !document.getElementById('creatorScreen') && window.__sim.net.snapshots > 5, null, { timeout: 20000 }).then(() => pass('saving closes the page and the office appears'), () => fail('saving did not lead to the office'));
+    const mine = await c.page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p ? { spec: p.spec, controller: p.controller } : null; }, cname);
+    if (mine && mine.controller === 'account' && mine.spec.shirt === '#c45f4b' && mine.spec.style === 'bun' && mine.spec.glasses === true && Math.abs(mine.spec.scale - 1.08) < 0.001) pass('their own person wears the new look'); else fail(`own person: ${JSON.stringify(mine)}`);
+    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.shirt === '#c45f4b' && p.spec.style === 'bun'; }, cname, { timeout: 10000 }).then(() => pass('another browser sees the new look'), () => fail('the other browser did not see the look'));
+    const seenBody = await watcher.page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return !!(p && p.body && p.body.root.parent); }, cname);
+    if (seenBody) pass('and it has a body in the scene'); else fail('no body drawn for the new look');
+
+    // change it later, from the account box; cancel leaves it alone
+    await c.page.click('#characterBtn');
+    await c.page.waitForSelector('#creatorScreen', { timeout: 8000 });
+    if (!(await c.page.evaluate(() => document.getElementById('creatorCancel').hidden))) pass('later it can be cancelled'); else fail('cancel is missing when changing');
+    if (await c.page.evaluate(() => document.querySelector('[data-style="bun"]').getAttribute('aria-pressed') === 'true' && document.getElementById('creator-glasses').checked)) pass('it starts from the saved look'); else fail('the editor did not start from the saved look');
+    await c.page.click('[data-style="curly"]');
+    await c.page.keyboard.press('Escape');
+    await c.page.waitForFunction(() => !document.getElementById('creatorScreen'), null, { timeout: 5000 });
+    await sleep(500);
+    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.style, cname)) === 'bun') pass('closing without saving changes nothing'); else fail('an unsaved change was applied');
+    await c.page.click('#characterBtn');
+    await c.page.waitForSelector('#creatorScreen');
+    await c.page.click('[data-style="curly"]');
+    await c.page.click('[data-key="jacket"][data-color="#2f3a45"]');
+    await c.page.click('#creatorSave');
+    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.style === 'curly' && p.spec.jacket === '#2f3a45'; }, cname, { timeout: 10000 }).then(() => pass('a later change reaches the other browser too'), () => fail('the later change was not seen'));
+
+    // a reload does not ask again, and keeps the look
+    await c.page.reload({ waitUntil: 'load' });
+    await c.page.waitForFunction(() => window.__sim && window.__sim.net && window.__sim.net.snapshots > 5, null, { timeout: 30000 });
+    if (!(await c.page.$('#creatorScreen'))) pass('a reload does not ask for a character again'); else fail('character creation opened again');
+    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.style, cname)) === 'curly') pass('and the look is kept'); else fail('the look was not kept across a reload');
+    [...c.errors, ...watcher.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+    await c.page.close(); await watcher.page.close();
   }
 } finally {
   await browser.close();

@@ -245,6 +245,11 @@ export class PlayerManager {
     return { claimed, released };
   }
 
+  /** An account changed its look: whoever is theirs right now (playing, or on autopilot at their desk) wears it, and viewers are told. */
+  applyLook(accountId: number, spec: unknown): void {
+    for (const p of people) if (p.owner === accountId) setLook(p, spec);
+  }
+
   /** The person stops being an account's: an ordinary NPC again, with an NPC's name. */
   private unclaim(person: Person): void {
     delete person.owner;

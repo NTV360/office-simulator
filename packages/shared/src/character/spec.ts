@@ -70,3 +70,8 @@ export function normalizeSpec(input: unknown = {}): CharacterSpec {
     scale: typeof raw.scale === 'number' && Number.isFinite(raw.scale) ? Math.min(SCALE_RANGE[1], Math.max(SCALE_RANGE[0], raw.scale)) : d.scale,
   };
 }
+
+/** A look a player may have: any valid spec, without the special looks that belong to Hazel (skirt, cube head, angry face). */
+export function normalizePlayerSpec(input: unknown = {}): CharacterSpec {
+  return { ...normalizeSpec(input), skirt: null, cube: false, angry: false };
+}

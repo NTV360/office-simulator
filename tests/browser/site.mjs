@@ -78,6 +78,12 @@ export async function adminCreate(url, username, first) {
   if (!r.ok && r.status !== 409) throw new Error(`could not make ${username}: ${r.status} ${await r.text()}`);
 }
 
+/** Call the admin API (VERIFY_ADMIN_TOKEN): resolves { status, body }. */
+export async function adminJson(url, method, path, body) {
+  const r = await fetch(url + path, { method, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + process.env.VERIFY_ADMIN_TOKEN }, body: body === undefined ? undefined : JSON.stringify(body) });
+  return { status: r.status, body: await r.json().catch(() => null) };
+}
+
 /** Give this browser context a logged-in session for the account, making the account (and choosing its own password) the first time. */
 async function loginAs(context, url, username, password = TEST_PASSWORD) {
   const body = { username, password };

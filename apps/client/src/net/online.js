@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
+import { getCharacter, showCreator } from './creator.js';
 import {
   CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
@@ -80,6 +81,11 @@ export function startOnline() {
         if (account?.mustChangePassword) account = null; // still on the first password an admin set: the screen asks for a new one
         if (!account) { setStatus('wait', 'Please log in'); account = await showLogin(base, note); }
         net.account = account;
+        // a person with a desk and no look yet makes their character before anything else (the first login after a desk is given)
+        if (account.slotSpot && !account.hasLook) {
+          const mine = await getCharacter(base);
+          if (await showCreator(base, mine?.starting, { required: true })) account.hasLook = true;
+        }
         showAccountBox(account);
         setStatus('wait', 'Connecting to the server…');
         socket.connect();
@@ -93,7 +99,13 @@ export function startOnline() {
     if (!box) {
       box = document.createElement('div');
       box.id = 'accountBox';
-      box.append(document.createElement('span'), document.createElement('button'));
+      const look = document.createElement('button');
+      look.id = 'characterBtn'; look.textContent = 'Character';
+      look.addEventListener('click', async () => {
+        const mine = await getCharacter(base);
+        if (mine) await showCreator(base, mine.spec ?? mine.starting);
+      });
+      box.append(document.createElement('span'), look, document.createElement('button'));
       box.lastChild.textContent = 'Log out';
       box.lastChild.addEventListener('click', async () => {
         net.fatal = null;
