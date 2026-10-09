@@ -190,6 +190,13 @@ export class AuthService {
     return { account: (await this.store.byId(id))!, password: chosen as string };
   }
 
+  /** Mute or unmute an account: it can still play, but its chat is not sent to anyone. */
+  async setMuted(id: number, muted: boolean): Promise<Account> {
+    if (!(await this.store.byId(id))) throw new AuthError('missing', 'there is no such account');
+    await this.store.setMuted(id, muted);
+    return (await this.store.byId(id))!;
+  }
+
   /** Disable (cannot log in; connections end) or enable an account. */
   async setDisabled(id: number, disabled: boolean): Promise<Account> {
     if (!(await this.store.byId(id))) throw new AuthError('missing', 'there is no such account');

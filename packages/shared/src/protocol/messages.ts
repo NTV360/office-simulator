@@ -5,7 +5,10 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 5;
+export const WIRE_VERSION = 6;
+
+/** The longest chat line, in characters. */
+export const MAX_CHAT = 200;
 
 /** Used where a person id, meeting index or similar is "none". */
 export const NONE = -1;
@@ -108,7 +111,8 @@ export interface Snapshot {
 export interface PersonJoined { type: 'person'; info: PersonInfo; snap: PersonSnap }
 export interface PersonLeft { type: 'leave'; id: number }
 
-export type EventKind = 'log' | 'announce' | 'day';
+/** 'notice' is for one player alone ("you are chatting too fast"); the others go to everybody. */
+export type EventKind = 'log' | 'announce' | 'day' | 'notice';
 export interface GameEvent { type: 'event'; kind: EventKind; simTime: number; text: string }
 
 /** The first thing a client says: its protocol version and the one-time ticket from POST /api/play/ticket. */
@@ -118,6 +122,8 @@ export interface Input { type: 'input'; seq: number; mx: number; mz: number; hea
 /** Sit in the nearest seat, or stand up. The server decides whether it is allowed. */
 export type ActKind = 'sit' | 'stand';
 export interface Act { type: 'act'; kind: ActKind }
+/** Something the player says in local chat: heard by people within about 10 m. */
+export interface Say { type: 'say'; text: string }
 export interface Ping { type: 'ping'; ts: number }
 export interface Pong { type: 'pong'; ts: number }
 export interface Kick { type: 'kick'; reason: string }
@@ -125,8 +131,10 @@ export interface Kick { type: 'kick'; reason: string }
  * Sent to a player alone, about once per tick while they move: the number of the last input the server used for their person, the tick,
  * and where their person is. The client compares this with its own prediction (see sim/prediction.ts).
  */
+/** A chat line, sent to the speaker and to everyone within range of them. */
+export interface Chat { type: 'chat'; from: number; name: string; text: string }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
-export type ClientMessage = Hello | Ping | Input | Act;
-export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack;
+export type ClientMessage = Hello | Ping | Input | Act | Say;
+export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat;
 export type Message = ClientMessage | ServerMessage;

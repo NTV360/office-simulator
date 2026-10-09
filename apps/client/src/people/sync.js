@@ -2,6 +2,7 @@ import { PROP_KEYS, sim } from '@office/shared';
 import { isLocalPlayer } from '../player/player.js';
 import { ringMats } from '../character/rig.js';
 import { applyPose } from './animation.js';
+import { updateBubble } from './bubbles.js';
 import { updateNameTag } from './nametags.js';
 
 // Show or hide a person's meshes from their state: the simulation never touches meshes. The local player's own body
@@ -16,6 +17,7 @@ function applyVisibility(p) {
 function syncBody(p, dt) {
   applyVisibility(p);
   updateNameTag(p);
+  updateBubble(p);
   if (p.state === 'away') return;
   if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)
   const b = p.body; b.root.position.set(p.pos.x, 0, p.pos.z); b.root.rotation.y = p.face;

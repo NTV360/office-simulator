@@ -128,7 +128,7 @@ function drawAll() { drawStats(); drawOffice(); drawTable(); drawAudit(); }
 
 const ACTIONS = {
   'account.create': 'Made an account', 'account.bulk-create': 'Made accounts', 'password.set': 'Set a password', 'account.disable': 'Disabled an account',
-  'account.enable': 'Enabled an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', announce: 'Sent an announcement',
+  'account.enable': 'Enabled an account', 'account.mute': 'Muted an account', 'account.unmute': 'Unmuted an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', announce: 'Sent an announcement',
 };
 function drawAudit() {
   const rows = audit.map(l => {
@@ -286,10 +286,12 @@ function drawTable() {
       a.online && el('span', { class: 'a-chip on' }, 'online'),
       a.mustChangePassword && el('span', { class: 'a-chip warn' }, 'new password needed'),
       a.disabled && el('span', { class: 'a-chip bad' }, 'disabled'),
+      a.muted && el('span', { class: 'a-chip warn' }, 'muted'),
     ];
     const actions = el('div', { class: 'a-actions' },
       el('button', { type: 'button', class: 'a-btn', 'data-do': 'password', onclick: () => { ui.panel.set(a.id, ui.panel.has(a.id) ? undefined : { typed: '', result: null }); if (!ui.panel.get(a.id)) ui.panel.delete(a.id); drawTable(); } }, 'Password'),
       sure(a.disabled ? 'Enable' : 'Disable', 'disable', () => act(() => api('POST', `/users/${a.id}/disabled`, { disabled: !a.disabled }), note)),
+      el('button', { type: 'button', class: 'a-btn', 'data-do': 'mute', title: a.muted ? 'Let them chat again' : 'Nobody will see what they type', onclick: () => act(() => api('POST', `/users/${a.id}/muted`, { muted: !a.muted }), note) }, a.muted ? 'Unmute' : 'Mute'),
       a.slotSpot && sure('Take desk', 'release', () => act(() => api('POST', `/users/${a.id}/release-slot`), note)),
       note);
     body.append(el('tr', { class: a.disabled ? 'off' : '', 'data-user': a.username },

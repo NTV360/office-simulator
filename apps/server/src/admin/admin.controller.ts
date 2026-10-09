@@ -92,11 +92,11 @@ export class AdminController {
 
   /** Every account: who they are, whether they have a desk, whether they are playing right now. */
   @Get('users')
-  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; disabled: boolean; mustChangePassword: boolean; hasLook: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
+  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; disabled: boolean; muted: boolean; mustChangePassword: boolean; hasLook: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
     const accounts = await this.auth.require().accounts.list();
     const manager = this.play.manager();
     return accounts.map(a => ({
-      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled, mustChangePassword: a.mustChangePassword, hasLook: a.spec !== null,
+      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled, muted: a.muted, mustChangePassword: a.mustChangePassword, hasLook: a.spec !== null,
       online: manager.isOnline(a.id), createdAt: a.createdAt, lastLoginAt: a.lastLoginAt,
     }));
   }
@@ -163,6 +163,17 @@ export class AdminController {
     this.log.log(`${disabled ? 'disabled' : 'enabled'} account ${account.username} (id ${id})`);
     await this.note(req, disabled ? 'account.disable' : 'account.enable', account.username);
     return { id: account.id, disabled: account.disabled };
+  }
+
+  /** Mute or unmute an account's chat. A muted account can still play; what it types is not sent to anyone. */
+  @Post('users/:id/muted')
+  async mute(@Param('id', AccountIdPipe) id: number, @Body() body: unknown, @Req() req: HttpReq): Promise<{ id: number; muted: boolean }> {
+    const muted = (body as { muted?: unknown } | null)?.muted;
+    if (typeof muted !== 'boolean') throw new BadRequestException('send { "muted": true } or { "muted": false }');
+    const account = await this.auth.require().setMuted(id, muted);
+    this.log.log(`${muted ? 'muted' : 'unmuted'} account ${account.username} (id ${id})`);
+    await this.note(req, muted ? 'account.mute' : 'account.unmute', account.username);
+    return { id: account.id, muted: account.muted };
   }
 
   /** Every desk with a person at it: free to give away, belonging to an account, or reserved (Hazel). */

@@ -566,6 +566,82 @@ try {
       for (const n of [na, nb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
     }
 
+    // local chat: three players, one far away; typing, range, bubbles, the rate limit, mute, and markup that stays text
+    {
+      console.log('\nlocal chat');
+      const tag = String(Date.now() % 1e6);
+      const [ca, cb, cc] = [`cht_a${tag}`, `cht_b${tag}`, `cht_c${tag}`];
+      const [A, B, C] = [await openPage(browser, site.url, '?trace', { login: ca }), await openPage(browser, site.url, '?trace', { login: cb }), await openPage(browser, site.url, '?trace', { login: cc })];
+      await Promise.all([A, B, C].map(x => x.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 })));
+      const lines = page => page.$$eval('#chatLog .chat-line', els => els.map(e => ({ text: e.textContent, cls: e.className })));
+      const typeChat = async (page, text) => { await page.keyboard.press('Enter'); await page.waitForSelector('#chatInput', { state: 'visible', timeout: 5000 }); await page.keyboard.type(text); await page.keyboard.press('Enter'); };
+      const bubbleOf = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return !!(p && p.bubble); }, name);
+      // C walks off (more than 10 m away)
+      await walkTo(C.page, "interactables.of('dining')[0].approach");
+      const far = await C.page.evaluate(() => { const me = window.__sim.player.person; const a = window.__sim.people.find(p => p.name.startsWith('cht_a')); return Math.hypot(me.pos.x - a.pos.x, me.pos.z - a.pos.z); });
+      if (far > 11) pass(`one player is ${far.toFixed(0)} m away from the others`); else fail(`only ${far} m away`);
+
+      // Enter opens the box, what you type does not move you, Escape closes it without sending
+      const p0 = await personOf(A.page, ca);
+      await A.page.keyboard.press('Enter');
+      await A.page.waitForSelector('#chatInput', { state: 'visible', timeout: 5000 }).then(() => pass('Enter opens the chat box'), () => fail('the chat box did not open'));
+      await A.page.keyboard.type('wasd wasd');
+      await sleep(600);
+      const p1 = await personOf(A.page, ca);
+      if (Math.hypot(p1.x - p0.x, p1.z - p0.z) < 0.05) pass('typing w, a, s and d does not walk you'); else fail(`moved ${Math.hypot(p1.x - p0.x, p1.z - p0.z)} m while typing`);
+      await A.page.keyboard.press('Escape');
+      if (!(await A.page.isVisible('#chatInput'))) pass('Escape closes it'); else fail('Escape did not close the box');
+      await sleep(500);
+      if ((await lines(B.page)).length === 0) pass('and nothing was sent'); else fail('something was sent');
+
+      // a line: A and B hear it (with a bubble over A), C does not
+      await typeChat(A.page, 'good morning everyone');
+      await B.page.waitForFunction(() => document.querySelector('#chatLog .chat-line'), null, { timeout: 8000 }).then(() => pass('someone nearby hears it'), () => fail('B heard nothing'));
+      const la = await lines(A.page), lb = await lines(B.page);
+      if (la.length === 1 && la[0].text === `${ca} good morning everyone` && lb.length === 1 && lb[0].text === `${ca} good morning everyone`) pass('with the speaker\'s name, and the speaker sees it too'); else fail(`lines: ${JSON.stringify([la, lb])}`);
+      if ((await lines(C.page)).length === 0) pass('the player far away hears nothing'); else fail('the far player heard it');
+      if (await bubbleOf(B.page, ca)) pass('a bubble shows over the speaker'); else fail('no bubble over the speaker');
+      await screenshotOf(B.page, 'chat-bubble.png');
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && !p.bubble; }, ca, { timeout: 15000 }).then(() => pass('and it goes away after a few seconds'), () => fail('the bubble stayed'));
+
+      // markup stays text
+      await typeChat(A.page, '<img src=x onerror="window.__xss=1"> <b>bold</b>');
+      await B.page.waitForFunction(() => document.querySelectorAll('#chatLog .chat-line').length >= 2, null, { timeout: 8000 });
+      const html = await B.page.evaluate(() => ({ imgs: document.querySelectorAll('#chatLog img, #chatLog b b').length, xss: window.__xss === 1, last: [...document.querySelectorAll('#chatLog .chat-line')].pop().textContent }));
+      if (html.imgs === 0 && !html.xss && html.last.includes('<img src=x')) pass('markup in a line is shown as text and does nothing'); else fail(`markup: ${JSON.stringify(html)}`);
+
+      // the limit: five lines in ten seconds, the sixth is refused and the speaker told in the panel
+      await sleep(200);
+      for (let i = 0; i < 5; i++) await typeChat(A.page, 'spam ' + i);
+      await A.page.waitForFunction(() => [...document.querySelectorAll('#chatLog .chat-line.notice')].some(e => /too fast/i.test(e.textContent)), null, { timeout: 8000 }).then(() => pass('past five lines in ten seconds the speaker is told to slow down'), () => fail('no slow-down notice'));
+
+      // mute: they can still play, nobody sees what they type
+      await sleep(10500); // (the limit's window)
+      const users = (await adminJson(site.url, 'GET', '/api/admin/users')).body;
+      const aId = users.find(x => x.username === ca).id;
+      await adminJson(site.url, 'POST', `/api/admin/users/${aId}/muted`, { muted: true });
+      const before = (await lines(B.page)).length;
+      await typeChat(A.page, 'can anyone hear me');
+      await A.page.waitForFunction(() => [...document.querySelectorAll('#chatLog .chat-line.notice')].some(e => /muted/i.test(e.textContent)), null, { timeout: 8000 }).then(() => pass('a muted player is told they are muted'), () => fail('no muted notice'));
+      await sleep(600);
+      if ((await lines(B.page)).length === before) pass('and nobody else sees what they typed'); else fail('a muted line got through');
+      await adminJson(site.url, 'POST', `/api/admin/users/${aId}/muted`, { muted: false });
+      await typeChat(A.page, 'unmuted again');
+      await B.page.waitForFunction(() => [...document.querySelectorAll('#chatLog .chat-line')].some(e => /unmuted again/.test(e.textContent)), null, { timeout: 8000 }).then(() => pass('unmuting brings them back at once'), () => fail('still muted after unmuting'));
+
+      // an announcement from an admin appears in the panel too
+      await adminJson(site.url, 'POST', '/api/admin/announce', { text: 'fire drill at three' });
+      await C.page.waitForFunction(() => [...document.querySelectorAll('#chatLog .chat-line.announce')].some(e => /fire drill at three/.test(e.textContent)), null, { timeout: 8000 }).then(() => pass('an admin announcement reaches everyone, near or far, in the chat panel'), () => fail('announcement not in the chat panel'));
+
+      // nothing of the chat is left for the next login
+      await B.page.click('#accountBox button:last-child');
+      await B.page.waitForSelector('#loginScreen', { timeout: 8000 });
+      if ((await B.page.$$('#chatLog .chat-line')).length === 0 && !(await B.page.isVisible('#chat'))) pass('after logging out the chat is hidden and emptied'); else fail('chat left behind after logout');
+      [...A.errors, ...B.errors, ...C.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      for (const x of [A, B, C]) await x.page.close();
+      for (const n of [ca, cb, cc]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
+    }
+
     // the admin page: one password, make accounts, reset a password, disable, desks
     console.log('\nthe admin page');
     const tag = String(Date.now() % 1e6);

@@ -7,6 +7,7 @@ import { parseTrustProxy } from '../app.config';
 import { AuthProvider } from '../auth/auth.provider';
 import type { SessionEnd } from '../auth/auth.service';
 import { TicketService } from '../auth/tickets';
+import { ChatService, type SayResult } from '../play/chat';
 import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
@@ -61,8 +62,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @Inject(PlayService) private readonly players: PlayService,
   ) {}
 
+  private chat!: ChatService;
+
   afterInit(): void {
     const world = this.worlds.world;
+    this.chat = new ChatService({
+      speaker: id => this.players.manager().speaker(id),
+      hearers: () => this.players.manager().hearers(),
+      muted: async id => (await this.auth.require().accountById(id))?.muted ?? false,
+    });
     this.broadcaster = new Broadcaster({ tickRate: world.options.tickRate });
     simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p)));
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
@@ -144,6 +152,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         this.players.manager().setInput(socket.data.accountId, msg, this.worlds.world.tick);
         return;
+      case 'say':
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        void this.say(socket, msg.text);
+        return;
       case 'act':
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
@@ -220,6 +232,19 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       socket.emit(WIRE_EVENT, encode({ type: 'ack', tick, ...a })); // (not volatile: right after the snapshot write the transport is busy and a volatile message would be dropped)
     }
     if (this.lastAck.size > this.byAccount.size + 50) for (const id of this.lastAck.keys()) if (!this.byAccount.has(id)) this.lastAck.delete(id);
+  }
+
+  /** A chat line: sent to the speaker and whoever is within range; a refusal is explained to the speaker alone. */
+  private async say(socket: Socket, text: string): Promise<void> {
+    let result: SayResult;
+    try { result = await this.chat.say(socket.data.accountId, text); } catch (err) { this.log.error(`chat failed: ${err instanceof Error ? err.message : String(err)}`); return; }
+    if (!result.ok) {
+      const notice = result.reason === 'rate' ? 'You are chatting too fast. Wait a few seconds.' : result.reason === 'muted' ? 'An admin has muted you: nobody can see what you type.' : null;
+      if (notice && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
+      return;
+    }
+    const bytes = encode({ type: 'chat', from: result.from, name: result.name, text: result.text });
+    for (const accountId of result.to) { const s = this.byAccount.get(accountId); if (s && s.data.joined) s.emit(WIRE_EVENT, bytes); }
   }
 
   /** A logout, a password change or a disabled account ends the connections that session opened. */

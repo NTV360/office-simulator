@@ -2,7 +2,7 @@ import type { CharacterSpec } from '../character/spec';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
-  NONE, ONE_OFF_SPOT, WIRE_VERSION,
+  MAX_CHAT, NONE, ONE_OFF_SPOT, WIRE_VERSION,
   type ActKind, type ClientMessage, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
 } from './messages';
 
@@ -11,7 +11,7 @@ import {
 const STATES: PersonState[] = ['away', 'idle', 'walking', 'doing', 'controlled'];
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
-const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day'];
+const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
@@ -20,8 +20,8 @@ export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'pian
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04,
-  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05,
+  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88,
 } as const;
 
 const CUSTOM = 0xff;
@@ -145,6 +145,8 @@ export function encode(msg: Message): Uint8Array {
       w.u8(T.hello).u8(msg.version).str(msg.ticket);
       break;
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
+    case 'say': if (msg.text.length > MAX_CHAT) throw new RangeError('chat line too long for the protocol'); w.u8(T.say).str(msg.text); break;
+    case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
     case 'input': w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(msg.run ? 1 : 0); break;
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
@@ -170,9 +172,9 @@ export function encode(msg: Message): Uint8Array {
   return w.bytes();
 }
 
-/** Decode a message from a client: only hello, ping, input and act are accepted, and nothing else is parsed. */
+/** Decode a message from a client: only hello, ping, input, act and say are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -184,6 +186,8 @@ export function decode(bytes: Uint8Array): Message {
   switch (type) {
     case T.hello: { const version = r.u8(), ticket = r.str(); if (ticket.length > MAX_TICKET) throw new DecodeError('ticket too long'); msg = { type: 'hello', version, ticket }; break; }
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
+    case T.say: { const text = r.str(); if (text.length > MAX_CHAT) throw new DecodeError('chat line too long'); msg = { type: 'say', text }; break; }
+    case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
     case T.input: { const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(); msg = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) }; break; }
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
@@ -216,4 +220,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say'; }

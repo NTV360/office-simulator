@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
 import { getCharacter, showCreator } from './creator.js';
+import { initChat } from './chat.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
@@ -84,6 +85,7 @@ export function startOnline() {
 
   const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
+  const chat = initChat({ send: text => send({ type: 'say', text }), personById: id => mirror.people.get(id) });
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
   let seq = 1, lastSentAt = 0, lastSent = null;
@@ -115,6 +117,7 @@ export function startOnline() {
     net.you = null; net.joined = false; net.autoView = false;
     player.person = null; player.sitting = null; player.moving = false;
     if (player.controlling) setView('free');
+    chat.setActive(false);
     showWho();
   }
 
@@ -215,6 +218,7 @@ export function startOnline() {
         syncClock();
         reassignOccupants();
         showWho();
+        chat.setActive(true);
         setStatus('ok', `Online · ${people.length} people`);
         if (!net.autoView && player.person && viewId() !== 'fp' && viewId() !== 'third') { net.autoView = true; setView('third'); } // you arrive as your person
         break;
@@ -244,6 +248,7 @@ export function startOnline() {
       case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); if (msg.info.id === net.you) { player.person = mirror.people.get(net.you) ?? null; showWho(); } break;
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
+      case 'chat': chat.receive(msg); break;
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':
         socket.disconnect();
@@ -279,6 +284,8 @@ export function startOnline() {
   }
 
   function pushEvent(e) {
+    if (e.kind === 'notice') { chat.system(e.text, 'notice'); return; } // for this player alone: in the chat panel
+    if (e.kind === 'announce') chat.system(`Announcement: ${e.text}`, 'announce');
     // the log lines also reach the ledger the way local ones do
     addLog(e.kind === 'announce' ? `Announcement: ${e.text}` : e.text);
   }

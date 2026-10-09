@@ -1,0 +1,16 @@
+/* Local chat: the panel at the bottom left. */
+#chat { position: fixed; left: 12px; bottom: 96px; z-index: 29; width: min(340px, calc(100vw - 24px)); font: 13px/1.4 system-ui, sans-serif; color: #fff; pointer-events: none; }
+#chat[hidden] { display: none; }
+#chatLog { max-height: 180px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+#chat.typing #chatLog { overflow-y: auto; pointer-events: auto; }
+.chat-line { padding: 3px 10px; border-radius: 10px; background: rgba(20, 24, 28, .72); width: fit-content; max-width: 100%; word-break: break-word; transition: opacity 1.2s; }
+.chat-line b { color: #9fd0ff; font-weight: 600; }
+.chat-line.notice { background: rgba(110, 70, 10, .85); font-style: italic; }
+.chat-line.announce { background: rgba(30, 95, 60, .88); }
+.chat-line.old { opacity: 0; }
+#chat.typing .chat-line.old { opacity: 1; }
+#chatForm { margin-top: 6px; pointer-events: auto; }
+#chatInput { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 0; border-radius: 999px; font: inherit; font-size: 14px; color: #1c242b; background: rgba(255, 255, 255, .96); outline: 2px solid #3e6e9c; }
+#chatBtn { margin-top: 6px; padding: 4px 14px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; color: #e9eef2; background: rgba(20, 24, 28, .78); cursor: pointer; pointer-events: auto; }
+#chatBtn:hover { background: rgba(20, 24, 28, .92); }
+@media (max-width: 640px) { #chat { bottom: 104px; } }

@@ -32,6 +32,10 @@ const MUTATIONS = [
   ['a teleport is glided to instead of snapped to', sim + 'prediction.ts', 'if (error > this.snapDistance) {', 'if (error > 1e9) {'],
   ['a pull leaves the history unshifted (the same difference is corrected twice)', sim + 'prediction.ts', 'for (const e of this.trail) { e.x += dx; e.z += dz; }', ''],
   ['an old ack is believed', sim + 'prediction.ts', 'ack.seq < this.newest', 'false'],
+  ['a chat line is heard from any distance', 'apps/server/src/play/chat.ts', 'Math.hypot(h.x - speaker.x, h.z - speaker.z) <= CHAT_RANGE', 'true'],
+  ['a muted account can still chat', 'apps/server/src/play/chat.ts', "if (await this.lookup.muted(accountId)) return { ok: false, reason: 'muted' };", ''],
+  ['there is no limit on chat lines', 'apps/server/src/play/chat.ts', "if (!this.limiter.allow(String(accountId))) return { ok: false, reason: 'rate' };", ''],
+  ['chat keeps direction-changing characters', 'apps/server/src/play/chat.ts', "raw.replace(UNWANTED, ' ')", 'raw'],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
@@ -46,7 +50,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts', 'apps/server/src/play/chat.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

@@ -58,9 +58,10 @@ describe('decodeClient only accepts what a client may send', () => {
     expect(decodeClient(encode({ type: 'input', seq: 9, mx: 1, mz: 0, heading: 1, run: true }))).toEqual({ type: 'input', seq: 9, mx: 1, mz: 0, heading: 1, run: true });
     expect(decodeClient(encode({ type: 'act', kind: 'stand' }))).toEqual({ type: 'act', kind: 'stand' });
     expect(decodeClient(encode({ type: 'ping', ts: 5 }))).toEqual({ type: 'ping', ts: 5 });
+    expect(decodeClient(encode({ type: 'say', text: 'hi' }))).toEqual({ type: 'say', text: 'hi' });
   });
   it('nothing else, and the rest is not even parsed', () => {
-    for (const m of [{ type: 'pong', ts: 1 }, { type: 'ack', seq: 1, tick: 1, x: 0, z: 0, face: 0 }, { type: 'kick', reason: 'x' }, { type: 'leave', id: 1 }, { type: 'person', info, snap: snap() }] as const) {
+    for (const m of [{ type: 'pong', ts: 1 }, { type: 'ack', seq: 1, tick: 1, x: 0, z: 0, face: 0 }, { type: 'chat', from: 1, name: 'x', text: 'y' }, { type: 'kick', reason: 'x' }, { type: 'leave', id: 1 }, { type: 'person', info, snap: snap() }] as const) {
       expect(() => decodeClient(encode(m))).toThrow(DecodeError);
     }
     expect(() => decodeClient(new Uint8Array(0))).toThrow(DecodeError);

@@ -139,6 +139,17 @@ export class PlayerManager {
     return { seq: this.inputs.get(s.person.id)?.seq ?? 0, x: s.person.pos.x, z: s.person.pos.z, face: s.person.face };
   }
 
+  /** Who this account is speaking as, and where: for chat. */
+  speaker(accountId: number): { accountId: number; personId: number; name: string; x: number; z: number } | null {
+    const s = this.sessions.get(accountId);
+    return s ? { accountId, personId: s.person.id, name: s.person.name, x: s.person.pos.x, z: s.person.pos.z } : null;
+  }
+
+  /** Everyone who is playing right now, and where their person is: for working out who hears a chat line. */
+  hearers(): Array<{ accountId: number; x: number; z: number }> {
+    return [...this.sessions].map(([accountId, s]) => ({ accountId, x: s.person.pos.x, z: s.person.pos.z }));
+  }
+
   /** The player asks to sit or stand. The simulation says whether that is possible right now. */
   act(accountId: number, kind: ActKind, tick: number, tickRate = 20): boolean {
     const s = this.sessions.get(accountId);

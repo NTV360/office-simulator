@@ -10,6 +10,8 @@ export interface Account {
   role: Role;
   disabled: boolean;
   mustChangePassword: boolean;
+  /** Muted by an admin: chat from this account is not sent to anyone. */
+  muted: boolean;
   /** The desk an admin gave this account (a spot id such as 'desk:12'), or null while it is waiting for one. */
   slotSpot: string | null;
   spec: unknown | null;
@@ -44,6 +46,8 @@ export interface AccountStore {
   setSpec(id: number, spec: unknown): Promise<void>;
   /** Disable or enable the account (a disabled account cannot log in). */
   setDisabled(id: number, disabled: boolean): Promise<void>;
+  /** Mute or unmute the account (chat). */
+  setMuted(id: number, muted: boolean): Promise<void>;
   /** Add a line to the audit log. */
   audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }): Promise<void>;
   /** The newest audit lines first. */
@@ -60,11 +64,11 @@ export interface AccountStore {
 
 interface AccountRow {
   id: number; username: string; username_lower: string; password_hash: string; role: Role; disabled: boolean;
-  must_change_password: boolean; slot_spot: string | null; spec: unknown | null; created_at: Date; last_login_at: Date | null;
+  must_change_password: boolean; muted: boolean; slot_spot: string | null; spec: unknown | null; created_at: Date; last_login_at: Date | null;
 }
 const toAccount = (r: AccountRow): Account => ({
   id: r.id, username: r.username, usernameLower: r.username_lower, passwordHash: r.password_hash, role: r.role, disabled: r.disabled,
-  mustChangePassword: r.must_change_password, slotSpot: r.slot_spot, spec: r.spec, createdAt: r.created_at, lastLoginAt: r.last_login_at,
+  mustChangePassword: r.must_change_password, muted: r.muted, slotSpot: r.slot_spot, spec: r.spec, createdAt: r.created_at, lastLoginAt: r.last_login_at,
 });
 
 export class PgAccountStore implements AccountStore {
@@ -129,6 +133,10 @@ export class PgAccountStore implements AccountStore {
     await this.pool.query('UPDATE accounts SET disabled = $2 WHERE id = $1', [id, disabled]);
   }
 
+  async setMuted(id: number, muted: boolean): Promise<void> {
+    await this.pool.query('UPDATE accounts SET muted = $2 WHERE id = $1', [id, muted]);
+  }
+
   async audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }): Promise<void> {
     await this.pool.query('INSERT INTO audit_log (actor_name, action, target, detail) VALUES ($1, $2, $3, $4)', [a.actorName, a.action, a.target ?? null, a.detail === undefined ? null : JSON.stringify(a.detail)]);
   }
@@ -180,7 +188,7 @@ export class MemoryAccountStore implements AccountStore {
   async create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'> {
     const lower = a.username.toLowerCase();
     for (const x of this.accounts.values()) if (x.usernameLower === lower) return 'taken';
-    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, slotSpot: null, spec: null, createdAt: new Date(), lastLoginAt: null };
+    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, muted: false, slotSpot: null, spec: null, createdAt: new Date(), lastLoginAt: null };
     this.accounts.set(acc.id, acc);
     return { ...acc };
   }
@@ -199,6 +207,7 @@ export class MemoryAccountStore implements AccountStore {
   }
   async setSpec(id: number, spec: unknown) { this.accounts.get(id)!.spec = spec; }
   async setDisabled(id: number, disabled: boolean) { this.accounts.get(id)!.disabled = disabled; }
+  async setMuted(id: number, muted: boolean) { this.accounts.get(id)!.muted = muted; }
   readonly auditLog: AuditRow[] = [];
   async audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }) { this.auditLog.push({ id: this.auditLog.length + 1, at: new Date(), actor: a.actorName, action: a.action, target: a.target ?? null, detail: a.detail ?? null }); }
   async recentAudit(limit: number) { return [...this.auditLog].reverse().slice(0, limit); }

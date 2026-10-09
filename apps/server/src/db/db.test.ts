@@ -30,16 +30,16 @@ beforeEach(async () => { if (url) await reset(); });
 
 d('migrations', () => {
   it('create the tables, once, and are recorded', async () => {
-    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql']);
+    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql']);
     expect(await runMigrations(pool)).toEqual([]);
     const tables = (await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).rows.map(r => r.table_name);
     expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations', 'accounts', 'sessions', 'audit_log']));
-    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(2);
+    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(3);
   });
 
   it('two servers starting together apply each migration once', async () => {
     const results = await Promise.all([runMigrations(pool), runMigrations(pool), runMigrations(pool)]);
-    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql']);
+    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql']);
   });
 
   it('a failing migration rolls back completely and is not recorded', async () => {
@@ -306,6 +306,12 @@ d('desks and accounts across restarts', () => {
     expect((await store.byId(a.id))!.disabled).toBe(true);
     await store.setDisabled(a.id, false);
     expect((await store.byId(a.id))!.disabled).toBe(false);
+    expect((await store.byId(a.id))!.muted).toBe(false); // (the default)
+    await store.setMuted(a.id, true);
+    expect((await store.byId(a.id))!.muted).toBe(true);
+    expect((await store.list()).find(x => x.id === a.id)!.muted).toBe(true);
+    await store.setMuted(a.id, false);
+    expect((await store.byId(a.id))!.muted).toBe(false);
   });
 });
 
