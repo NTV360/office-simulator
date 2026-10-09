@@ -279,7 +279,7 @@ Every type in the object catalogue carries `mobility: fixed | movable` and a **w
 
 | Thing in the office today | Mobility | Basis |
 |---|---|---|
-| Station tables (named "Desk 01" to "Desk 08" in the code; they become **Stations A to H**) | fixed | stated |
+| Station tables (now named **Table A to H**, see the layout change at the end of PHASE-3-BREAKDOWN.md) | fixed | stated |
 | Chairs at the stations and everywhere else (office, dining, conference, bar stools) | movable | stated |
 | Monitors, keyboards, mice, mugs, notebooks, small desk plants | movable | stated (desk items) |
 | Main TV (the lounge one where people play; it stands on its own floor stand) | fixed | stated |

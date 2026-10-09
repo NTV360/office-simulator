@@ -19,6 +19,8 @@ export interface Spot {
   occupant: unknown;
   room?: number;
   group?: string;
+  /** On a desk: the role of whoever sits here (HR, CTO, Cleaner). Desks without one seat the usual mix of roles. */
+  role?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [extra: string]: any;
 }

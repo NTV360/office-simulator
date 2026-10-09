@@ -40,16 +40,17 @@ function populate(n: number): void {
 /** Start a live mid-morning with `staff` people (default 40; never more than there are desks). */
 export function initDay(staff = 40): void {
   populate(staff);
-  // kick things off: a training in Conference 1, a sync in Conference 2, calls, coffee and a break
+  // kick things off: a training in Conference 1, a sync in Conference 3, calls, coffee and a break (Conference 2 is the HR office)
   {
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task!.kind === 'work'));
     const meet = (room: number, n: number, topic: string, mins: number) => {
       const m: Meeting = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic };
       const seats = interactables.conf(room);
+      n = Math.min(n, seats.length); if (n < 2) return;
       here().slice(0, n).forEach((p, i) => { placeNow(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: seats[i], until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } }); m.members.push(p); });
       meetings.push(m); addLog(`${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);
     };
-    meet(1, 6, 'training session', 30); meet(2, 4, 'client sync', 22);
+    meet(1, 6, 'training session', 30); meet(3, 4, 'client sync', 22);
     const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: interactables.of('booth')[1], dur: 12, onStart: q => { q.props.phone = true; }, onEnd: q => { q.props.phone = false; } });
     const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: interactables.of('counter')[0], dur: 5, onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
     const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: interactables.of('bar')[0], dur: 6, onStart: q => { q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });

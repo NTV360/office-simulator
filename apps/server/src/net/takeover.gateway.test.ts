@@ -210,12 +210,12 @@ describe('the admin endpoints', () => {
     const slotsNow = (await admin('GET', '/api/admin/slots')).body as SlotRow[];
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, {})).status).toBe(400);
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'chair:1' })).status).toBe(400);
-    expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'desk:77' })).status).toBe(400);
+    expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'desk:80' })).status).toBe(400); // (there are 80 desks, 0 to 79)
     const [free1, free2] = await freeDesks();
     expect((await admin('POST', `/api/admin/users/99999/assign-slot`, { spot: free1 })).status).toBe(404);
     expect((await admin('POST', `/api/admin/users/abc/assign-slot`, { spot: free1 })).status).toBe(400);
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: deskOf.get('dana') })).status).toBe(409); // dana's
-    const empty = Array.from({ length: 70 }, (_, i) => 'desk:' + i).find(d => !(slotsNow.some(s => s.spot === d)))!;
+    const empty = Array.from({ length: 80 }, (_, i) => 'desk:' + i).find(d => !(slotsNow.some(s => s.spot === d)))!;
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: empty })).status).toBe(409); // nobody sits there
     expect((await admin('POST', `/api/admin/users/${id}/release-slot`)).status).toBe(400); // has no desk
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: free1 })).status).toBe(201);

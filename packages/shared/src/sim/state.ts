@@ -38,10 +38,18 @@ export function allocatePersonId(): number {
   return id;
 }
 
-/** Shuffle the desks into the seating order. Call once after the world has registered them. */
+/**
+ * Put the desks in the order new staff are seated at. The ordinary desks are shuffled. Desks that belong to a role (HR, CTO, the
+ * cleaner) are taken first, in the order they were made, so those people are there however few staff the office has, except that
+ * the very first person (Hazel, who has her own look and role) always gets an ordinary desk.
+ * Call once after the world has registered the desks.
+ */
 export function initState(): void {
   deskPool.length = 0;
-  deskPool.push(...shuffle(interactables.of('desk').slice()));
+  const all = interactables.of('desk');
+  const ordinary = shuffle(all.filter(d => !d.role));
+  const special = all.filter(d => !!d.role);
+  deskPool.push(...ordinary.slice(0, 1), ...special, ...ordinary.slice(1));
 }
 
 /** Back to a fresh, empty simulation (tests; also a future "new world"). Spots are not touched. */

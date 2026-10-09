@@ -10,7 +10,8 @@ const TOPICS = ['sprint planning', 'design review', 'client sync', 'bug triage',
 export function tryMeeting(): void {
   const t = sim.t; if (t < 9 * 60 + 15 || t > 17 * 60 + 10) return;
   const lunchHour = t > 12 * 60 && t < 13 * 60;
-  for (const room of shuffle([1, 2, 3])) {
+  // (a room whose chairs have become desks, such as the HR office, holds no meetings)
+  for (const room of shuffle([1, 2, 3].filter(r => interactables.conf(r).length >= 2))) {
     if (meetings.some(m => m.room === room)) continue;
     if (random() > (lunchHour ? .01 : .05)) continue;
     const cap = interactables.conf(room).length;

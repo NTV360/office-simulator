@@ -76,8 +76,8 @@ async function load() {
   settings = st.status === 200 ? st.body : null;
   return null;
 }
-/** A desk by name: its island and its number, e.g. "Desk 02 · seat 9" (every desk gets a different one). */
-const deskLabel = s => `${s.place} · seat ${s.spot.split(":")[1]}`;
+/** A desk by name: its island and its number, e.g. "Table B · seat 9" (every desk gets a different one). */
+const deskLabel = s => `${s.place.charAt(0).toUpperCase()}${s.place.slice(1)} · seat ${s.spot.split(":")[1]}`;
 const slotOf = spot => slots.find(s => s.spot === spot);
 const freeDesks = () => slots.filter(s => s.status === 'unclaimed');
 

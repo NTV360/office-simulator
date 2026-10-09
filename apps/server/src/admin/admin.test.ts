@@ -66,7 +66,7 @@ describe('who may use the admin API', () => {
 
 describe('changing settings', () => {
   it('reports the current settings', async () => {
-    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 70, speed: 1, paused: false, tickRate: 20 });
+    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 80, speed: 1, paused: false, tickRate: 20 });
   });
 
   it('slots: add and remove staff, never beyond the desks', async () => {
@@ -78,7 +78,7 @@ describe('changing settings', () => {
     expect((await r.json()).slots).toBe(12);
     expect((await world()).staff).toBe(12);
     r = await call('PUT', '/api/admin/settings', { slots: 5000 });
-    expect((await r.json()).slots).toBe(70);
+    expect((await r.json()).slots).toBe(80); // (there are 80 desks)
     r = await call('PUT', '/api/admin/settings', { slots: 0 });
     expect((await r.json()).slots).toBe(0);
   });

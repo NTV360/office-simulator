@@ -27,7 +27,7 @@ function label(text, px, py, y = 3.0, scale = 1) {
 }
 function buildLabels() {
   ISLANDS.forEach(d => { const [px, py] = toPx(new THREE.Vector3(d.cx, 0, d.cz)); label(d.name, px, py, 1.7); });
-  label('Conference 1', 190, 132, 2.9, .9); label('Conference 2', 330, 132, 2.9, .9); label('Conference 3', 168, 248, 2.9, .85);
+  label('Conference 1 (CTOs)', 190, 132, 2.9, .9); label('Conference 2 (HR)', 330, 132, 2.9, .9); label('Conference 3', 168, 248, 2.9, .85);
   label('Lounge', 168, 345, 1.8, .85); label('TV lounge', 362, 318, 1.9, .85); label('Entrance', 223, 440, 1.2);
   label('Bar table', 450, 105, 1.7, .75); label('Bar table', 655, 207, 1.7, .75);
   label('Booths', 582, 916, 2.9); label('Dining area', 544, 1030, 2.1); label('Mini golf', 667, 1018, 1.5, .8); label('Darts', 380, 925, 2.8, .8); label('Music corner', 655, 538, 2.0, .8);

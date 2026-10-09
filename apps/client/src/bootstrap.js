@@ -17,6 +17,7 @@ import { buildFloor } from './world/floor.js';
 import { buildBar } from './world/furniture/bar.js';
 import { buildBooths } from './world/furniture/booths.js';
 import { buildConference } from './world/furniture/conference.js';
+import { buildStations } from './world/furniture/stations.js';
 import { buildDarts } from './world/furniture/darts.js';
 import { buildDesks } from './world/furniture/desks.js';
 import { buildDining } from './world/furniture/dining.js';
@@ -52,6 +53,7 @@ export function bootstrap({ simulate = true } = {}) {
   buildMusic();
   buildKitchen();
   buildStorage();
+  buildStations(); // after every other desk, so their ids do not move
   buildPlants();
   buildEntrance();
   buildBake();

@@ -10,13 +10,15 @@ export interface SpotOptions {
   shared?: boolean;
   room?: number;
   group?: string;
+  /** A desk that belongs to a role ("HR", "CTO", "Cleaner"): whoever is seated there has that role. */
+  role?: string;
 }
 
 /** Register a spot at a floor-plan position (plan pixels) facing `face`. */
 export function mkSpot(kind: string, px: number, py: number, face: number, o: SpotOptions = {}): Spot {
   return interactables.add({
     kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53,
-    place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group,
+    place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group, role: o.role,
   }) as Spot;
 }
 

@@ -38,7 +38,7 @@ try {
   await new Promise(r => setTimeout(r, 1200));
   const w2 = JSON.parse((await get('/api/world')).text);
   check('the world is running: ticks and the clock advance', w2.tick > w1.tick && (w2.paused || w2.simTime !== w1.simTime), `tick ${w1.tick} to ${w2.tick}`);
-  check('the office has its staff', w2.staff > 0 && w2.desks === 70, `${w2.staff} staff, ${w2.desks} desks`);
+  check('the office has its staff', w2.staff > 0 && w2.desks === 80, `${w2.staff} staff, ${w2.desks} desks`);
   check('ticks fit their budget', w2.tickMs.avgMs < 10, `avg ${w2.tickMs.avgMs.toFixed(2)} ms, max ${w2.tickMs.maxMs.toFixed(2)} ms`);
 
   // accounts: the auth routes are wired (an anonymous caller is told "not logged in", not 404 or 500)

@@ -7,7 +7,7 @@ export const roleBag: string[] = ROLES.flatMap(([r, n]) => Array<string>(n).fill
 export const SCREEN_VARIANTS = { code: 6, design: 3, dash: 3 } as const;
 export type ScreenKind = keyof typeof SCREEN_VARIANTS;
 
-export const VERB: Record<string, string> = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets' };
+export const VERB: Record<string, string> = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets', 'HR': 'Handling people matters', 'CTO': 'Reviewing the roadmap', 'Cleaner': 'Keeping the office tidy' };
 
 export const CATS: Record<string, { name: string; color: string }> = {
   work: { name: 'At their desk', color: '#5a8fc7' },

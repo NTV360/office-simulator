@@ -53,7 +53,7 @@ Every step runs the phase 1 checks (`npm test`, `npm run typecheck`, `npm run bu
 ### Step 0
 
 1. **The server-side simulation reproduces the browser recordings exactly.** `packages/shared/src/layout/golden.test.ts` loads the layout data, runs the Node simulation with seeds 1 to 3 and compares every person at every recorded checkpoint, and the number of random draws, with the browser's golden files. That is a stronger proof than "it runs": the server and the browser are the same simulation.
-2. **The layout is 145 spots (70 desks, 21 conference seats, 18 dining seats and so on) and 112 obstacles**, with the nav grid at 11,643 walkable cells, as in the browser.
+2. **The layout is 145 spots (70 desks, 21 conference seats [since changed: see the layout change at the end of PHASE-3-BREAKDOWN.md], 18 dining seats and so on) and 112 obstacles**, with the nav grid at 11,643 walkable cells, as in the browser.
 3. **The browser runner now shares `tests/browser/site.mjs`** with the dump script (start the site, open a page, collect errors).
 4. **Spots need to be in creation order** because ids are `kind:n`. `interactables.all()` keeps that order and `loadLayout` refuses data that would produce different ids.
 5. **Anything not plain data on a spot is an error** when dumping, so a future feature cannot silently leave something out of the layout file.

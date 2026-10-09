@@ -14,13 +14,13 @@ import type { Person } from './types';
 /** Create the next staff member at a free desk. Returns null when no desk is free. The new person is away until their arrival time. */
 export function makeStaff(): Person | null {
   const slot = deskPool.find(s => !s.owner); if (!slot) return null;
-  let role = pick(roleBag);
+  let role = (slot.role as string | undefined) ?? pick(roleBag); // an HR, CTO or cleaner desk seats that role
   const spec = randomSpec(role);
   const nameIdx = counters.nameIdx;
   let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
   if (nameIdx === 0) ({ first, last, role } = applyHazel(spec));
   counters.nameIdx++;
-  const screenKind: ScreenKind = role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code';
+  const screenKind: ScreenKind = role.includes('Designer') ? 'design' : role === 'DevOps' || role === 'CTO' ? 'dash' : 'code';
   // the order of the random draws below is part of the recorded simulation; do not reorder
   const p: Person = {
     id: allocatePersonId(), controller: 'ai', name: `${first} ${last}`, role, spec, slot,

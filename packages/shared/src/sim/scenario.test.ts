@@ -77,7 +77,7 @@ describe('a seeded day', () => {
     start(1);
     const seen: Array<{ room: number; members: Person[] }> = [];
     const known = new Set<object>();
-    while (sim.t < 17 * 60 + 30) {
+    while (sim.t < 18 * 60 && sim.day === 1) { // (a meeting that starts at 17:10 can run until 17:55)
       stepSim(DT);
       for (const m of meetings) if (!known.has(m)) { known.add(m); seen.push({ room: m.room, members: m.members.slice() }); }
     }

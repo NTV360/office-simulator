@@ -18,19 +18,15 @@ function confSeat(n, px, py, face) {
 
 
 function buildConference() {
-  // Conference 1: two tables, ten seats facing the TV on the west wall
+  // Conference 1: two tables, facing the TV on the west wall. The two chairs at the north end are the CTOs' desks (stations.js), so
+  // meetings use the other six.
   table(158, 96, 174, 168);
   table(205, 96, 221, 168);
-  [107, 124, 141, 158].forEach(y => { confSeat(1, 183, y, WST); confSeat(1, 230, y, WST); });
+  [124, 141, 158].forEach(y => { confSeat(1, 183, y, WST); confSeat(1, 230, y, WST); });
   cabinet(119, 180, 158, 191.2);
   tv(116.5, 108, 127, 156, E, 'slides');
-  // Conference 2: square table, four chairs plus a corner chair
+  // Conference 2 is the HR office: its square table and five chairs are HR's desks (stations.js), so it holds no meetings
   table(305, 105, 355, 160);
-  confSeat(2, 294, 118, E);
-  confSeat(2, 294, 147, E);
-  confSeat(2, 366, 118, WST);
-  confSeat(2, 366, 147, WST);
-  confSeat(2, 366, 92, Math.atan2(330 - 366, 132 - 92));
   cabinet(384.5, 115, 397.6, 172);
   tv(267, 108, 277, 156, E, 'slides');
   // Conference 3: long table, ten seats

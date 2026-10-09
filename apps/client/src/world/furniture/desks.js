@@ -47,10 +47,11 @@ let ISLANDS;
 
 function buildDesks() {
   ISLANDS = [
-    island('Desk 01', 451.7, 164.7, 601.7, 212.4, 4), island('Desk 02', 451.7, 253.5, 601.7, 301.3, 4), island('Desk 03', 451.7, 361.3, 601.7, 409.0, 4),
-    island('Desk 04', 451.7, 482.4, 601.7, 530.1, 4), island('Desk 05', 451.7, 587.9, 601.7, 635.6, 4),
-    island('Desk 06', 416.7, 691.2, 622.2, 740.1, 6), island('Desk 07', 415.6, 793.4, 621.1, 842.2, 6),
-    island('Desk 08', 240.7, 218.5, 387.9, 253.0, 6, ['bottom']),
+    island('Table A', 451.7, 164.7, 601.7, 212.4, 4), island('Table B', 451.7, 253.5, 601.7, 301.3, 4), island('Table C', 451.7, 361.3, 601.7, 409.0, 4),
+    island('Table D', 451.7, 482.4, 601.7, 530.1, 4), island('Table E', 451.7, 587.9, 601.7, 635.6, 4),
+    island('Table G', 416.7, 691.2, 622.2, 740.1, 6), island('Table H', 415.6, 793.4, 621.1, 842.2, 6),
+    // table F: eight seats, the old six (same places) and two more to the east
+    island('Table F', 240.7, 218.5, 436.9667, 253.0, 8, ['bottom']),
   ];
 }
 
