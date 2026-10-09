@@ -62,9 +62,9 @@ function showLogin(note = '') {
 }
 
 // ---------------------------------------------------------------- state and data
-let accounts = [], slots = [], audit = [];
+let accounts = [], slots = [], audit = [], settings = null;
 const ui = { filter: '', panel: new Map(), picked: new Map(), armed: null };
-let tableHost, statsHost, bulkResult, auditHost;
+let tableHost, statsHost, bulkResult, auditHost, officeHost;
 
 async function load() {
   const [u, s] = await Promise.all([api('GET', '/users'), api('GET', '/slots')]);
@@ -72,6 +72,8 @@ async function load() {
   accounts = u.body; slots = s.body;
   const a = await api('GET', '/audit?limit=100'); // (the log is a nice-to-have: the page works without it)
   audit = a.status === 200 ? a.body : [];
+  const st = await api('GET', '/settings');
+  settings = st.status === 200 ? st.body : null;
   return null;
 }
 /** A desk by name: its island and its number, e.g. "Desk 02 · seat 9" (every desk gets a different one). */
@@ -99,8 +101,10 @@ function showMain() {
   const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); ui.panel.clear(); ui.picked.clear(); accounts = []; audit = []; showLogin(); } }, 'Log out');
   bulkResult = el('div', { id: 'bulkResult' });
   auditHost = el('div', { id: 'adminAudit' });
+  officeHost = el('section', { class: 'a-card', id: 'adminOffice' });
   app.replaceChildren(
     el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
+    officeHost,
     makeCard(),
     el('section', { class: 'a-card' },
       el('h2', {}, 'Accounts'),
@@ -120,7 +124,7 @@ async function reload() {
   if (failed) { remember(''); return showLogin(failed.status === 403 ? 'Wrong password.' : problem(failed)); }
   drawAll();
 }
-function drawAll() { drawStats(); drawTable(); drawAudit(); }
+function drawAll() { drawStats(); drawOffice(); drawTable(); drawAudit(); }
 
 const ACTIONS = {
   'account.create': 'Made an account', 'account.bulk-create': 'Made accounts', 'password.set': 'Set a password', 'account.disable': 'Disabled an account',
@@ -137,6 +141,37 @@ function drawAudit() {
     ? el('div', { class: 'a-scroll' }, el('table', { class: 'a-table' },
       el('thead', {}, el('tr', {}, ['When', 'What', 'Who', 'Details', 'From'].map((h, i) => el('th', { class: i === 0 || i === 4 ? 'hide-s' : '' }, h)))), el('tbody', {}, rows)))
     : el('p', {}, 'Nothing yet.'));
+}
+
+/** The simulated office: how many people it has (never fewer than the accounts' desks), the clock speed, pause. */
+function drawOffice() {
+  if (!settings) { officeHost.replaceChildren(); return; }
+  const claimed = slots.filter(s => s.status === 'claimed').length;
+  const count = el('input', { type: 'number', id: 'officeSlots', min: String(claimed), max: String(settings.maxSlots), step: '1', value: String(settings.slots), 'aria-label': 'People in the office' });
+  const speed = el('select', { id: 'officeSpeed', 'aria-label': 'Clock speed' }, [0.25, 0.5, 1, 2, 3, 5, 8].map(v => el('option', { value: String(v), selected: v === settings.speed }, v + 'x')));
+  const paused = el('input', { type: 'checkbox', id: 'officePaused', checked: settings.paused });
+  const note = el('p', { class: 'a-note', role: 'alert' });
+  const save = el('button', { type: 'button', class: 'a-btn primary', id: 'officeSave' }, 'Save');
+  save.addEventListener('click', async () => {
+    note.className = 'a-note'; note.textContent = '';
+    const n = Number(count.value);
+    if (!Number.isInteger(n) || n < 0 || n > settings.maxSlots) { note.textContent = `People must be a whole number from 0 to ${settings.maxSlots}.`; return; }
+    save.disabled = true;
+    const r = await api('PUT', '/settings', { slots: n, speed: Number(speed.value), paused: paused.checked });
+    save.disabled = false;
+    if (r.status !== 200) { note.textContent = problem(r); return; }
+    await reload();
+    const again = document.getElementById('officeNote');
+    if (again) { again.className = 'a-note a-ok'; again.textContent = 'Saved.'; }
+  });
+  note.id = 'officeNote';
+  officeHost.replaceChildren(
+    el('h2', {}, 'The office'),
+    el('p', {}, `People in the simulated office (up to ${settings.maxSlots}, one per desk). People with an account always stay; lowering the number only removes people nobody owns. Everyone online sees a change at once.`),
+    el('div', { class: 'a-row' },
+      el('label', { class: 'a-field' }, 'People', count), el('label', { class: 'a-field' }, 'Clock speed', speed),
+      el('label', { class: 'a-row' }, paused, 'Paused'), save),
+    note);
 }
 
 function drawStats() {

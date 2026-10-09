@@ -580,6 +580,19 @@ try {
     await ap.waitForFunction(u => !document.querySelector(`tr[data-user="${u}"] select`), n2, { timeout: 8000 }).then(() => pass('a desk can be given from the list'), () => fail('desk was not given'));
     await screenshotOf(ap, 'admin-page.png');
 
+    // the office box: change the number of people, see it live, put it back
+    const before70 = await ap.inputValue('#officeSlots');
+    await ap.fill('#officeSlots', '55');
+    await ap.click('#officeSave');
+    await ap.waitForFunction(() => document.getElementById('officeNote')?.textContent === 'Saved.', null, { timeout: 8000 }).then(() => pass('the office box saves a new number of people'), () => fail('office box did not save'));
+    const w55 = await (await fetch(site.url + '/api/world')).json();
+    if (w55.staff === 55) pass('and the server now has 55 people'); else fail('staff is ' + w55.staff);
+    await ap.fill('#officeSlots', '5000'); await ap.click('#officeSave');
+    await ap.waitForFunction(() => /whole number from 0/.test(document.getElementById('officeNote')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a number that is too big is refused with the reason'), () => fail('no message for a too-big number'));
+    await ap.fill('#officeSlots', before70); await ap.click('#officeSave');
+    await ap.waitForFunction(() => document.getElementById('officeNote')?.textContent === 'Saved.', null, { timeout: 8000 });
+    if ((await (await fetch(site.url + '/api/world')).json()).staff === Number(before70)) pass('and it is put back'); else fail('staff was not put back');
+
     // the activity log shows what was just done, with no password in it
     await ap.waitForSelector('#adminAudit tbody tr', { timeout: 8000 });
     const logText = await ap.textContent('#adminAudit');
