@@ -1,5 +1,6 @@
-// A small login and sign-up screen for online mode. Plain DOM, no framework. It is shown when there is no session (or it has
-// ended), and goes away once the server has accepted a login or a registration.
+// A small login screen for online mode. Plain DOM, no framework. It is shown when there is no session (or it has ended), and goes
+// away once the server has accepted a login. There is no sign-up: an admin makes everybody's account and gives a first password,
+// which the person replaces with their own on first login (the second step of this screen).
 
 /** The account the current session belongs to, or null if nobody is logged in. */
 export async function getAccount(base) {
@@ -32,6 +33,7 @@ export async function mintTicket(base) {
     const r = await post(base, '/api/play/ticket');
     if (r.ok) return { ticket: r.json.ticket };
     if (r.status === 401) return { loggedOut: true };
+    if (r.status === 403 && r.json.code === 'must-change-password') return { loggedOut: true }; // (the login screen asks for a new password)
     return { retryable: true };
   } catch { return { retryable: true }; }
 }
@@ -44,55 +46,57 @@ const el = (tag, attrs = {}, ...kids) => {
 };
 
 /**
- * Show the screen and wait. Resolves with the account once the server has accepted a login or a registration.
- * `note` is a line shown above the form (for example "Your session has ended").
+ * Show the screen and wait. Resolves with the account once the server has accepted a login (and, for an account an admin has just
+ * made, once the person has chosen their own password). `note` is a line shown above the form (for example "Your session has ended").
  */
 export function showLogin(base, note = '') {
   return new Promise(resolve => {
     document.getElementById('loginScreen')?.remove();
-    let mode = 'login';
 
     const message = el('p', { class: 'login-note', role: 'alert' }, note);
     const name = el('input', { id: 'loginName', name: 'username', type: 'text', autocomplete: 'username', maxlength: '24', required: '', spellcheck: 'false', autocapitalize: 'none' });
     const pass = el('input', { id: 'loginPass', name: 'password', type: 'password', autocomplete: 'current-password', maxlength: '128', required: '' });
-    const code = el('input', { id: 'loginCode', name: 'signupCode', type: 'text', autocomplete: 'off', maxlength: '100' });
-    const codeRow = el('label', { class: 'login-row login-code', hidden: '' }, 'Sign-up code', code);
     const go = el('button', { type: 'submit', class: 'btn primary' }, 'Log in');
-    const tabLogin = el('button', { type: 'button', class: 'login-tab', 'aria-pressed': 'true' }, 'Log in');
-    const tabRegister = el('button', { type: 'button', class: 'login-tab', 'aria-pressed': 'false' }, 'Create account');
+    const hint = el('p', { class: 'login-hint' }, 'Your account is made by an admin. Ask them if you cannot log in.');
+    const title = el('h2', { id: 'loginTitle' }, 'Office Floor Sim');
+    const rowName = el('label', { class: 'login-row' }, 'Username', name);
+    const rowPass = el('label', { class: 'login-row' }, 'Password', pass);
+    const form = el('form', { class: 'login-form', novalidate: '' }, message, rowName, rowPass, hint, go);
 
-    const setMode = m => {
-      mode = m;
-      tabLogin.setAttribute('aria-pressed', String(m === 'login'));
-      tabRegister.setAttribute('aria-pressed', String(m === 'register'));
-      go.textContent = m === 'login' ? 'Log in' : 'Create account';
-      pass.setAttribute('autocomplete', m === 'login' ? 'current-password' : 'new-password');
-      hint.textContent = m === 'register' ? 'Letters, digits, dot, dash and underscore. Password: at least 8 characters.' : '';
+    let step = 'login'; // then 'change': choose your own password
+    let account = null, current = '';
+    const next = el('input', { id: 'loginNew', name: 'new-password', type: 'password', autocomplete: 'new-password', maxlength: '128', required: '' });
+    const again = el('input', { id: 'loginNew2', name: 'new-password-again', type: 'password', autocomplete: 'new-password', maxlength: '128', required: '' });
+
+    const toChangeStep = () => {
+      step = 'change';
+      title.textContent = 'Choose your password';
+      rowName.remove(); rowPass.remove();
+      hint.textContent = 'An admin set your first password. Choose one only you know: at least 8 characters.';
       message.textContent = '';
+      go.textContent = 'Save and continue';
+      form.insertBefore(el('label', { class: 'login-row' }, 'New password', next), hint);
+      form.insertBefore(el('label', { class: 'login-row' }, 'New password again', again), hint);
+      next.focus();
     };
-    tabLogin.addEventListener('click', () => setMode('login'));
-    tabRegister.addEventListener('click', () => setMode('register'));
-    const hint = el('p', { class: 'login-hint' });
-
-    const form = el('form', { class: 'login-form', novalidate: '' },
-      el('div', { class: 'login-tabs' }, tabLogin, tabRegister),
-      message,
-      el('label', { class: 'login-row' }, 'Username', name),
-      el('label', { class: 'login-row' }, 'Password', pass),
-      codeRow, hint, go);
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
       go.disabled = true;
       message.textContent = '';
       try {
-        const body = { username: name.value, password: pass.value };
-        if (mode === 'register' && code.value) body.signupCode = code.value;
-        const r = await post(base, mode === 'login' ? '/api/auth/login' : '/api/auth/register', body);
-        if (r.ok) { pass.value = ''; screen.remove(); resolve(r.json.account); return; }
-        if (r.json.code === 'signup') codeRow.hidden = false; // the server wants a code: ask for it
-        message.textContent = r.json.message || `Something went wrong (${r.status}).`;
-        if (r.json.code === 'signup') code.focus(); else pass.select();
+        if (step === 'login') {
+          const r = await post(base, '/api/auth/login', { username: name.value, password: pass.value });
+          if (!r.ok) { message.textContent = r.json.message || `Something went wrong (${r.status}).`; pass.select(); return; }
+          account = r.json.account; current = pass.value; pass.value = '';
+          if (account.mustChangePassword) toChangeStep(); else { screen.remove(); resolve(account); }
+          return;
+        }
+        if (next.value !== again.value) { message.textContent = 'The two new passwords are not the same.'; again.select(); return; }
+        const r = await post(base, '/api/auth/password', { current, next: next.value });
+        if (!r.ok) { message.textContent = r.json.message || `Something went wrong (${r.status}).`; next.select(); return; }
+        current = ''; next.value = again.value = '';
+        screen.remove(); resolve({ ...account, mustChangePassword: false });
       } catch {
         message.textContent = 'Cannot reach the server. Try again in a moment.';
       } finally {
@@ -103,7 +107,7 @@ export function showLogin(base, note = '') {
     const screen = el('div', { id: 'loginScreen', class: 'login-screen', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'loginTitle' },
       el('div', { class: 'login-card' },
         el('p', { class: 'eyebrow' }, 'Floor plan · Draft 07'),
-        el('h2', { id: 'loginTitle' }, 'Office Floor Sim'),
+        title,
         form));
     document.body.append(screen);
     name.focus();

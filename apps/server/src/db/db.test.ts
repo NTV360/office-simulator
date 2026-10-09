@@ -188,7 +188,8 @@ d('accounts in PostgreSQL', () => {
 
   it('neither the password nor the session token is stored, only hashes', async () => {
     const svc = new AuthService(new PgAccountStore(pool));
-    const { token } = await svc.register({ username: 'Hashy', password: 'a-very-long-secret' }, { ip: '1', userAgent: null });
+    await svc.createAccount({ username: 'Hashy', password: 'a-very-long-secret' });
+    const { token } = await svc.login({ username: 'Hashy', password: 'a-very-long-secret' }, { ip: '1', userAgent: null });
     const dump = JSON.stringify((await pool.query("SELECT a.*, encode(s.token_hash, 'hex') AS th FROM accounts a JOIN sessions s ON s.account_id = a.id")).rows);
     expect(dump).not.toContain(token);
     expect(dump).not.toContain('a-very-long-secret');
@@ -213,7 +214,7 @@ d('accounts in PostgreSQL', () => {
     const me = await fetch(base + '/api/auth/me', { headers: { cookie } });
     expect(me.status).toBe(200);
     const reg = await json('/api/auth/register', { username: 'newbie', password: 'another-long-pass' });
-    expect(reg.status).toBe(201);
+    expect(reg.status).toBe(404); // there is no sign-up
     // restart: the admin is not created twice, and the session survives (it is in the database)
     await app.close();
     const again = await NestFactory.create(AppModule, { logger: false });
@@ -259,9 +260,9 @@ d('desks and accounts across restarts', () => {
 
   it('a desk given to an account is still theirs after a restart, and the accounts win when the database and the saved world disagree', async () => {
     const one = await start();
-    const reg = await fetch(one.base + '/api/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'deskowner', password: 'a-long-password-1' }) });
+    const reg = await one.call('POST', '/api/admin/users', { username: 'deskowner', password: 'a-long-password-1' });
     expect(reg.status).toBe(201);
-    const id = (await reg.json() as { account: { id: number } }).account.id;
+    const id = (reg.body as { account: { id: number } }).account.id;
     const free = (await one.call('GET', '/api/admin/slots')).body.find((s: { status: string }) => s.status === 'unclaimed').spot as string;
     expect((await one.call('POST', `/api/admin/users/${id}/assign-slot`, { spot: free })).status).toBe(201);
     await new Promise(r => setTimeout(r, 900)); // a save

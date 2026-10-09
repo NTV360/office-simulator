@@ -1,6 +1,6 @@
 // Smoke test for a running stack: node scripts/smoke.mjs   (or: npm run smoke)
 // Checks that the page and its files are served and that the server reports a healthy database.
-// SMOKE_SIGNUP_CODE: the sign-up code, if the server requires one.
+// SMOKE_ADMIN_TOKEN: the ADMIN_TOKEN of the server, needed to make the smoke account the first time (there is no sign-up).
 // Target: SMOKE_URL, else http://localhost:$WEB_PORT (default 8080).
 
 const base = (process.env.SMOKE_URL || `http://localhost:${process.env.WEB_PORT || 8080}`).replace(/\/$/, '');
@@ -57,8 +57,18 @@ try {
 
     // (a fixed account, created the first time and logged into after that)
     const creds = { username: 'smoke_user', password: 'smoke-test-pass-1' };
-    let auth = await json('/api/auth/register', { ...creds, signupCode: process.env.SMOKE_SIGNUP_CODE });
-    if (auth.status === 409) auth = await json('/api/auth/login', creds);
+    let auth = await json('/api/auth/login', creds);
+    if (auth.status === 401 && process.env.SMOKE_ADMIN_TOKEN) {
+      // first time: an admin makes the account with a first password, and the person replaces it with their own (as in real life)
+      const first = 'smoke-first-pass-1';
+      const made = await fetch(base + '/api/admin/users', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + process.env.SMOKE_ADMIN_TOKEN }, body: JSON.stringify({ username: creds.username, password: first }) });
+      if (made.ok) {
+        const temp = await json('/api/auth/login', { username: creds.username, password: first });
+        const tempCookie = (temp.headers.get('set-cookie') || '').split(';')[0];
+        await json('/api/auth/password', { current: first, next: creds.password }, tempCookie);
+        auth = await json('/api/auth/login', creds);
+      }
+    }
     const cookie = (auth.headers.get('set-cookie') || '').split(';')[0];
     check('accounts: the smoke account can log in', auth.ok && cookie.startsWith('office_session='), `status ${auth.status}`);
     const ticketRes = await json('/api/play/ticket', undefined, cookie);

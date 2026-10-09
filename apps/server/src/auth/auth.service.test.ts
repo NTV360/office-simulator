@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MemoryAccountStore } from './account-store';
+import { MemoryAccountStore, type Account } from './account-store';
 import { AuthError, AuthService, publicAccount } from './auth.service';
 import { hashPassword, passwordProblem, verifyPassword } from './password';
 import { RateLimiter } from './rate-limit';
@@ -17,6 +17,12 @@ beforeEach(() => {
   store = new MemoryAccountStore();
   auth = new AuthService(store, { now: () => now });
 });
+
+/** Make the account, then log in to it (what the person does after an admin made it). */
+const signUp = async (input: { username: unknown; password: unknown }, c = ctx()): Promise<{ account: Account; token: string }> => {
+  await auth.createAccount(input);
+  return auth.login({ username: String(input.username).trim(), password: input.password }, c);
+};
 
 const refused = async (p: Promise<unknown>): Promise<AuthError> => { try { await p; } catch (e) { return e as AuthError; } throw new Error('expected a refusal'); };
 const code = async (p: Promise<unknown>): Promise<string> => { try { await p; return 'ok'; } catch (e) { return e instanceof AuthError ? e.code : 'other:' + String(e); } };
@@ -45,16 +51,16 @@ describe('passwords', () => {
   });
 });
 
-describe('register', () => {
-  it('creates a player account and a session', async () => {
-    const { account, token } = await auth.register({ username: 'Ana_B', password: GOOD }, ctx());
+describe('createAccount', () => {
+  it('creates a player account (and logging in gives a session)', async () => {
+    const { account, token } = await signUp({ username: 'Ana_B', password: GOOD }, ctx());
     expect(account).toMatchObject({ username: 'Ana_B', usernameLower: 'ana_b', role: 'player', disabled: false, slotSpot: null });
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect((await auth.authenticate(token))?.id).toBe(account.id);
   });
 
   it('keeps only a hash of the password and of the session token', async () => {
-    const { account, token } = await auth.register({ username: 'ana', password: GOOD }, ctx());
+    const { account, token } = await signUp({ username: 'ana', password: GOOD }, ctx());
     const stored = store.accounts.get(account.id)!;
     expect(stored.passwordHash).not.toContain(GOOD);
     expect([...store.sessions.keys()]).toEqual([createHash('sha256').update(token).digest('hex')]);
@@ -62,7 +68,7 @@ describe('register', () => {
   });
 
   it('what is shown to the page has nothing secret in it', async () => {
-    const { account } = await auth.register({ username: 'ana', password: GOOD }, ctx());
+    const { account } = await signUp({ username: 'ana', password: GOOD }, ctx());
     const shown = JSON.stringify(publicAccount(account));
     expect(shown).not.toContain('argon2');
     expect(shown).not.toContain(GOOD);
@@ -71,44 +77,52 @@ describe('register', () => {
 
   it('usernames: 3 to 24 of letters, digits, dot, dash, underscore; trimmed; unique whatever the capitals', async () => {
     for (const bad of ['', 'ab', 'a'.repeat(25), 'has space', 'semi;colon', 'ünï', '<b>x</b>', "o'brien", 5, null, undefined, {}, ['x']]) {
-      expect(await code(auth.register({ username: bad, password: GOOD }, ctx(`bad-${String(bad)}`))), JSON.stringify(bad)).toBe('username');
+      expect(await code(signUp({ username: bad, password: GOOD }, ctx(`bad-${String(bad)}`))), JSON.stringify(bad)).toBe('username');
     }
-    const { account } = await auth.register({ username: '  Marco.C  ', password: GOOD }, ctx());
+    const { account } = await signUp({ username: '  Marco.C  ', password: GOOD }, ctx());
     expect(account.username).toBe('Marco.C');
-    expect(await code(auth.register({ username: 'MARCO.c', password: GOOD }, ctx('b')))).toBe('taken');
-    expect(await code(auth.register({ username: 'marco.c', password: GOOD }, ctx('c')))).toBe('taken');
+    expect(await code(signUp({ username: 'MARCO.c', password: GOOD }, ctx('b')))).toBe('taken');
+    expect(await code(signUp({ username: 'marco.c', password: GOOD }, ctx('c')))).toBe('taken');
   });
 
   it('names that could pass for the system are reserved', async () => {
-    for (const n of ['admin', 'Admin', 'ROOT', 'system', 'Guest', 'you', 'hazel']) expect(await code(auth.register({ username: n, password: GOOD }, ctx('r' + n))), n).toBe('username');
+    for (const n of ['admin', 'Admin', 'ROOT', 'system', 'Guest', 'you', 'hazel']) expect(await code(signUp({ username: n, password: GOOD }, ctx('r' + n))), n).toBe('username');
   });
 
   it('weak passwords are refused with the reason', async () => {
-    expect(await code(auth.register({ username: 'ana', password: 'short' }, ctx()))).toBe('weak');
-    expect(await code(auth.register({ username: 'ana', password: 'password123' }, ctx('b')))).toBe('weak');
-    expect(await code(auth.register({ username: 'ana', password: undefined }, ctx('c')))).toBe('weak');
+    expect(await code(signUp({ username: 'ana', password: 'short' }, ctx()))).toBe('weak');
+    expect(await code(signUp({ username: 'ana', password: 'password123' }, ctx('b')))).toBe('weak');
+    expect(await code(signUp({ username: 'ana', password: undefined }, ctx('c')))).toBe('weak');
     expect(store.accounts.size).toBe(0);
   });
 
-  it('needs the sign-up code when one is configured', async () => {
-    const guarded = new AuthService(store, { now: () => now, signupCode: 'office-2026' });
-    expect(await code(guarded.register({ username: 'ana', password: GOOD }, ctx()))).toBe('signup');
-    expect(await code(guarded.register({ username: 'ana', password: GOOD, signupCode: 'wrong' }, ctx('b')))).toBe('signup');
-    expect(await code(guarded.register({ username: 'ana', password: GOOD, signupCode: 5 }, ctx('c')))).toBe('signup');
-    expect(await code(guarded.register({ username: 'ana', password: GOOD, signupCode: 'office-2026' }, ctx('d')))).toBe('ok');
+
+  it('makes no session and no login: the person logs in themselves', async () => {
+    const account = await auth.createAccount({ username: 'ana', password: GOOD });
+    expect(store.sessions.size).toBe(0);
+    expect(account.lastLoginAt).toBeNull();
+    expect(account.mustChangePassword).toBe(false);
+    expect((await auth.login({ username: 'ana', password: GOOD }, ctx())).account.id).toBe(account.id);
   });
 
-  it('is limited per address: five in ten minutes', async () => {
-    for (let i = 0; i < 5; i++) await auth.register({ username: 'user' + i, password: GOOD }, ctx('9.9.9.9'));
-    expect(await code(auth.register({ username: 'user5', password: GOOD }, ctx('9.9.9.9')))).toBe('rate');
-    expect(await code(auth.register({ username: 'other', password: GOOD }, ctx('8.8.8.8')))).toBe('ok');
-    advance(10 * 60_000 + 1);
-    expect(await code(auth.register({ username: 'user5', password: GOOD }, ctx('9.9.9.9')))).toBe('ok');
+  it('an account an admin made can be marked "choose your own password first"', async () => {
+    const account = await auth.createAccount({ username: 'ana', password: GOOD, mustChange: true });
+    expect(account.mustChangePassword).toBe(true);
+    expect(publicAccount(account).mustChangePassword).toBe(true);
+    const { account: again, token } = await auth.login({ username: 'ana', password: GOOD }, ctx());
+    expect(again.mustChangePassword).toBe(true);
+    await auth.changePassword(again, token, GOOD, 'a-brand-new-passphrase');
+    expect((await auth.accountById(account.id))!.mustChangePassword).toBe(false);
+  });
+
+  it('there is no sign-up code or sign-up limit any more: an admin can make many accounts in a row', async () => {
+    for (let i = 0; i < 12; i++) await auth.createAccount({ username: 'user' + i, password: GOOD });
+    expect(store.accounts.size).toBe(12);
   });
 });
 
 describe('login', () => {
-  beforeEach(async () => { await auth.register({ username: 'Ana', password: GOOD }, ctx('setup')); });
+  beforeEach(async () => { await signUp({ username: 'Ana', password: GOOD }, ctx('setup')); });
 
   it('works with any capitalisation of the name', async () => {
     for (const n of ['Ana', 'ana', 'ANA', ' ana ']) expect(await code(auth.login({ username: n, password: GOOD }, ctx()))).toBe('ok');
@@ -184,7 +198,7 @@ describe('login', () => {
 
 describe('sessions', () => {
   let token: string;
-  beforeEach(async () => { token = (await auth.register({ username: 'ana', password: GOOD }, ctx('s'))).token; });
+  beforeEach(async () => { token = (await signUp({ username: 'ana', password: GOOD }, ctx('s'))).token; });
 
   it('are refused when missing, unknown, garbage or absurdly long', async () => {
     for (const t of [undefined, '', 'nope', 'x'.repeat(500), token.slice(1), token + 'x']) expect(await auth.authenticate(t)).toBeNull();
@@ -212,7 +226,7 @@ describe('sessions', () => {
   });
 
   it('expired ones are purged in bulk', async () => {
-    await auth.register({ username: 'bob', password: GOOD }, ctx('t'));
+    await signUp({ username: 'bob', password: GOOD }, ctx('t'));
     advance(8 * 24 * 60 * 60_000);
     expect(await auth.purgeExpired()).toBe(2);
   });
@@ -220,7 +234,7 @@ describe('sessions', () => {
 
 describe('changing your password', () => {
   it('needs the current one, a good new one, and ends the other sessions but not this one', async () => {
-    const first = await auth.register({ username: 'ana', password: GOOD }, ctx('1'));
+    const first = await signUp({ username: 'ana', password: GOOD }, ctx('1'));
     const other = await auth.login({ username: 'ana', password: GOOD }, ctx('2'));
     const account = (await auth.authenticate(first.token))!;
     expect(await code(auth.changePassword(account, first.token, 'wrong-wrong-1', 'a-new-password-1'))).toBe('invalid');
@@ -246,7 +260,7 @@ describe('the first admin', () => {
   it('is refused when the password is weak or the name is invalid or already a player', async () => {
     expect(await auth.bootstrapAdmin('boss', 'short')).toBe('refused');
     expect(await auth.bootstrapAdmin('b', GOOD)).toBe('refused');
-    await auth.register({ username: 'taken', password: GOOD }, ctx());
+    await signUp({ username: 'taken', password: GOOD }, ctx());
     expect(await auth.bootstrapAdmin('Taken', GOOD)).toBe('refused');
     expect(await store.countAdmins()).toBe(0);
   });
@@ -286,7 +300,7 @@ describe('RateLimiter', () => {
 });
 
 describe('hostile input to login', () => {
-  beforeEach(async () => { await auth.register({ username: 'ana', password: GOOD }, ctx('setup')); });
+  beforeEach(async () => { await signUp({ username: 'ana', password: GOOD }, ctx('setup')); });
 
   it('names that cannot be real (too long, control characters, NUL) are refused cheaply and never reach the database', async () => {
     let touched = 0;
@@ -301,7 +315,7 @@ describe('hostile input to login', () => {
 
 describe('hostile input to password change', () => {
   it('guessing the current password with a stolen session is limited to five tries', async () => {
-    const { token } = await auth.register({ username: 'ana', password: GOOD }, ctx('1'));
+    const { token } = await signUp({ username: 'ana', password: GOOD }, ctx('1'));
     const account = (await auth.authenticate(token))!;
     for (let i = 0; i < 5; i++) expect(await code(auth.changePassword(account, token, 'guess-' + i + '-xxxx', 'a-new-password-1'))).toBe('invalid');
     expect(await code(auth.changePassword(account, token, GOOD, 'a-new-password-1'))).toBe('rate');
@@ -309,7 +323,7 @@ describe('hostile input to password change', () => {
     expect(await code(auth.changePassword(account, token, GOOD, 'a-new-password-1'))).toBe('ok');
   });
   it('an absurdly long current password is just wrong', async () => {
-    const { token } = await auth.register({ username: 'ana', password: GOOD }, ctx('1'));
+    const { token } = await signUp({ username: 'ana', password: GOOD }, ctx('1'));
     const account = (await auth.authenticate(token))!;
     expect(await code(auth.changePassword(account, token, 'x'.repeat(100000), 'a-new-password-1'))).toBe('invalid');
   });
@@ -317,7 +331,7 @@ describe('hostile input to password change', () => {
 
 describe('session lifetime', () => {
   it('can be renewed again and again while used, but never lives past thirty days', async () => {
-    const { token } = await auth.register({ username: 'ana', password: GOOD }, ctx('1'));
+    const { token } = await signUp({ username: 'ana', password: GOOD }, ctx('1'));
     for (let day = 1; day <= 29; day++) { advance(24 * 60 * 60_000); expect(await auth.authenticate(token), 'day ' + day).not.toBeNull(); }
     advance(2 * 24 * 60 * 60_000);
     expect(await auth.authenticate(token)).toBeNull(); // day 31: used daily, still over the limit

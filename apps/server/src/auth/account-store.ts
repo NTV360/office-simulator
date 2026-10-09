@@ -28,7 +28,7 @@ export interface SessionInfo {
 /** Everything the auth code needs from storage. PostgreSQL in production, a Map in the fast tests. */
 export interface AccountStore {
   /** Create an account, or return 'taken' if the username (any capitalisation) exists. */
-  create(a: { username: string; passwordHash: string; role: Role }): Promise<Account | 'taken'>;
+  create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'>;
   byLower(usernameLower: string): Promise<Account | null>;
   byId(id: number): Promise<Account | null>;
   countAdmins(): Promise<number>;
@@ -61,11 +61,11 @@ const toAccount = (r: AccountRow): Account => ({
 export class PgAccountStore implements AccountStore {
   constructor(private readonly pool: Pool) {}
 
-  async create(a: { username: string; passwordHash: string; role: Role }): Promise<Account | 'taken'> {
+  async create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'> {
     try {
       const r = await this.pool.query<AccountRow>(
-        'INSERT INTO accounts (username, username_lower, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *',
-        [a.username, a.username.toLowerCase(), a.passwordHash, a.role],
+        'INSERT INTO accounts (username, username_lower, password_hash, role, must_change_password) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [a.username, a.username.toLowerCase(), a.passwordHash, a.role, a.mustChangePassword ?? false],
       );
       return toAccount(r.rows[0]);
     } catch (err) {
@@ -155,10 +155,10 @@ export class MemoryAccountStore implements AccountStore {
   private nextId = 1;
   private nextSession = 1;
 
-  async create(a: { username: string; passwordHash: string; role: Role }): Promise<Account | 'taken'> {
+  async create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'> {
     const lower = a.username.toLowerCase();
     for (const x of this.accounts.values()) if (x.usernameLower === lower) return 'taken';
-    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: false, slotSpot: null, spec: null, createdAt: new Date(), lastLoginAt: null };
+    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, slotSpot: null, spec: null, createdAt: new Date(), lastLoginAt: null };
     this.accounts.set(acc.id, acc);
     return { ...acc };
   }

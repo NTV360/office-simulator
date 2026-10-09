@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { SameOriginGuard, SessionGuard } from './auth.controller';
 import type { Req as HttpReq } from './http';
@@ -14,6 +14,8 @@ export class PlayController {
   @HttpCode(200)
   @UseGuards(SessionGuard)
   ticket(@Req() req: HttpReq): { ticket: string; expiresInMs: number } {
+    // an account an admin has just made plays only after its person has chosen their own password
+    if (req.account!.mustChangePassword) throw new ForbiddenException({ statusCode: 403, code: 'must-change-password', message: 'choose your own password first' });
     const sessionHash = createHash('sha256').update(req.sessionToken!).digest('hex');
     return this.tickets.mint(req.account!.id, sessionHash);
   }

@@ -2,6 +2,7 @@ import {
   BadRequestException, Body, ConflictException, Controller, Get, Inject, Injectable, NotFoundException, Param, PipeTransform, Post, Put, UseGuards,
 } from '@nestjs/common';
 import { HAZEL_NAME, interactables, type Person } from '@office/shared';
+import { publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { PlayError } from '../play/player-manager';
 import { PlayService } from '../play/play.service';
@@ -66,6 +67,13 @@ export class AdminController {
       id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled,
       online: manager.isOnline(a.id), createdAt: a.createdAt, lastLoginAt: a.lastLoginAt,
     }));
+  }
+
+  /** Make an account for a person in the office. There is no sign-up page: this is the only way accounts come to exist. They choose their own password at first login. */
+  @Post('users')
+  async createUser(@Body() body: unknown): Promise<{ account: PublicAccount }> {
+    const b = (body ?? {}) as { username?: unknown; password?: unknown };
+    return { account: publicAccount(await this.auth.require().createAccount({ username: b.username, password: b.password, mustChange: true })) };
   }
 
   /** Every desk with a person at it: free to give away, belonging to an account, or reserved (Hazel). */

@@ -6,7 +6,7 @@ import {
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
 // server sends (through the shared Mirror), smooths people between snapshots, and keeps the clock running between them.
-// See docs/PHASE-2-BREAKDOWN.md, step 6. Since phase 3 it needs an account: log in (or register), ask for a one-time ticket,
+// See docs/PHASE-2-BREAKDOWN.md, step 6. Since phase 3 it needs an account: log in, ask for a one-time ticket,
 // and say it in the first message.
 
 const DELAY_MS = 150; // people are drawn this far in the past, so there are always two snapshots to blend between
@@ -77,6 +77,7 @@ export function startOnline() {
     loggingIn ??= (async () => {
       try {
         let account = note ? null : await getAccount(base);
+        if (account?.mustChangePassword) account = null; // still on the first password an admin set: the screen asks for a new one
         if (!account) { setStatus('wait', 'Please log in'); account = await showLogin(base, note); }
         net.account = account;
         showAccountBox(account);

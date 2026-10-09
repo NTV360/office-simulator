@@ -10,7 +10,7 @@ import { parseSettingsUpdate } from './settings';
 import { MemoryAccountStore } from '../auth/account-store';
 import { AuthProvider } from '../auth/auth.provider';
 import { AuthService } from '../auth/auth.service';
-import { sessionFor, ticketFor } from '../test-support';
+import { sessionFor, ticketFor, useAuth } from '../test-support';
 
 process.env.WORLD_SEED = '1';
 delete process.env.DATABASE_URL;
@@ -24,7 +24,9 @@ async function boot() {
   configureApp(app);
   await app.listen(0, '127.0.0.1');
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
-  app.get(AuthProvider).useService(new AuthService(new MemoryAccountStore(), { limits: { registers: 1000, logins: 1000 } })); // players log in to watch
+  const auth = new AuthService(new MemoryAccountStore(), { limits: { logins: 1000 } }); // players log in to watch
+  app.get(AuthProvider).useService(auth);
+  useAuth(base, auth);
 }
 beforeEach(async () => { process.env.ADMIN_TOKEN = TOKEN; await boot(); });
 afterEach(async () => { await app.close(); setSeed(null); delete process.env.ADMIN_TOKEN; });
@@ -166,5 +168,41 @@ describe('behind a proxy', () => {
     expect((await from('203.0.113.9', 'guess')).status).toBe(429);
     expect((await from('198.51.100.7', TOKEN)).status).toBe(200); // the admin, from somewhere else, is unaffected
     delete process.env.TRUST_PROXY;
+  });
+});
+
+describe('making accounts (the only way they come to exist)', () => {
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+  it('an admin makes an account; the person logs in, must choose their own password, and only then can play', async () => {
+    const made = await call('POST', '/api/admin/users', { username: 'marco', password: 'first-password-1' });
+    expect(made.status).toBe(201);
+    expect(((await made.json()) as any).account).toMatchObject({ username: 'marco', role: 'player', mustChangePassword: true });
+    const login = await post('/api/auth/login', { username: 'marco', password: 'first-password-1' });
+    expect(login.status).toBe(200);
+    expect(((await login.json()) as any).account.mustChangePassword).toBe(true);
+    const cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const early = await post('/api/play/ticket', {}, { cookie });
+    expect(early.status).toBe(403);
+    expect(((await early.json()) as any).code).toBe('must-change-password');
+    expect((await post('/api/auth/password', { current: 'first-password-1', next: 'my-own-password-2' }, { cookie })).status).toBe(200);
+    expect((await post('/api/play/ticket', {}, { cookie })).status).toBe(200);
+  });
+
+  it('refuses bad names, weak passwords and duplicates with the reason, and needs the admin token', async () => {
+    expect((await call('POST', '/api/admin/users', { username: 'a', password: 'first-password-1' })).status).toBe(400);
+    expect((await call('POST', '/api/admin/users', { username: 'marco', password: 'short' })).status).toBe(400);
+    expect((await call('POST', '/api/admin/users', undefined)).status).toBe(400);
+    expect((await call('POST', '/api/admin/users', { username: 'marco', password: 'first-password-1' })).status).toBe(201);
+    expect((await call('POST', '/api/admin/users', { username: 'MARCO', password: 'first-password-1' })).status).toBe(409);
+    expect((await call('POST', '/api/admin/users', { username: 'zed', password: 'first-password-1' }, null)).status).toBe(403);
+  });
+
+  it('the new account is listed, without a desk', async () => {
+    await call('POST', '/api/admin/users', { username: 'marco', password: 'first-password-1' });
+    const list = await (await call('GET', '/api/admin/users')).json();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ username: 'marco', slotSpot: null, online: false });
+    expect(JSON.stringify(list)).not.toContain('argon2');
   });
 });

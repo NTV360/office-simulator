@@ -67,11 +67,28 @@ async function serverBehind(url) {
 /** The password every test account uses. */
 const TEST_PASSWORD = 'verify-test-pass-1';
 
-/** Give this browser context a logged-in session for the account, creating the account the first time. */
+/**
+ * Make an account the way an admin does (there is no sign-up): the server's ADMIN_TOKEN is in VERIFY_ADMIN_TOKEN.
+ * The account starts on `first`, a password the person must replace at first login.
+ */
+export async function adminCreate(url, username, first) {
+  const token = process.env.VERIFY_ADMIN_TOKEN;
+  if (!token) throw new Error(`no account "${username}" and no VERIFY_ADMIN_TOKEN to make it with`);
+  const r = await fetch(url + '/api/admin/users', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ username, password: first }) });
+  if (!r.ok && r.status !== 409) throw new Error(`could not make ${username}: ${r.status} ${await r.text()}`);
+}
+
+/** Give this browser context a logged-in session for the account, making the account (and choosing its own password) the first time. */
 async function loginAs(context, url, username, password = TEST_PASSWORD) {
   const body = { username, password };
   let r = await context.request.post(url + '/api/auth/login', { data: body });
-  if (r.status() === 401) r = await context.request.post(url + '/api/auth/register', { data: body });
+  if (r.status() === 401) {
+    const first = 'first-pass-from-admin-1';
+    await adminCreate(url, username, first);
+    r = await context.request.post(url + '/api/auth/login', { data: { username, password: first } });
+    if (r.ok()) r = await context.request.post(url + '/api/auth/password', { data: { current: first, next: password } });
+    if (r.ok()) r = await context.request.post(url + '/api/auth/login', { data: body });
+  }
   if (!r.ok()) throw new Error(`could not log in as ${username}: ${r.status()} ${await r.text()}`);
 }
 

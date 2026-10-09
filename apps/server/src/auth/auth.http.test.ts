@@ -18,6 +18,7 @@ const GOOD = 'correct-horse-battery';
 let app: INestApplication;
 let base: string;
 let store: MemoryAccountStore;
+let service: AuthService;
 
 async function boot(env: Record<string, string> = {}) {
   for (const [k, v] of Object.entries(env)) process.env[k] = v;
@@ -26,10 +27,11 @@ async function boot(env: Record<string, string> = {}) {
   await app.listen(0, '127.0.0.1');
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
   store = new MemoryAccountStore();
-  app.get(AuthProvider).useService(new AuthService(store, { signupCode: process.env.SIGNUP_CODE || undefined }));
+  service = new AuthService(store);
+  app.get(AuthProvider).useService(service);
 }
 beforeEach(async () => { await boot(); });
-afterEach(async () => { await app.close(); for (const k of ['SIGNUP_CODE', 'COOKIE_SECURE', 'TRUST_PROXY']) delete process.env[k]; });
+afterEach(async () => { await app.close(); for (const k of ['COOKIE_SECURE', 'TRUST_PROXY']) delete process.env[k]; });
 
 interface Reply { status: number; body: any; setCookie: string | null; cookie: string | null } // eslint-disable-line @typescript-eslint/no-explicit-any
 async function call(method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<Reply> {
@@ -37,12 +39,24 @@ async function call(method: string, path: string, body?: unknown, headers: Recor
   const setCookie = r.headers.get('set-cookie');
   return { status: r.status, body: await r.json().catch(() => null), setCookie, cookie: setCookie ? setCookie.split(';')[0] : null };
 }
-const register = (username = 'ana', extra: Record<string, unknown> = {}, headers: Record<string, string> = {}) => call('POST', '/api/auth/register', { username, password: GOOD, ...extra }, headers);
+/** An admin makes the account; then the person logs in (the only way in: there is no sign-up). */
+const register = async (username = 'ana', extra: Record<string, unknown> = {}, headers: Record<string, string> = {}) => {
+  await service.createAccount({ username, password: GOOD }).catch(() => undefined); // (already there is fine)
+  return call('POST', '/api/auth/login', { username, password: GOOD, ...extra }, headers);
+};
 
-describe('register and the cookie', () => {
-  it('creates the account and logs in with a safe cookie', async () => {
+describe('there is no sign-up, and the cookie', () => {
+  it('nobody can make an account themselves: the sign-up address is gone', async () => {
+    for (const body of [{ username: 'ana', password: GOOD }, { username: 'ana', password: GOOD, signupCode: 'x' }]) {
+      const r = await call('POST', '/api/auth/register', body);
+      expect([404, 405]).toContain(r.status);
+    }
+    expect(store.accounts.size).toBe(0);
+  });
+
+  it('logging in gives a safe cookie', async () => {
     const r = await register('Ana');
-    expect(r.status).toBe(201);
+    expect(r.status).toBe(200);
     expect(r.body).toEqual({ account: { id: 1, username: 'Ana', role: 'player', slotSpot: null, hasLook: false, mustChangePassword: false } });
     expect(r.setCookie).toMatch(/^office_session=[A-Za-z0-9_-]{43};/);
     expect(r.setCookie).toContain('HttpOnly');
@@ -60,29 +74,13 @@ describe('register and the cookie', () => {
     expect((await register('cat')).setCookie).not.toContain('Secure');
   });
 
-  it('answers 400 with the reason for a bad username or password, 409 for a taken one', async () => {
-    expect((await register('a')).body).toMatchObject({ statusCode: 400, code: 'username' });
-    expect((await call('POST', '/api/auth/register', { username: 'ana', password: 'short' })).body).toMatchObject({ statusCode: 400, code: 'weak' });
-    await register('ana');
-    const dup = await register('ANA', {}, {});
-    expect(dup.status).toBe(409);
-    expect(dup.body).toMatchObject({ code: 'taken' });
-    expect(dup.setCookie).toBeNull();
-  });
-
-  it('the sign-up code, when set, is required', async () => {
-    await app.close(); await boot({ SIGNUP_CODE: 'office-2026' });
-    expect((await register('ana')).status).toBe(403);
-    expect((await register('ana', { signupCode: 'office-2026' })).status).toBe(201);
-  });
-
   it('survives missing and malformed bodies', async () => {
-    expect((await call('POST', '/api/auth/register')).status).toBe(400);
-    const raw = await fetch(base + '/api/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{nope' });
+    expect((await call('POST', '/api/auth/login')).status).toBe(401);
+    const raw = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{nope' });
     expect(raw.status).toBe(400);
-    const form = await fetch(base + '/api/auth/register', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'username=ana&password=' + GOOD });
-    expect(form.status).toBe(415); // a form post is not accepted as a registration
-    const text = await fetch(base + '/api/auth/register', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ username: 'ana', password: GOOD }) });
+    const form = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'username=ana&password=' + GOOD });
+    expect(form.status).toBe(415); // a form post is not accepted as a login
+    const text = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ username: 'ana', password: GOOD }) });
     expect(text.status).toBe(415);
     expect(store.accounts.size).toBe(0);
     expect((await call('POST', '/api/auth/login', [1, 2, 3])).status).toBe(401);
@@ -147,12 +145,12 @@ describe('requests from other sites', () => {
     const evil = { origin: 'https://evil.example', cookie: cookie! };
     expect((await call('POST', '/api/auth/logout', undefined, evil)).status).toBe(403);
     expect((await call('POST', '/api/auth/login', { username: 'ana', password: GOOD }, { origin: 'https://evil.example' })).status).toBe(403);
-    expect((await call('POST', '/api/auth/register', { username: 'zed', password: GOOD }, { origin: 'http://evil.example:80' })).status).toBe(403);
+    expect((await call('POST', '/api/auth/password', { current: GOOD, next: 'brand-new-pass-1' }, { origin: 'http://evil.example:80', cookie: cookie! })).status).toBe(403);
     expect((await call('GET', '/api/auth/me', undefined, { cookie: cookie! })).status).toBe(200); // the session is still alive: it was never used
   });
   it('the page own origin is fine, a junk Origin is not', async () => {
     const host = new URL(base).host;
-    expect((await register('ana', {}, { origin: `http://${host}` })).status).toBe(201);
+    expect((await register('ana', {}, { origin: `http://${host}` })).status).toBe(200);
     expect((await call('POST', '/api/auth/login', { username: 'ana', password: GOOD }, { origin: 'not a url' })).status).toBe(403);
   });
 });
@@ -172,7 +170,8 @@ describe('nothing secret leaks', () => {
     const spies = [vi.spyOn(console, 'log'), vi.spyOn(console, 'error'), vi.spyOn(console, 'warn'), vi.spyOn(Logger.prototype, 'log'), vi.spyOn(Logger.prototype, 'error'), vi.spyOn(Logger.prototype, 'warn')];
     spies.forEach(s => s.mockImplementation((...a: unknown[]) => { lines.push(a.map(String).join(' ')); }));
     const secret = 'Zx9-very-secret-pass';
-    const r = await call('POST', '/api/auth/register', { username: 'ana', password: secret });
+    await service.createAccount({ username: 'ana', password: secret });
+    const r = await call('POST', '/api/auth/login', { username: 'ana', password: secret });
     await call('POST', '/api/auth/login', { username: 'ana', password: secret + 'wrong' });
     await call('POST', '/api/auth/register', { username: 'ana', password: secret });
     const token = r.cookie!.split('=')[1];

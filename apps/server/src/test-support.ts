@@ -7,7 +7,7 @@ import { AppModule } from './app.module';
 import { configureApp } from './app.config';
 import { MemoryAccountStore } from './auth/account-store';
 import { AuthProvider } from './auth/auth.provider';
-import { AuthService } from './auth/auth.service';
+import { AuthError, AuthService } from './auth/auth.service';
 
 // Helpers for tests that run the real server (Nest, Socket.IO, the world) with accounts held in memory.
 
@@ -28,8 +28,9 @@ export async function bootTestServer(): Promise<TestServer> {
   await app.listen(0, '127.0.0.1');
   const base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
   const store = new MemoryAccountStore();
-  const auth = new AuthService(store, { limits: { registers: 10_000, logins: 10_000 } }); // many test accounts come from one address
+  const auth = new AuthService(store, { limits: { logins: 10_000 } }); // many test logins come from one address
   app.get(AuthProvider).useService(auth);
+  useAuth(base, auth);
   return { app, base, store, auth, close: () => app.close() };
 }
 
@@ -39,10 +40,16 @@ export async function api(base: string, method: string, path: string, body?: unk
   return { status: r.status, body: await r.json().catch(() => null), setCookie: r.headers.get('set-cookie') };
 }
 
-/** Register the account (or log in if it exists) and return its session cookie. */
+// The auth service of each test server, so a test can make accounts the way an admin does (there is no sign-up).
+const services = new Map<string, AuthService>();
+export const useAuth = (base: string, auth: AuthService): void => { services.set(base, auth); };
+
+/** Make the account (unless it exists), log in, and return its session cookie. */
 export async function sessionFor(base: string, username: string, password = PASSWORD): Promise<string> {
-  let r = await api(base, 'POST', '/api/auth/register', { username, password });
-  if (r.status === 409) r = await api(base, 'POST', '/api/auth/login', { username, password });
+  const auth = services.get(base);
+  if (!auth) throw new Error('this test server has no auth service registered (use useAuth)');
+  try { await auth.createAccount({ username, password }); } catch (e) { if (!(e instanceof AuthError && e.code === 'taken')) throw e; }
+  const r = await api(base, 'POST', '/api/auth/login', { username, password });
   if (!r.setCookie) throw new Error(`could not get a session for ${username}: ${r.status} ${JSON.stringify(r.body)}`);
   return r.setCookie.split(';')[0];
 }

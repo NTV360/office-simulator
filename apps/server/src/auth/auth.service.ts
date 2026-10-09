@@ -1,27 +1,25 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { Account, AccountStore } from './account-store';
 import { hashPassword, passwordProblem, verifyAgainstDummy, verifyPassword, warmDummy } from './password';
 import { RateLimiter } from './rate-limit';
 
-export type AuthErrorCode = 'invalid' | 'taken' | 'rate' | 'signup' | 'disabled' | 'unauthenticated' | 'weak' | 'username';
+export type AuthErrorCode = 'invalid' | 'taken' | 'rate' | 'disabled' | 'unauthenticated' | 'weak' | 'username';
 
 /** A refusal with a stable code (for tests and the client) and a message that is safe to show. */
 export class AuthError extends Error {
   constructor(readonly code: AuthErrorCode, message: string) { super(message); this.name = 'AuthError'; }
   get status(): number {
-    return { invalid: 401, taken: 409, rate: 429, signup: 403, disabled: 403, unauthenticated: 401, weak: 400, username: 400 }[this.code];
+    return { invalid: 401, taken: 409, rate: 429, disabled: 403, unauthenticated: 401, weak: 400, username: 400 }[this.code];
   }
 }
 
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60 * 1000;
 
 export interface AuthOptions {
-  /** If set, registering needs this code (SIGNUP_CODE). */
-  signupCode?: string;
   now?: () => number;
   sessionMs?: number;
-  /** Per-address allowances (sign-ups per 10 minutes, logins per minute). Tests that make many accounts raise them. */
-  limits?: { registers?: number; logins?: number };
+  /** Per-address allowance (logins per minute). Tests that log in many times from one address raise it. */
+  limits?: { logins?: number };
 }
 
 export interface Context { ip: string; userAgent: string | null }
@@ -47,7 +45,6 @@ const RESERVED = new Set(['admin', 'administrator', 'root', 'system', 'server', 
 const DAY = 24 * 60 * 60 * 1000;
 
 const sha256 = (s: string): Buffer => createHash('sha256').update(s).digest();
-const sameSecret = (a: string, b: string): boolean => timingSafeEqual(sha256(a), sha256(b));
 
 export class AuthService {
   /** The account storage, for the parts of the server that manage desks and players. */
@@ -60,7 +57,6 @@ export class AuthService {
   private readonly failuresByNameAndIp: RateLimiter;
   private readonly failuresByName: RateLimiter;
   private readonly loginsByIp: RateLimiter;
-  private readonly registersByIp: RateLimiter;
   private readonly passwordChanges: RateLimiter;
   private readonly endListeners: Array<(e: SessionEnd) => void> = [];
 
@@ -71,7 +67,6 @@ export class AuthService {
     this.failuresByNameAndIp = new RateLimiter(5, 15 * 60_000, this.now);
     this.failuresByName = new RateLimiter(25, 15 * 60_000, this.now);
     this.loginsByIp = new RateLimiter(opts.limits?.logins ?? 30, 60_000, this.now);
-    this.registersByIp = new RateLimiter(opts.limits?.registers ?? 5, 10 * 60_000, this.now);
     this.passwordChanges = new RateLimiter(5, 15 * 60_000, this.now);
     void warmDummy();
   }
@@ -84,19 +79,18 @@ export class AuthService {
     return name;
   }
 
-  async register(input: { username: unknown; password: unknown; signupCode?: unknown }, ctx: Context): Promise<{ account: Account; token: string }> {
-    if (!this.registersByIp.allow(ctx.ip)) throw new AuthError('rate', 'too many sign-ups from here; try again later');
-    if (this.opts.signupCode && (typeof input.signupCode !== 'string' || !sameSecret(input.signupCode, this.opts.signupCode))) {
-      throw new AuthError('signup', 'the sign-up code is wrong');
-    }
+  /**
+   * Make a player account. Only an admin does this (there is no self-service sign-up: everybody in the office is given a station).
+   * `mustChange`: the person has to choose their own password before they can play (an admin sets the first one).
+   */
+  async createAccount(input: { username: unknown; password: unknown; mustChange?: boolean }): Promise<Account> {
     const username = AuthService.cleanUsername(input.username);
     if (RESERVED.has(username.toLowerCase())) throw new AuthError('username', 'that username is reserved');
     const problem = passwordProblem(input.password, username);
     if (problem) throw new AuthError('weak', problem);
-    const created = await this.store.create({ username, passwordHash: await hashPassword(input.password as string), role: 'player' });
+    const created = await this.store.create({ username, passwordHash: await hashPassword(input.password as string), role: 'player', mustChangePassword: input.mustChange ?? false });
     if (created === 'taken') throw new AuthError('taken', 'that username is taken');
-    await this.store.touchLogin(created.id);
-    return { account: created, token: await this.startSession(created, ctx) };
+    return created;
   }
 
   async login(input: { username: unknown; password: unknown }, ctx: Context): Promise<{ account: Account; token: string }> {

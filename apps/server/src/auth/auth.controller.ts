@@ -50,13 +50,6 @@ export class AuthController {
 
   private svc(): AuthService { return this.auth.require(); }
 
-  @Post('register')
-  async register(@Body() body: Record<string, unknown> | undefined, @Req() req: HttpReq, @Res({ passthrough: true }) res: HttpRes): Promise<{ account: PublicAccount }> {
-    const { account, token } = await this.svc().register({ username: body?.username, password: body?.password, signupCode: body?.signupCode }, context(req));
-    res.setHeader('Set-Cookie', sessionCookie(token, isSecure(req)));
-    return { account: publicAccount(account) };
-  }
-
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: Record<string, unknown> | undefined, @Req() req: HttpReq, @Res({ passthrough: true }) res: HttpRes): Promise<{ account: PublicAccount }> {

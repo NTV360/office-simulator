@@ -2,13 +2,13 @@
 
 **Status: in progress. Steps 0 to 4 are done; steps 5 to 8 are next.** This turns phase 3 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps, the same way phases 1 and 2 were done.
 
-**Done when (from the plan):** you can register, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is.
+**Done when (from the plan, as changed on 2026-10-09: accounts are made by admins):** an admin makes your account, you choose your password, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is.
 
 ## 1. What changes, in plain words
 
 Until now every browser is an anonymous viewer of one office. After phase 3:
 
-- **Nobody connects without an account.** Register, log in, get a one-time ticket, open the realtime connection with it.
+- **Nobody connects without an account, and accounts are made by admins.** Log in, get a one-time ticket, open the realtime connection with it.
 - **A new account waits for a desk.** It can log in and walk around as a **guest** (appears at the entrance, nothing is saved about the guest's position), but it has no desk and no person of its own. An admin assigns it one of the unclaimed desks.
 - **A claimed desk's person belongs to the account.** When the owner is offline the person is an ordinary autopilot NPC (name and look are the account's). When the owner logs in, the account takes over **that same person, where it stands**. On logout (after a 30 second grace for dropped connections) the person goes back to AI from where it stands.
 - **Players are never sent home** by the end-of-day reset; autopilot people still are.
@@ -29,7 +29,7 @@ Approved by you (the defaults proposed earlier):
 Made by me while planning (say if you disagree):
 
 6. **Cookie sessions instead of access plus refresh tokens.** Login sets one httpOnly, SameSite=Strict cookie holding an opaque random session id (stored hashed in the database, 7 days, revocable). It is simpler than the plan's token pair and equally safe for an internal app; the cookie gets the Secure flag as soon as the site is on HTTPS (phase 7). The realtime connection uses a one-time **ticket** (about 30 seconds) from `POST /api/play/ticket`, never a token in a URL.
-7. **A sign-up code is optional.** If `SIGNUP_CODE` is set in `.env`, registering needs it. Cheap protection for "company only".
+7. **There is no sign-up (changed 2026-10-09, after step 4).** Everyone in the office is assigned a station, so admins make the accounts (`POST /api/admin/users`) with a first password, and the person must replace it at first login (the server refuses a play ticket until they do). `POST /api/auth/register` and `SIGNUP_CODE` are gone.
 8. **The first admin comes from the environment.** `ADMIN_USERNAME` and `ADMIN_PASSWORD` create an admin at start-up if there is none.
 9. **argon2id through `@node-rs/argon2`** (prebuilt for Alpine, no compiler in the image). Step 1 proves it works in the Docker image before anything depends on it.
 10. **Taking over an away person:** if the owner logs in before their person has come in for the day, the person appears at the entrance and is in (it counts as their arrival). A **guest** is a person with no desk, created at login and removed after logout.
@@ -68,7 +68,7 @@ Still open from the plan, with the plan's defaults (none of them blocks this pha
 | **3** (**done**) | Takeover and handback | A server `PlayerManager`: claimed account takes over its person where it stands (an away person appears at the entrance); guest gets a new person at the entrance; the 30 s grace; handback to AI; a reconnect inside the grace resumes; admin `assign-slot` and `release-slot`; `owner` saved and restored | Node tests of the whole life cycle (login, logout, grace, reconnect, assign, release, restart); the day roll-over does not send a player home; claimed autopilot still goes home |
 | **4** (**done**) | Moving and sitting on the server | `input` (sequence, move x and z, heading, run) and `act` (sit, stand) messages; the server steps controlled people with `stepPlayer`, speed caps and the shared seat rules (`nearestSeat` moves to `shared`); controlled people are sent every tick; AI avoids them | Tests: walls hold, speed cap holds (walk 1.5, run 3 m/s plus tolerance), cannot sit in an occupied or far seat, input floods are dropped, a controlled person never gets AI tasks, the autopilot picks up cleanly from a chair |
 | **5** | Character creation | `GET` and `PUT /api/character` (always `normalizeSpec`); a `look` message so everyone sees a change at once; the look is saved with the person and the account; a creation page (swatches, hair style, glasses, jacket, headphones, height) with a live preview; the first login after a desk is assigned opens it | Server tests (bad input becomes valid, other people cannot change your look); a browser test that creates a character and a second browser sees it |
-| **6** | Login and driving in the browser | Login and register screens; "waiting for a desk" state for guests; online control path (inputs out, server position in, own person drawn without the 150 ms delay); first and third person cameras on your server person; logout; automatic resume with the session cookie | Browser tests: register, log in as a guest, get assigned (through the API), create a character, walk, sit, log out, see the autopilot carry on in another browser, log back in where it stands |
+| **6** | Login and driving in the browser | Login screen (with the choose-your-password step); "waiting for a desk" state for guests; online control path (inputs out, server position in, own person drawn without the 150 ms delay); first and third person cameras on your server person; logout; automatic resume with the session cookie | Browser tests: log in as a guest, get assigned (through the API), create a character, walk, sit, log out, see the autopilot carry on in another browser, log back in where it stands |
 | **7** | Admin | Role checks on every admin endpoint (the shared token goes away); list accounts and unclaimed desks; reset password (the user must choose a new one at next login); disable and enable; kick; the audit log; a small admin page served with the site | Tests for each action including who may and may not; the audit log records them; the page is checked in the browser |
 | **8** | End to end and review | `npm run e2e:accounts` plays the plan's "done when" in two real browsers against its own stack, including a server restart in the middle; a read-only review of the whole phase and its fixes; docs finished | The script passes; the review's findings are fixed with tests |
 
@@ -76,7 +76,7 @@ Steps 0 to 2 are plumbing with no visible change. You first **see** something at
 
 ## 5. How each step is checked
 
-Every step runs the earlier checks (`npm test`, `npm run typecheck`, `npm run build`, `npm run check:docs`, `npm run verify:browser:thorough`, `npm run check:mutations`, `npm run test:db`, the Docker smoke test, `VERIFY_URL=http://localhost:8080 npm run verify:browser`, `npm run e2e`) plus its own proof above. The offline recordings must not change in any step: phase 3 adds accounts around the simulation, it does not alter the simulation. Each step gets a "what it turned out to need" note here, and a read-only review (`claude-alt`) of the security-sensitive ones (1, 2, 3, 4, 7).
+Every step runs the earlier checks (`npm test`, `npm run typecheck`, `npm run build`, `npm run check:docs`, `npm run verify:browser:thorough`, `npm run check:mutations`, `npm run test:db`, the Docker smoke test, `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser`, `npm run e2e`) plus its own proof above. The offline recordings must not change in any step: phase 3 adds accounts around the simulation, it does not alter the simulation. Each step gets a "what it turned out to need" note here, and a read-only review (`claude-alt`) of the security-sensitive ones (1, 2, 3, 4, 7).
 
 ## 6. Risks
 
@@ -89,7 +89,7 @@ Every step runs the earlier checks (`npm test`, `npm run typecheck`, `npm run bu
 | `@node-rs/argon2` fails in the Alpine image | Proved first (step 1) before anything depends on it; the fallback is the `argon2` package with the build tools in the build stage only |
 | A dropped connection makes the character wander off | The 30 s grace with an immediate resume |
 | Two tabs of one account | A second login kicks the first (tested at the socket) |
-| Registration open to anyone on the network | Optional sign-up code, and a new account has no power until an admin gives it a desk |
+| Anyone on the network making accounts | There is no sign-up: only an admin (ADMIN_TOKEN, later an admin login) makes accounts, and a new account has no power until an admin gives it a desk |
 
 ## 7. Not in phase 3
 
@@ -160,3 +160,10 @@ Left as they are: the staff count can sit above the number an admin set when cla
 4. **A review found real holes, all closed with tests:** sit and stand could be chained to hop about faster than running (now one accepted sit or stand a second, and sitting needs a clear way to the seat, so a seat behind a wall is out of reach); two humans could share a desk with no occupant tracking (every seat has one now, and the simulation respects it); a reconnect kept the old message numbering and locked the new connection out (now it starts fresh); after a world reset old inputs looked fresh (an input from the future is not believed); movement while the clock is paused is **kept on purpose** (a paused office is frozen but players can still walk about); low tick rates could tunnel through walls (the tick rate now has a floor of 10 and movement is in short steps); the stale-input window was counted in ticks (now a quarter of a second at any rate).
 5. **Verified:** 33 movement and seat tests in the simulation, 18 through real sockets (1.5 and 3 m/s measured over a second, a million-times input still capped, stopping after the player stops sending, being seen moving by others, sitting, two players one seat, standing up by walking, a drop while seated freeing the seat after the grace period, flood handling), 5 more manager tests, and 6 new mutation entries (all 19 caught).
 6. **Feel.** The page does not drive yet (step 6), so nothing here is visible in a browser. When it does, expect about one round trip of delay between pressing a key and moving; phase 4 adds prediction so your own movement feels instant.
+
+### Change after step 4: no self-registration (2026-10-09)
+
+1. **Why.** Everybody in the office is assigned one station, so accounts are made by admins, not by the people. The user then changes the first password later.
+2. **What changed.** `POST /api/auth/register`, the sign-up code (`SIGNUP_CODE`) and the per-address sign-up limit are gone. `AuthService.createAccount` (no session, no limit) is used by the new admin route `POST /api/admin/users { username, password }`, which marks the account "must change password". `POST /api/play/ticket` answers 403 `must-change-password` until the person has used `POST /api/auth/password`. The login screen has no sign-up tab; after a first login it shows a "choose your password" step (two fields, same rules as the server) before the office appears.
+3. **Checks changed with it.** Test servers make accounts through the service (`useAuth` / `sessionFor` in `test-support.ts`); the smoke test, `verify:browser` and `e2e` make theirs through the admin route (`SMOKE_ADMIN_TOKEN` / `VERIFY_ADMIN_TOKEN`) and then choose a password, like a real person. New tests: the register address is gone, admin-made accounts must change their password before they can get a ticket, duplicates and weak passwords are refused with the reason, and the browser walks through the first-login password step.
+4. **Still to do (step 7).** The admin page for making accounts, and resetting a forgotten password (which will set "must change" again). Until then an admin uses the API with the `ADMIN_TOKEN`.

@@ -40,7 +40,7 @@ curl -X PUT http://localhost:8080/api/admin/settings -H "Authorization: Bearer <
 curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
 ```
 
-- The page asks you to log in or create an account first; the realtime connection needs a one-time ticket from a logged-in session, and a second login of the same account takes over from the first.
+- The page asks you to log in first (accounts are made by an admin, and the first login asks for a new password); the realtime connection needs a one-time ticket from a logged-in session, and a second login of the same account takes over from the first.
 - Desks: a new account is a guest until an admin gives it a desk. With `ADMIN_TOKEN` set, list desks and accounts and give one out like this (a proper admin page comes in a later step):
 
 ```
@@ -49,7 +49,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/admin/users
 curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"spot":"desk:12"}' http://localhost:8080/api/admin/users/3/assign-slot
 ```
 
-- Accounts: put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` and the first start creates that admin (change the password after the first login). `SIGNUP_CODE` makes registering need a code. Accounts, sessions and the audit log are in the same database. Passwords are stored only as argon2id hashes.
+- Accounts: put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` and the first start creates that admin (change the password after the first login). There is no sign-up: admins make the accounts (`POST /api/admin/users` with the `ADMIN_TOKEN`), and each person chooses their own password at first login. Accounts, sessions and the audit log are in the same database. Passwords are stored only as argon2id hashes.
 - The saved world lives in the database (`world_state`). `docker compose restart server` brings the same office back. To start over with a fresh office, set `RESET_WORLD=true` for one start (or `docker compose down -v` to wipe the database).
 
 ## Defaults and secrets
@@ -67,9 +67,9 @@ curl http://localhost:8080/api/health                    # {"status":"ok","db":"
 
 ## What the smoke test checks
 
-`npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`.
+`npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`. It logs in as a smoke account; the first time, give it `SMOKE_ADMIN_TOKEN` (the server's `ADMIN_TOKEN`) so it can make that account.
 
-For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 npm run verify:browser`. It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
+For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=<the stack's ADMIN_TOKEN> npm run verify:browser` (the token is how it makes its test accounts). It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
 
 ## Checking the whole thing
 

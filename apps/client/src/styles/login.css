@@ -3,9 +3,6 @@
 .login-card { width: min(360px, 100%); padding: 24px; border-radius: 14px; background: #fff; box-shadow: 0 10px 40px rgba(20, 30, 40, .18); font-family: system-ui, sans-serif; color: #1c242b; }
 .login-card h2 { margin: 2px 0 14px; font-size: 22px; letter-spacing: .04em; }
 .login-card .eyebrow { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6c7a86; }
-.login-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-.login-tab { flex: 1; padding: 7px 8px; border: 1px solid #cfd8de; border-radius: 8px; background: #f1f4f6; font: inherit; font-size: 13px; cursor: pointer; }
-.login-tab[aria-pressed="true"] { background: #1c242b; color: #fff; border-color: #1c242b; }
 .login-row { display: block; margin: 10px 0; font-size: 12px; color: #4b5964; }
 .login-row input { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #b9c5cd; border-radius: 8px; font: inherit; font-size: 15px; box-sizing: border-box; }
 .login-row input:focus { outline: 2px solid #3e6e9c; outline-offset: 1px; }

@@ -10,6 +10,7 @@ import { openPage } from '../tests/browser/site.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.E2E_PORT) || 18080;
 const TOKEN = 'e2e-admin-token';
+process.env.VERIFY_ADMIN_TOKEN = TOKEN; // (the browser helpers make accounts the way an admin does)
 const env = { ...process.env, COMPOSE_PROJECT_NAME: 'office-e2e', WEB_PORT: String(PORT), ADMIN_TOKEN: TOKEN, SAVE_INTERVAL_MS: '1000', WORLD_SEED: '' };
 const base = `http://localhost:${PORT}`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));

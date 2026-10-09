@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
+import { adminCreate, collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const goldenDir = path.join(root, 'tests/browser/golden');
@@ -300,14 +300,23 @@ try {
     const u = await openPage(browser, site.url, '?trace', { login: null });
     const screenShown = await u.page.waitForSelector('#loginScreen', { timeout: 10000 }).then(() => true, () => false);
     if (screenShown && !(await u.page.evaluate(() => window.__sim.people.length))) pass('without a session the login screen shows and no office is drawn yet'); else fail('the login screen did not appear first');
+    if (await u.page.$('.login-tab, #loginCode')) fail('the login screen still offers sign-up'); else pass('the login screen has no sign-up');
+    // an admin makes the account; its first password must be replaced on first login
+    await adminCreate(site.url, uname, 'first-pass-from-admin-1');
     await u.page.fill('#loginName', uname);
-    await u.page.fill('#loginPass', 'short');
-    await u.page.click('.login-tab:nth-child(2)');
+    await u.page.fill('#loginPass', 'first-pass-from-admin-1');
     await u.page.click('.login-form button[type=submit]');
-    await u.page.waitForFunction(() => /at least 8/.test(document.querySelector('.login-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a weak password is refused with the reason, on the screen'), () => fail('no weak-password message'));
-    await u.page.fill('#loginPass', 'a-fine-long-password');
+    await u.page.waitForSelector('#loginNew', { timeout: 8000 }).then(() => pass('the first login asks the person to choose their own password'), () => fail('no choose-a-password step'));
+    if (await u.page.evaluate(() => window.__sim.people.length)) fail('the office appeared before the password was changed'); else pass('no office until the password is changed');
+    await u.page.fill('#loginNew', 'short'); await u.page.fill('#loginNew2', 'short');
     await u.page.click('.login-form button[type=submit]');
-    await u.page.waitForFunction(() => window.__sim.net.snapshots > 10 && !document.getElementById('loginScreen'), null, { timeout: 20000 }).then(() => pass('registering from the screen logs in and the office appears'), () => fail('registering did not lead to the office'));
+    await u.page.waitForFunction(() => /at least 8/.test(document.querySelector('.login-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a weak new password is refused with the reason, on the screen'), () => fail('no weak-password message'));
+    await u.page.fill('#loginNew', 'a-fine-long-password'); await u.page.fill('#loginNew2', 'a-different-one-123');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => /not the same/.test(document.querySelector('.login-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('two different new passwords are refused'), () => fail('no mismatch message'));
+    await u.page.fill('#loginNew', 'a-fine-long-password'); await u.page.fill('#loginNew2', 'a-fine-long-password');
+    await u.page.click('.login-form button[type=submit]');
+    await u.page.waitForFunction(() => window.__sim.net.snapshots > 10 && !document.getElementById('loginScreen'), null, { timeout: 20000 }).then(() => pass('choosing a password logs in and the office appears'), () => fail('choosing a password did not lead to the office'));
     const box = await u.page.evaluate(() => ({ name: document.querySelector('#accountBox span')?.textContent, people: window.__sim.people.length, status: document.getElementById('netStatus')?.className }));
     if (box.name === uname && box.people >= 40 && box.status === 'ok') pass(`the account box shows "${box.name}" and the status is online`); else fail(`account box: ${JSON.stringify(box)}`);
 
