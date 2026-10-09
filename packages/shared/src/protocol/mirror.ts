@@ -74,9 +74,21 @@ export class Mirror {
     for (const p of this.people.values()) if (!listed.has(p.id)) this.relinkMeeting(p);
   }
 
+  /**
+   * A person joined, or something about them changed (who drives them, their name, their look). A person we already know is
+   * updated in place, so their body and pose are kept; only a changed look rebuilds the body.
+   */
   applyJoin(info: PersonInfo, snap: PersonSnap): void {
     const old = this.people.get(info.id);
-    if (old) this.drop(old);
+    if (old && JSON.stringify(old.spec) === JSON.stringify(info.spec)) {
+      old.name = info.name; old.role = info.role; old.controller = info.controller;
+      old.slot = info.slot >= 0 ? this.spots[info.slot] : undefined;
+      old.screenKind = info.screenKind; old.screenVariant = info.screenVariant; old.arriveAt = info.arriveAt;
+      this.update(old, snap);
+      this.link(old, snap);
+      return;
+    }
+    if (old) this.drop(old); // a new look: a new body
     const p = this.create(info, snap);
     this.link(p, snap);
   }

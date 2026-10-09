@@ -9,6 +9,7 @@ import {
 process.env.WORLD_SEED = '1';
 process.env.HELLO_TIMEOUT_MS = '400';
 process.env.MAX_CLIENTS = '6';
+process.env.GRACE_MS = '300';
 
 let server: TestServer;
 let base: string;
@@ -19,14 +20,16 @@ beforeAll(async () => { server = await bootTestServer(); base = server.base; }, 
 afterAll(async () => { open.forEach(s => s.close()); await server.close(); setSeed(null); });
 
 describe('the gateway', () => {
-  it('sends the welcome after hello: the clock, the layout check and all 40 people', async () => {
+  it('sends the welcome after hello: the clock, the layout check, the 40 staff and you', async () => {
     const c = client();
     await c.ready;
     await enter(base, c, 'solo');
     const w = await c.waitFor(isWelcome);
-    expect(w.people).toHaveLength(40);
+    expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(40);
+    const me = w.people.find(p => p.info.id === w.you)!;
+    expect(me.info).toMatchObject({ controller: 'account', name: 'solo', role: 'Guest' }); // no desk yet: a guest at the entrance
     expect(w.layout.spots).toBe(145);
-    expect(w).toMatchObject({ tickRate: 20, you: -1, paused: false, speed: 1 });
+    expect(w).toMatchObject({ tickRate: 20, paused: false, speed: 1 });
     expect(w.people[0].info.name).toBe('Hazel Sellote');
     c.socket.close();
   });
@@ -44,7 +47,7 @@ describe('the gateway', () => {
     for (const s of sb) { const o = byTick.get(s.tick); if (o) { shared++; expect(o).toEqual(s); } }
     expect(shared).toBeGreaterThan(15);
     expect(sa[sa.length - 1].simTime).toBeGreaterThan(sa[0].simTime);
-    expect(sa.some(s => s.full && s.people.length === 40)).toBe(true); // a keyframe about once a second
+    expect(sa.some(s => s.full && s.people.length >= 41)).toBe(true); // a keyframe about once a second: the 40 staff and the two guests
     const deltas = sa.filter(s => !s.full);
     expect(deltas.length).toBeGreaterThan(10);
     const small = deltas.filter(s => s.people.length < 20).length;

@@ -10,5 +10,7 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'],
+    // some tests run the whole simulation for a day; on a busy machine (tests run in parallel) 5 seconds is not enough
+    testTimeout: 30000,
   },
 });

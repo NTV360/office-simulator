@@ -9,6 +9,9 @@ import { AuthError, AuthService, type SessionEnd } from './auth.service';
 export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdown {
   private service: AuthService | null = null;
   private readonly endListeners: Array<(e: SessionEnd) => void> = [];
+  private readyResolve!: () => void;
+  /** Resolves when start-up is over (accounts are on, or switched off for lack of a database). */
+  readonly ready = new Promise<void>(res => { this.readyResolve = res; });
   private timer: NodeJS.Timeout | null = null;
   private readonly log = new Logger('Auth');
 
@@ -29,6 +32,10 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
   onSessionEnd(fn: (e: SessionEnd) => void): void { this.endListeners.push(fn); }
 
   async onApplicationBootstrap(): Promise<void> {
+    try { await this.start(); } finally { this.readyResolve(); }
+  }
+
+  private async start(): Promise<void> {
     const pool = this.db.pool;
     if (!pool) { this.log.warn('no DATABASE_URL: accounts are switched off'); return; }
     for (let attempt = 1; ; attempt++) {

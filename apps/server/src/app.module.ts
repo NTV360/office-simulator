@@ -4,6 +4,7 @@ import { HealthController } from './health.controller';
 import { AuthController, SameOriginGuard, SessionGuard } from './auth/auth.controller';
 import { AuthProvider } from './auth/auth.provider';
 import { PlayController } from './auth/play.controller';
+import { PlayService } from './play/play.service';
 import { TicketService } from './auth/tickets';
 import { AdminController } from './admin/admin.controller';
 import { AdminGuard } from './admin/admin.guard';
@@ -13,6 +14,6 @@ import { WorldService } from './world/world.service';
 
 @Module({
   controllers: [HealthController, WorldController, AdminController, AuthController, PlayController],
-  providers: [DbService, WorldService, GameGateway, AdminGuard, AuthProvider, SessionGuard, SameOriginGuard, { provide: TicketService, useFactory: () => new TicketService() }],
+  providers: [DbService, WorldService, GameGateway, AdminGuard, AuthProvider, PlayService, SessionGuard, SameOriginGuard, { provide: TicketService, useFactory: () => new TicketService() }],
 })
 export class AppModule {}

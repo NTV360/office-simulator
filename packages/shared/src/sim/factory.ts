@@ -69,6 +69,12 @@ export function setStaffCount(requested: number): number {
   return count();
 }
 
+/** A fresh NPC name (the next in the list), for a person an account has given up. Uses no random numbers. */
+export function npcName(): string {
+  const i = counters.nameIdx++;
+  return `${FIRST[i % FIRST.length]} ${LAST[(i * 7 + 3) % LAST.length]}.`;
+}
+
 /** Pick today's arrival, lunch and leaving times. */
 export function scheduleDay(p: Person): void {
   p.arriveAt = rnd(7 * 60 + 50, 9 * 60 + 35); p.leaveAt = rnd(17 * 60 + 10, 18 * 60 + 50);

@@ -33,6 +33,12 @@ export interface AccountStore {
   byId(id: number): Promise<Account | null>;
   countAdmins(): Promise<number>;
   setPassword(id: number, passwordHash: string, mustChange: boolean): Promise<void>;
+  /** Every account, oldest first (for the admin). */
+  list(): Promise<Account[]>;
+  /** Give the account a desk (a spot id) or take it away (null). 'taken' if another account has that desk, 'missing' if there is no such account. */
+  setSlot(id: number, slotSpot: string | null): Promise<'ok' | 'taken' | 'missing'>;
+  /** Remember the account's character look (already normalised). */
+  setSpec(id: number, spec: unknown): Promise<void>;
   touchLogin(id: number): Promise<void>;
   createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void>;
   sessionByHash(tokenHash: Buffer): Promise<{ session: SessionInfo; account: Account } | null>;
@@ -91,6 +97,25 @@ export class PgAccountStore implements AccountStore {
     await this.pool.query('UPDATE accounts SET last_login_at = now() WHERE id = $1', [id]);
   }
 
+  async list(): Promise<Account[]> {
+    const r = await this.pool.query<AccountRow>('SELECT * FROM accounts ORDER BY id');
+    return r.rows.map(toAccount);
+  }
+
+  async setSlot(id: number, slotSpot: string | null): Promise<'ok' | 'taken' | 'missing'> {
+    try {
+      const r = await this.pool.query('UPDATE accounts SET slot_spot = $2 WHERE id = $1', [id, slotSpot]);
+      return r.rowCount === 0 ? 'missing' : 'ok';
+    } catch (err) {
+      if ((err as { code?: string }).code === '23505') return 'taken'; // another account already has that desk
+      throw err;
+    }
+  }
+
+  async setSpec(id: number, spec: unknown): Promise<void> {
+    await this.pool.query('UPDATE accounts SET spec = $2 WHERE id = $1', [id, JSON.stringify(spec)]);
+  }
+
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void> {
     await this.pool.query('INSERT INTO sessions (account_id, token_hash, expires_at, user_agent) VALUES ($1, $2, $3, $4)', [accountId, tokenHash, expiresAt, userAgent]);
   }
@@ -142,6 +167,15 @@ export class MemoryAccountStore implements AccountStore {
   async countAdmins() { return [...this.accounts.values()].filter(x => x.role === 'admin').length; }
   async setPassword(id: number, h: string, mustChange: boolean) { const x = this.accounts.get(id)!; x.passwordHash = h; x.mustChangePassword = mustChange; }
   async touchLogin(id: number) { this.accounts.get(id)!.lastLoginAt = new Date(); }
+  async list() { return [...this.accounts.values()].map(a => ({ ...a })); }
+  async setSlot(id: number, slotSpot: string | null) {
+    const a = this.accounts.get(id);
+    if (!a) return 'missing' as const;
+    if (slotSpot !== null && [...this.accounts.values()].some(x => x.id !== id && x.slotSpot === slotSpot)) return 'taken' as const;
+    a.slotSpot = slotSpot;
+    return 'ok' as const;
+  }
+  async setSpec(id: number, spec: unknown) { this.accounts.get(id)!.spec = spec; }
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null) {
     this.sessions.set(tokenHash.toString('hex'), { info: { id: this.nextSession++, accountId, createdAt: new Date(), expiresAt, lastSeenAt: new Date() }, userAgent });
   }

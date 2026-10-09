@@ -33,6 +33,7 @@ services:
     environment:
       PORT: "3000"
       TZ: "${TZ:-UTC}"
+      GRACE_MS: "${GRACE_MS:-30000}"
       TICK_RATE: "${TICK_RATE:-20}"
       SLOT_COUNT: "${SLOT_COUNT:-40}"
       SIM_SPEED: "${SIM_SPEED:-1}"

@@ -41,6 +41,14 @@ curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer 
 ```
 
 - The page asks you to log in or create an account first; the realtime connection needs a one-time ticket from a logged-in session, and a second login of the same account takes over from the first.
+- Desks: a new account is a guest until an admin gives it a desk. With `ADMIN_TOKEN` set, list desks and accounts and give one out like this (a proper admin page comes in a later step):
+
+```
+curl -H "Authorization: Bearer <token>" http://localhost:8080/api/admin/slots
+curl -H "Authorization: Bearer <token>" http://localhost:8080/api/admin/users
+curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"spot":"desk:12"}' http://localhost:8080/api/admin/users/3/assign-slot
+```
+
 - Accounts: put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` and the first start creates that admin (change the password after the first login). `SIGNUP_CODE` makes registering need a code. Accounts, sessions and the audit log are in the same database. Passwords are stored only as argon2id hashes.
 - The saved world lives in the database (`world_state`). `docker compose restart server` brings the same office back. To start over with a fresh office, set `RESET_WORLD=true` for one start (or `docker compose down -v` to wipe the database).
 

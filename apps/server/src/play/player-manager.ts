@@ -1,0 +1,219 @@
+import {
+  HAZEL_NAME, handBack, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
+} from '@office/shared';
+import type { Account, AccountStore } from '../auth/account-store';
+
+// Who is playing which person. The simulation knows how to take a person over and hand them back (shared/sim/takeover.ts);
+// this decides *when*: a login takes over the account's own person (or makes a guest), a disconnect starts a grace period
+// before the person is handed back, an admin gives or takes away a desk. See docs/PHASE-3-BREAKDOWN.md, step 3.
+
+export type PlayErrorCode = 'no-account' | 'has-desk' | 'no-desk' | 'no-person' | 'claimed' | 'reserved' | 'desk-taken' | 'has-no-desk';
+
+/** A refusal an admin can be told about. */
+export class PlayError extends Error {
+  constructor(readonly code: PlayErrorCode, message: string) { super(message); this.name = 'PlayError'; }
+}
+
+export interface Timers {
+  set(fn: () => void, ms: number): unknown;
+  clear(handle: unknown): void;
+}
+const realTimers: Timers = { set: (fn, ms) => setTimeout(fn, ms), clear: h => clearTimeout(h as NodeJS.Timeout) };
+
+export interface PlayerManagerOptions {
+  /** How long a person stays under their player's control after the connection drops, so a flaky link does not make them wander off. */
+  graceMs?: number;
+  timers?: Timers;
+  /** Tell the connection of this account to go, and why. */
+  kick?: (accountId: number, reason: string) => void;
+  log?: { log(msg: string): void; warn(msg: string): void };
+}
+
+interface Session {
+  person: Person;
+  graceTimer: unknown | null;
+}
+
+export class PlayerManager {
+  private readonly sessions = new Map<number, Session>();
+  // Logins and desk changes run one at a time, so a login cannot slip in between the two halves of an assignment or a release
+  private queue: Promise<unknown> = Promise.resolve();
+  private readonly graceMs: number;
+  private readonly timers: Timers;
+  private kick: (accountId: number, reason: string) => void;
+  private readonly log: NonNullable<PlayerManagerOptions['log']>;
+
+  constructor(private readonly store: AccountStore, opts: PlayerManagerOptions = {}) {
+    this.graceMs = opts.graceMs ?? 30_000;
+    this.timers = opts.timers ?? realTimers;
+    this.kick = opts.kick ?? (() => {});
+    this.log = opts.log ?? { log: () => {}, warn: () => {} };
+  }
+
+  private serial<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(job, job);
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
+  /** Where kicks go (the gateway). */
+  onKick(fn: (accountId: number, reason: string) => void): void { this.kick = fn; }
+
+  /** Is this account being played right now (including during the grace period)? */
+  isOnline(accountId: number): boolean { return this.sessions.has(accountId); }
+  /** The person this account is playing, if any. */
+  personOf(accountId: number): Person | undefined { return this.sessions.get(accountId)?.person; }
+  get online(): number { return this.sessions.size; }
+
+  /**
+   * An account has joined. Returns the person it now plays: its own person where it stands, a guest at the entrance if it has
+   * no desk, or (if it reconnected within the grace period) the same person it was playing.
+   */
+  attach(account: Account): Promise<Person> {
+    return this.serial(() => this.doAttach(account));
+  }
+
+  private async doAttach(passed: Account): Promise<Person> {
+    // the account as it is now: an admin may have changed its desk since the caller read it
+    const account = (await this.store.byId(passed.id)) ?? passed;
+    const existing = this.sessions.get(account.id);
+    if (existing) { // reconnecting: carry on with the same person
+      if (existing.graceTimer !== null) { this.timers.clear(existing.graceTimer); existing.graceTimer = null; }
+      return existing.person;
+    }
+    let person: Person | undefined;
+    if (account.slotSpot) {
+      const desk = interactables.of('desk').find(d => d.id === account.slotSpot);
+      const owner = desk?.owner as Person | undefined;
+      if (owner && owner.name !== HAZEL_NAME && people.includes(owner) && (owner.owner === account.id || owner.owner === undefined)) {
+        if (owner.owner === undefined) this.claim(owner, account); // the world did not know yet (for example it was reset): the database says this desk is theirs
+        person = owner;
+        if (account.spec) setLook(person, account.spec);
+        takeControl(person);
+      } else this.log.warn(`${account.username} has desk ${account.slotSpot}, but it is not available; playing as a guest`);
+    }
+    person ??= makeGuest(account.id, account.username, account.spec ?? undefined);
+    this.sessions.set(account.id, { person, graceTimer: null });
+    return person;
+  }
+
+  /** The connection is gone. The person stays where they are for the grace period, then goes back to autopilot (a guest leaves). */
+  detach(accountId: number): void {
+    const s = this.sessions.get(accountId);
+    if (!s || s.graceTimer !== null) return;
+    s.graceTimer = this.timers.set(() => {
+      this.sessions.delete(accountId);
+      handBack(s.person); // a guest has no desk, so this removes them
+    }, this.graceMs);
+  }
+
+  /** Hand everybody back at once (the server is stopping). */
+  releaseAll(): void {
+    for (const [id, s] of this.sessions) {
+      if (s.graceTimer !== null) this.timers.clear(s.graceTimer);
+      handBack(s.person);
+      this.sessions.delete(id);
+    }
+  }
+
+  /**
+   * An admin gives an account the desk `spotId`. The desk must belong to an unclaimed autopilot person (not Hazel). That person
+   * becomes the account's: renamed to the account, with the account's look if it has one. An account that is connected as a guest
+   * is told to log in again.
+   */
+  assignSlot(accountId: number, spotId: string): Promise<Person> {
+    return this.serial(() => this.doAssign(accountId, spotId));
+  }
+
+  private async doAssign(accountId: number, spotId: string): Promise<Person> {
+    const account = await this.store.byId(accountId);
+    if (!account) throw new PlayError('no-account', 'there is no such account');
+    if (account.slotSpot) throw new PlayError('has-desk', `${account.username} already has a desk (${account.slotSpot}); release it first`);
+    const desk = interactables.of('desk').find(d => d.id === spotId);
+    if (!desk) throw new PlayError('no-desk', `there is no desk "${spotId}"`);
+    const person = desk.owner as Person | undefined;
+    if (!person) throw new PlayError('no-person', `nobody sits at ${spotId} (raise the number of slots first)`);
+    if (person.name === HAZEL_NAME) throw new PlayError('reserved', `${spotId} is Hazel's desk and cannot be given away`);
+    if (person.owner !== undefined || !isAi(person)) throw new PlayError('claimed', `${spotId} already belongs to an account`);
+    const result = await this.store.setSlot(accountId, spotId);
+    if (result === 'taken') throw new PlayError('desk-taken', `${spotId} already belongs to an account`);
+    if (result === 'missing') throw new PlayError('no-account', 'there is no such account');
+    // the database write took a moment: make sure the person is still there and still nobody's (the slot count may have been lowered)
+    if (desk.owner !== person || !people.includes(person) || person.owner !== undefined) {
+      await this.store.setSlot(accountId, null);
+      throw new PlayError('no-person', `${spotId} changed while it was being given out; nothing was assigned`);
+    }
+    const guest = this.sessions.get(accountId);
+    this.claim(person, { ...account, slotSpot: spotId });
+    if (guest) { // they were walking around as a guest: they have a desk now, so they log in again to take it
+      if (guest.graceTimer !== null) this.timers.clear(guest.graceTimer);
+      this.sessions.delete(accountId);
+      removeGuest(guest.person);
+      this.kick(accountId, 'your desk was assigned, log in again');
+    }
+    this.log.log(`desk ${spotId} (${person.name}) given to ${account.username}`);
+    return person;
+  }
+
+  /** An admin takes an account's desk away. The person stays as an ordinary NPC. If the account is playing them, that ends. */
+  releaseSlot(accountId: number): Promise<Person | null> {
+    return this.serial(() => this.doRelease(accountId));
+  }
+
+  private async doRelease(accountId: number): Promise<Person | null> {
+    const account = await this.store.byId(accountId);
+    if (!account) throw new PlayError('no-account', 'there is no such account');
+    if (!account.slotSpot) throw new PlayError('has-no-desk', `${account.username} has no desk`);
+    const desk = interactables.of('desk').find(d => d.id === account.slotSpot);
+    const person = desk?.owner as Person | undefined;
+    await this.store.setSlot(accountId, null); // the database first; everything after this is immediate, with nothing awaited in between
+    const session = this.sessions.get(accountId);
+    if (session) {
+      if (session.graceTimer !== null) this.timers.clear(session.graceTimer);
+      this.sessions.delete(accountId);
+      if (session.person.slot) handBack(session.person); else removeGuest(session.person);
+      this.kick(accountId, 'your desk was taken away by an admin');
+    }
+    if (person && person.owner === accountId) this.unclaim(person);
+    this.log.log(`desk ${account.slotSpot} taken from ${account.username}`);
+    return person ?? null;
+  }
+
+  /**
+   * After a start-up: make the world agree with the accounts. Every account's desk belongs to its person; a person who says
+   * they belong to an account that no longer has that desk becomes an ordinary NPC again. The accounts win.
+   */
+  async reconcile(): Promise<{ claimed: number; released: number }> {
+    const accounts = await this.store.list();
+    let claimed = 0, released = 0;
+    const wanted = new Map<string, Account>();
+    for (const a of accounts) if (a.slotSpot) wanted.set(a.slotSpot, a);
+    for (const [spot, account] of wanted) {
+      const person = interactables.of('desk').find(d => d.id === spot)?.owner as Person | undefined;
+      if (!person) { this.log.warn(`${account.username} has desk ${spot}, which has nobody at it`); continue; }
+      if (person.name === HAZEL_NAME) { this.log.warn(`${account.username} has desk ${spot}, which is Hazel's and cannot be given away; ignored`); continue; }
+      if (person.owner !== account.id) { this.claim(person, account); claimed++; }
+    }
+    for (const p of people) {
+      if (p.owner === undefined || !p.slot) continue;
+      const a = wanted.get(p.slot.id);
+      if (!a || a.id !== p.owner) { this.unclaim(p); released++; }
+    }
+    return { claimed, released };
+  }
+
+  /** The person stops being an account's: an ordinary NPC again, with an NPC's name. */
+  private unclaim(person: Person): void {
+    delete person.owner;
+    person.name = npcName();
+    setLook(person, person.spec); // announces the change to viewers
+  }
+
+  /** Make `person` the account's: it belongs to them, carries their name, and wears their look if they have one. */
+  private claim(person: Person, account: Account): void {
+    person.owner = account.id;
+    person.name = account.username;
+    if (account.spec) person.spec = normalizeSpec(account.spec);
+    setLook(person, person.spec); // announces the change to viewers
+  }
+}

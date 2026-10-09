@@ -239,6 +239,64 @@ d('accounts in PostgreSQL', () => {
   }, 30000);
 });
 
+d('desks and accounts across restarts', () => {
+  beforeEach(async () => { await runMigrations(pool); });
+
+  async function start() {
+    process.env.DATABASE_URL = url;
+    process.env.ADMIN_TOKEN = 'tok-desks';
+    process.env.SAVE_INTERVAL_MS = '300';
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApp(app);
+    await app.listen(0, '127.0.0.1');
+    const base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+    const call = async (method: string, path: string, body?: unknown) => {
+      const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', authorization: 'Bearer tok-desks' }, body: body === undefined ? undefined : JSON.stringify(body) });
+      return { status: r.status, body: await r.json().catch(() => null) as any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    };
+    return { app, base, call };
+  }
+
+  it('a desk given to an account is still theirs after a restart, and the accounts win when the database and the saved world disagree', async () => {
+    const one = await start();
+    const reg = await fetch(one.base + '/api/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'deskowner', password: 'a-long-password-1' }) });
+    expect(reg.status).toBe(201);
+    const id = (await reg.json() as { account: { id: number } }).account.id;
+    const free = (await one.call('GET', '/api/admin/slots')).body.find((s: { status: string }) => s.status === 'unclaimed').spot as string;
+    expect((await one.call('POST', `/api/admin/users/${id}/assign-slot`, { spot: free })).status).toBe(201);
+    await new Promise(r => setTimeout(r, 900)); // a save
+    await one.app.close();
+    expect((await pool.query('SELECT slot_spot FROM accounts WHERE id = $1', [id])).rows[0].slot_spot).toBe(free);
+
+    const two = await start(); // restored world: the person says it belongs to the account, and the database agrees
+    const slots2 = (await two.call('GET', '/api/admin/slots')).body as Array<{ spot: string; status: string; person: string; account: { username: string } | null }>;
+    expect(slots2.find(s => s.spot === free)).toMatchObject({ status: 'claimed', person: 'deskowner', account: { username: 'deskowner' } });
+    await new Promise(r => setTimeout(r, 900));
+    await two.app.close();
+
+    await pool.query('UPDATE accounts SET slot_spot = NULL WHERE id = $1', [id]); // the database says the desk is free now
+    const three = await start();
+    const slots3 = (await three.call('GET', '/api/admin/slots')).body as Array<{ spot: string; status: string; account: unknown }>;
+    expect(slots3.find(s => s.spot === free)).toMatchObject({ status: 'unclaimed', account: null }); // the accounts win over the saved world
+    await three.app.close();
+    delete process.env.ADMIN_TOKEN;
+  }, 60000);
+
+  it('a desk can belong to only one account, decided by the database', async () => {
+    const store = new PgAccountStore(pool);
+    const a = await store.create({ username: 'First', passwordHash: 'h', role: 'player' }) as { id: number };
+    const b = await store.create({ username: 'Second', passwordHash: 'h', role: 'player' }) as { id: number };
+    expect(await store.setSlot(a.id, 'desk:5')).toBe('ok');
+    expect(await store.setSlot(b.id, 'desk:5')).toBe('taken');
+    expect(await store.setSlot(a.id, null)).toBe('ok');
+    expect(await store.setSlot(b.id, 'desk:5')).toBe('ok');
+    expect(await store.setSlot(9999, 'desk:6')).toBe('missing');
+    expect((await store.list()).map(x => [x.username, x.slotSpot])).toEqual([['First', null], ['Second', 'desk:5']]);
+    await store.setSpec(a.id, { hair: '#123456' });
+    expect((await store.byId(a.id))!.spec).toEqual({ hair: '#123456' });
+  });
+});
+
 d('the running server', () => {
   beforeEach(async () => { await runMigrations(pool); });
   process.env.SAVE_INTERVAL_MS = '300';

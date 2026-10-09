@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Mirror, PROP_KEYS, decode, interactables, hasSlot, meetings, people, personSnap, removeStaff, setStaffCount, simEvents,
+  Mirror, PROP_KEYS, decode, interactables, hasSlot, meetings, people, personSnap, removeStaff, setLook, setStaffCount, simEvents, takeControl,
   type Person, type PersonSnap, type Snapshot, type Welcome,
 } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
@@ -170,4 +170,27 @@ describe('Mirror', () => {
     expect(() => mirror.applySnapshot({ type: 'snapshot', tick: 9, simTime: 1, day: 1, speed: 1, paused: false, full: false, people: [bad], meetings: [] })).not.toThrow();
     expect(other.task).toBeNull();
   }, 60000);
+
+  it('when a human takes someone over the same person is updated in place (their body and pose are kept), and a new look rebuilds them', () => {
+    connect();
+    const sp = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    const mp = mirror.people.get(sp.id)!;
+    const addedBefore = added.length, removedBefore = removed.length;
+    sp.owner = 5; sp.name = 'Renamed';
+    takeControl(sp);
+    const m = decode(bc.joined(sp));
+    if (m.type !== 'person') throw new Error('expected a person message');
+    mirror.applyJoin(m.info, m.snap);
+    expect(mirror.people.get(sp.id)).toBe(mp); // the very same object: nothing was rebuilt
+    expect([mp.controller, mp.name]).toEqual(['account', 'Renamed']);
+    expect([added.length, removed.length]).toEqual([addedBefore, removedBefore]);
+    setLook(sp, { hair: '#abcdef' });
+    const m2 = decode(bc.joined(sp));
+    if (m2.type !== 'person') throw new Error('expected a person message');
+    mirror.applyJoin(m2.info, m2.snap);
+    const rebuilt = mirror.people.get(sp.id)!;
+    expect(rebuilt).not.toBe(mp);
+    expect(rebuilt.spec.hair).toBe('#abcdef');
+    expect([added.length - addedBefore, removed.length - removedBefore]).toEqual([1, 1]);
+  });
 });

@@ -1,12 +1,13 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, NONE, PROTOCOL_VERSION, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, PROTOCOL_VERSION, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
 import { addressKey } from '../auth/http';
 import { parseTrustProxy } from '../app.config';
 import { AuthProvider } from '../auth/auth.provider';
 import type { SessionEnd } from '../auth/auth.service';
 import { TicketService } from '../auth/tickets';
+import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -54,6 +55,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @Inject(WorldService) private readonly worlds: WorldService,
     @Inject(AuthProvider) private readonly auth: AuthProvider,
     @Inject(TicketService) private readonly tickets: TicketService,
+    @Inject(PlayService) private readonly players: PlayService,
   ) {}
 
   afterInit(): void {
@@ -61,6 +63,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.broadcaster = new Broadcaster({ tickRate: world.options.tickRate });
     simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p)));
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
+    simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p))); // who drives them, their name or look changed
+    this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason));
     simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
     this.auth.onSessionEnd(e => this.onSessionEnd(e));
     this.sweepTimer = setInterval(() => { void this.sweep(); }, this.options.sweepMs);
@@ -86,7 +90,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   handleDisconnect(socket: Socket): void {
     const id = socket.data.accountId as number | undefined;
-    if (id !== undefined && this.byAccount.get(id) === socket) this.byAccount.delete(id);
+    if (id !== undefined && this.byAccount.get(id) === socket) {
+      this.byAccount.delete(id);
+      if (socket.data.joined) this.players.manager().detach(id); // their person stays for the grace period, then goes back to autopilot
+    }
+  }
+
+  /** Disconnect an account's connection, with the reason (an admin changed its desk, for example). */
+  kickAccount(accountId: number, reason: string): void {
+    const socket = this.byAccount.get(accountId);
+    if (socket) this.kick(socket, reason);
   }
 
   private onMessage(socket: Socket, data: unknown): void {
@@ -132,6 +145,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private async join(socket: Socket, version: number, ticket: string): Promise<void> {
     if (socket.data.joined || socket.data.joining) return;
     socket.data.joining = true;
+    let attachedId: number | undefined;
     try {
       if (version !== PROTOCOL_VERSION) { this.kick(socket, `protocol version ${version}, the server speaks ${PROTOCOL_VERSION}`); return; }
       if (!this.auth.available) { this.kick(socket, 'accounts are not available on this server'); return; }
@@ -149,16 +163,21 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
       // one connection per account: a second login takes over, so nobody drives a character from two tabs
       const old = this.byAccount.get(account.id);
-      if (old && old !== socket) this.kick(old, 'you logged in from somewhere else');
-      this.byAccount.set(account.id, socket);
+      if (old && old !== socket) { this.byAccount.delete(account.id); this.kick(old, 'you logged in from somewhere else'); }
       socket.data.username = account.username;
 
+      // take over the account's person (or make a guest). A reconnect within the grace period gets the same person back.
+      const person = await this.players.manager().attach(account);
+      attachedId = account.id;
+      if (!socket.connected || socket.data.ended) { this.players.manager().detach(account.id); if (socket.connected) this.kick(socket, 'you have been logged out'); return; }
+      this.byAccount.set(account.id, socket);
       clearTimeout(socket.data.timer);
       socket.data.joined = true;
       socket.join(PLAYING);
-      socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, NONE));
+      socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, person.id));
     } catch (err) {
       this.log.error(`joining failed: ${err instanceof Error ? err.message : String(err)}`);
+      if (attachedId !== undefined && this.byAccount.get(attachedId) !== socket) this.players.manager().detach(attachedId); // do not leave a session with nobody behind it
       this.kick(socket, 'server error');
     } finally {
       socket.data.joining = false;

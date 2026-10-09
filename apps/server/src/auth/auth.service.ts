@@ -50,6 +50,8 @@ const sha256 = (s: string): Buffer => createHash('sha256').update(s).digest();
 const sameSecret = (a: string, b: string): boolean => timingSafeEqual(sha256(a), sha256(b));
 
 export class AuthService {
+  /** The account storage, for the parts of the server that manage desks and players. */
+  readonly accounts: AccountStore;
   private readonly now: () => number;
   private readonly sessionMs: number;
   // Wrong passwords: 5 per username from one address in 15 minutes, then that address is locked out of that name for the
@@ -63,6 +65,7 @@ export class AuthService {
   private readonly endListeners: Array<(e: SessionEnd) => void> = [];
 
   constructor(private readonly store: AccountStore, private readonly opts: AuthOptions = {}) {
+    this.accounts = store;
     this.now = opts.now ?? Date.now;
     this.sessionMs = opts.sessionMs ?? 7 * DAY;
     this.failuresByNameAndIp = new RateLimiter(5, 15 * 60_000, this.now);

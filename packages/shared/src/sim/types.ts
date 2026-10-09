@@ -47,6 +47,8 @@ export interface Person {
   spec: CharacterSpec;
   /** The desk a staff member owns. Humans playing as guests have none. */
   slot?: Spot;
+  /** The day number when a human took this person over (so a hand-back on a later day can give them that day's schedule). */
+  drivenOnDay?: number;
   /** The account that owns this person's desk (or, for a guest, the account playing as one). Unset for a plain NPC. */
   owner?: number;
   pos: Vec3;

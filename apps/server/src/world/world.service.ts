@@ -15,6 +15,9 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
   private persistence = new Persistence(null, this.log);
   private restored = false;
   private saveTimer: NodeJS.Timeout | null = null;
+  private readyResolve!: () => void;
+  /** Resolves when the world is built (restored or fresh) and ticking. */
+  readonly ready = new Promise<void>(res => { this.readyResolve = res; });
 
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
@@ -27,6 +30,7 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
       const every = Number(process.env.SAVE_INTERVAL_MS) || 10_000;
       this.saveTimer = setInterval(() => { if (!this.persistence.busy) void this.persistence.saveNow(); }, every);
     }
+    this.readyResolve();
   }
 
   async onApplicationShutdown(): Promise<void> {
