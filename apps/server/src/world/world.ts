@@ -75,6 +75,8 @@ export class World {
   private timer: NodeJS.Timeout | null = null;
   private nextAt = 0;
   private readonly now: () => number;
+  private lastReport = 0;
+  private stopped = true;
   private readonly listeners: Array<(tick: number) => void> = [];
 
   constructor(options: WorldOptions, now: () => number = () => performance.now()) {
@@ -103,18 +105,31 @@ export class World {
   /** One fixed step of the simulation (nothing moves while paused, but the tick still counts). */
   step(): void {
     const t0 = this.now();
-    if (!sim.paused) stepSim(1 / this.options.tickRate);
+    try {
+      if (!sim.paused) stepSim(1 / this.options.tickRate);
+    } catch (err) {
+      this.report('simulation step failed', err);
+    }
     this.tick++;
     for (const fn of this.listeners) {
-      try { fn(this.tick); } catch (err) { console.error('tick listener failed:', err); }
+      try { fn(this.tick); } catch (err) { this.report('tick listener failed', err); }
     }
     this.durations.push(this.now() - t0); // includes building and sending the snapshot
     if (this.durations.length > WINDOW) this.durations.shift();
   }
 
+  /** Log an error at most once a second, so a fault that repeats every tick does not flood the log. */
+  private report(what: string, err: unknown): void {
+    const t = this.now();
+    if (t - this.lastReport < 1000) return;
+    this.lastReport = t;
+    console.error(`${what}:`, err);
+  }
+
   /** Run the loop until `stop()`. Drift-corrected: each tick is scheduled against the clock, not against the last tick. */
   start(): void {
     if (this.timer) return;
+    this.stopped = false;
     const interval = 1000 / this.options.tickRate;
     this.nextAt = this.now() + interval;
     const loop = () => {
@@ -126,13 +141,15 @@ export class World {
         this.nextAt += interval;
         ran++;
       }
-      if (now >= this.nextAt) this.nextAt = now + interval; // far behind: skip ahead instead of spiralling
+      if (this.stopped) return; // stop() was called from inside a tick
+      if (now >= this.nextAt) { this.lateTicks += Math.floor((now - this.nextAt) / interval) + 1; this.nextAt = now + interval; } // far behind: skip ahead instead of spiralling
       this.timer = setTimeout(loop, Math.max(0, this.nextAt - this.now()));
     };
     this.timer = setTimeout(loop, interval);
   }
 
   stop(): void {
+    this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
   }

@@ -9,7 +9,7 @@ const same = (a: PersonSnap, b: PersonSnap): boolean => {
   if (a.x !== b.x || a.z !== b.z || a.face !== b.face || a.walkPhase !== b.walkPhase) return false;
   if (a.state !== b.state || a.shown !== b.shown || a.kind !== b.kind || a.anim !== b.anim || a.cat !== b.cat || a.spot !== b.spot) return false;
   if (a.partner !== b.partner || a.chatWith !== b.chatWith || a.meeting !== b.meeting || a.props !== b.props || a.arrived !== b.arrived || a.arriveAt !== b.arriveAt) return false;
-  return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z;
+  return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z && a.oneOff?.face === b.oneOff?.face;
 };
 
 export interface BroadcasterOptions {

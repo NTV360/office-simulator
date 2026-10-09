@@ -28,16 +28,18 @@ const NO_U16 = 0xffff;
 const NO_U8 = 0xff;
 const TAU = Math.PI * 2;
 
-const toU16 = (id: number) => (id === NONE ? NO_U16 : id);
+// 0xffff and 0xff mean "none", so real ids and indexes stop one short of them
+const toU16 = (id: number) => { if (id === NONE) return NO_U16; if (id >= NO_U16) throw new RangeError(`id ${id} is too big for the protocol`); return id; };
 const fromU16 = (v: number) => (v === NO_U16 ? NONE : v);
 
 function writeName(w: Writer, table: readonly string[], value: string): void {
   const i = table.indexOf(value);
-  if (i >= 0) w.u8(i); else { w.u8(CUSTOM); w.str(value); }
+  if (i >= 0) w.u8(i); else { if (value.length > MAX_NAME) throw new RangeError('name too long for the protocol'); w.u8(CUSTOM); w.str(value); }
 }
+const MAX_NAME = 64;
 function readName(r: Reader, table: readonly string[], what: string): string {
   const i = r.u8();
-  if (i === CUSTOM) return r.str();
+  if (i === CUSTOM) { const s = r.str(); if (s.length > MAX_NAME) throw new DecodeError(`${what} name too long`); return s; }
   if (i >= table.length) throw new DecodeError(`unknown ${what} ${i}`);
   return table[i];
 }
@@ -70,6 +72,7 @@ function writeSnap(w: Writer, s: PersonSnap): void {
     if (!o) throw new RangeError('a one-off spot needs its details');
     w.f32(o.x).f32(o.z).u16(quantAngle(o.face)).str(o.place);
   }
+  if (s.meeting !== NONE && s.meeting >= NO_U8) throw new RangeError('meeting index too big for the protocol');
   w.u16(toU16(s.partner)).u16(toU16(s.chatWith)).u8(s.meeting === NONE ? NO_U8 : s.meeting);
   w.u8(s.props).f32(s.arriveAt);
 }
@@ -157,6 +160,12 @@ export function encode(msg: Message): Uint8Array {
       break;
   }
   return w.bytes();
+}
+
+/** Decode a message from a client: only hello and ping are accepted, and nothing else is parsed. */
+export function decodeClient(bytes: Uint8Array): ClientMessage {
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping)) throw new DecodeError('not a message a client may send');
+  return decode(bytes) as ClientMessage;
 }
 
 /** Decode a message. Throws `DecodeError` for anything malformed (truncated, unknown type, trailing bytes, wrong version). */

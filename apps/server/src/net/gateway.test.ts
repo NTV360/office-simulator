@@ -153,3 +153,31 @@ describe('the gateway', () => {
     many.forEach(c => c.socket.close());
   }, 15000);
 });
+
+describe('the gateway under abuse', () => {
+  it('drops a client that floods it, but not one that behaves', async () => {
+    const flooder = connect(), polite = connect();
+    await Promise.all([flooder.ready, polite.ready]);
+    hello(flooder); hello(polite);
+    await Promise.all([flooder.waitFor(isWelcome), polite.waitFor(isWelcome)]);
+    for (let i = 0; i < 60; i++) flooder.socket.emit('m', encode({ type: 'ping', ts: i }));
+    expect((await flooder.waitFor(isKick)).reason).toMatch(/too many/);
+    await flooder.disconnected;
+    polite.socket.emit('m', encode({ type: 'ping', ts: 1 }));
+    expect((await polite.waitFor(isPong)).ts).toBe(1);
+    polite.socket.close();
+  });
+
+  it('refuses server-only messages without parsing them, and the server keeps ticking', async () => {
+    const c = connect();
+    await c.ready;
+    c.socket.emit('m', encode({ type: 'kick', reason: 'x' }));
+    expect((await c.waitFor(isKick)).reason).toMatch(/may send/);
+    const watcher = connect();
+    await watcher.ready; hello(watcher);
+    await watcher.waitFor(isWelcome);
+    await sleep(400);
+    expect(watcher.messages.filter(isSnapshot).length).toBeGreaterThan(4);
+    watcher.socket.close();
+  });
+});

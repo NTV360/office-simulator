@@ -86,3 +86,7 @@ Every step runs the phase 1 checks (`npm test`, `npm run typecheck`, `npm run bu
 6. **A welcome does not touch change tracking**, because other viewers have not seen it (a test would catch the opposite).
 7. **Nest dependency injection needs explicit tokens** (`@Inject(Service)`) because the test runner does not emit decorator metadata; all controllers and the gateway use them.
 8. **Through the proxy.** `npm run smoke` now also connects through Caddy, says hello and requires the welcome and a stream of snapshots.
+
+### Review of steps 0 to 3 (read-only second pair of eyes)
+
+A fresh review of the first four steps found, and this commit fixes: a throwing step or listener could kill the tick loop (now caught and reported at most once a second;  inside a tick now works); a failing message handler could crash the process (now kicks that client); the writer silently wrapped out-of-range numbers (now it throws: ids, meeting indexes, counts, non-finite numbers); the server decoded server-only message types before rejecting them (now  accepts only hello and ping); custom names had no length limit (64); a chat-place facing change was not detected as a change; late ticks were undercounted; and there was no per-client message limit (20 a second, then a kick). Each has a test.

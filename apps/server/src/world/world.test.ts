@@ -111,3 +111,27 @@ describe('the tick loop', () => {
     w.stop();
   });
 });
+
+describe('the loop survives faults', () => {
+  beforeEach(() => vi.useFakeTimers());
+
+  it('a listener that throws is reported (once a second) and the world keeps ticking', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const w = new World(base, () => Date.now()); w.init();
+    w.onTick(() => { throw new Error('boom'); });
+    w.start();
+    vi.advanceTimersByTime(2000);
+    expect(w.status().tick).toBe(40);
+    expect(spy.mock.calls.length).toBeLessThanOrEqual(3); // not 40
+    w.stop(); spy.mockRestore();
+  });
+
+  it('stop() called from inside a tick really stops it', () => {
+    const w = new World(base, () => Date.now()); w.init();
+    w.onTick(t => { if (t === 5) w.stop(); });
+    w.start();
+    vi.advanceTimersByTime(2000);
+    expect(w.status().tick).toBe(5);
+    expect(w.running).toBe(false);
+  });
+});

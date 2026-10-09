@@ -1,7 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, NONE, PROTOCOL_VERSION, decode, encode, simEvents, type Message } from '@office/shared';
+import { DecodeError, NONE, PROTOCOL_VERSION, decodeClient, encode, simEvents, type ClientMessage } from '@office/shared';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -13,10 +13,13 @@ export interface GatewayOptions {
   /** A client must say hello within this long or it is dropped. */
   helloTimeoutMs: number;
   maxClients: number;
+  /** Messages per second one client may send before it is dropped. */
+  maxMessagesPerSecond: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
   maxClients: Number(env.MAX_CLIENTS) || 200,
+  maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
 });
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
@@ -59,14 +62,32 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   handleDisconnect(): void { /* nothing to clean up: a viewer has no state on the server */ }
 
   private onMessage(socket: Socket, data: unknown): void {
-    let msg: Message;
     try {
-      if (!(data instanceof Uint8Array)) throw new DecodeError('messages are binary');
-      msg = decode(data);
+      if (this.tooFast(socket)) { this.kick(socket, 'too many messages'); return; }
+      let msg: ClientMessage;
+      try {
+        if (!(data instanceof Uint8Array)) throw new DecodeError('messages are binary');
+        msg = decodeClient(data);
+      } catch (err) {
+        this.kick(socket, err instanceof DecodeError ? `bad message: ${err.message}` : 'bad message');
+        return;
+      }
+      this.handle(socket, msg);
     } catch (err) {
-      this.kick(socket, err instanceof DecodeError ? `bad message: ${err.message}` : 'bad message');
-      return;
+      // whatever went wrong, it must never take the server down
+      this.log.error(`message handler failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.kick(socket, 'server error');
     }
+  }
+
+  /** A one-second window counter per client. */
+  private tooFast(socket: Socket): boolean {
+    const now = Date.now(), w = socket.data.window as { start: number; n: number } | undefined;
+    if (!w || now - w.start >= 1000) { socket.data.window = { start: now, n: 1 }; return false; }
+    return ++w.n > this.options.maxMessagesPerSecond;
+  }
+
+  private handle(socket: Socket, msg: ClientMessage): void {
     switch (msg.type) {
       case 'hello':
         if (socket.data.joined) return;
