@@ -10,6 +10,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
 | [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md) | the ordered, testable steps for making the simulation shareable (done) |
 | [PHASE-2-BREAKDOWN.md](PHASE-2-BREAKDOWN.md) | the steps for the server, the protocol, saving the world and the viewer client (done) |
+| [PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md) | the steps for accounts, login, taking over a person, character creation and admin tools (approved, not started) |
 | [PARALLEL-WORK.md](PARALLEL-WORK.md) | split work between several people or AI instances without them breaking each other (tracks, folder ownership, rules, a brief to hand out) |
 | [LOCAL-DOCKER.md](LOCAL-DOCKER.md) | run the whole stack (web, server, database) in Docker on your PC, and troubleshoot it |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
