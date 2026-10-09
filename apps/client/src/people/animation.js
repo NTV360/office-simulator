@@ -1,5 +1,5 @@
-import { TAU, angDiff, isControlled } from '@office/shared';
-import { player } from '../player/player.js';
+import { TAU, angDiff } from '@office/shared';
+import { isLocalPlayer, player } from '../player/player.js';
 import { HAZEL, RAGE } from './hazel.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
@@ -7,7 +7,7 @@ import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
   if (p.rageK > .3) return 'rage';
-  if (isControlled(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
+  if (isLocalPlayer(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
@@ -81,7 +81,7 @@ function targetPose(p, k, T) {
   else if (k === 'listenSit' && p.chatWith) look = p.chatWith.pos;
   else if (k === 'talkSit' && p.task?.meeting) { const others = p.task.meeting.members.filter(q => q !== p); if (others.length) look = others[Math.floor(T / 2.5) % others.length].pos; }
   else if (k === 'talkStand' && p.task?.partner) look = p.task.partner.pos;
-  else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && !isControlled(p)) look = LOUNGE_TV_POS;
+  else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && !isLocalPlayer(p)) look = LOUNGE_TV_POS;
   if (k !== 'rage' && RAGE.on && HAZEL() && HAZEL() !== p && p.pos.distanceTo(HAZEL().pos) < 6) look = HAZEL().pos;
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;

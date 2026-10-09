@@ -47,6 +47,8 @@ export interface Person {
   spec: CharacterSpec;
   /** The desk a staff member owns. Humans playing as guests have none. */
   slot?: Spot;
+  /** The account that owns this person's desk (or, for a guest, the account playing as one). Unset for a plain NPC. */
+  owner?: number;
   pos: Vec3;
   face: number;
   faceGoal: number;

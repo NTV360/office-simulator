@@ -1,6 +1,6 @@
 import { pick, random, rnd, shuffle } from '../util';
 import { interactables } from './interactables';
-import { isStaff } from './person';
+import { isAi } from './person';
 import { addLog, meetings, people, sim } from './state';
 import { goDo } from './tasks';
 import type { Meeting } from './types';
@@ -15,7 +15,7 @@ export function tryMeeting(): void {
     if (random() > (lunchHour ? .01 : .05)) continue;
     const cap = interactables.conf(room).length;
     const n = room === 2 ? 2 + Math.floor(random() * 4) : 3 + Math.floor(random() * 6);
-    const pool = shuffle(people.filter(p => isStaff(p) && p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
+    const pool = shuffle(people.filter(p => isAi(p) && p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));
     const m: Meeting = { room, start: t, end: t + rnd(18, 45), members: [], speaker: null, swap: 0, topic };

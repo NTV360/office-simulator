@@ -4,7 +4,7 @@ import { angDiff } from '../util';
 import { arriveNow, newDay } from './day';
 import type { Spot } from './interactables';
 import { tickMeetings, tryMeeting } from './meetings';
-import { isControlled } from './person';
+import { isDriven } from './person';
 import { CLOCK, people, sim } from './state';
 import { arrive, chooseNext } from './tasks';
 import type { Person } from './types';
@@ -12,7 +12,7 @@ import type { Person } from './types';
 /* ================= Simulation step ================= */
 export function stepPerson(p: Person, dt: number): void {
   if ((p.rageK ?? 0) > .05) { p.animT += dt; return; }
-  if (isControlled(p)) return;
+  if (isDriven(p)) return;
   if (p.state === 'away') {
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);
     return;

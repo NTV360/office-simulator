@@ -1,5 +1,5 @@
 import {
-  NONE, encode, isStaff, layoutCheck, log, meetingSnap, meetings, people, personInfo, personSnap, sim,
+  NONE, encode, isDriven, layoutCheck, log, meetingSnap, meetings, people, personInfo, personSnap, sim,
   type GameEvent, type Person, type PersonSnap,
 } from '@office/shared';
 
@@ -48,7 +48,7 @@ export class Broadcaster {
     const seen = new Set<number>();
     for (const p of people) {
       seen.add(p.id);
-      const due = !isStaff(p) || tick % this.aiEvery === 0;
+      const due = isDriven(p) || tick % this.aiEvery === 0; // people a human drives are sent every tick, the rest at the reduced rate
       if (!full && !due) continue;
       const snap = personSnap(p, meetings);
       const prev = this.last.get(p.id);

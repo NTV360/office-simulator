@@ -1,5 +1,5 @@
 import {
-  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, isStaff, resetSim, restoreWorld, setSeed, sim, stepSim,
+  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
 
@@ -166,7 +166,7 @@ export class World {
 
   status(): WorldStatus {
     const d = this.durations;
-    const staff = people.filter(isStaff);
+    const staff = people.filter(hasSlot);
     return {
       tick: this.tick,
       tickRate: this.options.tickRate,

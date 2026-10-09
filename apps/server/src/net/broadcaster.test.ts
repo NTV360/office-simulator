@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { addLog, decode, interactables, isStaff, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
+import { addLog, decode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { Broadcaster } from './broadcaster';
 
@@ -42,7 +42,7 @@ describe('Broadcaster', () => {
 
   it('a person who moves shows up again', () => {
     snapshot(2);
-    const p = people.filter(isStaff).find(q => q.state === 'doing')!;
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
     p.pos.x += 0.5;
     const s = snapshot(4);
     expect(s.people.some(x => x.id === p.id && Math.abs(x.x - p.pos.x) < 1e-4)).toBe(true);
@@ -84,5 +84,16 @@ describe('Broadcaster', () => {
     console.log(`BANDWIDTH  ${(perSecond / 1024).toFixed(2)} KB/s per viewer for 40 staff (${(bytes / n).toFixed(0)} B per snapshot)`);
     expect(perSecond).toBeLessThan(40 * 1024);
     setSeed(null);
+  });
+
+  it('a person a human drives is sent every tick, the autopilot crowd every second tick', () => {
+    snapshot(2);
+    const driven = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    driven.controller = 'account'; driven.state = 'controlled';
+    driven.pos.x += 0.3;
+    const odd = snapshot(3);
+    expect(odd.people.map(x => x.id)).toEqual([driven.id]);
+    driven.pos.x += 0.3;
+    expect(snapshot(5).people.map(x => x.id)).toEqual([driven.id]);
   });
 });

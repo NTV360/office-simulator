@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Mirror, PROP_KEYS, decode, interactables, isStaff, meetings, people, personSnap, removeStaff, setStaffCount, simEvents,
+  Mirror, PROP_KEYS, decode, interactables, hasSlot, meetings, people, personSnap, removeStaff, setStaffCount, simEvents,
   type Person, type PersonSnap, type Snapshot, type Welcome,
 } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
@@ -31,7 +31,7 @@ const tick = () => { world.step(); mirror.applySnapshot(decode(bc.snapshot(world
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 /** The mirror picture of everyone must equal the server's, to the precision of the wire format. */
 function expectSame(label: string) {
-  const server = people.filter(isStaff);
+  const server = people.filter(hasSlot);
   expect(mirror.people.size, label + ': head count').toBe(server.length);
   for (const sp of server) {
     const mp = mirror.people.get(sp.id)!;

@@ -1,6 +1,6 @@
 # Phase 3 breakdown: accounts and takeover
 
-**Status: approved defaults, not started.** This turns phase 3 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps, the same way phases 1 and 2 were done.
+**Status: in progress. Step 0 is done; steps 1 to 8 are next.** This turns phase 3 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps, the same way phases 1 and 2 were done.
 
 **Done when (from the plan):** you can register, create your character, log in and drive your person, log out and watch it carry on as an NPC, and log back in where it is.
 
@@ -62,7 +62,7 @@ Still open from the plan, with the plan's defaults (none of them blocks this pha
 
 | # | Step | Delivers | Proof |
 |---|---|---|---|
-| **0** | Identity foundations | A monotonic staff id counter (saved); guest ids from 1000 up; `Person.owner`; predicates `isAi` (the simulation drives them), `hasSlot` (counts as a slot, in the ledger and in the staff count) and `isDriven` (a human drives them), with every current `isStaff` use reviewed and moved to the right one; `setStaffCount` never removes a claimed person; save version 2 with `owner` and a reader for version 1 | Unit tests for each predicate use; old saves still load; guest and staff ids never collide in a long run; **offline recordings unchanged** |
+| **0** (**done**) | Identity foundations | Ids that cannot collide (see the note under step 0: the lowest free id, not a counter and a range); `Person.owner`; predicates `isAi` (the simulation drives them), `hasSlot` (counts as a slot, in the ledger and in the staff count) and `isDriven` (a human drives them), with every current `isStaff` use reviewed and moved to the right one; `setStaffCount` never removes a claimed person; save version 2 with `owner` and a reader for version 1 | Unit tests for each predicate use; old saves still load; guest and staff ids never collide in a long run; **offline recordings unchanged** |
 | **1** | Accounts and sessions | Migration with `accounts`, `sessions`, `audit_log`; `POST /api/auth/register`, `login`, `logout`, `GET /api/auth/me`; argon2id; usernames unique and case-insensitive; password rules; per-username lockout and per-address limits; optional `SIGNUP_CODE`; admin bootstrap from the environment | Unit and database tests (wrong password, duplicate and case variants, lockout and recovery, session expiry, logout kills the session, nothing sensitive logged or returned); the argon2 package loads and hashes inside the Docker image |
 | **2** | Tickets and the authenticated socket | `POST /api/play/ticket` (one use, about 30 s); the gateway admits only a valid ticket, and `hello` carries it; a second login kicks the first; protocol version 3 starts here | Integration tests with real sockets: no ticket, a used ticket, an expired ticket, a stolen ticket for another account, double login; anonymous viewing is gone online |
 | **3** | Takeover and handback | A server `PlayerManager`: claimed account takes over its person where it stands (an away person appears at the entrance); guest gets a new person at the entrance; the 30 s grace; handback to AI; a reconnect inside the grace resumes; admin `assign-slot` and `release-slot`; `owner` saved and restored | Node tests of the whole life cycle (login, logout, grace, reconnect, assign, release, restart); the day roll-over does not send a player home; claimed autopilot still goes home |
@@ -94,3 +94,13 @@ Every step runs the earlier checks (`npm test`, `npm run typecheck`, `npm run bu
 ## 7. Not in phase 3
 
 Chat and emotes, interactions other than sitting (using the piano, throwing), moving furniture, prediction and reconciliation, voice, and HTTPS. The protocol and the person model are shaped so none of these needs rework.
+
+## 8. What each step turned out to need
+
+### Step 0
+
+1. **Ids are "the lowest id nobody is using"** (`allocatePersonId` in `sim/state.ts`), for staff and guests alike, instead of the planned monotonic counter plus a high range for guests. A counter would climb forever as an admin adds and removes slots and eventually hit the protocol's 16-bit limit; a fixed guest range would have to be sized. Lowest-free keeps ids as small as the biggest crowd has been, can never give two living people the same id (a test churns 400 random joins, leaves and slot changes and checks every time), and a person keeps their id for as long as they exist. The client already drops a person on `leave`, so reuse is safe.
+2. **Three predicates replace `isStaff`:** `isAi` (steps them, picks them for meetings, sends them home at night), `hasSlot` (counts in the ledger, the slot number, the fingerprint and the save), `isDriven` (a human drives them). Every one of the 40-odd uses was looked at: the day reset and meetings use `isAi`; the ledger, the slider, `/api/world`, the admin settings and the save use `hasSlot`; the broadcaster sends driven people every tick. On the page, clicking, random follow and the pose of "you" use `isLocalPlayer` (is it the person *this* page controls?) instead, because once other humans are drawn, "driven" no longer means "me".
+3. **`removeStaff` and `setStaffCount` never remove a person who belongs to an account** (or one a human is driving); the count may stop above the target.
+4. **Save version 2** carries each person's `owner` (account id or null). Version 1 saves still load, as a world with no owners; this was exercised for real, because the Docker stack's database held a version 1 save from before. A person who was online when the server stopped is saved as autopilot (nobody is online after a restart); guests are not saved. Unknown versions and owners that are not whole account ids are refused.
+5. **Tests:** 15 new (`sim/identity.test.ts`) covering ids, the three questions, slot removal rules, the day reset, meetings, and the save in every combination, plus one in the broadcaster. The offline recordings, the mutation check, the database tests, the Docker smoke test, the browser runner against the Docker site and `npm run e2e` all pass unchanged.

@@ -3,7 +3,7 @@ import { DEFAULT_SPEC } from '../character/spec';
 import { loadLayout } from '../layout/layout';
 import { officeLayout } from '../layout/office';
 import { initDay } from '../sim/day';
-import { isStaff } from '../sim/person';
+import { hasSlot } from '../sim/person';
 import { initState, meetings, people, resetSim } from '../sim/state';
 import { stepSim } from '../sim/step';
 import { setSeed } from '../util';
@@ -168,7 +168,7 @@ describe('from the real simulation', () => {
   it('sizes: a person record, a full snapshot, and the welcome', () => {
     setSeed(1); initState(); initDay(40);
     for (let i = 0; i < 3000; i++) stepSim(.05);
-    const staff = people.filter(isStaff);
+    const staff = people.filter(hasSlot);
     const record = encode({ type: 'person', info: personInfo(staff[3]), snap: personSnap(staff[3], meetings) }).length;
     const full = encode({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, full: true, people: staff.map(p => personSnap(p, meetings)), meetings: meetings.map(meetingSnap) }).length;
     const w = encode({ type: 'welcome', tick: 1, tickRate: 20, simTime: 1, day: 1, speed: 1, paused: false, you: NONE, layout: layoutCheck(), people: staff.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) })), meetings: meetings.map(meetingSnap) }).length;

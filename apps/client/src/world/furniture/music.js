@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { interactables, isControlled } from '@office/shared';
+import { interactables, isDriven } from '@office/shared';
 import { makeGuitar } from '../../character/props.js';
 import { M, canvasTex } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
@@ -42,7 +42,7 @@ function buildMusic() {
 function updateMusic(now) {
   const gp = interactables.of('guitar')[0].occupant; MUSIC.standGuitar.visible = !gp;
   for (const n of MUSIC.notes) {
-    const p = n.seat.occupant, playing = p && (p.state === 'doing' || isControlled(p));
+    const p = n.seat.occupant, playing = p && (p.state === 'doing' || isDriven(p));
     if (!playing) { n.sp.visible = false; continue; }
     const t = ((now / 1000 + n.off) % 2.1) / 2.1;
     n.sp.visible = true; n.sp.material.opacity = Math.sin(t * Math.PI);

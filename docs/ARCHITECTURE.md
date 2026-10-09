@@ -101,7 +101,7 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | State | Owner | Notes |
 |---|---|---|
 | `sim` | `packages/shared/src/sim/state.ts` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
-| `people` | `packages/shared/src/sim/state.ts` | Everyone in the office: staff (`controller: 'ai'`) and human-controlled people (`controller: 'account'`, today only the player). Loops that mean "staff" filter with `isStaff` |
+| `people` | `packages/shared/src/sim/state.ts` | Everyone in the office: people the simulation drives (`controller: 'ai'`) and people a human drives (`controller: 'account'`, today only the player). Loops ask the right question: `isAi` (the simulation drives them), `hasSlot` (they have a desk: counts in the ledger, the slot number and the save) or `isDriven` (a human drives them) |
 | `logState`, `log` | `packages/shared/src/sim/state.ts` | Event log shown in the ledger; set `logState.dirty` to redraw |
 | `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed |
 | `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |
@@ -126,7 +126,7 @@ A character is three separate things:
 - **The rig** (`character/rig.js`): `buildBody(spec)` turns a spec into meshes and returns the joints and props that animation drives, plus `sockets` (head, torso, hands) for future items. Hair and face parts live in `parts.js`; held props in `props.js`.
 - **The person object**: position, task, state and so on. Staff are made by `makeStaff` in the shared `sim/factory.ts` (the client then gives them a body in `people/views.js`); the player is made by `player/player.js`. Both use the same rig, the same list and the same `people/animation.js` poses.
 
-**The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as staff (the ledger, the staff slider, meetings, chats and the end-of-day reset all use `isStaff`). `controller` and `isStaff`/`isControlled` live in `packages/shared/src/sim/person.ts`. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
+**The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as a slot (the ledger and the slot number use `hasSlot`; meetings and the end-of-day reset use `isAi`). `controller`, `isAi`, `isDriven` and `hasSlot` live in `packages/shared/src/sim/person.ts`; on the page, `isLocalPlayer(p)` (in `player/player.js`) says whether a person is the one *this* page controls. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
 **Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look and name, she always leaves last, and the HUD can find her or make her angry.
 

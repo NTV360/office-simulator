@@ -3,7 +3,7 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { initDay } from '../sim/day';
 import { interactables } from '../sim/interactables';
-import { isStaff } from '../sim/person';
+import { hasSlot } from '../sim/person';
 import { initState, people, resetSim, sim } from '../sim/state';
 import { stepSim } from '../sim/step';
 import { drawCount, setSeed } from '../util';
@@ -17,7 +17,7 @@ const r3 = (v: number) => (Math.round(v * 1000) / 1000) || 0; // (|| 0: JSON can
 const spotIndex = (sp: { kind: string } | undefined | null) => (sp ? `${sp.kind}:${interactables.of(sp.kind).indexOf(sp as never)}` : '');
 
 function persons() {
-  return people.filter(isStaff).map(p => ({
+  return people.filter(hasSlot).map(p => ({
     name: p.name, role: p.role, state: p.state,
     task: p.task ? p.task.kind : '', spot: p.task ? spotIndex(p.task.spot) : '',
     x: r3(p.pos.x), z: r3(p.pos.z), face: r3(p.face),

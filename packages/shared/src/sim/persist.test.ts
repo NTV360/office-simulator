@@ -4,7 +4,7 @@ import { officeLayout } from '../layout/office';
 import { drawCount, setSeed } from '../util';
 import { initDay } from './day';
 import { simEvents } from './events';
-import { isStaff } from './person';
+import { hasSlot } from './person';
 import { SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
@@ -25,7 +25,7 @@ describe('saving and restoring the world', () => {
     expect(before).toBeGreaterThan(20);
     restoreWorld(parseSavedWorld(saved));
     expect(viaJson()).toEqual(saved);
-    expect(people.filter(isStaff)).toHaveLength(40);
+    expect(people.filter(hasSlot)).toHaveLength(40);
     expect(people.filter(p => p.state !== 'away').length).toBe(before);
   });
 
@@ -115,7 +115,7 @@ describe('parseSavedWorld refuses damaged saves', () => {
     expect(() => parseSavedWorld(null)).toThrow(SaveError);
     expect(() => parseSavedWorld([])).toThrow(SaveError);
     expect(() => parseSavedWorld('x')).toThrow(SaveError);
-    bad(s => { s.version = 2; }, /version/);
+    bad(s => { s.version = 3; }, /version/);
     bad(s => { delete s.clock; }, /clock/);
     bad(s => { s.people = 'no'; }, /people/);
     bad(s => { s.deskOrder = {}; }, /deskOrder/);

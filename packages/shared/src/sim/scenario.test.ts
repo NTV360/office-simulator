@@ -9,7 +9,7 @@ import { simEvents } from './events';
 import { initDay } from './day';
 import { makeStaff, removeStaff, setStaffCount } from './factory';
 import { interactables } from './interactables';
-import { isStaff } from './person';
+import { hasSlot } from './person';
 import { PROP_KEYS } from './props';
 import { meetings, people, sim } from './state';
 import { screenState, stepSim } from './step';
@@ -19,7 +19,7 @@ import type { Person } from './types';
 // The real simulation, run in Node on a small test office, with no browser.
 
 const DT = .05;
-const staff = () => people.filter(isStaff);
+const staff = () => people.filter(hasSlot);
 const run = (minutes: number) => { const until = sim.t + minutes; while (sim.t < until) stepSim(DT); };
 const runUntil = (t: number) => { while (sim.t < t) stepSim(DT); };
 

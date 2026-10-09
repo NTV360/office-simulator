@@ -1,4 +1,4 @@
-import { CATS, isStaff, log, logState, people, phaseName, sim } from '@office/shared';
+import { CATS, hasSlot, log, logState, people, phaseName, sim } from '@office/shared';
 import { $ } from './dom.js';
 import { fmt, renderPerson } from './person.js';
 function renderUI() {
@@ -6,7 +6,7 @@ function renderUI() {
   $('phase').innerHTML = `Day ${sim.day}<br>${phaseName(sim.t)}`;
   const counts = Object.fromEntries(Object.keys(CATS).map(k => [k, 0]));
   let present = 0;
-  const staff = people.filter(isStaff);
+  const staff = people.filter(hasSlot);
   for (const p of staff) { if (p.state === 'away') continue; present++; counts[p.state === 'walking' ? 'walk' : p.task?.kind === 'work' && p.chatWith ? 'chat' : (p.task?.cat || 'walk')]++; }
   $('present').textContent = `${present} / ${staff.length} in`;
   actsEl.querySelectorAll('li').forEach(li => { const n = counts[li.dataset.k]; li.querySelector('.n').textContent = n; li.querySelector('.bar i').style.width = (present ? n / present * 100 : 0) + '%'; });

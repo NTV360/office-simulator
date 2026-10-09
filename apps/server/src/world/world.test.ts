@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { people, isStaff, sim, setSeed } from '@office/shared';
+import { people, hasSlot, sim, setSeed } from '@office/shared';
 import { World, readWorldOptions, type WorldOptions } from './world';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 1 };
@@ -55,7 +55,7 @@ describe('World', () => {
       for (; done < golden.steps[i]; done++) w.step();
       const g = golden.fingerprints[i];
       expect(r3(sim.t)).toBe(g.clock.t);
-      const staff = people.filter(isStaff);
+      const staff = people.filter(hasSlot);
       expect(staff.map(p => [p.name, p.state, r3(p.pos.x), r3(p.pos.z)])).toEqual(g.persons.map((p: { name: string; state: string; x: number; z: number }) => [p.name, p.state, p.x, p.z]));
     }
   });

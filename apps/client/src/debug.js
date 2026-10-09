@@ -1,4 +1,4 @@
-import { drawCount, GC, GR, interactables, isStaff, log, meetings, NAV, people, PROP_KEYS, screenState, sim } from '@office/shared';
+import { drawCount, GC, GR, hasSlot, interactables, log, meetings, NAV, people, PROP_KEYS, screenState, sim } from '@office/shared';
 import { SCREENS, deskScreens } from './render/screens.js';
 import { updateScreens } from './people/screens.js';
 
@@ -21,7 +21,7 @@ function fingerprint() {
     return `${sp.kind}:${i}`;
   };
 
-  const persons = people.filter(isStaff).map(p => ({
+  const persons = people.filter(hasSlot).map(p => ({
     name: p.name, role: p.role, state: p.state,
     task: p.task ? p.task.kind : '', spot: p.task ? spotIndex(p.task.spot) : '',
     x: r3(p.pos.x), z: r3(p.pos.z), face: r3(p.face),

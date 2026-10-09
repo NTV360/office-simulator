@@ -5,7 +5,7 @@ import path from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { SaveError, people, serializeWorld, setSeed, sim, isStaff } from '@office/shared';
+import { SaveError, people, serializeWorld, setSeed, sim, hasSlot } from '@office/shared';
 import { AppModule } from '../app.module';
 import { configureApp } from '../app.config';
 import { World } from '../world/world';
@@ -82,7 +82,7 @@ d('the world store', () => {
     const b = new World(options); b.init(await store.load());
     expect(people.map(p => [p.name, p.state === 'away', p.pos.x, p.pos.z, p.slot!.id])).toEqual(want);
     expect({ t: sim.t, day: sim.day }).toEqual(clock);
-    expect(people.filter(isStaff)).toHaveLength(40);
+    expect(people.filter(hasSlot)).toHaveLength(40);
   });
 
   it('an unreadable save is kept aside, reported, and does not block the next start', async () => {

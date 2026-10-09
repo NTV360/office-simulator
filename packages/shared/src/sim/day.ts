@@ -1,7 +1,7 @@
 import { random, rnd, shuffle } from '../util';
 import { makeStaff, scheduleDay } from './factory';
 import { interactables } from './interactables';
-import { isStaff } from './person';
+import { isAi } from './person';
 import { addLog, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
 import { endTask, goWork, lockerTrip, placeNow } from './tasks';
@@ -15,7 +15,7 @@ export function phaseName(t: number): string {
 export function newDay(): void {
   sim.day++; sim.t = 7 * 60 + 45;
   meetings.length = 0;
-  people.filter(isStaff).forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
+  people.filter(isAi).forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
   addLog(`Day ${sim.day} begins`);
 }
 export function arriveNow(p: Person, quiet?: boolean): void {

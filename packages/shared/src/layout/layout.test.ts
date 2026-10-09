@@ -3,7 +3,7 @@ import { findPath } from '../nav/astar';
 import { NAV } from '../nav/grid';
 import { initDay } from '../sim/day';
 import { interactables } from '../sim/interactables';
-import { isStaff } from '../sim/person';
+import { hasSlot } from '../sim/person';
 import { ENTRY } from '../sim/spots';
 import { meetings, people, resetSim, sim, initState } from '../sim/state';
 import { stepSim } from '../sim/step';
@@ -47,7 +47,7 @@ describe('the office layout data', () => {
   });
   it('runs a seeded day on the real office', () => {
     setSeed(1); initState(); initDay();
-    expect(people.filter(isStaff)).toHaveLength(40);
+    expect(people.filter(hasSlot)).toHaveLength(40);
     for (let i = 0; i < 12000; i++) stepSim(.05);
     expect(sim.t).toBeGreaterThan(12 * 60);
     expect(people.filter(p => p.state !== 'away').length).toBeGreaterThan(25);

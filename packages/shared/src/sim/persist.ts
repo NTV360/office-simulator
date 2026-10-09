@@ -3,7 +3,7 @@ import { Vec3 } from '../vec3';
 import { SCREEN_VARIANTS, type ScreenKind } from './data';
 import { simEvents } from './events';
 import { interactables } from './interactables';
-import { isStaff } from './person';
+import { hasSlot } from './person';
 import { newProps } from './props';
 import { counters, deskPool, meetings, people, resetSim, sim } from './state';
 import type { Person } from './types';
@@ -13,7 +13,9 @@ import type { Person } from './types';
 // resume as idle where they stood and choose what to do next. Meetings end. Props in hand are dropped.
 // The random stream is not saved either; a restored world continues with fresh randomness.
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+/** Saves written by earlier versions that can still be read (they simply have no owners). */
+const READABLE_VERSIONS = [1, SAVE_VERSION];
 
 export interface SavedPerson {
   id: number;
@@ -37,6 +39,8 @@ export interface SavedPerson {
   coffees: number;
   screenKind: ScreenKind;
   screenVariant: number;
+  /** The account that owns this desk and person, or null for a plain NPC. */
+  owner: number | null;
 }
 
 export interface SavedWorld {
@@ -55,11 +59,12 @@ export function serializeWorld(): SavedWorld {
     clock: { t: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, lastMinute: sim.lastMinute },
     nameIdx: counters.nameIdx,
     deskOrder: deskPool.map(s => s.id),
-    people: people.filter(isStaff).map(p => ({
+    // everyone with a desk, including an owner who is online right now: after a restart nobody is online, so they are saved as autopilot
+    people: people.filter(hasSlot).map(p => ({
       id: p.id, name: p.name, role: p.role, spec: p.spec, slot: p.slot ? p.slot.id : '',
       x: p.pos.x, z: p.pos.z, face: p.face, speed: p.speed, walkPhase: p.walkPhase,
       present: p.state !== 'away', arriveAt: p.arriveAt, leaveAt: p.leaveAt, lunchAt: p.lunchAt, hadLunch: p.hadLunch,
-      arrivedAt: p.arrivedAt, coffees: p.coffees, screenKind: p.screenKind, screenVariant: p.screenVariant,
+      arrivedAt: p.arrivedAt, coffees: p.coffees, screenKind: p.screenKind, screenVariant: p.screenVariant, owner: p.owner ?? null,
     })),
   };
 }
@@ -78,6 +83,10 @@ const str = (v: unknown, what: string, max = 200): string => {
   if (typeof v !== 'string' || v.length > max) throw new SaveError(`${what} is not valid text`);
   return v;
 };
+const whole = (v: number, what: string): number => {
+  if (!Number.isInteger(v)) throw new SaveError(`${what} is not a whole number`);
+  return v;
+};
 const bool = (v: unknown, what: string): boolean => {
   if (typeof v !== 'boolean') throw new SaveError(`${what} is not true or false`);
   return v;
@@ -86,7 +95,7 @@ const bool = (v: unknown, what: string): boolean => {
 /** Check a value read from storage and return it typed, or throw `SaveError` saying what is wrong. */
 export function parseSavedWorld(raw: unknown): SavedWorld {
   if (!isObj(raw)) throw new SaveError('the save is not an object');
-  if (raw.version !== SAVE_VERSION) throw new SaveError(`the save is version ${String(raw.version)}, this server reads version ${SAVE_VERSION}`);
+  if (typeof raw.version !== 'number' || !READABLE_VERSIONS.includes(raw.version)) throw new SaveError(`the save is version ${String(raw.version)}, this server reads versions ${READABLE_VERSIONS.join(' and ')}`);
   const c = raw.clock;
   if (!isObj(c)) throw new SaveError('clock is missing');
   const clock = { t: num(c.t, 'clock.t', 0, 24 * 60), day: num(c.day, 'clock.day', 1, 1e9), speed: num(c.speed, 'clock.speed', 0.01, 100), paused: bool(c.paused, 'clock.paused'), lastMinute: num(c.lastMinute, 'clock.lastMinute') };
@@ -111,6 +120,7 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
       present: bool(p.present, w + '.present'), arriveAt: num(p.arriveAt, w + '.arriveAt'), leaveAt: num(p.leaveAt, w + '.leaveAt'), lunchAt: num(p.lunchAt, w + '.lunchAt'),
       hadLunch: bool(p.hadLunch, w + '.hadLunch'), arrivedAt: p.arrivedAt === null ? null : num(p.arrivedAt, w + '.arrivedAt'), coffees: num(p.coffees, w + '.coffees', 0, 1e6),
       screenKind, screenVariant: num(p.screenVariant, w + '.screenVariant', 0, SCREEN_VARIANTS[screenKind] - 1),
+      owner: p.owner === undefined || p.owner === null ? null : whole(num(p.owner, w + '.owner', 1, 2 ** 31 - 1), w + '.owner'),
     };
   });
   return { version: SAVE_VERSION, clock, nameIdx: num(raw.nameIdx, 'nameIdx', 0, 1e9), deskOrder, people: list };
@@ -139,7 +149,7 @@ export function restoreWorld(saved: SavedWorld): void {
   saved.people.forEach((s, i) => {
     const slot = wanted[i] ?? undefined;
     const p: Person = {
-      id: s.id, controller: 'ai', name: s.name, role: s.role, spec: s.spec, slot,
+      id: s.id, controller: 'ai', ...(s.owner !== null ? { owner: s.owner } : {}), name: s.name, role: s.role, spec: s.spec, slot,
       pos: new Vec3(s.x, 0, s.z), face: s.face, faceGoal: s.face, speed: s.speed,
       state: s.present ? 'idle' : 'away', shown: s.present, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],
       walkPhase: s.walkPhase, animT: 0, pose: {}, arriveAt: s.arriveAt, leaveAt: s.leaveAt, lunchAt: s.lunchAt, hadLunch: s.hadLunch,

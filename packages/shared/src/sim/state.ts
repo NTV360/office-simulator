@@ -18,7 +18,7 @@ export function addLog(msg: string): void {
   logState.dirty = true;
 }
 
-/** Everyone in the office: staff (controller 'ai') and human-controlled people. Loops that mean staff filter with isStaff. */
+/** Everyone in the office: people the simulation drives (isAi) and people a human drives (isDriven). Loops ask isAi, hasSlot or isDriven, whichever they mean. */
 export const people: Person[] = [];
 /** Meetings in progress. */
 export const meetings: Meeting[] = [];
@@ -26,6 +26,17 @@ export const meetings: Meeting[] = [];
 export const deskPool: Spot[] = [];
 /** How many staff have been created so far (names are handed out in order). */
 export const counters = { nameIdx: 0 };
+
+/**
+ * The lowest id nobody in the office is using. Ids stay small, are never shared by two people alive at once, and a person
+ * keeps theirs for as long as they exist (the protocol sends them as 16 bits).
+ */
+export function allocatePersonId(): number {
+  const used = new Set(people.map(p => p.id));
+  let id = 0;
+  while (used.has(id)) id++;
+  return id;
+}
 
 /** Shuffle the desks into the seating order. Call once after the world has registered them. */
 export function initState(): void {

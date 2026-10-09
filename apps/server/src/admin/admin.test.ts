@@ -3,7 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { io } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PROTOCOL_VERSION, decode, encode, isStaff, people, setSeed, sim, type Message } from '@office/shared';
+import { PROTOCOL_VERSION, decode, encode, hasSlot, people, setSeed, sim, type Message } from '@office/shared';
 import { AppModule } from '../app.module';
 import { configureApp } from '../app.config';
 import { parseSettingsUpdate } from './settings';
@@ -66,7 +66,7 @@ describe('changing settings', () => {
     let r = await call('PUT', '/api/admin/settings', { slots: 55 });
     expect((await r.json()).slots).toBe(55);
     expect((await world()).staff).toBe(55);
-    expect(people.filter(isStaff)).toHaveLength(55);
+    expect(people.filter(hasSlot)).toHaveLength(55);
     r = await call('PUT', '/api/admin/settings', { slots: 12 });
     expect((await r.json()).slots).toBe(12);
     expect((await world()).staff).toBe(12);

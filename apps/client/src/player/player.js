@@ -8,6 +8,9 @@ import { N } from '../world/furniture/basics.js';
 // time it is needed and then stays where it was left.
 const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC), sitting: null, moving: false };
 
+/** Is this person the one the user of THIS page controls? (Other people a human drives are drawn like anyone else.) */
+const isLocalPlayer = p => p === player.person;
+
 function makeBody(spec) {
   const body = buildBody(spec);
   body.ring.visible = false; // the activity ring is for NPCs
@@ -37,4 +40,4 @@ function setPlayerSpec(raw) {
   return player.spec;
 }
 
-export { player, setPlayerSpec, spawnPlayer };
+export { isLocalPlayer, player, setPlayerSpec, spawnPlayer };

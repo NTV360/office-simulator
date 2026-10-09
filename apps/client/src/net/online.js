@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import {
-  CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, isStaff,
+  CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
@@ -87,7 +87,7 @@ export function startOnline() {
         mirror.applyWelcome(msg);
         syncClock();
         reassignOccupants();
-        setStatus('ok', `Online · ${people.filter(isStaff).length} people`);
+        setStatus('ok', `Online · ${people.length} people`);
         break;
       }
       case 'snapshot':
@@ -123,7 +123,7 @@ export function startOnline() {
     const c = mirror.clock;
     sim.t = c.simTime; sim.day = c.day; sim.speed = c.speed; sim.paused = c.paused;
     const staffEl = document.getElementById('staff'), valEl = document.getElementById('staffVal');
-    const n = people.filter(isStaff).length;
+    const n = people.filter(hasSlot).length;
     if (staffEl) staffEl.value = String(n);
     if (valEl) valEl.textContent = String(n);
     const play = document.getElementById('play');
@@ -147,10 +147,9 @@ export function startOnline() {
     if (!sim.paused) sim.t += dt * sim.speed * CLOCK; // keep the clock moving between snapshots; the next one corrects it
     const renderT = now - DELAY_MS;
     for (const p of people) {
-      if (!isStaff(p)) continue;
-      if (p.state !== 'away') p.animT += dt * Math.min(sim.speed, 2.5);
       const buf = p._buf;
-      if (!buf || buf.length === 0) continue;
+      if (!buf || buf.length === 0) continue; // not someone the server told us about (for example your own local visitor)
+      if (p.state !== 'away') p.animT += dt * Math.min(sim.speed, 2.5);
       const px = p.pos.x, pz = p.pos.z;
       let a = buf[0], b = buf[buf.length - 1];
       for (let i = buf.length - 1; i > 0; i--) if (buf[i - 1].t <= renderT) { a = buf[i - 1]; b = buf[i]; break; }
@@ -166,7 +165,7 @@ export function startOnline() {
     }
     const el = document.getElementById('netStatus');
     if (net.connected && !net.fatal && el && el.className === 'ok') {
-      const t = `Online · ${people.filter(isStaff).length} people${net.rttMs !== null ? ` · ${net.rttMs} ms` : ''}`;
+      const t = `Online · ${people.length} people${net.rttMs !== null ? ` · ${net.rttMs} ms` : ''}`;
       if (el.textContent !== t) el.textContent = t;
     } else if (net.connected && !net.fatal && el && el.className === 'wait' && mirror.people.size) setStatus('ok', 'Online');
   }

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { SaveError, interactables, isStaff, people, setStaffCount, sim, simEvents, type SavedWorld } from '@office/shared';
+import { SaveError, hasSlot, interactables, people, setStaffCount, sim, simEvents, type SavedWorld } from '@office/shared';
 import type { Settings, SettingsUpdate } from '../admin/settings';
 import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
@@ -71,7 +71,7 @@ export class WorldService implements OnApplicationBootstrap, OnApplicationShutdo
 
   /** The settings an admin can change, as they are now. */
   settings(): Settings {
-    return { slots: people.filter(isStaff).length, maxSlots: interactables.of('desk').length, speed: sim.speed, paused: sim.paused, tickRate: this.world.options.tickRate };
+    return { slots: people.filter(hasSlot).length, maxSlots: interactables.of('desk').length, speed: sim.speed, paused: sim.paused, tickRate: this.world.options.tickRate };
   }
 
   /** Apply an admin's change, save it straight away, and return the settings as they now stand. Viewers see it in the next snapshots. */
