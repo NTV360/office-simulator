@@ -295,6 +295,13 @@ d('desks and accounts across restarts', () => {
     expect((await store.list()).map(x => [x.username, x.slotSpot])).toEqual([['First', null], ['Second', 'desk:5']]);
     await store.setSpec(a.id, { hair: '#123456' });
     expect((await store.byId(a.id))!.spec).toEqual({ hair: '#123456' });
+    await store.audit({ actorName: 'admin', action: 'password.set', target: 'First', detail: { ip: '1.2.3.4', generated: true } });
+    await store.audit({ actorName: 'admin', action: 'account.disable', target: 'First' });
+    const log = await store.recentAudit(10);
+    expect(log.map(x => [x.actor, x.action, x.target])).toEqual([['admin', 'account.disable', 'First'], ['admin', 'password.set', 'First']]);
+    expect(log[1].detail).toEqual({ ip: '1.2.3.4', generated: true });
+    expect(log[0].detail).toBeNull();
+    expect(await store.recentAudit(1)).toHaveLength(1);
     await store.setDisabled(a.id, true);
     expect((await store.byId(a.id))!.disabled).toBe(true);
     await store.setDisabled(a.id, false);

@@ -25,6 +25,9 @@ export interface SessionInfo {
   lastSeenAt: Date;
 }
 
+/** One line of the admin audit log: what an admin did. Never holds a password. */
+export interface AuditRow { id: number; at: Date; actor: string; action: string; target: string | null; detail: unknown | null }
+
 /** Everything the auth code needs from storage. PostgreSQL in production, a Map in the fast tests. */
 export interface AccountStore {
   /** Create an account, or return 'taken' if the username (any capitalisation) exists. */
@@ -41,6 +44,10 @@ export interface AccountStore {
   setSpec(id: number, spec: unknown): Promise<void>;
   /** Disable or enable the account (a disabled account cannot log in). */
   setDisabled(id: number, disabled: boolean): Promise<void>;
+  /** Add a line to the audit log. */
+  audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }): Promise<void>;
+  /** The newest audit lines first. */
+  recentAudit(limit: number): Promise<AuditRow[]>;
   touchLogin(id: number): Promise<void>;
   createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void>;
   sessionByHash(tokenHash: Buffer): Promise<{ session: SessionInfo; account: Account } | null>;
@@ -122,6 +129,15 @@ export class PgAccountStore implements AccountStore {
     await this.pool.query('UPDATE accounts SET disabled = $2 WHERE id = $1', [id, disabled]);
   }
 
+  async audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }): Promise<void> {
+    await this.pool.query('INSERT INTO audit_log (actor_name, action, target, detail) VALUES ($1, $2, $3, $4)', [a.actorName, a.action, a.target ?? null, a.detail === undefined ? null : JSON.stringify(a.detail)]);
+  }
+
+  async recentAudit(limit: number): Promise<AuditRow[]> {
+    const r = await this.pool.query<{ id: string; at: Date; actor_name: string; action: string; target: string | null; detail: unknown | null }>('SELECT id, at, actor_name, action, target, detail FROM audit_log ORDER BY id DESC LIMIT $1', [limit]);
+    return r.rows.map(x => ({ id: Number(x.id), at: x.at, actor: x.actor_name, action: x.action, target: x.target, detail: x.detail }));
+  }
+
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void> {
     await this.pool.query('INSERT INTO sessions (account_id, token_hash, expires_at, user_agent) VALUES ($1, $2, $3, $4)', [accountId, tokenHash, expiresAt, userAgent]);
   }
@@ -183,6 +199,9 @@ export class MemoryAccountStore implements AccountStore {
   }
   async setSpec(id: number, spec: unknown) { this.accounts.get(id)!.spec = spec; }
   async setDisabled(id: number, disabled: boolean) { this.accounts.get(id)!.disabled = disabled; }
+  readonly auditLog: AuditRow[] = [];
+  async audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }) { this.auditLog.push({ id: this.auditLog.length + 1, at: new Date(), actor: a.actorName, action: a.action, target: a.target ?? null, detail: a.detail ?? null }); }
+  async recentAudit(limit: number) { return [...this.auditLog].reverse().slice(0, limit); }
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null) {
     this.sessions.set(tokenHash.toString('hex'), { info: { id: this.nextSession++, accountId, createdAt: new Date(), expiresAt, lastSeenAt: new Date() }, userAgent });
   }

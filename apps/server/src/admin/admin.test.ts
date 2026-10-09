@@ -331,3 +331,66 @@ describe('after the review of the admin page', () => {
     expect((await call('POST', '/api/admin/users/bulk', { usernames: ['after_it'] })).status).toBe(201); // free again
   });
 });
+
+describe('the audit log', () => {
+  const lines = async (limit = '') => (await (await call('GET', '/api/admin/audit' + limit)).json()) as Array<{ id: number; actor: string; action: string; target: string | null; detail: Record<string, unknown> | null }>;
+
+  it('every thing an admin does leaves a line, newest first, with who and from where but never a password', async () => {
+    const made = await (await call('POST', '/api/admin/users', { username: 'audited', password: 'typed-secret-pass-1' })).json();
+    const id = made.account.id;
+    await call('POST', `/api/admin/users/${id}/password`, { password: 'another-secret-pass-2' });
+    const generated = (await (await call('POST', `/api/admin/users/${id}/password`, {})).json()).password as string;
+    await call('POST', `/api/admin/users/${id}/disabled`, { disabled: true });
+    await call('POST', `/api/admin/users/${id}/disabled`, { disabled: false });
+    const bulk = (await (await call('POST', '/api/admin/users/bulk', { usernames: ['audit_b1', 'x'] })).json()).results[0].password as string;
+    await call('PUT', '/api/admin/settings', { speed: 2 });
+    await call('POST', '/api/admin/announce', { text: 'a secret announcement text' });
+    const l = await lines();
+    expect(l.map(x => x.action)).toEqual(['announce', 'settings.update', 'account.bulk-create', 'account.enable', 'account.disable', 'password.set', 'password.set', 'account.create']);
+    expect(l.every(x => x.actor === 'admin' && typeof x.detail?.ip === 'string')).toBe(true);
+    expect(l[7]).toMatchObject({ target: 'audited', detail: { generatedPassword: false } });
+    expect(l[6]).toMatchObject({ target: 'audited', detail: { generated: false } });
+    expect(l[5]).toMatchObject({ detail: { generated: true } });
+    expect(l[2]).toMatchObject({ target: '2 names', detail: { made: ['audit_b1'], failed: 1 } });
+    expect(l[1].detail).toMatchObject({ speed: 2 });
+    expect(l[0].detail).toMatchObject({ length: 'a secret announcement text'.length });
+    const all = JSON.stringify(l);
+    for (const secret of ['typed-secret-pass-1', 'another-secret-pass-2', 'a secret announcement text', generated, bulk]) expect(all).not.toContain(secret);
+  });
+
+  it('desks being given and taken are recorded with the account and the desk', async () => {
+    const id = ((await (await call('POST', '/api/admin/users', { username: 'deskaudit', password: 'first-password-1' })).json()) as { account: { id: number } }).account.id;
+    const spot = ((await (await call('GET', '/api/admin/slots')).json()) as Array<{ spot: string; status: string }>).find(s => s.status === 'unclaimed')!.spot;
+    expect((await call('POST', `/api/admin/users/${id}/assign-slot`, { spot })).status).toBe(201);
+    expect((await call('POST', `/api/admin/users/${id}/release-slot`)).status).toBe(201);
+    const l = await lines('?limit=2');
+    expect(l.map(x => [x.action, x.target])).toEqual([['desk.release', 'deskaudit'], ['desk.assign', 'deskaudit']]);
+    expect(l[1].detail).toMatchObject({ spot });
+  });
+
+  it('a refused action leaves no line', async () => {
+    await call('POST', '/api/admin/users', { username: 'a' });
+    await call('POST', '/api/admin/users/9999/password', {});
+    await call('POST', '/api/admin/users/9999/disabled', { disabled: true });
+    await call('PUT', '/api/admin/settings', { slots: -3 });
+    await call('PUT', '/api/admin/settings', { colour: 'red' });
+    expect(await lines()).toEqual([]);
+  });
+
+  it('is limited and checked: 1 to 500 lines, whole numbers only, and the admin password is needed', async () => {
+    for (const bad of ['0x10', 'abc', '-1', '1.5', '1000']) expect((await call('GET', '/api/admin/audit?limit=' + bad)).status, bad).toBe(400);
+    expect((await call('GET', '/api/admin/audit?limit=0')).status).toBe(200); // 0 is held up to 1
+    expect((await call('GET', '/api/admin/audit', undefined, null)).status).toBe(403);
+    expect((await call('GET', '/api/admin/audit', undefined, 'wrong')).status).toBe(403);
+  });
+
+  it('if the log cannot be written the action still happens (and is logged to the console)', async () => {
+    const store = (app.get(AuthProvider).require().accounts) as { audit: unknown };
+    const real = store.audit;
+    store.audit = async () => { throw new Error('disk full'); };
+    try {
+      expect((await call('POST', '/api/admin/users', { username: 'unlogged', password: 'first-password-1' })).status).toBe(201);
+    } finally { store.audit = real; }
+    expect((await (await call('GET', '/api/admin/users')).json() as Array<{ username: string }>).some(u => u.username === 'unlogged')).toBe(true);
+  });
+});

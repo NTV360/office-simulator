@@ -62,14 +62,16 @@ function showLogin(note = '') {
 }
 
 // ---------------------------------------------------------------- state and data
-let accounts = [], slots = [];
+let accounts = [], slots = [], audit = [];
 const ui = { filter: '', panel: new Map(), picked: new Map(), armed: null };
-let tableHost, statsHost, bulkResult;
+let tableHost, statsHost, bulkResult, auditHost;
 
 async function load() {
   const [u, s] = await Promise.all([api('GET', '/users'), api('GET', '/slots')]);
   if (u.status !== 200 || s.status !== 200) return u.status !== 200 ? u : s;
   accounts = u.body; slots = s.body;
+  const a = await api('GET', '/audit?limit=100'); // (the log is a nice-to-have: the page works without it)
+  audit = a.status === 200 ? a.body : [];
   return null;
 }
 /** A desk by name: its island and its number, e.g. "Desk 02 · seat 9" (every desk gets a different one). */
@@ -94,8 +96,9 @@ function showMain() {
   statsHost = el('span', { class: 'a-stats', id: 'adminStats' });
   tableHost = el('div', { id: 'adminAccounts' });
   const refresh = el('button', { type: 'button', class: 'a-btn', id: 'adminRefresh', onclick: async () => { await reload(); } }, 'Refresh');
-  const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); ui.panel.clear(); ui.picked.clear(); accounts = []; showLogin(); } }, 'Log out');
+  const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); ui.panel.clear(); ui.picked.clear(); accounts = []; audit = []; showLogin(); } }, 'Log out');
   bulkResult = el('div', { id: 'bulkResult' });
+  auditHost = el('div', { id: 'adminAudit' });
   app.replaceChildren(
     el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
     makeCard(),
@@ -103,7 +106,11 @@ function showMain() {
       el('h2', {}, 'Accounts'),
       el('p', {}, 'Passwords are kept as one-way hashes, so an existing password cannot be looked up. Set a new one and it is shown to you once; the person then chooses their own.'),
       el('input', { type: 'text', class: 'a-search', id: 'adminFilter', placeholder: 'Search by name…', 'aria-label': 'Search accounts', oninput: e => { ui.filter = e.target.value; drawTable(); } }),
-      tableHost));
+      tableHost),
+    el('section', { class: 'a-card' },
+      el('h2', {}, 'Recent activity'),
+      el('p', {}, 'What admins have done here, newest first (the last 100). Passwords are never written to it.'),
+      auditHost));
   drawAll();
 }
 
@@ -113,7 +120,24 @@ async function reload() {
   if (failed) { remember(''); return showLogin(failed.status === 403 ? 'Wrong password.' : problem(failed)); }
   drawAll();
 }
-function drawAll() { drawStats(); drawTable(); }
+function drawAll() { drawStats(); drawTable(); drawAudit(); }
+
+const ACTIONS = {
+  'account.create': 'Made an account', 'account.bulk-create': 'Made accounts', 'password.set': 'Set a password', 'account.disable': 'Disabled an account',
+  'account.enable': 'Enabled an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', announce: 'Sent an announcement',
+};
+function drawAudit() {
+  const rows = audit.map(l => {
+    const d = l.detail && typeof l.detail === 'object' ? l.detail : {};
+    const extra = Object.entries(d).filter(([k]) => k !== 'ip').map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' · ');
+    return el('tr', { 'data-action': l.action },
+      el('td', { class: 'hide-s' }, when(l.at)), el('td', {}, ACTIONS[l.action] || l.action), el('td', { class: 'mono' }, l.target || ''), el('td', {}, extra), el('td', { class: 'hide-s mono' }, d.ip || ''));
+  });
+  auditHost.replaceChildren(rows.length
+    ? el('div', { class: 'a-scroll' }, el('table', { class: 'a-table' },
+      el('thead', {}, el('tr', {}, ['When', 'What', 'Who', 'Details', 'From'].map((h, i) => el('th', { class: i === 0 || i === 4 ? 'hide-s' : '' }, h)))), el('tbody', {}, rows)))
+    : el('p', {}, 'Nothing yet.'));
+}
 
 function drawStats() {
   const withDesk = accounts.filter(a => a.slotSpot).length;

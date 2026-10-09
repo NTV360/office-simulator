@@ -596,6 +596,13 @@ try {
     await ap.waitForFunction(u => !document.querySelector(`tr[data-user="${u}"] select`), n2, { timeout: 8000 }).then(() => pass('a desk can be given from the list'), () => fail('desk was not given'));
     await screenshotOf(ap, 'admin-page.png');
 
+    // the activity log shows what was just done, with no password in it
+    await ap.waitForSelector('#adminAudit tbody tr', { timeout: 8000 });
+    const logText = await ap.textContent('#adminAudit');
+    const kinds = await ap.evaluate(() => [...document.querySelectorAll('#adminAudit tbody tr')].map(r => r.dataset.action));
+    if (['account.bulk-create', 'password.set', 'account.disable', 'account.enable', 'desk.release', 'desk.assign'].every(k => kinds.includes(k))) pass('the activity list shows what was just done'); else fail('activity actions: ' + JSON.stringify(kinds));
+    if (!logText.includes(pw1) && !logText.includes(pw2) && !logText.includes('typed by the admin 77')) pass('and none of the passwords are in it'); else fail('a password is in the activity list');
+
     // a reload keeps you in for this tab, log out forgets it
     await ap.reload({ waitUntil: 'load' });
     await ap.waitForSelector('#adminAccounts table', { timeout: 10000 }).then(() => pass('a reload stays logged in (this tab only)'), () => fail('reload logged out'));

@@ -1,9 +1,11 @@
 import {
-  BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, UseGuards,
+  BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { HAZEL_NAME, interactables, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
+import { clientAddress, type Req as HttpReq } from '../auth/http';
+import type { AuditRow } from '../auth/account-store';
 import { PlayError } from '../play/player-manager';
 import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
@@ -45,6 +47,25 @@ export class AdminController {
     @Inject(AuthProvider) private readonly auth: AuthProvider,
   ) {}
 
+  /**
+   * Write what an admin just did to the audit log (who: "admin", the one shared password; from which address). Never a password.
+   * A failure to write is logged but does not undo or block what was done.
+   */
+  private async note(req: HttpReq, action: string, target: string | null, detail: Record<string, unknown> = {}): Promise<void> {
+    try {
+      if (this.auth.available) await this.auth.require().accounts.audit({ actorName: 'admin', action, target, detail: { ip: clientAddress(req), ...detail } });
+    } catch (err) { this.log.error(`could not write the audit log: ${err instanceof Error ? err.message : String(err)}`); }
+  }
+  private async nameOf(id: number): Promise<string> { return (await this.auth.require().accounts.byId(id))?.username ?? `id ${id}`; }
+
+  /** What admins did, newest first (up to 500 lines). */
+  @Get('audit')
+  async audit(@Query('limit') limit?: string): Promise<AuditRow[]> {
+    const n = limit === undefined ? 100 : /^\d{1,3}$/.test(limit) ? Math.min(500, Math.max(1, Number(limit))) : NaN;
+    if (Number.isNaN(n)) throw new BadRequestException('limit must be a whole number from 1 to 500');
+    return this.auth.require().accounts.recentAudit(n);
+  }
+
   @Get('settings')
   settings(): Settings {
     return this.worlds.settings();
@@ -52,16 +73,20 @@ export class AdminController {
 
   /** Change the number of staff, the clock speed, or pause. Saved straight away and visible to every viewer. */
   @Put('settings')
-  async update(@Body() body: unknown): Promise<Settings> {
-    return this.worlds.applySettings(parseSettingsUpdate(body));
+  async update(@Body() body: unknown, @Req() req: HttpReq): Promise<Settings> {
+    const change = parseSettingsUpdate(body);
+    const result = await this.worlds.applySettings(change);
+    await this.note(req, 'settings.update', null, { ...change });
+    return result;
   }
 
   /** Show a message to everyone connected. */
   @Post('announce')
-  announce(@Body() body: unknown): { ok: true } {
+  async announce(@Body() body: unknown, @Req() req: HttpReq): Promise<{ ok: true }> {
     const text = (body as { text?: unknown } | null)?.text;
     if (typeof text !== 'string' || text.trim() === '' || text.length > 200) throw new BadRequestException('send { "text": "..." } with 1 to 200 characters');
     this.worlds.announce(text.trim());
+    await this.note(req, 'announce', null, { length: text.trim().length });
     return { ok: true };
   }
 
@@ -79,18 +104,19 @@ export class AdminController {
   /** Make an account for a person in the office. There is no sign-up page: this is the only way accounts come to exist. They choose their own password at first login. */
   @Post('users')
   @Header('Cache-Control', NO_STORE)
-  async createUser(@Body() body: unknown): Promise<{ account: PublicAccount; password?: string }> {
+  async createUser(@Body() body: unknown, @Req() req: HttpReq): Promise<{ account: PublicAccount; password?: string }> {
     const b = (body ?? {}) as { username?: unknown; password?: unknown };
     const generated = b.password === undefined || b.password === '' ? generatePassword() : undefined; // no password given: make one, and say it
     const account = await this.auth.require().createAccount({ username: b.username, password: generated ?? b.password, mustChange: true });
     this.log.log(`made account ${account.username} (id ${account.id})`);
+    await this.note(req, 'account.create', account.username, { generatedPassword: !!generated });
     return { account: publicAccount(account), ...(generated ? { password: generated } : {}) };
   }
 
   /** Make many accounts at once (the whole office): each gets a generated first password, returned once, to hand out. */
   @Post('users/bulk')
   @Header('Cache-Control', NO_STORE)
-  async createUsers(@Body() body: unknown): Promise<{ results: Array<{ username: string; ok: boolean; id?: number; password?: string; code?: string; message?: string }> }> {
+  async createUsers(@Body() body: unknown, @Req() req: HttpReq): Promise<{ results: Array<{ username: string; ok: boolean; id?: number; password?: string; code?: string; message?: string }> }> {
     const names = (body as { usernames?: unknown } | null)?.usernames;
     if (!Array.isArray(names) || names.length < 1 || names.length > 200 || names.some(n => typeof n !== 'string')) throw new BadRequestException('send { "usernames": ["ana", "ben"] } with 1 to 200 names');
     if (this.bulkRunning) throw new ConflictException('another bulk creation is still running; wait a moment'); // (each one is a slow hash)
@@ -109,6 +135,7 @@ export class AdminController {
         }
       }
       this.log.log(`bulk: made ${results.filter(r => r.ok).length} of ${results.length} accounts`);
+      await this.note(req, 'account.bulk-create', `${results.length} names`, { made: results.filter(r => r.ok).map(r => r.username), failed: results.filter(r => !r.ok).length });
       return { results };
     } finally { this.bulkRunning = false; }
   }
@@ -119,19 +146,22 @@ export class AdminController {
    */
   @Post('users/:id/password')
   @Header('Cache-Control', NO_STORE)
-  async resetPassword(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ username: string; password: string }> {
-    const { account, password } = await this.auth.require().adminSetPassword(id, (body as { password?: unknown } | null)?.password);
+  async resetPassword(@Param('id', AccountIdPipe) id: number, @Body() body: unknown, @Req() req: HttpReq): Promise<{ username: string; password: string }> {
+    const typed = (body as { password?: unknown } | null)?.password;
+    const { account, password } = await this.auth.require().adminSetPassword(id, typed);
     this.log.log(`set a new password for ${account.username} (id ${id})`);
+    await this.note(req, 'password.set', account.username, { generated: typed === undefined || typed === '' });
     return { username: account.username, password };
   }
 
   /** Disable or enable an account. A disabled account cannot log in and is dropped at once. */
   @Post('users/:id/disabled')
-  async disable(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ id: number; disabled: boolean }> {
+  async disable(@Param('id', AccountIdPipe) id: number, @Body() body: unknown, @Req() req: HttpReq): Promise<{ id: number; disabled: boolean }> {
     const disabled = (body as { disabled?: unknown } | null)?.disabled;
     if (typeof disabled !== 'boolean') throw new BadRequestException('send { "disabled": true } or { "disabled": false }');
     const account = await this.auth.require().setDisabled(id, disabled);
     this.log.log(`${disabled ? 'disabled' : 'enabled'} account ${account.username} (id ${id})`);
+    await this.note(req, disabled ? 'account.disable' : 'account.enable', account.username);
     return { id: account.id, disabled: account.disabled };
   }
 
@@ -155,20 +185,22 @@ export class AdminController {
 
   /** Give an account one of the unclaimed desks. */
   @Post('users/:id/assign-slot')
-  async assign(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ ok: true; spot: string; person: string }> {
+  async assign(@Param('id', AccountIdPipe) id: number, @Body() body: unknown, @Req() req: HttpReq): Promise<{ ok: true; spot: string; person: string }> {
     const spot = (body as { spot?: unknown } | null)?.spot;
     if (typeof spot !== 'string' || !/^desk:\d{1,4}$/.test(spot)) throw new BadRequestException('send { "spot": "desk:12" }');
     try {
       const person = await this.play.manager().assignSlot(id, spot);
+      await this.note(req, 'desk.assign', await this.nameOf(id), { spot });
       return { ok: true, spot, person: person.name };
     } catch (err) { return asHttp(err); }
   }
 
   /** Take an account's desk away again. */
   @Post('users/:id/release-slot')
-  async release(@Param('id', AccountIdPipe) id: number): Promise<{ ok: true }> {
+  async release(@Param('id', AccountIdPipe) id: number, @Req() req: HttpReq): Promise<{ ok: true }> {
     try {
       await this.play.manager().releaseSlot(id);
+      await this.note(req, 'desk.release', await this.nameOf(id));
       return { ok: true };
     } catch (err) { return asHttp(err); }
   }
