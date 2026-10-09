@@ -5,7 +5,7 @@ describe('shared defaults', () => {
   it('match the plan', () => {
     expect(DEFAULTS.tickRate).toBe(20);
     expect(DEFAULTS.maxPlayers).toBe(100);
-    expect(PROTOCOL_VERSION).toBe(0);
+    expect(PROTOCOL_VERSION).toBe(1);
   });
 });
 

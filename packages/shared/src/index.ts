@@ -4,8 +4,10 @@
 // spec, the floor plan and the network protocol move in here in later phases; see
 // docs/MULTIPLAYER-PLAN.md.
 
+import { WIRE_VERSION } from './protocol/messages';
+
 /** Bump when the client/server message format changes in a way old clients cannot read. */
-export const PROTOCOL_VERSION = 0;
+export const PROTOCOL_VERSION = WIRE_VERSION;
 
 /** Server settings and their defaults. Real values come from the server's environment. */
 export const DEFAULTS = {
@@ -47,3 +49,4 @@ export * from './sim/factory';
 export * from './sim/testing';
 export * from './layout/layout';
 export * from './layout/office';
+export * from './protocol';
