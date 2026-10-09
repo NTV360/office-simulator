@@ -85,7 +85,7 @@ export function startOnline() {
 
   const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
-  const chat = initChat({ send: text => send({ type: 'say', text }), personById: id => mirror.people.get(id) });
+  const chat = initChat({ send: text => send({ type: 'say', text }), sendEmote: kind => send({ type: 'emote', kind }), personById: id => mirror.people.get(id) });
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
   let seq = 1, lastSentAt = 0, lastSent = null;
@@ -249,6 +249,7 @@ export function startOnline() {
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
       case 'chat': chat.receive(msg); break;
+      case 'emoted': { net.emotesSeen = (net.emotesSeen ?? 0) + 1; const who = mirror.people.get(msg.from); if (who) { const t = performance.now(); who.emote = { kind: msg.kind, t0: t, until: t + 2600 }; } break; }
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':
         socket.disconnect();

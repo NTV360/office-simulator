@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 6;
+export const WIRE_VERSION = 7;
 
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
@@ -131,6 +131,11 @@ export type ActKind = 'sit' | 'stand';
 export interface Act { type: 'act'; kind: ActKind }
 /** Something the player says in local chat: heard by people within about 10 m. */
 export interface Say { type: 'say'; text: string }
+/** The short list of things a player can act out. The order is part of the protocol: add to the end. */
+export const EMOTE_KINDS = ['wave', 'cheer', 'clap', 'nod'] as const;
+export type EmoteKind = typeof EMOTE_KINDS[number];
+/** Do an emote (the server limits how often). */
+export interface Emote { type: 'emote'; kind: EmoteKind }
 export interface Ping { type: 'ping'; ts: number }
 export interface Pong { type: 'pong'; ts: number }
 export interface Kick { type: 'kick'; reason: string }
@@ -140,8 +145,10 @@ export interface Kick { type: 'kick'; reason: string }
  */
 /** A chat line, sent to the speaker and to everyone within range of them. */
 export interface Chat { type: 'chat'; from: number; name: string; text: string }
+/** Somebody did an emote; sent to everyone who is playing. */
+export interface Emoted { type: 'emoted'; from: number; kind: EmoteKind }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
-export type ClientMessage = Hello | Ping | Input | Act | Say;
-export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat;
+export type ClientMessage = Hello | Ping | Input | Act | Say | Emote;
+export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted;
 export type Message = ClientMessage | ServerMessage;

@@ -16,6 +16,26 @@ function animKey(p) {
   if (t.kind === 'work' && p.chatWith) return 'listenSit';
   return t.anim;
 }
+// An emote a player is acting out: arms and head are overridden for a couple of seconds (see net/online.js, which sets `p.emote`). Walking
+// ends it at once.
+function emoteOverlay(p, o) {
+  const em = p.emote;
+  if (!em) return;
+  const now = performance.now();
+  const moving = isLocalPlayer(p) ? player.moving : !!p.moving;
+  if (now > em.until || moving || p.state === 'away') { p.emote = null; return; }
+  const e = (now - em.t0) / 1000;
+  switch (em.kind) {
+    case 'wave': o.rShX = -2.55; o.rShZ = -.3; o.rEl = -.5 + Math.sin(e * 11) * .55; o.headY = .25; break;
+    case 'cheer':
+      o.lShX = o.rShX = -2.75; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -.25 + Math.sin(e * 9) * .12; o.headX = -.25;
+      if (!p.task) o.hipY = .88 + Math.abs(Math.sin(e * 7)) * .06; // a little jump (not when sitting)
+      break;
+    case 'clap': { const c = (Math.sin(e * 15) + 1) / 2; o.lShX = o.rShX = -1.05; o.lShZ = -.12 + c * .32; o.rShZ = .12 - c * .32; o.lEl = o.rEl = -1.35; o.headX = .05; break; }
+    case 'nod': o.headX = .12 + Math.sin(e * 7) * .3; break;
+  }
+}
+
 function targetPose(p, k, T) {
   const o = { hipY: .88, lean: 0, lShX: 0, lShZ: .07, lEl: -.12, rShX: 0, rShZ: -.07, rEl: -.12, lHip: 0, lKnee: 0, rHip: 0, rKnee: 0, headY: 0, headX: 0 };
   const breathe = Math.sin(T * 1.6) * .012;
@@ -76,6 +96,7 @@ function targetPose(p, k, T) {
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
   }
   o.lean += breathe;
+  emoteOverlay(p, o);
   // look at someone
   let look = null;
   if (p.task?.meeting && p.task.meeting.speaker && p.task.meeting.speaker !== p) look = p.task.meeting.speaker.pos;

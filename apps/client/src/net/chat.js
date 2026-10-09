@@ -1,4 +1,4 @@
-import { clipChat } from '@office/shared';
+import { EMOTE_KINDS, clipChat } from '@office/shared';
 import { keys } from '../camera/input.js';
 import { showBubble } from '../people/bubbles.js';
 import { releaseSticks } from '../player/control.js';
@@ -9,6 +9,8 @@ import { releaseSticks } from '../player/control.js';
 const MAX_CHAT = 200;
 const KEEP_LINES = 40;
 const FADE_MS = 25_000;
+const EMOTE_COOLDOWN_MS = 2500; // (the server's own limit; the buttons rest for as long)
+const EMOTE_LABELS = { wave: 'Wave', cheer: 'Cheer', clap: 'Clap', nod: 'Nod' };
 
 const el = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -21,12 +23,14 @@ const el = (tag, attrs = {}, ...kids) => {
  * `send(text)` says something to the server. `personById(id)` finds a person on this page (for the bubble). The panel only shows while
  * `setActive(true)` (we are in the office).
  */
-export function initChat({ send, personById }) {
+export function initChat({ send, sendEmote, personById }) {
   const log = el('div', { id: 'chatLog', role: 'log', 'aria-live': 'polite' });
   const input = el('input', { id: 'chatInput', type: 'text', maxlength: String(MAX_CHAT), autocomplete: 'off', spellcheck: 'false', placeholder: 'Say something to people nearby…', 'aria-label': 'Chat message' });
   const form = el('form', { id: 'chatForm', hidden: '' }, input);
-  const button = el('button', { id: 'chatBtn', type: 'button', title: 'Chat with people near you (Enter)' }, 'Chat');
-  const root = el('div', { id: 'chat', hidden: '' }, log, form, button);
+  const button = el('button', { id: 'chatBtn', class: 'chat-tool', type: 'button', title: 'Chat with people near you (Enter)' }, 'Chat');
+  const emoteButtons = EMOTE_KINDS.map((kind, i) => el('button', { class: 'chat-tool emote', type: 'button', 'data-emote': kind, title: `${EMOTE_LABELS[kind]} (${i + 1})` }, EMOTE_LABELS[kind]));
+  const tools = el('div', { id: 'chatTools' }, button, ...emoteButtons);
+  const root = el('div', { id: 'chat', hidden: '' }, log, form, tools);
   document.body.append(root);
   let active = false, typing = false;
 
@@ -60,8 +64,21 @@ export function initChat({ send, personById }) {
     close();
   });
   button.addEventListener('click', open);
+  function doEmote(kind) {
+    if (!active || emoteButtons.some(b => b.disabled)) return;
+    sendEmote(kind);
+    emoteButtons.forEach(b => { b.disabled = true; });
+    setTimeout(() => emoteButtons.forEach(b => { b.disabled = false; }), EMOTE_COOLDOWN_MS);
+  }
+  emoteButtons.forEach((b, i) => b.addEventListener('click', () => doEmote(EMOTE_KINDS[i])));
   input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
   addEventListener('keydown', e => {
+    const digit = e.key >= '1' && e.key <= '9' ? Number(e.key) : 0;
+    if (digit > 0 && digit <= EMOTE_KINDS.length && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { // 1 to 4: the emotes
+      const t = e.target && e.target.tagName;
+      if (t !== 'INPUT' && t !== 'TEXTAREA' && t !== 'SELECT' && !(e.target && e.target.isContentEditable) && !document.querySelector('.login-screen')) doEmote(EMOTE_KINDS[digit - 1]);
+      return;
+    }
     if (e.key !== 'Enter' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target && e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'BUTTON' || (e.target && e.target.isContentEditable)) return;

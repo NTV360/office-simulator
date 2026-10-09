@@ -642,6 +642,49 @@ try {
       for (const n of [ca, cb, cc]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
     }
 
+    // emotes: wave, cheer, clap, nod, seen by everyone
+    {
+      console.log('\nemotes');
+      const tag = String(Date.now() % 1e6);
+      const [ea, eb] = [`emo_a${tag}`, `emo_b${tag}`];
+      const [A, B] = [await openPage(browser, site.url, '?trace', { login: ea }), await openPage(browser, site.url, '?trace', { login: eb })];
+      await Promise.all([A, B].map(x => x.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 })));
+      const state = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p ? { kind: p.emote ? p.emote.kind : null, arm: p.pose.rShX, armL: p.pose.lShX, head: p.pose.headX } : null; }, name);
+      await sleep(800);
+      // typing digits into the chat box is not an emote
+      await A.page.keyboard.press('Enter');
+      await A.page.waitForSelector('#chatInput', { state: 'visible', timeout: 5000 });
+      await A.page.keyboard.type('1234');
+      await A.page.keyboard.press('Escape');
+      await sleep(600);
+      if ((await state(B.page, ea)).kind === null) pass('typing 1 2 3 4 into the chat box does not trigger emotes'); else fail('an emote fired while typing');
+
+      await A.page.keyboard.press('1');
+      await A.page.keyboard.press('2'); // straight away: inside the cooldown
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'wave'; }, ea, { timeout: 8000 }).then(() => pass('pressing 1 makes the other player see you wave'), () => fail('the other page did not see a wave'));
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.pose.rShX < -1.2; }, ea, { timeout: 8000 }).then(() => pass('with your arm up in the air'), () => fail('the arm did not go up'));
+      await screenshotOf(B.page, 'emote-wave.png');
+      if ((await state(B.page, ea)).kind === 'wave' && (await B.page.evaluate(() => window.__sim.net.emotesSeen)) === 1) pass('a second emote straight away is ignored (2.5 s apart)'); else fail('the cooldown did not hold');
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && !p.emote; }, ea, { timeout: 10000 }).then(() => pass('and the emote ends by itself after a couple of seconds'), () => fail('the emote never ended'));
+
+      await sleep(2600);
+      await A.page.click('[data-emote="cheer"]');
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'cheer'; }, ea, { timeout: 8000 }).then(() => pass('the Cheer button works too'), () => fail('no cheer seen'));
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.pose.rShX < -1.5 && p.pose.lShX < -1.5; }, ea, { timeout: 8000 }).then(() => pass('both arms go up'), () => fail('arms did not go up for a cheer'));
+      if (await A.page.isDisabled('[data-emote="wave"]')) pass('the buttons rest while the cooldown runs'); else fail('buttons not disabled');
+
+      // walking ends an emote at once
+      await sleep(2600);
+      await A.page.keyboard.press('3');
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'clap'; }, ea, { timeout: 8000 });
+      await A.page.keyboard.down('w'); await sleep(500); await A.page.keyboard.up('w');
+      if ((await state(A.page, ea)).kind === null) pass('walking stops an emote'); else fail('still emoting after walking');
+
+      [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      await A.page.close(); await B.page.close();
+      for (const n of [ea, eb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
+    }
+
     // the admin page: one password, make accounts, reset a password, disable, desks
     console.log('\nthe admin page');
     const tag = String(Date.now() % 1e6);

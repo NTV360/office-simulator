@@ -12,6 +12,10 @@
 #chat.typing .chat-line.old { opacity: 1; }
 #chatForm { margin-top: 6px; pointer-events: auto; }
 #chatInput { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 0; border-radius: 999px; font: inherit; font-size: 14px; color: #1c242b; background: rgba(255, 255, 255, .96); outline: 2px solid #3e6e9c; }
-#chatBtn { margin-top: 6px; padding: 4px 14px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; color: #e9eef2; background: rgba(20, 24, 28, .78); cursor: pointer; pointer-events: auto; }
-#chatBtn:hover { background: rgba(20, 24, 28, .92); }
+#chatTools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chat-tool { padding: 4px 14px; border: 0; border-radius: 999px; font: inherit; font-size: 12px; color: #e9eef2; background: rgba(20, 24, 28, .78); cursor: pointer; pointer-events: auto; }
+.chat-tool:hover:not(:disabled) { background: rgba(20, 24, 28, .92); }
+.chat-tool.emote { background: rgba(60, 90, 120, .8); }
+.chat-tool:disabled { opacity: .45; cursor: default; }
+#chat.typing #chatTools .emote { display: none; }
 @media (max-width: 640px) { #chat { bottom: 104px; } }

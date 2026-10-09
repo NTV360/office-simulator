@@ -8,6 +8,7 @@ import { AuthProvider } from '../auth/auth.provider';
 import type { SessionEnd } from '../auth/auth.service';
 import { TicketService } from '../auth/tickets';
 import { ChatService, type SayResult } from '../play/chat';
+import { EmoteService } from '../play/emotes';
 import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
@@ -63,9 +64,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   ) {}
 
   private chat!: ChatService;
+  private emotes!: EmoteService;
 
   afterInit(): void {
     const world = this.worlds.world;
+    this.emotes = new EmoteService({ personOf: id => this.players.manager().speaker(id)?.personId ?? null });
     this.chat = new ChatService({
       speaker: id => this.players.manager().speaker(id),
       hearers: () => this.players.manager().hearers(),
@@ -156,6 +159,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         void this.say(socket, msg.text);
         return;
+      case 'emote': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const r = this.emotes.play(socket.data.accountId, msg.kind);
+        if (r.ok) this.broadcast(encode({ type: 'emoted', from: r.from, kind: r.kind })); // everybody who is playing sees it
+        return;
+      }
       case 'act':
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
