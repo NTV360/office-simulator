@@ -84,6 +84,63 @@ export async function adminJson(url, method, path, body) {
   return { status: r.status, body: await r.json().catch(() => null) };
 }
 
+/** A person by name, as this page sees them: { id, x, z, controller, state, task, shirt }, or null. */
+export const personOf = (page, name) => page.evaluate(n => {
+  const p = window.__sim.people.find(x => x.name === n);
+  return p ? { id: p.id, x: p.pos.x, z: p.pos.z, controller: p.controller, state: p.state, task: p.task ? p.task.kind : '', shirt: p.spec.shirt, style: p.spec.style } : null;
+}, name);
+
+/**
+ * Steer your person with the real keys (W, and Shift while far away), following the office's own route, until it is within a
+ * step of the target. `getTarget` is an expression over the page's __sim names, e.g. "interactables.of('lounge')[0].approach".
+ * Resolves with the distance left.
+ */
+export async function walkTo(page, getTarget) {
+  const t0 = Date.now(); let shift = false, last = null;
+  await page.keyboard.down('w');
+  try {
+    while (Date.now() - t0 < 60000) {
+      const st = await page.evaluate(g => {
+        const t = new Function('s', 'with (s) { return ' + g + '; }')(window.__sim); const p = window.__sim.player.person;
+        if (!p || !t) return { err: 'no person or target' };
+        const route = window.__sim.findPath({ x: p.pos.x, z: p.pos.z }, t);
+        if (!route) return { err: 'no route' };
+        const wp = route.find(q => Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > .3) ?? route[route.length - 1];
+        window.__sim.ctl.yaw = Math.atan2(wp.x - p.pos.x, wp.z - p.pos.z);
+        return { d: Math.hypot(t.x - p.pos.x, t.z - p.pos.z) };
+      }, getTarget);
+      if (st.err) throw new Error(st.err);
+      last = st.d;
+      if (st.d < .3) break;
+      if (st.d > 3 && !shift) { await page.keyboard.down('Shift'); shift = true; }
+      if (st.d <= 3 && shift) { await page.keyboard.up('Shift'); shift = false; }
+      await sleep(50);
+    }
+  } finally { await page.keyboard.up('w'); if (shift) await page.keyboard.up('Shift'); }
+  await sleep(500);
+  return last;
+}
+
+/**
+ * Walk to the nearest free seat of a kind (default the lounge) and sit with E. People come and go, so a seat can be taken on the
+ * way: it then tries another, up to four times. Resolves true once seated.
+ */
+export async function sitDownSomewhere(page, kind = 'lounge') {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const id = await page.evaluate(k => {
+      const p = window.__sim.player.person;
+      const free = window.__sim.interactables.of(k).filter(s => !s.occupant).sort((a, b) => Math.hypot(a.approach.x - p.pos.x, a.approach.z - p.pos.z) - Math.hypot(b.approach.x - p.pos.x, b.approach.z - p.pos.z));
+      return free.length ? free[0].id : null;
+    }, kind);
+    if (!id) { await sleep(1000); continue; }
+    await walkTo(page, `interactables.all().find(s => s.id === '${id}').approach`);
+    await page.keyboard.press('e');
+    const seated = await page.waitForFunction(() => window.__sim.player.sitting, null, { timeout: 2500 }).then(() => true, () => false);
+    if (seated) return true;
+  }
+  return false;
+}
+
 /** Give this browser context a logged-in session for the account, making the account (and choosing its own password) the first time. */
 async function loginAs(context, url, username, password = TEST_PASSWORD) {
   const body = { username, password };

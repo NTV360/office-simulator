@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adminCreate, adminJson, collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
+import { adminCreate, adminJson, collectErrors, freePort, openPage, personOf, sitDownSomewhere, sleep, startSite, walkTo } from './site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const goldenDir = path.join(root, 'tests/browser/golden');
@@ -412,7 +412,6 @@ try {
     console.log('\ndriving in the browser');
     const dtag = String(Date.now() % 1e6);
     const dname = `drv_${dtag}`, gname = `drg_${dtag}`;
-    const personOf = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p ? { id: p.id, x: p.pos.x, z: p.pos.z, controller: p.controller, state: p.state, task: p.task ? p.task.kind : '' } : null; }, name);
     const giveDesk = async name => {
       await adminCreate(site.url, name, 'first-pass-from-admin-1');
       const id = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(a => a.username === name).id;
@@ -421,33 +420,6 @@ try {
       if (r.status !== 201) fail(`could not give ${name} a desk: ${r.status}`);
       return id;
     };
-    /** Steer the person with the real keys (W, and Shift while far away), following the office's own route, to within a step of `target`. */
-    const walkTo = async (page, getTarget) => {
-      const t0 = Date.now(); let shift = false, last = null;
-      await page.keyboard.down('w');
-      try {
-        while (Date.now() - t0 < 60000) {
-          const st = await page.evaluate(g => {
-            const t = new Function('s', 'with (s) { return ' + g + '; }')(window.__sim); const p = window.__sim.player.person;
-            if (!p || !t) return { err: 'no person or target' };
-            const route = window.__sim.findPath({ x: p.pos.x, z: p.pos.z }, t);
-            if (!route) return { err: 'no route' };
-            const wp = route.find(q => Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > .3) ?? route[route.length - 1];
-            window.__sim.ctl.yaw = Math.atan2(wp.x - p.pos.x, wp.z - p.pos.z);
-            return { d: Math.hypot(t.x - p.pos.x, t.z - p.pos.z) };
-          }, getTarget);
-          if (st.err) throw new Error(st.err);
-          last = st.d;
-          if (st.d < .3) break;
-          if (st.d > 3 && !shift) { await page.keyboard.down('Shift'); shift = true; }
-          if (st.d <= 3 && shift) { await page.keyboard.up('Shift'); shift = false; }
-          await sleep(50);
-        }
-      } finally { await page.keyboard.up('w'); if (shift) await page.keyboard.up('Shift'); }
-      await sleep(500);
-      return last;
-    };
-
     const did = await giveDesk(dname);
     const watcher2 = await openPage(browser, site.url, '?trace');
     const d = await openPage(browser, site.url, '?trace', { login: dname });
@@ -513,11 +485,10 @@ try {
     if (await g.page.waitForSelector('#guestNote:not([hidden])', { timeout: 5000 }).then(() => true, () => false)) pass('a guest sees a note that they have no desk yet'); else fail('no guest note');
     if ((await g.page.textContent('#deskInfo')) === 'Guest · no desk yet') pass('and the account box says "Guest · no desk yet"'); else fail('guest account box text');
     const g0 = await personOf(g.page, gname);
-    const sofaLeft = await walkTo(g.page, "interactables.of('lounge').find(s => !s.occupant).approach");
+    const guestSat = await sitDownSomewhere(g.page);
     const g1 = await personOf(g.page, gname);
-    if (sofaLeft < .6 && Math.hypot(g1.x - g0.x, g1.z - g0.z) > 2) pass('a guest walks to the lounge with the keyboard'); else fail(`guest walk: ${sofaLeft} left, moved ${Math.hypot(g1.x - g0.x, g1.z - g0.z)}`);
-    await g.page.keyboard.press('e');
-    await g.page.waitForFunction(() => window.__sim.player.sitting && window.__sim.player.sitting.shared, null, { timeout: 5000 }).then(() => pass('and sits in a shared seat with E'), () => fail('guest could not sit'));
+    if (Math.hypot(g1.x - g0.x, g1.z - g0.z) > 2) pass('a guest walks to the lounge with the keyboard'); else fail(`guest walk: moved ${Math.hypot(g1.x - g0.x, g1.z - g0.z)}`);
+    if (guestSat && (await g.page.evaluate(() => window.__sim.player.sitting.shared))) pass('and sits in a shared seat with E'); else fail('guest could not sit');
     await screenshotOf(g.page, 'driving-guest.png');
     await g.page.close(); await watcher2.page.close();
     await adminJson(site.url, 'POST', `/api/admin/users/${gid}/disabled`, { disabled: true }); // (a guest who is not coming back)
