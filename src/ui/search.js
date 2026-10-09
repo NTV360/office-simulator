@@ -1,6 +1,7 @@
 import { follow } from '../camera/controller.js';
 import { camGoal } from '../camera/state.js';
 import { addLog, people } from '../sim/state.js';
+import { fillAvatar } from './avatar.js';
 import { $ } from './dom.js';
 import { fmt, select } from './person.js';
 
@@ -24,7 +25,8 @@ function render() {
   box.replaceChildren(...found.slice(0, MAX_MATCHES).map(p => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'os-match'; b.setAttribute('role', 'option');
-    const name = document.createElement('span'); name.textContent = p.name;
+    const face = document.createElement('span'); face.className = 'avatar sm'; fillAvatar(face, { name: p.name, photo: p.photo, color: p.spec.top.color });
+    const name = document.createElement('span'); name.className = 'os-name'; name.append(face, p.name);
     const info = document.createElement('span'); info.className = 'os-info'; info.textContent = whereabouts(p);
     b.append(name, info); b.onclick = () => goTo(p);
     return b;

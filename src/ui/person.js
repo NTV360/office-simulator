@@ -3,6 +3,7 @@ import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB } from '../people/data.js';
 import { scene } from '../render/renderer.js';
 import { openCreator } from './creator.js';
+import { fillAvatar } from './avatar.js';
 import { $ } from './dom.js';
 
 /* ================= Selection + UI ================= */
@@ -11,7 +12,7 @@ const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.Me
 
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
-  if (p) { $('pAvatar').style.background = p.spec.top.color; $('pAvatar').style.borderColor = p.spec.hair.color; }
+  if (p) fillAvatar($('pAvatar'), { name: p.name, photo: p.photo, color: p.spec.top.color });
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }

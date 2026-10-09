@@ -8,6 +8,7 @@
   border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .os-match{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-align:left;font:500 13px var(--f-body);color:var(--ink);background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 9px;cursor:pointer}
 .os-match:hover,.os-match:focus-visible{background:var(--chip);border-color:var(--line)}
+.os-name{display:flex;align-items:center;gap:8px;min-width:0}
 .os-info{font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 div.os-info{padding:6px 9px}
 body.fp #officeSearch,body.tp #officeSearch{display:none}

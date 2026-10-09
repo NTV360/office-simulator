@@ -70,7 +70,7 @@
 .cl-match{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-align:left;font:500 13px var(--f-body);color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:8px;padding:7px 10px;cursor:pointer}
 .cl-match:hover,.cl-match:focus-visible{border-color:var(--accent)}
 .cl-match .cl-note{text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl-me{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--chip);border-radius:8px;padding:8px 8px 8px 12px}
+.cl-me{display:flex;gap:10px;align-items:center;background:var(--chip);border-radius:8px;padding:8px 8px 8px 12px}
 .cl-me-name{font:700 14px var(--f-display);letter-spacing:.02em}
 #creator input[type=color]{width:30px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer}
 .cl-acc{display:grid;gap:6px}
@@ -88,3 +88,5 @@
   .cl-hint{display:none}
   #creatorTitle{font-size:17px}
 }
+
+.cl-me-who{flex:1;min-width:0}

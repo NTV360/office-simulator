@@ -28,10 +28,10 @@ function makeHelper() {
   return p;
 }
 function createPerson(who, seat) {
-  const { name, role, title, userId, department, shift, spec } = who;
+  const { name, role, title, userId, department, shift, photo, spec } = who;
   const body = buildBody(spec), at = seat ?? { pos: ENTRY, face: Math.PI };
   const p = {
-    id: people.length, name, role, title, userId, department, shift, spec, body, seat,
+    id: people.length, name, role, title, userId, department, shift, photo: photo ?? null, spec, body, seat,
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
@@ -53,7 +53,7 @@ function employee(e) {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ?? randomSpec(role, seededRandom(e.userId));
   if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
-  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, spec };
+  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
 }
 // The next employee not yet in the office who has a desk to go to (one without a free desk is skipped).
 function nextSeated() {

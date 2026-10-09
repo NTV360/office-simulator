@@ -3,7 +3,8 @@ import { normalizeSpec } from '../../src/character/spec.js';
 import { deskSeat } from '../../src/config/desks.js';
 
 // The office staff: active employees with their department, saved character look and chosen desk
-// (both kept in character_information.character_data, the desk as its `desk` field, e.g. 'A3'). Only names and department leave the server; contact details,
+// (both kept in character_information.character_data, the desk as its `desk` field, e.g. 'A3'), plus their
+// profile picture URL. Only names and department leave the server; contact details,
 // birth dates, emergency contacts, RFID values and access roles stay in the database.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,12 +25,19 @@ async function shiftTimes(db) {
   return new Map(data.map(s => [s.shift_id, { code: s.code, start: mins(s.start_time), end: mins(s.end_time) }]));
 }
 
+// The profile picture URL from employees.metadata (only an https link; nothing else from metadata is sent).
+function profileImage(metadata) {
+  let m = metadata; if (typeof m === 'string') { try { m = JSON.parse(m); } catch (_) { return null; } }
+  const url = m?.profileImage;
+  return typeof url === 'string' && /^https:\/\/[^\s"'<>]+$/.test(url) ? url : null;
+}
+
 function employeeRoutes(db) {
   const r = Router();
 
   r.get('/employees', async (req, res) => {
     const { data: rows, error } = await db.from('employees')
-      .select('user_id, first_name, last_name, employment_type_id, shift_id, department:departments(name)')
+      .select('user_id, first_name, last_name, employment_type_id, shift_id, metadata, department:departments(name)')
       .is('deleted_at', null).order('first_name');
     if (error) throw error;
     const interns = await internTypes(db), shifts = await shiftTimes(db);
@@ -38,7 +46,7 @@ function employeeRoutes(db) {
     const lookOf = new Map(looks.map(l => [l.user_id, l.character_data]));
     res.json(rows.map(e => ({
       userId: e.user_id, firstName: e.first_name, lastName: e.last_name,
-      department: e.department?.name ?? null, intern: interns.has(e.employment_type_id), shift: shifts.get(e.shift_id) ?? null,
+      photo: profileImage(e.metadata), department: e.department?.name ?? null, intern: interns.has(e.employment_type_id), shift: shifts.get(e.shift_id) ?? null,
       character: lookOf.has(e.user_id) ? normalizeSpec(lookOf.get(e.user_id)) : null,
       desk: deskSeat(lookOf.get(e.user_id)?.desk)?.id ?? null,
     })));

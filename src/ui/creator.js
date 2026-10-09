@@ -9,6 +9,7 @@ import { moveToDesk, restylePerson, seatById } from '../people/factory.js';
 import { HAZEL_NAME } from '../people/hazel.js';
 import { employeeById, fullName, jobTitle, roster, simRole } from '../people/roster.js';
 import { saveCharacter } from '../persistence/store.js';
+import { fillAvatar } from './avatar.js';
 import { player, savePlayerSpec, setPlayerSpec } from '../player/player.js';
 import { addLog, people } from '../sim/state.js';
 import { $ } from './dom.js';
@@ -143,7 +144,8 @@ function employeePicker() {
   const e = employeeById(creator.target);
   if (e) return fold('employee', 'Employee', fullName(e),
     el('div', { class: 'cl-me' },
-      el('div', {}, el('div', { class: 'cl-me-name' }, fullName(e)), el('div', { class: 'cl-note' }, jobTitle(e))),
+      avatarOf(e),
+      el('div', { class: 'cl-me-who' }, el('div', { class: 'cl-me-name' }, fullName(e)), el('div', { class: 'cl-note' }, jobTitle(e))),
       el('button', { type: 'button', class: 'btn sm', on: { click: () => { creator.target = null; rebuild(); $('creatorSearch').focus(); } } }, 'Change')));
   const results = el('div', { class: 'cl-matches', id: 'creatorMatches', role: 'listbox', 'aria-label': 'Matching employees' });
   const search = el('input', { type: 'search', id: 'creatorSearch', placeholder: 'Search an employee…', autocomplete: 'off', 'aria-label': 'Search an employee',
@@ -205,6 +207,12 @@ function showMatches(box, query) {
     el('span', {}, fullName(e)), el('span', { class: 'cl-note' }, jobTitle(e))))
     : [el('div', { class: 'cl-note' }, 'No one by that name.')]),
     found.length > MAX_MATCHES ? el('div', { class: 'cl-note' }, `${found.length - MAX_MATCHES} more, keep typing…`) : null);
+}
+// An employee's avatar (photo or initials) on their shirt colour in the office.
+function avatarOf(e) {
+  const box = el('span', { class: 'avatar' }), p = people.find(q => q.userId === e.userId);
+  fillAvatar(box, { name: fullName(e), photo: e.photo, color: p?.spec.top.color ?? '#4c5c6b' });
+  return box;
 }
 function pickEmployee(userId) {
   creator.target = userId;
