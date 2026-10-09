@@ -21,6 +21,7 @@ import { tp } from './camera/modes/thirdPerson.js';
 import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { rageShake, updateRage } from './people/hazel.js';
+import { updateBumps } from './people/bump.js';
 import { syncBody } from './people/sync.js';
 import { player } from './player/player.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
@@ -51,6 +52,7 @@ function tick(now) {
     if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); }
     tickMeetings();
     if (sim.t >= 19 * 60 + 10) newDay();
+    updateBumps(dt);
     for (const p of people) stepPerson(p, dt);
     updateScreens(); updateLight();
   }
@@ -75,5 +77,5 @@ requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
 window.__sim = { sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
-  for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); for (const p of people) stepPerson(p, dt); }
+  for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= 19 * 60 + 10) newDay(); updateBumps(dt); for (const p of people) stepPerson(p, dt); }
 }, log };

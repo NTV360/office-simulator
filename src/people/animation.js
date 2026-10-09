@@ -7,6 +7,7 @@ import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
   if (p.rageK > .3) return 'rage';
+  if (p.scratch > 0) return 'scratch';
   if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
@@ -72,6 +73,7 @@ function targetPose(p, k, T) {
     case 'sink': o.lean = .2; o.lShX = o.rShX = -.75; o.lEl = -.6 + Math.sin(T * 7) * .15; o.rEl = -.6 + Math.sin(T * 7 + 1.5) * .15; o.headX = .3; break;
     case 'locker': o.lShX = -1.1 + Math.sin(T * 2) * .2; o.lEl = -.4; o.rShX = -.6; o.rEl = -.5 + Math.sin(T * 3) * .2; o.headX = Math.sin(T) * .1; break;
     case 'talkStand': o.rShX = -.55 + Math.sin(T * 2.7) * .3; o.rEl = -1.2 + Math.sin(T * 3.9) * .3; o.rShZ = -.15; o.lShX = Math.sin(T * 1.3) * .1; o.headX = Math.sin(T * 4.4) * .05; break;
+    case 'scratch': o.rShX = -2.1; o.rShZ = -.25; o.rEl = -2.3 + Math.sin(T * 9) * .25; o.lean = .06; o.headX = .12 + Math.sin(T * 4) * .03; o.headY = Math.sin(T * 2.5) * .1; break;
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
   }
   o.lean += breathe;
