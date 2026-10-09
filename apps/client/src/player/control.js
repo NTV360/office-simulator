@@ -1,6 +1,6 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H, people, stepPlayer } from '@office/shared';
+import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, people, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';
@@ -83,9 +83,10 @@ function driveLocomotion(dt, p) {
   return { moved, dx, dz };
 }
 
-// Online: the same keys and stick, but nothing moves here. What is wanted (which way, how fast, which way to face) goes to the server,
-// which does the walking by the same rules and sends the result back; where you are, whether you are seated and whether you are
-// moving are read from what it says. The server also stands you up when you walk.
+// Online: the same keys and stick. What is wanted (which way, how fast, which way to face) goes to the server, which does the walking
+// by the same rules. So that the keys answer at once, your person is also moved here, right now, with the same shared collision and
+// speed (prediction); the server's `ack` messages are compared with that and pull it back if the two ever disagree (net/online.js).
+// Whether you are seated is read from what the server says (it decides), and it stands you up when you walk.
 function driveOnline(dt, p) {
   let f = 0, r = 0, turn = 0;
   if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
@@ -101,11 +102,23 @@ function driveOnline(dt, p) {
   }
   // first person faces where you look; third person faces where you walk
   const heading = ctl.mode === 'fp' ? ctl.yaw : (len > .08 ? Math.atan2(mx, mz) : p.face);
-  player.online.input(mx, mz, heading, keys.has('shift'));
+  const run = keys.has('shift');
   const seat = p.task && p.task.kind === 'playerSit' ? p.task.spot : null;
   if (seat && !player.sitting) { ctl.yaw = seat.face; ctl.pitch = -.12; } // just sat down: look the way the seat faces
-  player.sitting = seat; player.moving = !!p.moving;
-  return { moved: 0, dx: mx, dz: mz };
+  player.sitting = seat;
+  // predict: move now, exactly as the server will (the direction, the speed, in steps no longer than a quarter of a metre)
+  let moved = 0;
+  const stick = Math.hypot(mx, mz);
+  if (!seat && stick > .08 && player.online.predicting) {
+    const speed = (run ? RUN_SPEED : WALK_SPEED) * Math.min(1, stick) * dt;
+    const steps = Math.max(1, Math.ceil(speed / .25));
+    for (let i = 0; i < steps; i++) moved += stepPlayer(p, mx / stick * speed / steps, mz / stick * speed / steps, people);
+    if (moved > 0) player.online.movedNow();
+  }
+  player.moving = moved > 1e-4 || (seat === null && performance.now() - player.online.lastMovedAt < 150);
+  p.walkPhase += moved * 4.6;
+  player.online.input(mx, mz, heading, run); // after moving: the position recorded with the input is where the prediction is
+  return { moved, dx: mx, dz: mz };
 }
 
 // Refresh the sit/stand button and the "who am I looking at" label a few times a second.

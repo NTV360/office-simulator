@@ -21,7 +21,7 @@ export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'br
 
 const T = {
   hello: 0x01, ping: 0x02, input: 0x03, act: 0x04,
-  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86,
+  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87,
 } as const;
 
 const CUSTOM = 0xff;
@@ -149,6 +149,7 @@ export function encode(msg: Message): Uint8Array {
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
+    case 'ack': w.u8(T.ack).u32(msg.seq).u32(msg.tick).f32(msg.x).f32(msg.z).f32(msg.face); break;
     case 'leave': w.u8(T.leave).u16(msg.id); break;
     case 'person': w.u8(T.person); writeInfo(w, msg.info); writeSnap(w, msg.snap); break;
     case 'event': w.u8(T.event).u8(index(EVENT_KINDS, msg.kind, 'event kind')).f32(msg.simTime).str(msg.text); break;
@@ -187,6 +188,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;
+    case T.ack: msg = { type: 'ack', seq: r.u32(), tick: r.u32(), x: r.f32(), z: r.f32(), face: r.f32() }; break;
     case T.leave: msg = { type: 'leave', id: r.u16() }; break;
     case T.person: { const info = readInfo(r); msg = { type: 'person', info, snap: readSnap(r) }; break; }
     case T.event: { const kind = readIndex(r, EVENT_KINDS, 'event kind'); msg = { type: 'event', kind, simTime: r.f32(), text: r.str() }; break; }

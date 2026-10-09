@@ -29,6 +29,9 @@ const MUTATIONS = [
   ['a seat someone is in can still be taken by a second person (shared seat or desk)', sim + 'driven.ts', 'if (spot.occupant && spot.occupant !== p) return false;\n  if (!spot.shared) {', 'if (!spot.shared) {'],
   ['a role desk (HR, CTO, cleaner) seats a random role', sim + 'factory.ts', '(slot.role as string | undefined) ?? pick(roleBag)', 'pick(roleBag)'],
   ['role desks are not seated first', sim + 'state.ts', 'deskPool.push(...ordinary.slice(0, 1), ...special, ...ordinary.slice(1));', 'deskPool.push(...ordinary, ...special);'],
+  ['a teleport is glided to instead of snapped to', sim + 'prediction.ts', 'if (error > this.snapDistance) {', 'if (error > 1e9) {'],
+  ['a pull leaves the history unshifted (the same difference is corrected twice)', sim + 'prediction.ts', 'for (const e of this.trail) { e.x += dx; e.z += dz; }', ''],
+  ['an old ack is believed', sim + 'prediction.ts', 'ack.seq < this.newest', 'false'],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
@@ -43,7 +46,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

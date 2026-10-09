@@ -99,6 +99,7 @@ export async function enter(base: string, c: Client, username: string): Promise<
 
 export const isWelcome = (m: Message): m is Extract<Message, { type: 'welcome' }> => m.type === 'welcome';
 export const isSnapshot = (m: Message): m is Extract<Message, { type: 'snapshot' }> => m.type === 'snapshot';
+export const isAck = (m: Message): m is Extract<Message, { type: 'ack' }> => m.type === 'ack';
 export const isKick = (m: Message): m is Extract<Message, { type: 'kick' }> => m.type === 'kick';
 export const isPong = (m: Message): m is Extract<Message, { type: 'pong' }> => m.type === 'pong';
 export const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));

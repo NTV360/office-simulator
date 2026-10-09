@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { W, encode, interactables, people, setSeed, type Person } from '@office/shared';
-import { bootTestServer, connect, enter, hello, isKick, isSnapshot, isWelcome, sessionFor, sleep, ticketFor, type Client, type TestServer } from '../test-support';
+import { bootTestServer, connect, enter, hello, isAck, isKick, isSnapshot, isWelcome, sessionFor, sleep, ticketFor, type Client, type TestServer } from '../test-support';
 
 // Driving a person over the wire: inputs in, positions out, with the rules enforced by the server.
 
@@ -244,5 +244,63 @@ describe('sitting', () => {
     c.socket.close();
     await sleep(1000);
     expect(seat.occupant).toBeNull();
+  });
+});
+
+describe('the ack (what the server tells a player about their own person, for prediction)', () => {
+  const acks = (c: Client) => c.messages.filter(isAck);
+
+  it('carries the number of the last input used and where the person is', async () => {
+    const { c, person } = await player('acker');
+    place(person);
+    await hold(c, 0, 1, 700, false, 1);
+    await sleep(150);
+    const list = acks(c);
+    expect(list.length).toBeGreaterThan(8);
+    const last = list[list.length - 1];
+    expect(last.seq).toBeGreaterThanOrEqual(10);
+    expect(Math.abs(last.x - person.pos.x)).toBeLessThan(0.2); // (at most a tick or two behind: the person was still walking)
+    expect(Math.abs(last.z - person.pos.z)).toBeLessThan(0.2);
+    expect(list.every((a, i) => i === 0 || a.seq >= list[i - 1].seq)).toBe(true); // never goes backwards
+    expect(last.z).toBeGreaterThan(OPEN.z + 0.5); // it moved
+    c.socket.close();
+  });
+
+  it('only the player gets it: a watcher never receives an ack, and one player never receives another\'s', async () => {
+    const watcher = await player('onlooker');
+    const { c, person } = await player('walker2');
+    place(person);
+    await hold(c, 0, 1, 500);
+    await sleep(100);
+    expect(acks(watcher.c).every(a => Math.abs(a.z - person.pos.z) > 0.01 || a.seq === 0)).toBe(true); // (the watcher's own acks only)
+    const mine = acks(c);
+    expect(mine.length).toBeGreaterThan(5);
+    expect(mine.every(a => a.seq <= 1000)).toBe(true);
+    c.socket.close(); watcher.c.socket.close();
+  });
+
+  it('a player who stands still hears from the server about once a second, not twenty times', async () => {
+    const { c, person } = await player('idler');
+    place(person);
+    await sleep(300);
+    const before = acks(c).length;
+    await sleep(2300);
+    const n = acks(c).length - before;
+    expect(n).toBeGreaterThanOrEqual(1);
+    expect(n).toBeLessThanOrEqual(5);
+    c.socket.close();
+  });
+
+  it('after a teleport (an admin gave them a desk elsewhere, say) the ack says where they really are', async () => {
+    const { c, person } = await player('teleported');
+    place(person);
+    await hold(c, 0, 1, 300);
+    place(person, OPEN.x + 6, OPEN.z + 6); // the server moved them
+    await sleep(700); // (long enough for the last input to go stale, so they stand still)
+    const last = acks(c)[acks(c).length - 1];
+    expect(last.x).toBeCloseTo(person.pos.x, 1);
+    expect(last.z).toBeCloseTo(person.pos.z, 1);
+    expect(Math.hypot(last.x - OPEN.x, last.z - OPEN.z)).toBeGreaterThan(5);
+    c.socket.close();
   });
 });

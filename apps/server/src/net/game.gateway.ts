@@ -75,6 +75,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     world.onTick(tick => {
       if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
         this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
+        this.sendAcks(tick);
       } else this.broadcaster.snapshot(tick); // keep change tracking moving even with nobody watching
       for (const e of this.broadcaster.events()) this.broadcast(e);
     });
@@ -198,6 +199,27 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     } finally {
       socket.data.joining = false;
     }
+  }
+
+  private readonly lastAck = new Map<number, { seq: number; x: number; z: number }>();
+
+  /**
+   * Tell each player where their own person is and which of their inputs the server has used (for prediction). Sent when something
+   * changed, and once a second otherwise, so a player who stands still still hears from the server.
+   */
+  private sendAcks(tick: number): void {
+    const manager = this.players.manager();
+    for (const [accountId, socket] of this.byAccount) {
+      if (!socket.data.joined) continue;
+      const a = manager.ackFor(accountId);
+      if (!a) continue;
+      const last = this.lastAck.get(accountId);
+      const changed = !last || last.seq !== a.seq || last.x !== a.x || last.z !== a.z;
+      if (!changed && tick % this.worlds.world.options.tickRate !== 0) continue;
+      this.lastAck.set(accountId, { seq: a.seq, x: a.x, z: a.z });
+      socket.emit(WIRE_EVENT, encode({ type: 'ack', tick, ...a })); // (not volatile: right after the snapshot write the transport is busy and a volatile message would be dropped)
+    }
+    if (this.lastAck.size > this.byAccount.size + 50) for (const id of this.lastAck.keys()) if (!this.byAccount.has(id)) this.lastAck.delete(id);
   }
 
   /** A logout, a password change or a disabled account ends the connections that session opened. */

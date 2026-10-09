@@ -4,7 +4,7 @@ import { getCharacter, showCreator } from './creator.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
-  CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
+  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
@@ -78,6 +78,7 @@ export function startOnline() {
   net.you = null; // the id of the person this account drives (from the welcome)
   net.joined = false; // the server has accepted our hello: inputs may be sent
   net.autoView = false; // the first welcome of a login puts you in third person, once
+  net.pred = { acks: 0, pulls: 0, snaps: 0, maxError: 0, lastError: 0 }; // what prediction has been doing (for checks)
   lockServerControls();
   setStatus('wait', 'Connecting to the server…');
 
@@ -86,6 +87,9 @@ export function startOnline() {
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
   let seq = 1, lastSentAt = 0, lastSent = null;
+  const reconciler = new Reconciler();
+  // ?nopredict switches prediction off (the person then moves only when the server says so): for comparing
+  const predicting = !new URLSearchParams(location.search).has('nopredict');
   const INPUT_MS = 50, URGENT_MS = 33;
   function sendInput(mx, mz, heading, run) {
     if (!net.joined || !Number.isFinite(mx + mz + heading)) return;
@@ -98,10 +102,13 @@ export function startOnline() {
     // starting or stopping is sent at once
     if (!(since >= INPUT_MS || (moving !== was && since >= URGENT_MS))) return;
     lastSentAt = now; lastSent = { moving, heading };
-    send({ type: 'input', seq: seq++, mx, mz, heading, run: !!run });
+    const n = seq++;
+    send({ type: 'input', seq: n, mx, mz, heading, run: !!run });
+    const me = player.person;
+    if (me) reconciler.record(n, me.pos.x, me.pos.z); // where the prediction is when this input goes out
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
-  player.online = { input: sendInput, act: sendAct };
+  player.online = { input: sendInput, act: sendAct, predicting, lastMovedAt: -1e9, movedNow() { this.lastMovedAt = performance.now(); } };
 
   /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
   function resetLocal() {
@@ -203,7 +210,7 @@ export function startOnline() {
           return;
         }
         mirror.applyWelcome(msg);
-        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; // (a new connection numbers its messages from the start)
+        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; reconciler.reset(); // (a new connection numbers its messages from the start)
         player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
         reassignOccupants();
@@ -224,6 +231,16 @@ export function startOnline() {
         syncClock();
         reassignOccupants();
         break;
+      case 'ack': {
+        const me = player.person;
+        if (!me || msg.tick === undefined) break;
+        net.pred.acks++;
+        const c = reconciler.reconcile(msg, me.pos);
+        if (c.kind === 'pull') { me.pos.x += c.dx; me.pos.z += c.dz; net.pred.pulls++; }
+        else if (c.kind === 'snap') { me.pos.x = c.x; me.pos.z = c.z; net.pred.snaps++; }
+        if (c.kind !== 'none') { net.pred.lastError = c.error; net.pred.maxError = Math.max(net.pred.maxError, c.error); }
+        break;
+      }
       case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); if (msg.info.id === net.you) { player.person = mirror.people.get(net.you) ?? null; showWho(); } break;
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
@@ -294,7 +311,8 @@ export function startOnline() {
         // react after about one round trip. (Prediction, which removes even that, is phase 4.)
         const n = buf[buf.length - 1];
         while (buf.length > 1) buf.shift();
-        if (Math.hypot(n.x - p.pos.x, n.z - p.pos.z) > SNAP_DISTANCE) { p.pos.x = n.x; p.pos.z = n.z; } else {
+        const steered = player.controlling && player.online.predicting && now - player.online.lastMovedAt < 400; // moved by prediction a moment ago: the acks keep it right
+        if (steered) { /* position comes from the keys; net.pred pulls it back if the server disagrees */ } else if (Math.hypot(n.x - p.pos.x, n.z - p.pos.z) > SNAP_DISTANCE) { p.pos.x = n.x; p.pos.z = n.z; } else {
           const k = 1 - Math.exp(-dt * 30);
           p.pos.x += (n.x - p.pos.x) * k; p.pos.z += (n.z - p.pos.z) * k;
         }

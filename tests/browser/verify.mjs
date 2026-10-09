@@ -508,6 +508,37 @@ try {
 
     }
 
+    // prediction: your own person moves at once, and the server's answers keep it honest
+    {
+      console.log('\nprediction');
+      const name = 'prd_' + String(Date.now() % 1e6);
+      const pg = await openPage(browser, site.url, '?trace', { login: name });
+      await pg.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 });
+      await sleep(1500);
+      const frames = await pg.page.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 > 1000) r(n); else requestAnimationFrame(f); }; f(); }));
+      const probe = pg.page.evaluate(() => new Promise(resolve => {
+        const me = () => window.__sim.player.person; const x0 = me().pos.x, z0 = me().pos.z; let t0 = 0, first = null, last = 0;
+        addEventListener('keydown', () => { t0 = performance.now(); }, { once: true });
+        const tick = () => { const q = me(); last = Math.hypot(q.pos.x - x0, q.pos.z - z0); if (t0 && first === null && last > 0.002) first = performance.now() - t0; if (t0 && performance.now() - t0 > 1500) return resolve({ first, moved: last }); requestAnimationFrame(tick); };
+        requestAnimationFrame(tick);
+      }));
+      await sleep(100);
+      await pg.page.keyboard.down('w'); await sleep(1600); await pg.page.keyboard.up('w');
+      const res = await probe;
+      const frameMs = 1000 / frames;
+      if (res.first !== null && res.first <= frameMs * 1.5 + 60) pass(`a key press moves you within about a frame (${res.first.toFixed(0)} ms, frames are ${frameMs.toFixed(0)} ms here)`); else fail(`first movement after ${res.first} ms (frames ${frameMs.toFixed(0)} ms)`);
+      if (res.moved > 0.3) pass(`and you kept walking (${res.moved.toFixed(2)} m)`); else fail(`only moved ${res.moved}`);
+      await sleep(1200);
+      const st = await pg.page.evaluate(() => { const p = window.__sim.player.person, s = p._buf[p._buf.length - 1]; return { ...window.__sim.net.pred, gap: Math.hypot(p.pos.x - s.x, p.pos.z - s.z) }; });
+      if (st.acks > 10) pass(`the server keeps answering (${st.acks} acks)`); else fail(`acks: ${st.acks}`);
+      if (st.snaps === 0) pass('the server never had to snap you back'); else fail(`snaps: ${st.snaps}`);
+      if (st.gap < 0.5) pass(`after stopping, you and the server agree (${st.gap.toFixed(2)} m apart)`); else fail(`gap after stopping ${st.gap}`);
+      if (st.maxError < 1.5) pass(`the biggest disagreement was small (${st.maxError.toFixed(2)} m, ${st.pulls} gentle pulls)`); else fail(`max error ${st.maxError}`);
+      pg.errors.filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      await pg.page.close();
+      await adminJson(site.url, 'POST', `/api/admin/users/${(await adminJson(site.url, 'GET', '/api/admin/users')).body.find(a => a.username === name).id}/disabled`, { disabled: true });
+    }
+
     // the admin page: one password, make accounts, reset a password, disable, desks
     console.log('\nthe admin page');
     const tag = String(Date.now() % 1e6);

@@ -45,7 +45,7 @@ const welcome = (): Welcome => ({
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });
@@ -92,7 +92,7 @@ describe('round trips', () => {
 
 describe('bad input is refused with a DecodeError, never anything else', () => {
   const samples: Message[] = [
-    { type: 'hello', version: 4, ticket: 'abc' }, { type: 'input', seq: 1, mx: 0, mz: 1, heading: 0, run: false }, { type: 'act', kind: 'sit' }, { type: 'ping', ts: 5 }, { type: 'kick', reason: 'bye' }, { type: 'leave', id: 3 },
+    { type: 'hello', version: 4, ticket: 'abc' }, { type: 'input', seq: 1, mx: 0, mz: 1, heading: 0, run: false }, { type: 'act', kind: 'sit' }, { type: 'ping', ts: 5 }, { type: 'kick', reason: 'bye' }, { type: 'leave', id: 3 }, { type: 'ack', seq: 7, tick: 9, x: 1, z: 2, face: 0.5 },
     { type: 'event', kind: 'announce', simTime: 5, text: 'hi' }, { type: 'person', info: info(), snap: snap({ spot: ONE_OFF_SPOT, oneOff: { x: 1, z: 2, face: 0, place: 'p' } }) },
     welcome(), { type: 'snapshot', tick: 1, simTime: 2, day: 1, speed: 1, paused: false, full: true, people: [snap()], meetings: [{ room: 1, topic: 't', start: 1, end: 2, speaker: NONE, members: [1, 2, 3] }] },
   ];

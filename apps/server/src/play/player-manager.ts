@@ -132,6 +132,13 @@ export class PlayerManager {
     return true;
   }
 
+  /** What the server knows about a player's person for the `ack` message: the last input number it used, and where the person is. */
+  ackFor(accountId: number): { seq: number; x: number; z: number; face: number } | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    return { seq: this.inputs.get(s.person.id)?.seq ?? 0, x: s.person.pos.x, z: s.person.pos.z, face: s.person.face };
+  }
+
   /** The player asks to sit or stand. The simulation says whether that is possible right now. */
   act(accountId: number, kind: ActKind, tick: number, tickRate = 20): boolean {
     const s = this.sessions.get(accountId);

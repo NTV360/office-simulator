@@ -1,0 +1,48 @@
+# Phase 4: players together, in steps
+
+**Status: in progress. Step 1 is done; step 2 is next.** This turns phase 4 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) ("Players together") into steps that are each built and checked before the next, the way phases 2 and 3 were ([PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md)).
+
+**Done when (from the plan):** many people walk and sit together, and everyone sees and hears the same things. In practice: your own movement answers the keys at once, you can tell who is who, you can talk to people near you, you can wave, and what happens in the office (an announcement, Hazel's rage) happens for everyone at the same moment.
+
+## What is already there (from phases 2 and 3)
+
+Other people are drawn interpolated about 150 ms in the past; the server owns movement, sitting and who is where; sitting and standing are requests the server accepts or refuses; the office speaks one binary protocol over one Socket.IO event. So phase 4 adds what is missing from the plan's list: **prediction and reconciliation**, **name labels**, **local chat**, **emotes** and **shared events**.
+
+## Decisions
+
+1. **Prediction is simple and tolerant, not exact replay.** The client moves your person at once with the same shared collision and speed rules (`stepPlayer`), sends inputs as it does now, and the server sends back a small personal `ack` message each tick (the number of the last input it used, and where you are). The client compares that with where its own history says it was when it sent that input, and only when the two differ by more than a threshold (0.5 m; an input can be believed for a tick or two longer by the server, so a little difference is normal) does it pull your person toward the server's answer, by half the difference at a time, and snaps if the difference is more than 3 m (a teleport, a desk being taken, a world reset). Why not replay every input on top of the server's position, as some games do: it needs the server to apply exactly one input per tick and both sides to use exactly the same step length, which is fragile over a real network and not worth it for walking around an office at 1.5 m/s.
+2. **Chat is local by default.** A line is heard by people within 10 m of the speaker (the plan's number), shown as a bubble over the speaker and in a chat panel. A global line is for admins only (the existing announcement). Length limit, rate limit, control characters stripped, and a mute switch an admin can use.
+3. **Emotes are a short fixed list** (wave, cheer, clap, nod) that the server accepts at most every few seconds and tells everyone about; each is an arm and head pose on the existing rig.
+4. **Shared events are created on the server and sent to everyone at once**, so every browser shows them together. Hazel's rage (today a button that only affects the page you press it on) becomes one of these, with a cooldown.
+5. **No new dependencies, no new database table** except one column for "muted".
+6. **Every step** runs the earlier checks (`npm test`, `npm run typecheck`, `npm run build`, `npm run check:docs`, `npm run verify:browser:thorough`, `npm run check:mutations`, `npm run test:db`, the Docker smoke test, `verify:browser` against the Docker stack, `npm run e2e` and `npm run e2e:accounts`) plus its own proof, gets a "what it turned out to need" note here, and a read-only `claude-alt` review of anything security-sensitive.
+
+## The steps
+
+| # | Step | What gets built | Proof |
+|---|---|---|---|
+| **1** (**done**) | Prediction and reconciliation | `ack` message (protocol 5); server sends it; the shared reconciler; the client moves you at once and corrects against the ack; your own person is no longer drawn from the 150 ms buffer | Reconciler unit tests (small error ignored, big error pulled in, teleport snaps, history trimmed); server tests for the ack; a browser check that a key press moves you within one frame and that after a long walk the page and the server agree |
+| **2** | Name labels | A small text label over every person a human drives (and a toggle for everyone), drawn crisply, hidden when far or behind walls of the camera's view, never showing markup from the server | Browser check that labels show the right names, follow people and can be switched off |
+| **3** | Local chat | `chat` message in both directions; the server's range, rate and length rules; the chat panel and bubbles; an admin mute; the muted column | Server tests (range, rate limit, length, control characters, mute, a muted account hears nothing wrong), a browser check with three players at different distances |
+| **4** | Emotes | `emote` message; the server's cooldown; four poses; shown to everyone | Server tests; a browser check that a second browser sees the pose |
+| **5** | Shared events | Hazel's rage as a server event with a cooldown; the event message carries a start time; every client shows it together | Server tests; a browser check that two browsers show the rage at the same time |
+| **6** | End to end and review | `npm run e2e:together`: three players walk, sit, talk, wave and see a rage, with a server restart in the middle; a read-only review of the whole phase; docs finished | The script passes; the review's findings are fixed with tests |
+
+## Risks and what answers them
+
+| Risk | Answer |
+|---|---|
+| Prediction makes your person jitter or drift from the server | The threshold and the half-way pull; a browser check that counts corrections during a long walk; the reconciler is plain shared code with its own tests |
+| A wrong ack (old, from a previous connection, or after a reset) yanks you around | The ack carries the tick and the input number; the client ignores one older than the newest it has used, and a connection starts its numbering again |
+| Chat is a way to flood or abuse | Rate limit and length limit on the server, nothing but plain text is ever put into the page, an admin mute, and the audit log records mutes |
+| Chat or labels leak who is where | Local chat is only sent to people in range; labels use names every client already has |
+| Emote and chat messages are another way to flood the server | They count against the same 60 messages a second limit, and each has its own server cooldown |
+
+### Step 1: prediction and reconciliation (done)
+
+1. **A new server message, `ack`** (protocol version 5): `{ seq, tick, x, z, face }`, sent to a player alone, about once per tick while their person moves or the input number changes, and once a second otherwise (`GameGateway.sendAcks`). `seq` is the number of the last input the server used for that person. It is sent as an ordinary message, **not volatile**: it goes out right after the snapshot write, and Socket.IO drops a volatile message while a write is in flight (found when the first tests saw no acks at all). Clients cannot send it (the decoder refuses it, with a test).
+2. **The reconciler** (`packages/shared/src/sim/prediction.ts`, plain code with its own tests): the client records where its predicted person is each time it sends input N. When an ack for N arrives it compares: a difference up to **0.5 m** is ignored (the server may use an input a tick or two longer than the client did: about 0.3 m while running), a bigger one is pulled by **half** (and the history for newer inputs is shifted the same way, so the part already corrected is not corrected again), and more than **3 m** is a snap (a teleport: a desk was taken, a world reset). An ack older than one already used, or with a non-finite number, is ignored. Why not replay every input on the server's position: it needs exactly one input per tick on both sides and identical step lengths, which is fragile and not worth it for walking.
+3. **The client** (`player/control.js` `driveOnline`, `net/online.js`): your person is moved at once with the same shared `stepPlayer`, speeds (`WALK_SPEED`, `RUN_SPEED`) and quarter-metre steps as the server, inputs are sent as before (the position recorded with each is where the prediction is), acks are fed to the reconciler, and a pull or snap moves the person. Seating stays the server's call. Your person is no longer drawn from the 150 ms buffer while you steer; once you have stopped for 0.4 s it eases to the server's position again. `?nopredict` in the address switches prediction off (for comparing). `window.__sim.net.pred` counts acks, pulls and snaps and the biggest difference, for checks.
+4. **Measured** in a real (very slow, software-rendered) browser against the Docker stack: with prediction the first movement shows within about a frame of the key press (22 to 264 ms at 4 to 9 frames a second); without it 369 to 1129 ms. After a 1.6 s walk the person and the server agree to within a centimetre once stopped, the server never snaps you, and the biggest disagreement was 0.45 m (before the threshold was raised from 0.4 to 0.5).
+5. **Verified.** 8 reconciler tests (small difference ignored, half-pull, convergence, snap, nothing-sent, old and bad acks, history limit and reset, and a simulated network with 100 ms each way where the server never has to pull), protocol round trips and the "a client may not send an ack" test, 4 server tests (the ack carries the input number and position and never goes backwards; only the player gets it; a standing player hears about once a second; after a server-side teleport the ack says where they really are), 3 new mutation entries (all caught), and a browser check of the points in 4.
+6. **Low frame rates.** The main loop limits one frame to 0.05 s, so at fewer than 20 frames a second the predicted person walks slower than the server's (which uses real time); the reconciler then pulls it forward in small steps. On a normal screen this does not happen.
