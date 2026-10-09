@@ -20,6 +20,8 @@ export interface ImportStatus {
   attendanceRecords: number;
 }
 
+/** Below this many stored employees a short list is believed. */
+const SHRINK_FLOOR = 6;
 const DEFAULT_IMPORT_MS = 10 * 60_000;
 const DEFAULT_ATTENDANCE_MS = 60_000;
 
@@ -87,13 +89,16 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
    * Read the employee records, bring the stored list in line with them, and the office in line with the list. A failure (the records cannot be
    * reached, or come back empty) changes nothing. Resolves with what was done.
    */
-  importNow(): Promise<ImportResult & { sync: SyncResult }> {
+  importNow(opts: { force?: boolean } = {}): Promise<ImportResult & { sync: SyncResult }> {
     return this.serial(async () => {
       if (!this.source) throw new SourceError('no source of employee records is configured (SUPABASE_URL and SUPABASE_SECRET_KEY)');
       const store = this.require();
       try {
         const list = await this.source.employees();
         if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');
+        // a much shorter list than the one stored is more likely a partial answer than half the company leaving: an admin can still force it
+        const stored = (await store.list()).length;
+        if (!opts.force && stored >= SHRINK_FLOOR && list.length < stored / 2) throw new SourceError(`the employee records list ${list.length} people where ${stored} are stored; nothing was changed (an admin can import anyway)`);
         const result = await store.applyImport(list);
         const sync = syncRoster(await store.list());
         const out = { ...result, sync };

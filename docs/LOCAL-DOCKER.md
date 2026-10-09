@@ -40,6 +40,7 @@ curl -X PUT http://localhost:8080/api/admin/settings -H "Authorization: Bearer <
 curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
 ```
 
+- The staff list: put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` and the server imports the company's employee records into its own database (read-only, at start-up and every `EMPLOYEE_IMPORT_MS`; who is clocked in every `ATTENDANCE_MS` while the clock is Live). Leave them empty and the office has made-up staff. `GET /api/admin/employees` lists them; `POST /api/admin/users/<id>/employee` links an account to an employee; `POST /api/admin/import` imports now. See docs/PHASE-6-BREAKDOWN.md, step 4.
 - The page asks you to log in first (accounts are made by an admin, and the first login asks for a new password); the realtime connection needs a one-time ticket from a logged-in session, and a second login of the same account takes over from the first.
 - Desks: a new account is a guest until an admin gives it a desk. With `ADMIN_TOKEN` set, list desks and accounts and give one out like this (a proper admin page comes in a later step):
 
@@ -80,6 +81,7 @@ npm run test:db      # database tests against a throwaway PostgreSQL (needs Dock
 npm run e2e          # its OWN copy of the stack: two browsers, an admin change, a restart, a hard kill
 npm run e2e:accounts # its OWN copy again: accounts end to end (admin makes one, first login, drive, restart, kill, log out and back, reset, disable)
 npm run e2e:together # its OWN copy again: three players walk, sit, see names, talk, wave, see the same office, restart, kill, mute
+npm run e2e:employees # its OWN copy again, with a fake employee-records server: import, link an account to an employee, play them, a failed import, restart, kill
 ```
 
 ## Troubleshooting

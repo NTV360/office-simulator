@@ -23,6 +23,7 @@ function fake(tables: Record<string, unknown>, opts: { network?: boolean } = {})
     if (data === undefined) return new Response('{}', { status: 404 });
     if (typeof data === 'string') return new Response(data, { status: 200 });
     const [from, to] = (headers.range ?? '0-999').split('-').map(Number);
+    if (from > 0 && from >= (data as unknown[]).length) return new Response('{}', { status: 416 });
     return new Response(JSON.stringify((data as unknown[]).slice(from, to + 1)), { status: (data as unknown[]).length > to + 1 ? 206 : 200 });
   }) as unknown as typeof fetch;
   return { calls, fetch: f };
@@ -117,13 +118,50 @@ describe('employees', () => {
     expect(list).toHaveLength(2500);
     expect(f.calls.filter(c => c.url.pathname.endsWith('/employees')).map(c => c.headers.range)).toEqual(['0-999', '1000-1999', '2000-2999']);
   });
-  it('tables it can do without (employment types, shifts, looks) being unreadable only costs those details', async () => {
+  it('unreadable looks only cost the looks and desks', async () => {
     const warn: string[] = [];
-    const list = await source(fake({ ...TABLES, employment_types: 403, shifts: 500, character_information: 401 }), warn).employees();
+    const list = await source(fake({ ...TABLES, character_information: 401 }), warn).employees();
     expect(list).toHaveLength(3);
-    expect(list.every(e => !e.intern && e.shift === null && e.character === null && e.desk === null)).toBe(true);
-    expect(warn).toHaveLength(3);
+    expect(list.every(e => e.character === null && e.desk === null)).toBe(true);
+    expect(list[0].shift).not.toBeNull(); // (the shifts were read)
+    expect(warn).toHaveLength(1);
     expect(warn.join(' ')).not.toContain(KEY);
+  });
+  it('unreadable employment types or shifts fail the read, rather than reset every stored shift and intern flag', async () => {
+    for (const bad of ['employment_types', 'shifts']) {
+      const err = await source(fake({ ...TABLES, [bad]: 500 })).employees().catch(e => e);
+      expect(err, bad).toBeInstanceOf(SourceError);
+      expect(String(err.message)).not.toContain(KEY);
+    }
+  });
+  it('a list that ends exactly on a page is complete (the interface answers 416 for the page after)', async () => {
+    const exact = Array.from({ length: 1000 }, (_, i) => ({ user_id: id(i + 1), first_name: `P${i}`, last_name: 'L' }));
+    expect(await source(fake({ ...TABLES, employees: exact })).employees()).toHaveLength(1000);
+  });
+  it('a list past the row cap fails rather than being taken as everyone', async () => {
+    const huge = Array.from({ length: 20_000 }, (_, i) => ({ user_id: id(i + 1), first_name: `P${i}`, last_name: 'L' }));
+    expect(await source(fake({ ...TABLES, employees: huge })).employees().catch(e => e)).toBeInstanceOf(SourceError);
+  });
+  it('control, zero-width and bidi characters are taken out of names', async () => {
+    const f = fake({ ...TABLES, employees: [{ user_id: id(1), first_name: 'A n‮a​', last_name: 'Cruz', department: { name: 'UI /UX' } }, { user_id: id(2), first_name: ' ​', last_name: 'x' }] });
+    const list = await source(f).employees();
+    expect(list).toHaveLength(1); // (a name of nothing but those is no name)
+    expect([list[0].firstName, list[0].lastName, list[0].department]).toEqual(['Ana', 'Cruz', 'UI/UX']);
+  });
+  it('a desk in a record counts only where that department may sit', async () => {
+    const list = await source(fake({ ...TABLES, employees: [
+      { user_id: id(1), first_name: 'Ana', last_name: 'Cruz', department: { name: 'UI/UX' } },
+      { user_id: id(2), first_name: 'Ben', last_name: 'Lim', department: { name: 'UI/UX' } },
+    ], character_information: [{ user_id: id(1), character_data: { desk: 'A3' } }, { user_id: id(2), character_data: { desk: 'HR1' } }] })).employees();
+    expect(list.map(e => e.desk)).toEqual(['A3', null]);
+  });
+  it('never follows a redirect (the key is in the headers), and a plain http address is for this machine only', async () => {
+    let redirect: unknown;
+    const f = (async (_u: unknown, init?: RequestInit) => { redirect = init?.redirect; return new Response('[]', { status: 200 }); }) as unknown as typeof fetch;
+    await new SupabaseSource({ url: URL_, secretKey: KEY, fetch: f }).employees().catch(() => {});
+    expect(redirect).toBe('error');
+    expect(() => new SupabaseSource({ url: 'http://records.example.test', secretKey: KEY })).toThrow(SourceError);
+    for (const ok of ['http://localhost:54321', 'http://127.0.0.1:1', 'http://host.docker.internal:18090']) expect(() => new SupabaseSource({ url: ok, secretKey: KEY }), ok).not.toThrow();
   });
 });
 

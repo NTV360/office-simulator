@@ -30,6 +30,9 @@ services:
     build:
       context: .
       dockerfile: docker/server.Dockerfile
+    # so the records can be on the same PC (host.docker.internal is built in on Docker Desktop; this adds it on Linux)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       PORT: "3000"
       TZ: "${TZ:-UTC}"

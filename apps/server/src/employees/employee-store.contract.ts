@@ -74,6 +74,16 @@ export function employeeStoreContract(label: string, make: () => Promise<Employe
       expect(await store.setDesk(U(2), 'A1')).toBe('ok');
     });
 
+    it('someone who comes back after another took their desk comes back without it, and the import still goes through', async () => {
+      await store.applyImport([imp(1, { desk: 'A1' }), imp(2)]);
+      await store.applyImport([imp(2)]); // 1 is gone
+      expect(await store.setDesk(U(2), 'A1')).toBe('ok'); // 2 takes the desk
+      const r = await store.applyImport([imp(1), imp(2)]);
+      expect(r).toMatchObject({ restored: 1 });
+      expect(await store.byId(U(1))).toMatchObject({ removed: false, desk: null });
+      expect(await store.byId(U(2))).toMatchObject({ desk: 'A1' });
+    });
+
     it('a desk can be chosen once; none is always allowed; an unknown person is missing', async () => {
       await store.applyImport([imp(1), imp(2)]);
       expect(await store.setDesk(U(1), 'D5')).toBe('ok');

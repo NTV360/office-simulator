@@ -93,9 +93,11 @@ export class PgEmployeeStore implements EmployeeStore {
           out.added++;
           continue;
         }
-        const desk = old.desk ?? seedDesk;
+        // someone who comes back keeps their desk only if nobody has taken it meanwhile (the unique index would refuse the whole import)
+        const oldDesk = old.removed && old.desk && taken.has(old.desk) ? null : old.desk;
+        const desk = oldDesk ?? seedDesk;
         const character = old.character ?? e.character;
-        if (desk && desk !== old.desk) taken.add(desk);
+        if (desk && (desk !== old.desk || old.removed)) taken.add(desk);
         const changed = old.removed || old.first_name !== e.firstName || old.last_name !== e.lastName || old.department !== e.department || old.intern !== e.intern
           || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null);
         if (!changed) continue;
@@ -154,8 +156,9 @@ export class MemoryEmployeeStore implements EmployeeStore {
         out.added++;
         continue;
       }
-      const desk = old.desk ?? seedDesk, character = old.character ?? e.character;
-      if (desk && desk !== old.desk) taken.add(desk);
+      const oldDesk = old.removed && old.desk && taken.has(old.desk) ? null : old.desk;
+      const desk = oldDesk ?? seedDesk, character = old.character ?? e.character;
+      if (desk && (desk !== old.desk || old.removed)) taken.add(desk);
       const changed = old.removed || old.firstName !== e.firstName || old.lastName !== e.lastName || old.department !== e.department || old.intern !== e.intern
         || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null);
       if (!changed) continue;

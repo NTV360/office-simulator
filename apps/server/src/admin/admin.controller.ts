@@ -301,9 +301,9 @@ export class AdminController {
 
   /** Import the employee records now. */
   @Post('import')
-  async importNow(@Req() req: HttpReq): Promise<{ ok: true; result: unknown }> {
+  async importNow(@Req() req: HttpReq, @Body() body: unknown): Promise<{ ok: true; result: unknown }> {
     try {
-      const result = await this.employees.importNow();
+      const result = await this.employees.importNow({ force: (body as { force?: unknown } | null | undefined)?.force === true });
       await this.note(req, 'employees.import', null, { ...result });
       return { ok: true, result };
     } catch (err) {

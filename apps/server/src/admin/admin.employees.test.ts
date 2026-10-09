@@ -177,6 +177,17 @@ describe('importing the company\'s records', () => {
     expect((await empty.json()).message).toMatch(/empty/);
     expect(people.filter(hasSlot)).toHaveLength(2); // (an empty answer is not "everyone left")
   });
+  it('a much shorter list than the stored one is refused as a likely partial answer, unless an admin forces it', async () => {
+    await staffed([1, 2, 3, 4, 5, 6, 7, 8].map(n => imp(n)));
+    service.useSource(fakeSource(records([row(1), row(2)])));
+    const refused = await call('POST', '/api/admin/import');
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).message).toMatch(/2 people where 8 are stored/);
+    expect(people.filter(hasSlot)).toHaveLength(8);
+    const forced = await call('POST', '/api/admin/import', { force: true });
+    expect(forced.status).toBeLessThan(300);
+    expect(people.filter(hasSlot)).toHaveLength(2);
+  });
   it('an employee who leaves the records leaves the office; a new one comes in; a changed name shows', async () => {
     service.useSource(fakeSource(records([row(1), row(2)])));
     await call('POST', '/api/admin/import');
