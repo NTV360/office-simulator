@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = ['README.md', ...fs.readdirSync(path.join(root, 'docs')).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)];
 // Docs that describe files that do not exist yet (plans and briefs) are exempt from the path check.
-const PATHS_EXEMPT = new Set(['docs/MULTIPLAYER-PLAN.md', 'docs/PARALLEL-WORK.md', 'docs/PHASE-1-BREAKDOWN.md']);
+const PATHS_EXEMPT = new Set(['docs/MULTIPLAYER-PLAN.md', 'docs/PARALLEL-WORK.md', 'docs/PHASE-1-BREAKDOWN.md', 'docs/PHASE-2-BREAKDOWN.md']);
 
 const slug = h => h.toLowerCase().replace(/`/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
 const anchors = {};
