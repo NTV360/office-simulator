@@ -55,7 +55,7 @@ Questions that are still open are in [section 18](#18-open-questions).
 
 ```
   Browsers on the office network (up to ~100)
-     |  HTTPS  page + REST (register, login, character)
+     |  HTTPS  page + REST (login, own password, character; accounts are made by admins)
      |  WSS    realtime game traffic
      |  WebRTC voice (to the voice container, later)
      v
@@ -198,7 +198,7 @@ Anything that happens in the world is created on the server and broadcast with a
 | Login | `POST /api/auth/login` returns a short-lived access token and sets a refresh token in an httpOnly cookie. Also `refresh` and `logout` |
 | Joining the game | `POST /api/play/ticket` returns a **one-time ticket** (about 30 seconds). The browser opens `wss://host/ws` and sends it first. Tokens never go in URLs |
 | One session per account | A second login kicks the first, so one person never drives a character from two tabs |
-| Abuse limits | Rate limits and lockouts on register and login |
+| Abuse limits | Rate limits and lockouts on login and password change |
 | Character | `GET/PUT /api/character`. The server always runs `normalizeSpec` on what it receives |
 | Admin | A role on the account: NPC and slot control, pause and speed, kick, announce, reset a password, reset or lock an object |
 
@@ -509,7 +509,7 @@ Secrets live in an `.env` file on the host, never in git (a `.env.example` is co
 | Level | What |
 |---|---|
 | Unit (shared) | movement and collision, pathfinding, tasks, takeover and handoff between AI and player, the day cycle, object placement rules, `normalizeSpec`, protocol round-trips (seeded randomness keeps them reproducible) |
-| Server integration | start a server in-process, connect scripted clients: register, login, claim a slot, take over a person, sit, grab, throw, chat, restart and check that the world was restored |
+| Server integration | start a server in-process, connect scripted clients: admin makes an account, login, claim a slot, take over a person, sit, grab, throw, chat, restart and check that the world was restored |
 | Load | the bots (section 14) |
 | Browser smoke | boot the client against a server, log in, see people and objects, walk, sit, move a chair |
 

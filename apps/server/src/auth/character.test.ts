@@ -103,6 +103,7 @@ describe('who may', () => {
     const r = await put(cookie, NICE);
     expect(r.status).toBe(403);
     expect(r.body.code).toBe('must-change-password');
+    expect((await get(cookie)).status).toBe(403);
     expect((await server.store.byLower('fresh'))!.spec).toBeNull();
   });
 

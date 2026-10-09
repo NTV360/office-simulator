@@ -181,6 +181,19 @@ describe('ending a session ends its connection', () => {
   });
 });
 
+describe('an account that must choose its own password', () => {
+  it('a ticket minted before the flag was set cannot be used to join', async () => {
+    const cookie = await sessionFor(base, 'resetme');
+    const ticket = await ticketFor(base, cookie);
+    const account = (await server.store.byLower('resetme'))!;
+    await server.store.setPassword(account.id, account.passwordHash, true); // (what an admin password reset will do)
+    const c = client(); await c.ready; hello(c, ticket);
+    expect((await c.waitFor(isKick)).reason).toMatch(/choose your own password/);
+    expect(c.messages.some(isWelcome)).toBe(false);
+    await server.store.setPassword(account.id, account.passwordHash, false);
+  });
+});
+
 describe('races and long-lived connections', () => {
   it('a logout that lands while the connection is still being admitted still ends it', async () => {
     const cookie = await sessionFor(base, 'racer');

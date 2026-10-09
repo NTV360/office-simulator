@@ -19,10 +19,10 @@ Each worktree has its own `node_modules`. When a track is done, its branch is me
 | Track | Work | Needs first | Blocks | Owns (only this worker edits these) |
 |---|---|---|---|---|
 | **A** | Phase 1: make the simulation shareable (one person model, simulation split from rendering, seeded random, slots) | phase 0 | phases 2 and 4 | `apps/client/src/{sim,people,player,nav,config,character,core}/`, `packages/shared/src/{sim,plan,character}/` |
-| **B** | Accounts API: register, login, refresh, join ticket, admin password reset, assign slot, database schema and migrations | phase 0 | track E | `apps/server/src/{auth,users,admin,db}/`, database schema, `packages/shared/src/api/` |
+| **B** | Accounts API: admin-made accounts, login, refresh, join ticket, admin password reset, assign slot, database schema and migrations | phase 0 | track E | `apps/server/src/{auth,users,admin,db}/`, database schema, `packages/shared/src/api/` |
 | **C** | The network message format: types, encode/decode, tests, size budget | phase 0 | phase 2 | `packages/shared/src/protocol/` |
 | **D** | Voice spike: LiveKit in Docker on the Windows host, HTTPS on the local network, two browsers talking | Docker only | phase 7 | `docker/voice/`, `docker-compose.voice.yml`, `docs/VOICE-SPIKE.md` |
-| **E** | Login, register and character-creator screens | the API types from track B (agreed first, can use a mock) | none | `apps/client/src/ui/{auth,creator}/`, their CSS |
+| **E** | Login (with first-password step) and character-creator screens | the API types from track B (agreed first, can use a mock) | none | `apps/client/src/ui/{auth,creator}/`, their CSS |
 
 **Not in parallel yet** (they wait for the tracks above): phase 2 (server runs the sim: needs A and C), phase 4 (players together: needs 2 and 3), phase 5 (world objects: it rewrites the same furniture and people files phase 1 touches, so it waits for A), phase 6 (physics: needs 5), voice implementation (needs 4 and the spike), phase 8 (harden).
 

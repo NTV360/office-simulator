@@ -170,6 +170,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (!(await auth.sessionAlive(redeemed.sessionHash))) { this.kick(socket, 'your session has ended; log in again'); return; }
       const account = await auth.accountById(redeemed.accountId);
       if (!account || account.disabled) { this.kick(socket, 'your session has ended; log in again'); return; }
+      if (account.mustChangePassword) { this.kick(socket, 'choose your own password first'); return; } // (a ticket minted before an admin reset the password)
       if (!socket.connected || socket.data.ended) { if (socket.connected) this.kick(socket, 'you have been logged out'); return; } // they left, or were logged out, while we were checking
 
       // one connection per account: a second login takes over, so nobody drives a character from two tabs

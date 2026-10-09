@@ -22,6 +22,7 @@ export class CharacterController {
   /** Your saved look (or null if you have never made one), and the starting look the creation page begins from. */
   @Get()
   get(@Req() req: HttpReq): { spec: CharacterSpec | null; starting: CharacterSpec } {
+    if (req.account!.mustChangePassword) throw new ForbiddenException({ statusCode: 403, code: 'must-change-password', message: 'choose your own password first' });
     const saved = req.account!.spec;
     return { spec: saved ? normalizePlayerSpec(saved) : null, starting: normalizePlayerSpec(DEFAULT_SPEC) };
   }
