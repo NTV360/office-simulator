@@ -6,6 +6,7 @@ Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.
 - [Add an interactable and an activity](#add-an-interactable-and-an-activity)
 - [Add a camera view](#add-a-camera-view)
 - [Add a hairstyle or another look option](#add-a-hairstyle-or-another-look-option)
+- [Update the character pack](#update-the-character-pack)
 - [Add a HUD control](#add-a-hud-control)
 - [Add a special character](#add-a-special-character)
 - [Change the floor plan](#change-the-floor-plan)
@@ -41,10 +42,10 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
    ```
    `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `people/data.js`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
 3. **Offer it** by adding a line to `chooseNext` in `sim/tasks.js` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
-4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`).
+4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`). Poses are written for a human with elbows and knees (`hipY` for a .88 m hip); `applyPose` maps them onto the pack's skeleton, which has neither: half of each elbow bend goes into the shoulder and knees are ignored. Call `sit()` for seated poses so the hips go on the seat.
 5. **Word it for the HUD**: add `case 'piano': return going ? '...' : '...';` in `statusText` in `ui/person.js`.
 6. **Let the player use it**: add the kind to the list in `nearestSeat` (`player/seating.js`) and map it to an `anim` in `sitDown`.
-7. **Props** a person holds (a guitar, a mug) belong on the rig: create them in `character/props.js` / `character/rig.js`, hidden by default, and toggle `visible` in `onStart`/`onEnd` and in `sitDown`/`standUp`.
+7. **Props** a person holds (a guitar, a mug) belong on the rig: create them in `makeHeldProps` in `character/props.js` (positions are offsets from the hand, in metres; `buildBody` attaches them), hidden by default, and toggle `visible` in `onStart`/`onEnd` and in `sitDown`/`standUp`. The pack's own hand accessories (coffee, phone, book...) are separate: they are shown only in the `walk` and `stand` poses.
 8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `sim/day.js`.
 9. Check: `__sim.advance(3000)` a dozen times shows your `kind` among `people[i].task.kind`, and the player can sit and play.
 
@@ -58,14 +59,21 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/task
 
 ## Add a hairstyle or another look option
 
-All of these also apply to NPCs and the player, because they all share `CharacterSpec`.
+Characters are drawn by the character pack in `character/pack/` (see its `README.md`). A look option is a part of the pack's config, and it applies to NPCs, the player and the character lab at once, because they all share `CharacterSpec`.
 
-1. **`character/spec.js`:** add the field to `DEFAULT_SPEC`, to `randomSpec` (usually a constant so NPCs do not change), and to `normalizeSpec`. Add the choices to `PARTS` (or `STYLE_OPTIONS` for a hairstyle). Keep this file free of Three.js.
-2. **Build it:**
-   - Hairstyle: add an entry to `HAIR_STYLES` in `character/parts.js` (`{ cap, extra(head, hair, spec) }`).
-   - Anything else on the head/face: add an `add<Thing>(head, spec)` in `parts.js` and call it from `buildBody` in `character/rig.js`.
-   - Body or clothing: edit `buildBody` in `rig.js`.
-3. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, and `setPlayerSpec(spec)` shows it on the player.
+1. **Build it in the pack.** Each style has registries: `ChibiCharacter.registerHair(name, fn)` and `BlockyCharacter.registerHair(...)`, plus `registerTop`, `registerBottom`, `registerShoes`, `registerFacialHair` (chibi) and `registerAccessory`. Register the same name in both styles, or add a fallback to `FALLBACKS` in `pack/characters.js`. Call the register functions from an `init*()` (never at import time), before the first character is built: add a `character/looks.js` with `initLooks()` and call it first in the simulation block of `bootstrap.js`.
+2. **Nothing else to do for most options:** `normalizeSpec` (`character/spec.js`) accepts any style either pack offers, and the lab lists the pack's options (`specOptions`). Accessories in the `ride` slot are filtered out everywhere; the office has no skateboards.
+3. **If NPCs should wear it**, add it to `generatedSpec` in `spec.js`.
+4. **A look the pack cannot draw** (like Hazel's furious face) goes in `character/parts.js` as an `add<Thing>(head, ...)` called from `buildBody` in `character/rig.js`, with a flag in the spec that `normalizeSpec` keeps.
+5. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, the lab shows it, and `setPlayerSpec(spec)` shows it on the player.
+
+## Update the character pack
+
+The files in `character/pack/` are kept exactly as delivered (from the character lab's `characters.zip`), so a new version can be dropped in.
+
+1. Replace `characters.js`, `blocky-character.js`, `blocky-presets.js`, `chibi-character.js`, `chibi-presets.js` and `README.md`. The `.glb` files, `export-glb.js` and `character-lab.html` are not used.
+2. Check what `character/rig.js` relies on: the joint names (`Hips`, `Spine`, `Neck`, `HeadShape`/`Head`, `ArmL`/`ArmR`, `HandL`/`HandR`, `LegL`/`LegR`, `ItemL`/`ItemR`), `character.inner.config`, `STYLES[type].lib.ACCESSORIES`, and that every material is a `MeshStandardMaterial` that differs only by colour (the draw-call merge in `character/gfx.js` depends on it).
+3. Run the checklist in [CODING-STANDARDS.md](CODING-STANDARDS.md#before-you-push), plus: open the Character lab, and compare frame rates at 70 people before and after.
 
 ## Add a HUD control
 
@@ -78,7 +86,7 @@ All of these also apply to NPCs and the player, because they all share `Characte
 
 Hazel (`people/hazel.js`) is the template.
 
-1. Give the character a spec override (`apply<Name>(spec)`) and call it from `makePerson` in `people/factory.js` for the person created at the right index. Add any new look options to the spec first (see above).
+1. Give the character a fixed look (a spec, like `HAZEL_LOOK`) and an `apply<Name>()` that returns its name, role and `normalizeSpec(look)`; call it from `makePerson` in `people/factory.js` for the person created at the right index. Add any new look options first (see above).
 2. Keep identity in one place: name constant, role, schedule overrides (see `scheduleDay` in `factory.js`).
 3. Put the character's own behaviour and effects in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
 4. Poses and status texts go in `people/animation.js` and `ui/person.js` like any other activity.

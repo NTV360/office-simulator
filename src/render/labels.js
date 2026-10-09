@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toPx, wx, wz } from '../config/plan.js';
+import { FRONT_Y, toPx, wx, wz } from '../config/plan.js';
 import { scene } from './renderer.js';
 import { ISLANDS } from '../world/furniture/desks.js';
 
@@ -26,9 +26,9 @@ function label(text, px, py, y = 3.0, scale = 1) {
   labelGroup.add(sp);
 }
 function buildLabels() {
-  ISLANDS.forEach(d => { const [px, py] = toPx(new THREE.Vector3(d.cx, 0, d.cz)); label(d.name, px, py, 1.7); });
-  label('Conference 1', 190, 132, 2.9, .9); label('Conference 2', 330, 132, 2.9, .9); label('Conference 3', 168, 248, 2.9, .85);
-  label('Lounge', 168, 345, 1.8, .85); label('TV lounge', 362, 318, 1.9, .85); label('Entrance', 223, 440, 1.2);
+  ISLANDS.filter(d => !d.room).forEach(d => { const [px, py] = toPx(new THREE.Vector3(d.cx, 0, d.cz)); label(d.name, px, py, 1.7); });
+  label('Conference 1', 190, 132, 2.9, .9); label('HR Office', 330, 132, 2.9, .9); label('Conference 3', 168, 262, 2.9, .85);
+  label('Lounge', 168, 368, 1.8, .85); label('TV lounge', 362, 342, 1.9, .85); label('Entrance', 223, FRONT_Y + 51, 1.2);
   label('Bar table', 450, 105, 1.7, .75); label('Bar table', 655, 207, 1.7, .75);
   label('Booths', 582, 916, 2.9); label('Dining area', 544, 1030, 2.1); label('Mini golf', 667, 1018, 1.5, .8); label('Darts', 380, 925, 2.8, .8); label('Music corner', 655, 538, 2.0, .8);
   label('Counter top', 390, 1014, 1.8, .8); label('Sink', 395, 1072, 1.6, .8); label('Storage', 311, 1062, 2.4, .85); label('Locker 2', 508, 1103, 2.4, .8); label('Locker 1', 615, 1103, 2.4, .8);

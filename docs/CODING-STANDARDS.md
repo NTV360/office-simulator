@@ -9,6 +9,7 @@ These rules exist because of real failures during the restructure (a white scree
 - Import by relative path with the `.js` extension. Import only what you use.
 - Respect the layer direction in [ARCHITECTURE.md](ARCHITECTURE.md#layers-and-dependency-rules). Do not add to the known exceptions.
 - Do not create a new top-level folder without agreeing it first.
+- **Vendored code:** `src/character/pack/` is the character pack, kept exactly as delivered so it can be replaced in one drop. It does not follow these rules (it uses `export` keywords inline and sets a flag on one of its own registries at import). Do not edit it; extend it through its `register*` functions from an `init*()`, and keep our code out of that folder.
 
 ## 2. No work at import time
 
@@ -53,7 +54,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 - **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `config/plan.js`, `character/spec.js`, `people/data.js`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
 - Do not hard-code magic numbers deep inside logic when they describe the world. Put them in a data module or at the top of the file with a name.
-- A character's look is a `CharacterSpec`. Add a look option to `character/spec.js` (default, `PARTS`, `normalizeSpec`) **and** to the rig/parts. See [HOW-TO.md](HOW-TO.md#add-a-hairstyle-or-another-look-option).
+- A character's look is a `CharacterSpec`: the character pack's config, plus our own flags (`angry`). Looks are built in the pack; see [HOW-TO.md](HOW-TO.md#add-a-hairstyle-or-another-look-option).
 
 ## 6. Coordinates and angles
 
@@ -63,7 +64,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 ## 7. Per-frame code
 
 - `update*` functions run every frame: no allocating vectors, arrays or closures in them. Reuse a scratch object created at module level.
-- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`). The one exception today is Hazel's real-time 10-second rage timer.
+- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`).
 - Easing uses `1 - Math.exp(-dt * rate)`, not a fixed fraction, so it behaves the same at any frame rate.
 
 ## 8. UI and CSS
@@ -97,7 +98,7 @@ There are no automated tests yet, so every change is checked by hand in a real b
 2. `npm run dev`, open the page, **hard-reload**, and confirm the browser console has no errors. If you added or removed files, **restart the dev server** first; a stale server serves old modules and gives confusing failures.
 3. The floor renders and people move. Press **Pause/Play**, change the speed, and move the **People** slider.
 4. Try every view: Angle, Plan, Follow, First person, Third person (and `V` between the two). Drag, wheel and a jump-to button should drop you into free camera. `Esc` exits first/third person.
-5. Select a person, press **Follow**, press **Find her** / **Make her angry** (Hazel).
+5. Select a person, press **Follow** and **Edit character**; search a name in the box at the bottom left.
 6. If you touched the sim, step it far from the console: `__sim.advance(3000)` a dozen times should not throw and the day should roll over.
 7. If you touched build order, nav, or furniture: compare `__sim.GC`, `__sim.GR` and the count of `__sim.NAV` walkable cells before and after. They should only change when you meant them to.
 8. `npm run build && npm run preview` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.

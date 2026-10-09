@@ -5,6 +5,9 @@ import { camGoal } from '../camera/state.js';
 import { FULL_H, LOW_H } from '../config/plan.js';
 import { rnd } from '../core/util.js';
 import { makePerson, removePerson } from '../people/factory.js';
+import { roster } from '../people/roster.js';
+import { resetDay } from '../sim/day.js';
+import { live, setMode } from '../sim/live.js';
 import { labelState } from '../render/labels.js';
 import { camera, renderer } from '../render/renderer.js';
 import { people, sim } from '../sim/state.js';
@@ -27,11 +30,24 @@ function initControls() {
   $('uiToggle').onclick = () => setUiHidden(!document.body.classList.contains('ui-hidden'));
   addEventListener('keydown', e => { if (e.key.toLowerCase() === 'h' && e.target.tagName !== 'INPUT' && !e.metaKey && !e.ctrlKey) setUiHidden(!document.body.classList.contains('ui-hidden')); });
   try { if (localStorage.getItem('officeSimUiHidden') === '1') setUiHidden(true); } catch (_) {}
+  // Live follows the real clock (and attendance); Simulate runs the office's own faster clock for everyone,
+  // starting the day or the night, and can be paused and sped up
+  const press = (sel, on) => document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', String(on(x))));
+  const simulate = when => { setMode('sim', when); resetDay(); press('[data-simtime]', x => x.dataset.simtime === when); };
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    const mode = b.dataset.mode; if (mode === live.mode) return;
+    if (mode === 'live') { setMode('live'); resetDay(); } else simulate('day');
+    press('[data-mode]', x => x === b);
+    $('simRow').hidden = mode === 'live'; $('play').textContent = sim.paused ? 'Play' : 'Pause';
+    press('[data-speed]', x => +x.dataset.speed === sim.speed);
+  });
+  document.querySelectorAll('[data-simtime]').forEach(b => b.onclick = () => simulate(b.dataset.simtime));
   $('play').onclick = () => { sim.paused = !sim.paused; $('play').textContent = sim.paused ? 'Play' : 'Pause'; };
   document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { sim.speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
   $('tWalls').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); wall.goal = on ? FULL_H : LOW_H; };
   $('tLabels').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', String(on)); labelState.on = on; };
+  if (roster.list) { $('staff').max = people.length; $('staff').value = people.length; $('staffVal').textContent = people.length; }
   $('staff').oninput = e => {
     const n = +e.target.value; $('staffVal').textContent = n;
     while (people.length < n) { const p = makePerson(); if (!p) break; if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50) { p.arriveAt = sim.t + rnd(.1, 4); } }

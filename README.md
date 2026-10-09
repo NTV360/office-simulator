@@ -1,21 +1,27 @@
 # Office Floor Sim
 
-A 3D office floor simulation (Three.js, built with Vite). Staff follow daily schedules; you can orbit the floor or walk around as your own character in first or third person.
+A 3D office floor simulation (Three.js, built with Vite). Staff follow daily schedules; you can orbit the floor or walk around as your own character in first or third person. Characters come from a chibi + blocky character pack, and you can design your own in the built-in character lab.
 
 ```
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # outputs dist/
-npm start          # serve the production build (honours $PORT; used on Render)
+npm start          # production server: dist/ + the /api BFF (honours $PORT; used on Render)
 ```
 
-Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `npm install && npm run build` and start with `npm start`.
+Supabase is reached only through the BFF in `server/`; copy `.env.example` to `.env` and fill in the server-only keys (the app runs without them, keeping data in the browser).
+
+Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `npm install && npm run build`, start with `npm start`, and set `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
 
 ## Controls
 
 - **Orbit views:** drag to move, right-drag or Shift-drag to turn and tilt, wheel or pinch to zoom, `H` hides the HUD. Click a person to see what they are doing.
 - **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `Esc` exits.
-- **Hazel:** "Find her" follows her; "Make her angry" does what it says.
+- **Character lab:** edits an employee's character (search them, or use **Edit character** on their card): chibi or blocky style, 50 presets, body, hair, clothes and accessories. Save stores it in `character_information`.
+- **Hours:** people work through their shift (meetings, whiteboards, booth calls, coffee and snacks) and play only at lunch, 15:00 and 17:00. The clock runs a full day, 06:00 to 06:00.
+- **Desks:** Desk A–H and the HR Office; pick an employee's desk on the seat map in the character lab.
+- **Clock:** **Live** follows the actual time in Manila; **Simulate** runs the office's own faster clock (pause, 1×/3×/8×). In both, who is in comes from the attendances table (once readable).
+- **Find someone:** type a name in the search box at the bottom left; pick them to fly to them and open their card. **Edit character** on the card opens the character lab for them.
 
 ## Documentation
 

@@ -1,4 +1,5 @@
 import { pick, rnd, shuffle } from '../core/util.js';
+import { onBreak } from './schedule.js';
 import { addLog, people, sim } from './state.js';
 import { goDo } from './tasks.js';
 import { interactables } from '../world/interactables.js';
@@ -9,12 +10,12 @@ const TOPICS = ['sprint planning', 'design review', 'client sync', 'bug triage',
 function tryMeeting() {
   const t = sim.t; if (t < 9 * 60 + 15 || t > 17 * 60 + 10) return;
   const lunchHour = t > 12 * 60 && t < 13 * 60;
-  for (const room of shuffle([1, 2, 3])) {
+  for (const room of shuffle([1, 3])) { // room 2 is the HR office now
     if (meetings.some(m => m.room === room)) continue;
     if (Math.random() > (lunchHour ? .01 : .05)) continue;
     const cap = interactables.conf(room).length;
-    const n = room === 2 ? 2 + Math.floor(Math.random() * 4) : 3 + Math.floor(Math.random() * 6);
-    const pool = shuffle(people.filter(p => p.state !== 'away' && !p.meeting && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'sofa', 'sink', 'bar'].includes(p.task.kind)));
+    const n = Math.random() < .2 ? 2 : 3 + Math.floor(Math.random() * 6);
+    const pool = shuffle(people.filter(p => p.state !== 'away' && !p.meeting && !onBreak(p, t) && p.leaveAt - t > 50 && p.task && ['work', 'coffee', 'chat', 'snackDesk', 'sink'].includes(p.task.kind)));
     if (pool.length < n) continue;
     const topic = n === 2 ? '1:1' : room === 1 ? pick(['training session', 'demo day', 'sprint review', 'all-hands']) : pick(TOPICS.filter(x => x !== '1:1'));
     const m = { room, start: t, end: t + rnd(18, 45), members: [], speaker: null, swap: 0, topic };

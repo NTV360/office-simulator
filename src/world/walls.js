@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FULL_H, S, W, WALLS, WALL_T, wx, wz } from '../config/plan.js';
+import { FULL_H, GLASS_WALLS, S, W, WALLS, WALL_T, wx, wz } from '../config/plan.js';
 import { pick } from '../core/util.js';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
@@ -10,6 +10,14 @@ function wallSeg(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, thick = WALL_T, c
   const h = thick / 2;
   const r = x1 === x2 ? [x1 - h, Math.min(y1, y2) - h, x1 + h, Math.max(y1, y2) + h] : [Math.min(x1, x2) - h, y1 - h, Math.max(x1, x2) + h, y1 + h];
   solidBlock(...r, mat, fullH, capMat);
+}
+// A glass partition: a clear pane on a low frame strip, with the dark cap on top like the other walls.
+// It blocks walking and the third-person camera like any wall.
+function glassWall(x1, y1, x2, y2) {
+  wallSeg(x1, y1, x2, y2, M.glass, FULL_H, WALL_T * .5);
+  const h = WALL_T * .3, r = x1 === x2 ? [x1 - h, Math.min(y1, y2), x1 + h, Math.max(y1, y2)] : [Math.min(x1, x2), y1 - h, Math.max(x1, x2), y1 + h];
+  const base = dynamic(new THREE.Mesh(boxGeo((r[2] - r[0]) * S, .08, (r[3] - r[1]) * S), M.mullion));
+  base.position.set(wx((r[0] + r[2]) / 2), .04, wz((r[1] + r[3]) / 2)); scene.add(base);
 }
 function solidBlock(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, capMat = M.cap) {
   addObs(x1, y1, x2, y2);
@@ -45,6 +53,7 @@ function splitForWindows(walls) {
 
 function buildWalls() {
   splitForWindows(WALLS).forEach(s => wallSeg(...s));
+  GLASS_WALLS.forEach(s => glassWall(...s));
   WINDOWS.forEach(([vert, line, a, b]) => {
     const len = (b - a) * S, T = WALL_T * S;
     if (vert) addObs(line - WALL_T / 2, a, line + WALL_T / 2, b); else addObs(a, line - WALL_T / 2, b, line + WALL_T / 2);
@@ -80,7 +89,8 @@ function buildWalls() {
     });
   });
   solidBlock(383.3, 70.8, 400, 100.8, M.wall);
-  solidBlock(254.6, 294.6, 312.3, 348.5, M.featureWall, FULL_H, M.deskEdge);
+  // the wall behind the lounge TV: a square as wide as the TV (y 322-368), keeping the face the TV hangs on
+  solidBlock(266.3, 322.55, 312.3, 368.55, M.featureWall, FULL_H, M.deskEdge);
 }
 
 export { wallSeg, buildWalls };

@@ -21,18 +21,22 @@
     <div id="phase">Day 1<br>Morning focus</div>
   </div>
   <div class="row">
+    <span class="lbl">Clock</span>
+    <div class="seg" role="group" aria-label="Clock">
+      <button type="button" data-mode="live" aria-pressed="true" title="The actual time in the office">Live</button>
+      <button type="button" data-mode="sim" aria-pressed="false" title="The office's own faster clock">Simulate</button>
+    </div>
+  </div>
+  <div class="row" id="simRow" hidden>
+    <div class="seg" role="group" aria-label="Simulated time">
+      <button type="button" data-simtime="day" aria-pressed="true">Day</button>
+      <button type="button" data-simtime="night" aria-pressed="false">Night</button>
+    </div>
     <button class="btn primary" id="play" type="button">Pause</button>
     <div class="seg" role="group" aria-label="Simulation speed">
       <button type="button" data-speed="1" aria-pressed="true">1×</button>
       <button type="button" data-speed="3" aria-pressed="false">3×</button>
       <button type="button" data-speed="8" aria-pressed="false">8×</button>
-    </div>
-  </div>
-  <div class="row">
-    <span class="lbl">Hazel</span>
-    <div class="seg hz" role="group" aria-label="Hazel Sellote">
-      <button type="button" id="findHazel" title="Find Hazel Sellote">Find her</button>
-      <button type="button" id="rageHazel" title="Make Hazel angry for 10 seconds">Make her angry</button>
     </div>
   </div>
   <button class="btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="more">More options</button>
@@ -56,6 +60,10 @@
       <button type="button" data-view="fp" aria-pressed="false">First person</button>
       <button type="button" data-view="third" aria-pressed="false">Third person</button>
     </div>
+  </div>
+  <div class="row">
+    <span class="lbl">You</span>
+    <button type="button" class="btn sm" id="openCreator" title="Change how your character looks">Character lab</button>
   </div>
   <div class="row">
     <span class="lbl">Go to</span>
@@ -85,7 +93,7 @@
     </div>
   </div>
   </div>
-  <div class="hint">Drag (or swipe two fingers on a trackpad) to move around. Right-drag or Shift-drag turns and tilts. Pinch or use the mouse wheel to zoom. On touch: one finger moves, two fingers pinch, twist and tilt. Keys: WASD or arrows, Q/E to turn, H to hide controls. Click anyone to see what they're up to, or pick First person to walk the floor as them.</div>
+  <div class="hint">Drag (or swipe two fingers on a trackpad) to move around. Right-drag or Shift-drag turns and tilts. Pinch or use the mouse wheel to zoom. On touch: one finger moves, two fingers pinch, twist and tilt. Keys: WASD or arrows, Q/E to turn, H to hide controls. Click anyone to see what they're up to, pick First or Third person to walk the floor, or open the Character lab to change how you look.</div>
 </section>
 
 <aside class="card" id="ledger" aria-label="Who is doing what">
@@ -93,6 +101,11 @@
   <ul id="acts"></ul>
   <ul id="log" aria-live="polite"></ul>
 </aside>
+
+<div id="officeSearch" role="search">
+  <div id="officeMatches" role="listbox" aria-label="Matching employees" hidden></div>
+  <input type="search" id="officeSearchInput" placeholder="Search an employee in the office…" autocomplete="off" aria-label="Search an employee in the office">
+</div>
 
 <section class="card" id="person" hidden aria-label="Selected person">
   <div id="pAvatar"></div>
@@ -103,6 +116,7 @@
     <div id="pMeta">—</div>
     <div id="pActions">
       <button class="btn" id="pFollow" type="button">Follow</button>
+      <button class="btn" id="pEdit" type="button">Edit character</button>
       <button class="btn" id="pClose" type="button">Close</button>
     </div>
   </div>
@@ -112,11 +126,34 @@
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>
+  <button class="btn" id="fpCreator" type="button" title="Change how you look">Look</button>
   <button class="btn" id="fpExit" type="button">Exit</button>
 </section>
 <div id="fpPrompt" hidden><div id="fpLook"></div><button class="btn" id="fpAct" type="button" hidden></button></div>
 <div id="crosshair" hidden></div>
 <div id="stick" hidden><div id="knob"></div></div>
+<section id="creator" hidden role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
+  <div id="creatorStage">
+    <div class="cl-top">
+      <button class="btn" id="creatorBack" type="button">← Back to office</button>
+      <div class="eyebrow">Character lab</div>
+      <h2 id="creatorTitle">Your character</h2>
+      <div id="creatorWho">—</div>
+    </div>
+    <div class="cl-hint">Drag to turn · scroll to zoom</div>
+    <div class="cl-bar">
+      <div class="seg" id="creatorClips" role="group" aria-label="Preview animation"></div>
+      <button class="btn sm" id="creatorSpin" type="button" aria-pressed="false">Turntable</button>
+    </div>
+  </div>
+  <div id="creatorSide">
+    <div id="creatorPanel" aria-label="Character settings"></div>
+    <div class="cl-footer">
+      <button class="btn" id="creatorCancel" type="button">Cancel</button>
+      <button class="btn primary" id="creatorSave" type="button">Save</button>
+    </div>
+  </div>
+</section>
 <div id="veil">Building the floor…</div>
 
 <script>

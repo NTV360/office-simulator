@@ -1,4 +1,5 @@
 import { settleOn } from '../camera/state.js';
+import { eyeHeight } from '../character/rig.js';
 import { camera } from '../render/renderer.js';
 import { beginControl, ctl, driveLocomotion, endControl, tickPrompts } from '../player/control.js';
 import { player, spawnPlayer } from '../player/player.js';
@@ -15,7 +16,7 @@ function enterFP() {
   if (!player.sitting) p.task = null;
   beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit' });
   ctl.pitchMin = -1.2; ctl.pitchMax = 1.2;
-  eye = 1.6 * p.spec.scale;
+  eye = eyeHeight(p.body, player.sitting?.hipY);
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; // you can't see your own head
   $('crosshair').hidden = false;
@@ -32,7 +33,7 @@ function fpUpdate(dt) {
   const p = player.person; if (!p) return;
   driveLocomotion(dt, p);
   p.face = p.faceGoal = player.sitting ? player.sitting.face : ctl.yaw;
-  const eyeGoal = (player.sitting ? 1.2 : 1.6) * p.spec.scale; eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));
+  const eyeGoal = eyeHeight(p.body, player.sitting?.hipY); eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));
   const bob = player.moving ? Math.abs(Math.sin(p.walkPhase)) * .03 : 0;
   camera.position.set(p.pos.x + Math.sin(ctl.yaw) * .1, eye + bob, p.pos.z + Math.cos(ctl.yaw) * .1);
   const cp = Math.cos(ctl.pitch);

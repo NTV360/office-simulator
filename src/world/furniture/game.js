@@ -119,13 +119,13 @@ function drawGame(dt) {
 let loungeTV, loungeTVDefault, LOUNGE_TV_POS, gameCanvas, gameTex, gameMat;
 
 function buildGame() {
-  loungeTV = tv(317.9, 298.0, 329.0, 344.1, E, 'dash');
+  loungeTV = tv(317.9, 322.0, 329.0, 368.1, E, 'dash');
   loungeTVDefault = loungeTV.material;
-  LOUNGE_TV_POS = W(323.5, 321.05);
+  LOUNGE_TV_POS = W(323.5, 345.05);
   interactables.of('lounge').slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
   // Game console standing beside the TV
   {
-    const f = frame(331, 350, E); addObs(328, 346, 335, 354);
+    const f = frame(331, 374, E); addObs(328, 370, 335, 378);
     box(f, .26, .02, .14, M.chairBase, 0, .01, 0);
     box(f, .1, .4, .25, M.white, -.03, .22, 0);
     box(f, .1, .4, .25, M.white, .03, .22, 0);
