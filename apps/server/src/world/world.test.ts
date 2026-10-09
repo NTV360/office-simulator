@@ -15,6 +15,7 @@ describe('readWorldOptions', () => {
   it('reads and clamps what is set, and ignores nonsense', () => {
     const o = readWorldOptions({ TICK_RATE: '500', SLOT_COUNT: '12', SIM_SPEED: '100', SIM_PAUSED: 'true', WORLD_SEED: '7' });
     expect(o).toEqual({ tickRate: 60, slotCount: 12, speed: 8, paused: true, seed: 7 });
+    expect(readWorldOptions({ TICK_RATE: '1' }).tickRate).toBe(10); // a slower world would let one step of a runner be long enough to cheat with
     expect(readWorldOptions({ TICK_RATE: 'abc', SIM_SPEED: '-3', WORLD_SEED: 'x' })).toEqual({ tickRate: 20, slotCount: 40, speed: 0.25, paused: false, seed: undefined });
   });
 });

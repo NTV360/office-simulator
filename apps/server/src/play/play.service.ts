@@ -17,7 +17,10 @@ export class PlayService implements OnApplicationBootstrap, OnApplicationShutdow
   constructor(
     @Inject(WorldService) private readonly worlds: WorldService,
     @Inject(AuthProvider) private readonly auth: AuthProvider,
-  ) {}
+  ) {
+    // people a human drives are moved at the start of every tick, from their latest input
+    this.worlds.world.onBeforeStep((dt, tick) => { if (this.auth.available) this.manager().stepAll(dt, tick); });
+  }
 
   /** The manager for the current auth service (made on first use; replaced if tests swap the service). */
   manager(): PlayerManager {

@@ -37,3 +37,4 @@ export * from './layout/office';
 export * from './protocol';
 export * from './sim/persist';
 export * from './sim/takeover';
+export * from './sim/driven';

@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 3;
+export const WIRE_VERSION = 4;
 
 /** Used where a person id, meeting index or similar is "none". */
 export const NONE = -1;
@@ -113,10 +113,15 @@ export interface GameEvent { type: 'event'; kind: EventKind; simTime: number; te
 
 /** The first thing a client says: its protocol version and the one-time ticket from POST /api/play/ticket. */
 export interface Hello { type: 'hello'; version: number; ticket: string }
+/** What the player wants to do this moment: which way to go (a fraction of full speed, in world x and z), which way to face, run or walk. */
+export interface Input { type: 'input'; seq: number; mx: number; mz: number; heading: number; run: boolean }
+/** Sit in the nearest seat, or stand up. The server decides whether it is allowed. */
+export type ActKind = 'sit' | 'stand';
+export interface Act { type: 'act'; kind: ActKind }
 export interface Ping { type: 'ping'; ts: number }
 export interface Pong { type: 'pong'; ts: number }
 export interface Kick { type: 'kick'; reason: string }
 
-export type ClientMessage = Hello | Ping;
+export type ClientMessage = Hello | Ping | Input | Act;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick;
 export type Message = ClientMessage | ServerMessage;

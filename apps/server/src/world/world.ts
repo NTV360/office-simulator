@@ -19,7 +19,8 @@ export interface WorldOptions {
 }
 
 export const SPEED_RANGE: [number, number] = [0.25, 8];
-export const TICK_RATE_RANGE: [number, number] = [1, 60];
+// (not below 10: at a slower rate one step of a running person is long enough to be worth cheating with)
+export const TICK_RATE_RANGE: [number, number] = [10, 60];
 
 const num = (v: string | undefined, fallback: number): number => {
   if (v === undefined || v.trim() === '') return fallback;
@@ -79,11 +80,15 @@ export class World {
   private lastReport = 0;
   private stopped = true;
   private readonly listeners: Array<(tick: number) => void> = [];
+  private readonly beforeStep: Array<(dt: number, tick: number) => void> = [];
 
   constructor(options: WorldOptions, now: () => number = () => performance.now()) {
     this.options = { ...options };
     this.now = now;
   }
+
+  /** Call `fn` at the start of every tick, before the simulation steps (people a human drives are moved here). */
+  onBeforeStep(fn: (dt: number, tick: number) => void): void { this.beforeStep.push(fn); }
 
   /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. */
   onTick(fn: (tick: number) => void): void { this.listeners.push(fn); }
@@ -114,7 +119,9 @@ export class World {
   step(): void {
     const t0 = this.now();
     try {
-      if (!sim.paused) stepSim(1 / this.options.tickRate);
+      const dt = 1 / this.options.tickRate;
+      for (const fn of this.beforeStep) { try { fn(dt, this.tick); } catch (err) { this.report('a before-step hook failed', err); } }
+      if (!sim.paused) stepSim(dt);
     } catch (err) {
       this.report('simulation step failed', err);
     }

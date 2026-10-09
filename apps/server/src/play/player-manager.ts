@@ -1,5 +1,5 @@
 import {
-  HAZEL_NAME, handBack, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
+  HAZEL_NAME, handBack, sanitizeInput, sit, stand, stepAllDriven, type ActKind, type DrivenInput, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
 
@@ -32,10 +32,17 @@ export interface PlayerManagerOptions {
 interface Session {
   person: Person;
   graceTimer: unknown | null;
+  /** The tick of the last sit or stand that was taken (they are limited to about one a second). */
+  lastActTick: number;
 }
+
+/** Sitting and standing move a person to the seat, so they are limited to one a second: no hopping between seats to get around quickly. */
+export const ACT_COOLDOWN_SECONDS = 1;
 
 export class PlayerManager {
   private readonly sessions = new Map<number, Session>();
+  /** The latest input of each person a human is driving, by person id. */
+  private readonly inputs = new Map<number, DrivenInput>();
   // Logins and desk changes run one at a time, so a login cannot slip in between the two halves of an assignment or a release
   private queue: Promise<unknown> = Promise.resolve();
   private readonly graceMs: number;
@@ -79,6 +86,7 @@ export class PlayerManager {
     const existing = this.sessions.get(account.id);
     if (existing) { // reconnecting: carry on with the same person
       if (existing.graceTimer !== null) { this.timers.clear(existing.graceTimer); existing.graceTimer = null; }
+      this.inputs.delete(existing.person.id); // the new connection numbers its messages from the start again
       return existing.person;
     }
     let person: Person | undefined;
@@ -93,7 +101,8 @@ export class PlayerManager {
       } else this.log.warn(`${account.username} has desk ${account.slotSpot}, but it is not available; playing as a guest`);
     }
     person ??= makeGuest(account.id, account.username, account.spec ?? undefined);
-    this.sessions.set(account.id, { person, graceTimer: null });
+    this.inputs.delete(person.id); // a new session starts with no movement and its own message numbers
+    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity });
     return person;
   }
 
@@ -103,14 +112,46 @@ export class PlayerManager {
     if (!s || s.graceTimer !== null) return;
     s.graceTimer = this.timers.set(() => {
       this.sessions.delete(accountId);
+      this.inputs.delete(s.person.id);
       handBack(s.person); // a guest has no desk, so this removes them
     }, this.graceMs);
+  }
+
+  /**
+   * The player's latest wish about moving. Anything that is not a sane input is ignored; one older than the last (by its number)
+   * is ignored too. Returns whether it was taken.
+   */
+  setInput(accountId: number, raw: unknown, tick: number): boolean {
+    const s = this.sessions.get(accountId);
+    if (!s) return false;
+    const input = sanitizeInput(raw, tick);
+    if (!input) return false;
+    const last = this.inputs.get(s.person.id);
+    if (last && input.seq <= last.seq) return false;
+    this.inputs.set(s.person.id, input);
+    return true;
+  }
+
+  /** The player asks to sit or stand. The simulation says whether that is possible right now. */
+  act(accountId: number, kind: ActKind, tick: number, tickRate = 20): boolean {
+    const s = this.sessions.get(accountId);
+    if (!s) return false;
+    if (tick - s.lastActTick < ACT_COOLDOWN_SECONDS * tickRate) return false;
+    const done = kind === 'sit' ? sit(s.person) : stand(s.person);
+    if (done) s.lastActTick = tick;
+    return done;
+  }
+
+  /** One tick of movement for everyone a human is driving (called by the world before the simulation steps). */
+  stepAll(dt: number, tick: number): void {
+    stepAllDriven(this.inputs, dt, tick);
   }
 
   /** Hand everybody back at once (the server is stopping). */
   releaseAll(): void {
     for (const [id, s] of this.sessions) {
       if (s.graceTimer !== null) this.timers.clear(s.graceTimer);
+      this.inputs.delete(s.person.id);
       handBack(s.person);
       this.sessions.delete(id);
     }
@@ -148,6 +189,7 @@ export class PlayerManager {
     if (guest) { // they were walking around as a guest: they have a desk now, so they log in again to take it
       if (guest.graceTimer !== null) this.timers.clear(guest.graceTimer);
       this.sessions.delete(accountId);
+      this.inputs.delete(guest.person.id);
       removeGuest(guest.person);
       this.kick(accountId, 'your desk was assigned, log in again');
     }
@@ -171,6 +213,7 @@ export class PlayerManager {
     if (session) {
       if (session.graceTimer !== null) this.timers.clear(session.graceTimer);
       this.sessions.delete(accountId);
+      this.inputs.delete(session.person.id);
       if (session.person.slot) handBack(session.person); else removeGuest(session.person);
       this.kick(accountId, 'your desk was taken away by an admin');
     }

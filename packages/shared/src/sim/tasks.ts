@@ -13,11 +13,11 @@ export function endTask(p: Person): void {
   const t = p.task; if (!t || t.ended) return;
   t.ended = true;
   if (t.onEnd) t.onEnd(p);
-  if (t.spot && t.spot.shared && t.spot.occupant === p) t.spot.occupant = null;
+  if (t.spot && t.spot.occupant === p) t.spot.occupant = null;
 }
 export function goDo(p: Person, task: Task): boolean {
   const spot = task.spot;
-  if (spot.shared && spot.occupant && spot.occupant !== p) return false;
+  if (spot.occupant && spot.occupant !== p) return false; // somebody is in it (a human at a desk counts too)
   const path = findPath(p.pos, spot.approach);
   if (!path) return false;
   endTask(p);

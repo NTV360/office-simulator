@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { HAZEL_NAME, drawCount, initDay, interactables, people, setSeed, sim, simEvents, stepSim, buildTestLayout, type Person } from '@office/shared';
+import { HAZEL_NAME, drawCount, initDay, mkSpot, interactables, people, setSeed, sim, simEvents, stepSim, buildTestLayout, type Person } from '@office/shared';
 import { MemoryAccountStore, type Account } from '../auth/account-store';
 import { PlayError, PlayerManager, type Timers } from './player-manager';
 
@@ -287,6 +287,61 @@ describe('giving a desk back', () => {
     const gone = deskPerson(26); gone.slot!.owner = null; people.splice(people.indexOf(gone), 1); // the person is gone
     await expect(manager.releaseSlot(bob.id)).resolves.toBeNull();
     expect((await store.byId(bob.id))!.slotSpot).toBeNull();
+  });
+});
+
+describe('moving and sitting', () => {
+  it('a reconnect starts the message numbers again from the start: a new connection restarting at 1 can move', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    g.pos.x = 450; g.pos.z = 450;
+    expect(manager.setInput(ana.id, { seq: 1000, mx: 0, mz: 1, heading: 0 }, 0)).toBe(true);
+    expect(manager.setInput(ana.id, { seq: 5, mx: 0, mz: 1, heading: 0 }, 0)).toBe(false); // older than 1000
+    manager.detach(ana.id);
+    await manager.attach(ana); // reconnects within the grace period
+    expect(manager.setInput(ana.id, { seq: 1, mx: 0, mz: 1, heading: 0 }, 0)).toBe(true);
+  });
+
+  it('input from someone who is not playing, and bad input, is ignored', async () => {
+    const ana = await account('ana');
+    expect(manager.setInput(ana.id, { seq: 1, mx: 0, mz: 1, heading: 0 }, 0)).toBe(false); // not playing
+    await manager.attach(ana);
+    for (const bad of [null, 5, { seq: 1 }, { seq: 1, mx: NaN, mz: 0, heading: 0 }]) expect(manager.setInput(ana.id, bad, 0)).toBe(false);
+  });
+
+  it('sit and stand are limited to about one a second (no hopping between seats to get around quickly)', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    const seat = mkSpot('lounge', 450, 500, 0, { sit: true });
+    g.pos.x = seat.pos.x + 0.3; g.pos.z = seat.pos.z;
+    expect(manager.act(ana.id, 'sit', 100)).toBe(true);
+    expect(manager.act(ana.id, 'stand', 110)).toBe(false); // half a second later (20 ticks a second)
+    expect(manager.act(ana.id, 'stand', 119)).toBe(false);
+    expect(manager.act(ana.id, 'stand', 120)).toBe(true);
+    expect(manager.act(ana.id, 'sit', 125)).toBe(false);
+    expect(manager.act(ana.id, 'sit', 140)).toBe(true);
+  });
+
+  it('a refused sit (no seat near) does not use up the allowance', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    g.pos.x = 450; g.pos.z = 700;
+    expect(manager.act(ana.id, 'sit', 10)).toBe(false);
+    const seat = mkSpot('lounge', 450, 700, 0, { sit: true });
+    g.pos.x = seat.pos.x; g.pos.z = seat.pos.z;
+    expect(manager.act(ana.id, 'sit', 11)).toBe(true);
+  });
+
+  it('one person is moved by their own input and only theirs, with the grace period keeping them still', async () => {
+    const a = await account('ana'), b = await account('bob');
+    const ga = await manager.attach(a), gb = await manager.attach(b);
+    const start = interactables.of('desk')[0];
+    for (const g of [ga, gb]) { g.pos.x = start.pos.x + 3; g.pos.z = start.pos.z + 3; }
+    manager.setInput(a.id, { seq: 1, mx: 1, mz: 0, heading: 0 }, 0);
+    const bx = gb.pos.x;
+    manager.stepAll(0.05, 1);
+    expect(ga.pos.x).toBeGreaterThan(start.pos.x + 3);
+    expect(gb.pos.x).toBe(bx);
   });
 });
 

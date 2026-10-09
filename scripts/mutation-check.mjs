@@ -22,6 +22,12 @@ const MUTATIONS = [
   ['handing a person back leaves the human in charge', sim + 'takeover.ts', "  p.controller = 'ai';\n", ''],
   ['taking over always teleports the person to the entrance', sim + 'takeover.ts', 'if (!p.shown || p.arrivedAt == null) {', 'if (true) {'],
   ['a guest who leaves is not removed', sim + 'takeover.ts', '  if (i >= 0) people.splice(i, 1);', ''],
+  ['an input longer than 1 is not shortened (speed hack)', sim + 'driven.ts', 'if (len > 1) { mx /= len; mz /= len; }', ''],
+  ['a stick pushed half way still walks at full speed', sim + 'driven.ts', ' * Math.min(1, len) * dt;', ' * dt;'],
+  ['an old input never goes stale (the player is stuck walking)', sim + 'driven.ts', 'const live = input !== null && tick - input.tick >= 0 && tick - input.tick <= staleTicks ? input : null;', 'const live = input;'],
+  ['standing up leaves the seat marked as taken', sim + 'driven.ts', 'if (t.spot.occupant === p) t.spot.occupant = null;', ''],
+  ['a seat someone is in can still be taken by a second person (shared seat or desk)', sim + 'driven.ts', 'if (spot.occupant && spot.occupant !== p) return false;\n  if (!spot.shared) {', 'if (!spot.shared) {'],
+  ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
 const only = process.argv[2];
@@ -35,7 +41,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

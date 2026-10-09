@@ -23,8 +23,10 @@ export interface GatewayOptions {
   maxUnjoinedPerAddress: number;
   /** How often open connections have their session checked again (a session can expire or be ended while connected). */
   sweepMs: number;
-  /** Messages per second one client may send before it is dropped. */
+  /** Messages per second a client that has not said hello may send before it is dropped. */
   maxMessagesPerSecond: number;
+  /** The same for a client that is playing: inputs come about 20 times a second, plus the occasional sit, stand and ping. */
+  maxJoinedMessagesPerSecond: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
@@ -32,6 +34,7 @@ export const gatewayOptions = (env: Record<string, string | undefined>): Gateway
   maxUnjoinedPerAddress: Number(env.MAX_UNJOINED_PER_ADDRESS) || 20,
   sweepMs: Number(env.SESSION_SWEEP_MS) || 60_000,
   maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
+  maxJoinedMessagesPerSecond: Number(env.MAX_JOINED_MESSAGES_PER_SECOND) || 60,
 });
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
@@ -125,7 +128,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private tooFast(socket: Socket): boolean {
     const now = Date.now(), w = socket.data.window as { start: number; n: number } | undefined;
     if (!w || now - w.start >= 1000) { socket.data.window = { start: now, n: 1 }; return false; }
-    return ++w.n > this.options.maxMessagesPerSecond;
+    return ++w.n > (socket.data.joined ? this.options.maxJoinedMessagesPerSecond : this.options.maxMessagesPerSecond);
   }
 
   private handle(socket: Socket, msg: ClientMessage): void {
@@ -135,6 +138,14 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         return;
       case 'ping':
         socket.emit(WIRE_EVENT, encode({ type: 'pong', ts: msg.ts }));
+        return;
+      case 'input':
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        this.players.manager().setInput(socket.data.accountId, msg, this.worlds.world.tick);
+        return;
+      case 'act':
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
         return;
       default:
         this.kick(socket, 'unexpected message');
