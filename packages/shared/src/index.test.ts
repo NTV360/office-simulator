@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, PROTOCOL_VERSION, clampSlotCount } from './index';
+import { WIRE_VERSION } from './protocol/messages';
 
 describe('shared defaults', () => {
   it('match the plan', () => {
     expect(DEFAULTS.tickRate).toBe(20);
     expect(DEFAULTS.maxPlayers).toBe(100);
-    expect(PROTOCOL_VERSION).toBe(5);
+    expect(PROTOCOL_VERSION).toBe(WIRE_VERSION); // (the number itself changes with every protocol change; the codec tests cover it)
   });
 });
 

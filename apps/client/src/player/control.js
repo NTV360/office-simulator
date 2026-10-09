@@ -38,6 +38,10 @@ function endControl(nextId) {
   $('fpBar').hidden = true; $('stick').hidden = true; $('fpPrompt').hidden = true;
 }
 
+// Let go of the touch stick and the look finger (the window lost focus, a cancelled touch, the chat box opened): online that would be a
+// stream of walking orders.
+function releaseSticks() { ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0; }
+
 function look(dx, dy) { ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035)); }
 function pointerDown(e) {
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -129,9 +133,8 @@ function initControl() {
   ctl.coarse = matchMedia('(pointer: coarse)').matches;
   $('fpAct').onclick = toggleSit;
   // losing the window (or a cancelled touch) must not leave the stick held: online that is a stream of walking orders
-  const releaseStick = () => { ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0; };
-  addEventListener('blur', releaseStick);
-  el.addEventListener('pointercancel', releaseStick);
+  addEventListener('blur', releaseSticks);
+  el.addEventListener('pointercancel', releaseSticks);
   $('fpExit').onclick = exitPlay;
   addEventListener('keydown', e => {
     if (!ctl.active || e.target.tagName === 'INPUT') return;
@@ -145,4 +148,4 @@ function initControl() {
 // Stop steering the player; the camera stays free-orbiting around them.
 function exitPlay() { if (ctl.active) setView('free'); }
 
-export { beginControl, ctl, driveLocomotion, el, endControl, exitPlay, initControl, pointerDown, pointerMove, pointerUp, tickPrompts };
+export { beginControl, ctl, driveLocomotion, el, endControl, exitPlay, initControl, pointerDown, pointerMove, pointerUp, releaseSticks, tickPrompts };

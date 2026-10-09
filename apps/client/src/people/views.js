@@ -1,6 +1,8 @@
 import { buildBody } from '../character/rig.js';
 import { people, simEvents } from '@office/shared';
 import { select, selected } from '../ui/person.js';
+import { removeBubble } from './bubbles.js';
+import { dropNameTag } from './nametags.js';
 import { peopleGroup } from './group.js';
 
 // The simulation only knows people as data. This is where each person gets a body in the scene, and loses it when
@@ -12,6 +14,7 @@ function attach(p) {
   peopleGroup.add(p.body.root); peopleGroup.add(p.body.ring);
 }
 function detach(p) {
+  dropNameTag(p); removeBubble(p); // (their textures and materials are freed with them)
   peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);
   if (selected === p) select(null);
 }

@@ -44,7 +44,7 @@ function make(text) {
   return { map, aspect: w / h, height: h };
 }
 
-function remove(p) {
+function removeBubble(p) {
   const b = p.bubble;
   if (!b) return;
   b.parent?.remove(b);
@@ -55,7 +55,7 @@ function remove(p) {
 /** Show `text` over the person for a few seconds (longer for a longer line). */
 function showBubble(p, text) {
   if (!p.body || !text) return;
-  remove(p);
+  removeBubble(p);
   const { map, aspect, height } = make(text);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false }));
   const worldH = height / 190; // 190 canvas pixels to the metre
@@ -72,7 +72,7 @@ function showBubble(p, text) {
 function updateBubble(p) {
   const b = p.bubble;
   if (!b) return;
-  if (performance.now() > b.userData.until || b.userData.body !== p.body || p.state === 'away') remove(p);
+  if (performance.now() > b.userData.until || b.userData.body !== p.body || p.state === 'away') removeBubble(p);
 }
 
-export { showBubble, updateBubble };
+export { removeBubble, showBubble, updateBubble };

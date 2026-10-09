@@ -1,5 +1,7 @@
+import { clipChat } from '@office/shared';
 import { keys } from '../camera/input.js';
 import { showBubble } from '../people/bubbles.js';
+import { releaseSticks } from '../player/control.js';
 
 // Local chat: the panel at the bottom left (the last lines, and a box that opens with Enter), and a speech bubble over whoever spoke.
 // Everything the server sends is put in the page as text (textContent), never as markup.
@@ -41,7 +43,7 @@ export function initChat({ send, personById }) {
   function open() {
     if (!active || typing) return;
     typing = true; root.classList.add('typing'); form.hidden = false; button.hidden = true;
-    keys.clear(); // (a movement key held when you press Enter must not stay held while you type)
+    keys.clear(); releaseSticks(); // (a movement key or the touch stick held when you open the box must not stay held while you type)
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch { /* fine */ }
     input.value = ''; input.focus();
   }
@@ -54,7 +56,7 @@ export function initChat({ send, personById }) {
   form.addEventListener('submit', e => {
     e.preventDefault();
     const text = input.value.trim();
-    if (text) send(text.slice(0, MAX_CHAT));
+    if (text) send(clipChat(text));
     close();
   });
   button.addEventListener('click', open);
@@ -62,7 +64,9 @@ export function initChat({ send, personById }) {
   addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target && e.target.tagName;
-    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'BUTTON') return;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'BUTTON' || (e.target && e.target.isContentEditable)) return;
+    if (e.target && e.target.closest && e.target.closest('a, summary, [role=button], dialog, [aria-modal="true"]')) return; // Enter belongs to that
+    if (document.querySelector('.login-screen')) return; // the login or character page is up
     if (!active) return;
     e.preventDefault(); open();
   });

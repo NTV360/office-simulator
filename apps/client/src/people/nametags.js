@@ -34,7 +34,7 @@ function textureFor(text) {
 /** The name to show over this person, or null for none. */
 const wanted = p => (nameState.on && p.controller === 'account' && p.state !== 'away' && p.body && !isLocalPlayer(p) ? p.name : null);
 
-function drop(p) {
+function dropNameTag(p) {
   const tag = p.nameTag;
   if (!tag) return;
   tag.parent?.remove(tag);
@@ -45,10 +45,10 @@ function drop(p) {
 /** Call every frame for every person: puts the label on, takes it off, or renames it, as needed. */
 function updateNameTag(p) {
   const name = wanted(p);
-  if (!name) { drop(p); return; }
+  if (!name) { dropNameTag(p); return; }
   const tag = p.nameTag;
   if (tag && tag.userData.text === name && tag.userData.body === p.body) return;
-  drop(p);
+  dropNameTag(p);
   const { map, aspect } = textureFor(name);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false }));
   const h = .24;
@@ -60,4 +60,4 @@ function updateNameTag(p) {
   p.nameTag = sprite;
 }
 
-export { nameState, updateNameTag };
+export { dropNameTag, nameState, updateNameTag };

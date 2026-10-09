@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { PROTOCOL_VERSION } from '@office/shared';
 import { buildHealth } from './health';
 
 describe('buildHealth', () => {
   it('is ok when the database answers', () => {
     const h = buildHealth({ dbOk: true, startedAt: 1_000, now: 6_400 });
-    expect(h).toEqual({ status: 'ok', db: 'ok', uptimeSeconds: 5, protocol: 5 });
+    expect(h).toEqual({ status: 'ok', db: 'ok', uptimeSeconds: 5, protocol: PROTOCOL_VERSION });
   });
 
   it('is degraded, not failed, when the database is down', () => {

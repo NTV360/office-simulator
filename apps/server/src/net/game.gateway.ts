@@ -236,6 +236,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   /** A chat line: sent to the speaker and whoever is within range; a refusal is explained to the speaker alone. */
   private async say(socket: Socket, text: string): Promise<void> {
+    if (this.byAccount.get(socket.data.accountId) !== socket) return; // (a connection that has been taken over or is going away is not heard)
     let result: SayResult;
     try { result = await this.chat.say(socket.data.accountId, text); } catch (err) { this.log.error(`chat failed: ${err instanceof Error ? err.message : String(err)}`); return; }
     if (!result.ok) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_CHAT } from '@office/shared';
-import { CHAT_LIMIT, CHAT_RANGE, CHAT_WINDOW_MS, ChatService, cleanChat, type Hearer, type Speaker } from './chat';
+import { CHAT_LIMIT, CHAT_RANGE, CHAT_WINDOW_MS, MUTE_CACHE_MS, ChatService, cleanChat, type Hearer, type Speaker } from './chat';
 
 describe('cleanChat', () => {
   it('keeps plain text, trims and collapses spaces', () => {
@@ -14,6 +14,25 @@ describe('cleanChat', () => {
     expect(cleanChat('a\u0000b\u0007c')).toBe('a b c');
     expect(cleanChat('ab​cd‮ef⁦gh﻿')).toBe('ab cd ef gh');
     expect(cleanChat('‮​‏')).toBeNull(); // nothing visible left
+  });
+  it('removes characters that print as nothing, so a line of them is empty', () => {
+    for (const blank of ['ㅤ', '⠀', 'ᅟᅠ', 'ﾠ', '؜', '᠎', '͏', '️', ' ', ' ', '󠁁󠁂', '𝅳']) {
+      expect(cleanChat(blank + blank + blank), JSON.stringify(blank)).toBeNull();
+    }
+    expect(cleanChat('a󠁁b')).toBe('a b'); // tag characters can carry hidden text
+    expect(cleanChat('xㅤy')).toBe('x y');
+  });
+  it('limits a tower of combining marks to three on a letter', () => {
+    expect(cleanChat('a' + '́'.repeat(200) + 'b')).toBe('á́́b');
+  });
+  it('cuts to the limit without splitting an emoji, and the result always fits the protocol', () => {
+    const line = cleanChat('😀'.repeat(150))!;
+    expect(line.length).toBeLessThanOrEqual(MAX_CHAT);
+    expect([...line].every(ch => ch === '😀')).toBe(true); // no lone half of a pair
+    expect(line.length).toBe(MAX_CHAT); // (100 emoji of two units each)
+    const odd = cleanChat('a' + '😀'.repeat(150))!; // an emoji that would straddle the limit is left out whole
+    expect(odd.length).toBe(MAX_CHAT - 1);
+    expect(odd.endsWith('😀')).toBe(true);
   });
   it('markup stays text: it is shown as text, never read as markup', () => {
     expect(cleanChat('<img src=x onerror=alert(1)>')).toBe('<img src=x onerror=alert(1)>');
@@ -73,11 +92,32 @@ describe('ChatService', () => {
     expect((await s.say(1, 'later')).ok).toBe(true);
   });
   it('a muted account is refused and nobody hears anything, and being muted does not use the allowance', async () => {
+    let t = 5_000_000;
     const muted = new Set([1]);
-    const s = service({ muted });
+    const s = service({ muted, now: () => t });
     for (let i = 0; i < 10; i++) expect(await s.say(1, 'hello?')).toEqual({ ok: false, reason: 'muted' });
     muted.delete(1);
+    t += MUTE_CACHE_MS + 1; // (the answer is remembered for a moment)
     expect((await s.say(1, 'back')).ok).toBe(true); // (the refused ones did not count against the limit)
+  });
+  it('asks the database whether someone is muted at most about four times a second, however fast they type', async () => {
+    let t = 1_000_000, asked = 0;
+    const speakers = [{ accountId: 1, personId: 1, name: 'A', x: 0, z: 0 }];
+    const s = new ChatService({ speaker: () => speakers[0], hearers: () => [{ accountId: 1, x: 0, z: 0 }], muted: async () => { asked++; return true; } }, () => t);
+    for (let i = 0; i < 200; i++) await s.say(1, 'x');
+    expect(asked).toBe(1);
+    t += MUTE_CACHE_MS + 1;
+    await s.say(1, 'x');
+    expect(asked).toBe(2);
+  });
+  it('someone over the limit costs no database query at all', async () => {
+    let t = 1_000_000, asked = 0;
+    const speakers = [{ accountId: 1, personId: 1, name: 'A', x: 0, z: 0 }];
+    const s = new ChatService({ speaker: () => speakers[0], hearers: () => [{ accountId: 1, x: 0, z: 0 }], muted: async () => { asked++; return false; } }, () => t);
+    for (let i = 0; i < CHAT_LIMIT; i++) await s.say(1, 'line');
+    const before = asked;
+    for (let i = 0; i < 100; i++) expect(await s.say(1, 'more')).toEqual({ ok: false, reason: 'rate' });
+    expect(asked).toBe(before);
   });
   it('someone who is not playing cannot speak', async () => {
     expect(await service().say(99, 'ghost')).toEqual({ ok: false, reason: 'nobody' });

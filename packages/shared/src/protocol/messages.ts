@@ -10,6 +10,13 @@ export const WIRE_VERSION = 6;
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
 
+/** Cut a chat line to MAX_CHAT (counted in the units the protocol counts, UTF-16) without splitting a character such as an emoji. */
+export function clipChat(text: string): string {
+  let out = '', n = 0;
+  for (const ch of text) { if (n + ch.length > MAX_CHAT) break; out += ch; n += ch.length; }
+  return out;
+}
+
 /** Used where a person id, meeting index or similar is "none". */
 export const NONE = -1;
 /** `spot` value: the person's task place is a one-off (a chat spot) described inline, not a registered spot. */
