@@ -5,6 +5,7 @@ import './styles/hud.css';
 import './styles/controls.css';
 import './styles/ledger.css';
 import './styles/person.css';
+import './styles/teto.css';
 import './styles/ui-toggle.css';
 import './styles/first-person.css';
 import './styles/creator.css';
@@ -24,6 +25,7 @@ import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { roster } from './people/roster.js';
 import { fetchAttendance, fetchEmployees } from './persistence/store.js';
 import { syncBody } from './people/sync.js';
+import { updateTeto } from './ui/teto.js';
 import { player } from './player/player.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
 import { updateLight } from './render/lighting.js';
@@ -63,6 +65,7 @@ function tick(now) {
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
+  updateTeto(dt, now);
   keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));

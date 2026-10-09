@@ -56,12 +56,12 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `world/interactables.js` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')` |
 | `nav/` | `grid.js` (walkable grid built from the obstacles), `astar.js` (pathfinding) |
 | `character/` | `pack/` the character pack (vendored, chibi and blocky styles; do not edit), `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` builds a character from the pack and exposes its joints, `parts.js` face parts the pack lacks, `props.js` held props, `gfx.js` cached materials and the per-joint draw-call merge |
-| `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
+| `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` and `teto.js` (the special characters) |
 | `sim/` | `state.js` (`sim`, `people`, log), `schedule.js` (24-hour day, shifts and breaks), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
 | `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
-| `ui/` | HUD controls, the headcount ledger, the selected-person card, `creator.js` the character lab |
+| `ui/` | HUD controls, the headcount ledger, the selected-person card, `creator.js` the character lab, `teto.js` Kasane Teto's card buttons and `portrait.js` her avatar picture |
 | `styles/` | CSS split by UI area, imported in order by `main.js` |
 | `persistence/` | `store.js`: the API calls (`fetchEmployees`, `saveCharacter`) and the player's look in `localStorage` |
 | `assets/` | Static files imported by code (the logo) |
@@ -87,7 +87,7 @@ Each frame, in this order:
 1. If not paused: advance the sim clock, start meetings, roll the day over at 19:10, step every NPC (`stepPerson`), update desk screens and the day/night light.
 2. Pose and place every NPC's body, and the player's (`syncBody`).
 3. Selection ring, label visibility, and the wall-height easing (`wall.h` eases toward `wall.goal`).
-4. Input and camera (`keyCam`, `updateCamera`, which runs the active camera mode), then the animated props (golf, darts, music).
+4. Kasane Teto's dance and "Play as her" (`updateTeto`), input and camera (`keyCam`, `updateCamera`, which runs the active camera mode), then the animated props (golf, darts, music).
 5. Swap the lounge TV to the fighting game when someone is playing, render, and refresh the HUD about four times a second.
 
 ## State: who owns what
@@ -129,6 +129,8 @@ A character is four separate things:
 **The character lab** (`ui/creator.js`) edits the player's look: "Character lab" in the HUD, or "Look" while walking. It has its own small renderer for the animated preview (made the first time it opens), edits a draft spec, and on Save calls `setPlayerSpec` and `savePlayerSpec`.
 
 **Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look (a short blocky character with a bob and a permanently furious face, `HAZEL_LOOK`) and name, and she always leaves last. With the real staff list she is the employee with that name, if there is one.
+
+**Kasane Teto** (`people/teto.js`, `ui/teto.js`) is the other hand-made character, with her own 3D model (`character/tetoModel.js`, files in `public/models/lim/`). She joins as the 15th person, on top of the staff list (she never replaces an employee), and sits at Desk F8 with its triple monitors and plush unless an employee has chosen that desk. Her card has **Tetoris dance** and **Play as her** (you take control of her; Exit/Esc gives her back).
 
 **Employees and their characters.** Every person in the office is an employee from Supabase (through `/api/employees`), named and labelled by department (`jobTitle` in `people/roster.js`). Their look is `character_information.character_data` when saved, else a generated one seeded by their id. Click someone and press **Edit character**, or search them in the lab; Save writes their look through `PUT /api/characters/:userId`. The search box at the bottom left (`ui/search.js`) finds and follows anyone in the office.
 

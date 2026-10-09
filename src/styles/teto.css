@@ -1,0 +1,4 @@
+/* Kasane Teto's buttons on her person card (Tetoris dance, Play as her) */
+.btn.tt{color:#c8203a;border-color:#c8203a;font-weight:700}
+.btn.tt:hover{background:#c8203a;color:#fff}
+.btn.tt:disabled{background:#c8203a;color:#fff;cursor:default;opacity:.9}

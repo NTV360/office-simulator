@@ -3,7 +3,7 @@ const FIRST = ['Ana', 'Marco', 'Liza', 'Paolo', 'Jessa', 'Carlo', 'Bea', 'Miguel
 const LAST = 'ABCDEFGLMNPRSTVY';
 const ROLES = [['Developer', 10], ['QA Engineer', 2], ['Designer', 2], ['Product Manager', 2], ['DevOps', 2], ['Support', 1]];
 const roleBag = ROLES.flatMap(([r, n]) => Array(n).fill(r));
-const VERB = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets' };
+const VERB = { 'Developer': 'Coding', 'QA Engineer': 'Testing a build', 'Designer': 'Designing', 'UX/UI Designer': 'Designing screens', 'Product Manager': 'Writing specs', 'DevOps': 'Watching dashboards', 'Support': 'Answering tickets', 'Software Engineer QA Senior': 'Testing a build' };
 
 const CATS = {
   work: { name: 'At their desk', color: '#5a8fc7' },

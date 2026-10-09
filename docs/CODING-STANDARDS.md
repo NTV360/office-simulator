@@ -64,7 +64,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 ## 7. Per-frame code
 
 - `update*` functions run every frame: no allocating vectors, arrays or closures in them. Reuse a scratch object created at module level.
-- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`).
+- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`). The one exception is Teto's real-time 10-second Tetoris dance.
 - Easing uses `1 - Math.exp(-dt * rate)`, not a fixed fraction, so it behaves the same at any frame rate.
 
 ## 8. UI and CSS
