@@ -72,7 +72,7 @@ function tick(now) {
 // real employees, and in live mode only those clocked in.
 function start(employees, attendance) {
   roster.list = employees?.length ? employees : null;
-  initLive(roster.list ? attendance : null); // the real clock; presence from attendance when readable
+  initLive(roster.list ? attendance : null); // starts simulating the day; attendance kept for Live
   bootstrap();
   // keep presence current: clock-ins walk in, clock-outs walk out
   if (live.attendance) setInterval(() => fetchAttendance().then(a => { if (a) applyAttendance(a.records); }), 60000);

@@ -20,7 +20,7 @@ Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `
 - **Character lab:** edits an employee's character (search them, or use **Edit character** on their card): chibi or blocky style, 50 presets, body, hair, clothes and accessories. Save stores it in `character_information`.
 - **Hours:** people work through their shift (meetings, whiteboards, booth calls, coffee and snacks) and play only at lunch, 15:00 and 17:00. The clock runs a full day, 06:00 to 06:00.
 - **Desks:** Desk A–H and the HR Office; pick an employee's desk on the seat map in the character lab.
-- **Clock:** **Live** follows the actual time in Manila; **Simulate** runs the office's own faster clock (pause, 1×/3×/8×). In both, who is in comes from the attendances table (once readable).
+- **Clock:** **Simulate** (the default) runs the office's own faster clock (pause, 1×/3×/8×) for every employee on their shift, starting the **Day** or the **Night**; **Live** follows the actual time in Manila, and who is in comes from the attendances table.
 - **Find someone:** type a name in the search box at the bottom left; pick them to fly to them and open their card. **Edit character** on the card opens the character lab for them.
 
 ## Documentation

@@ -23,11 +23,11 @@
   <div class="row">
     <span class="lbl">Clock</span>
     <div class="seg" role="group" aria-label="Clock">
-      <button type="button" data-mode="live" aria-pressed="true" title="The actual time in the office">Live</button>
-      <button type="button" data-mode="sim" aria-pressed="false" title="The office's own faster clock">Simulate</button>
+      <button type="button" data-mode="sim" aria-pressed="true" title="The office's own faster clock, every employee on their shift">Simulate</button>
+      <button type="button" data-mode="live" aria-pressed="false" title="The actual time in the office, who is in from attendance">Live</button>
     </div>
   </div>
-  <div class="row" id="simRow" hidden>
+  <div class="row" id="simRow">
     <div class="seg" role="group" aria-label="Simulated time">
       <button type="button" data-simtime="day" aria-pressed="true">Day</button>
       <button type="button" data-simtime="night" aria-pressed="false">Night</button>

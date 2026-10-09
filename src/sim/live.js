@@ -4,12 +4,14 @@ import { addLog, people, sim } from './state.js';
 
 /* ================= The clock and real attendance ================= */
 // Two modes, switched in the HUD:
-// - 'live' (the default): the actual time in the office's time zone. When the attendances list is readable,
+// - 'live': the actual time in the office's time zone. When the attendances list is readable,
 //   only employees who are clocked in are in the office; clock-ins walk in, clock-outs walk out.
 //   Without it, people follow their shifts on the real clock.
-// - 'sim': the office's own faster clock (pause, 1×/3×/8×), starting the day or the night (SIM_START).
+// - 'sim' (the default, starting the day): the office's own faster clock (pause, 1×/3×/8×), starting the day
+//   or the night (SIM_START).
 //   Everyone is simulated from their shift; attendance is ignored.
-const live = { mode: 'live', attendance: false, date: null, att: new Map() }; // att: userId → { clockIn: Date, clockOut: Date | null }
+const SIM_START = { day: 9 * 60 + 25, night: 21 * 60 + 30 }; // where Simulate starts the clock
+const live = { mode: 'sim', attendance: false, date: null, att: new Map() }; // att: userId → { clockIn: Date, clockOut: Date | null }
 
 // The office time on the sim clock: the sim day runs 06:00-06:00, so after midnight is 24:00 and up.
 function liveMinutes(date = new Date()) { const m = officeMinutes(date); return m < DAY_START ? m + 24 * 60 : m; }
@@ -55,13 +57,12 @@ function tickLive() {
   live.date = day; return true;
 }
 
-// Start on the real clock; use attendance for presence when it loaded.
+// Start simulating the day; keep attendance (when it loaded) for switching to Live.
 function initLive(attendance) {
-  live.mode = 'live'; live.date = liveDay();
+  live.mode = 'sim'; live.date = liveDay();
   if (attendance) { live.attendance = true; setAttendance(attendance.records); }
-  sim.t = liveMinutes(); sim.speed = 1; sim.paused = false;
+  sim.t = SIM_START.day; sim.speed = 1; sim.paused = false;
 }
-const SIM_START = { day: 9 * 60 + 25, night: 21 * 60 + 30 };
 // True when presence comes from attendance (Live with a readable attendances table).
 function usesAttendance() { return live.mode === 'live' && live.attendance; }
 // Switch the clock. Live jumps to the real time; Simulate starts the day or the night (`when`).
