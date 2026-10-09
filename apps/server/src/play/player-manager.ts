@@ -7,7 +7,7 @@ import type { Account, AccountStore } from '../auth/account-store';
 // this decides *when*: a login takes over the account's own person (or makes a guest), a disconnect starts a grace period
 // before the person is handed back, an admin gives or takes away a desk. See docs/PHASE-3-BREAKDOWN.md, step 3.
 
-export type PlayErrorCode = 'no-account' | 'has-desk' | 'no-desk' | 'no-person' | 'claimed' | 'reserved' | 'desk-taken' | 'has-no-desk';
+export type PlayErrorCode = 'no-account' | 'has-desk' | 'no-desk' | 'no-person' | 'claimed' | 'reserved' | 'desk-taken' | 'has-no-desk' | 'has-employee' | 'no-employee' | 'employee-taken' | 'has-no-employee';
 
 /** A refusal an admin can be told about. */
 export class PlayError extends Error {
@@ -90,7 +90,15 @@ export class PlayerManager {
       return existing.person;
     }
     let person: Person | undefined;
-    if (account.slotSpot) {
+    if (account.employeeId) {
+      // an account linked to an employee plays that employee's person, wherever they sit now
+      const owner = people.find(p => p.userId === account.employeeId);
+      if (owner && (owner.owner === account.id || (owner.owner === undefined && isAi(owner)))) {
+        if (owner.owner === undefined) this.claim(owner, account); // the world did not know yet (for example it was reset)
+        person = owner;
+        takeControl(person);
+      } else this.log.warn(`${account.username} is linked to an employee who is not in the office; playing as a guest`);
+    } else if (account.slotSpot) {
       const desk = interactables.of('desk').find(d => d.id === account.slotSpot);
       const owner = desk?.owner as Person | undefined;
       if (owner && owner.name !== HAZEL_NAME && people.includes(owner) && (owner.owner === account.id || owner.owner === undefined)) {
@@ -188,6 +196,7 @@ export class PlayerManager {
     const account = await this.store.byId(accountId);
     if (!account) throw new PlayError('no-account', 'there is no such account');
     if (account.slotSpot) throw new PlayError('has-desk', `${account.username} already has a desk (${account.slotSpot}); release it first`);
+    if (account.employeeId) throw new PlayError('has-employee', `${account.username} plays an employee already; unlink them first`);
     const desk = interactables.of('desk').find(d => d.id === spotId);
     if (!desk) throw new PlayError('no-desk', `there is no desk "${spotId}"`);
     const person = desk.owner as Person | undefined;
@@ -213,6 +222,68 @@ export class PlayerManager {
     }
     this.log.log(`desk ${spotId} (${person.name}) given to ${account.username}`);
     return person;
+  }
+
+  /**
+   * An admin links an account to an employee. The employee's person (they must be in the office) becomes the account's: it keeps the
+   * employee's name, and a look the account made before is kept for them if they had none. An account that is connected as a guest is told to
+   * log in again.
+   */
+  linkEmployee(accountId: number, employeeId: string): Promise<Person> {
+    return this.serial(() => this.doLink(accountId, employeeId));
+  }
+
+  private async doLink(accountId: number, employeeId: string): Promise<Person> {
+    const account = await this.store.byId(accountId);
+    if (!account) throw new PlayError('no-account', 'there is no such account');
+    if (account.employeeId) throw new PlayError('has-employee', `${account.username} already plays an employee; unlink them first`);
+    if (account.slotSpot) throw new PlayError('has-desk', `${account.username} has a desk (${account.slotSpot}); release it first`);
+    const person = people.find(p => p.userId === employeeId);
+    if (!person) throw new PlayError('no-person', 'that employee is not in the office (they need a desk)');
+    if (person.owner !== undefined || !isAi(person)) throw new PlayError('claimed', 'that employee already belongs to an account');
+    const result = await this.store.setEmployee(accountId, employeeId);
+    if (result === 'taken') throw new PlayError('employee-taken', 'that employee already belongs to an account');
+    if (result === 'missing') throw new PlayError('no-employee', 'there is no such employee');
+    // the database write took a moment: make sure the person is still there and still nobody's
+    if (!people.includes(person) || person.owner !== undefined) {
+      await this.store.setEmployee(accountId, null);
+      throw new PlayError('no-person', 'that employee changed while they were being linked; nothing was linked');
+    }
+    const guest = this.sessions.get(accountId);
+    this.claim(person, { ...account, employeeId });
+    if (guest) {
+      if (guest.graceTimer !== null) this.timers.clear(guest.graceTimer);
+      this.sessions.delete(accountId);
+      this.inputs.delete(guest.person.id);
+      removeGuest(guest.person);
+      this.kick(accountId, 'you were linked to an employee, log in again');
+    }
+    this.log.log(`${account.username} linked to ${person.name}`);
+    return person;
+  }
+
+  /** An admin unlinks an account from its employee. The person stays as an ordinary NPC. If the account is playing them, that ends. */
+  unlinkEmployee(accountId: number): Promise<Person | null> {
+    return this.serial(() => this.doUnlink(accountId));
+  }
+
+  private async doUnlink(accountId: number): Promise<Person | null> {
+    const account = await this.store.byId(accountId);
+    if (!account) throw new PlayError('no-account', 'there is no such account');
+    if (!account.employeeId) throw new PlayError('has-no-employee', `${account.username} is not linked to an employee`);
+    const person = people.find(p => p.userId === account.employeeId);
+    await this.store.setEmployee(accountId, null); // the database first; everything after this is immediate
+    const session = this.sessions.get(accountId);
+    if (session) {
+      if (session.graceTimer !== null) this.timers.clear(session.graceTimer);
+      this.sessions.delete(accountId);
+      this.inputs.delete(session.person.id);
+      if (session.person.slot) handBack(session.person); else removeGuest(session.person);
+      this.kick(accountId, 'you were unlinked from your employee by an admin');
+    }
+    if (person && person.owner === accountId) this.unclaim(person);
+    this.log.log(`${account.username} unlinked from an employee`);
+    return person ?? null;
   }
 
   /** An admin takes an account's desk away. The person stays as an ordinary NPC. If the account is playing them, that ends. */
@@ -249,6 +320,14 @@ export class PlayerManager {
     let claimed = 0, released = 0;
     const wanted = new Map<string, Account>();
     for (const a of accounts) if (a.slotSpot) wanted.set(a.slotSpot, a);
+    // accounts linked to an employee: that employee's person is theirs, wherever it sits
+    const linked = new Map<string, Account>();
+    for (const a of accounts) if (a.employeeId) linked.set(a.employeeId, a);
+    for (const [employeeId, account] of linked) {
+      const person = people.find(p => p.userId === employeeId);
+      if (!person) { this.log.warn(`${account.username} is linked to an employee who is not in the office`); continue; }
+      if (person.owner !== account.id) { this.claim(person, account); claimed++; }
+    }
     for (const [spot, account] of wanted) {
       const person = interactables.of('desk').find(d => d.id === spot)?.owner as Person | undefined;
       if (!person) { this.log.warn(`${account.username} has desk ${spot}, which has nobody at it`); continue; }
@@ -257,7 +336,8 @@ export class PlayerManager {
     }
     for (const p of people) {
       if (p.owner === undefined || !p.slot) continue;
-      const a = wanted.get(p.slot.id);
+      const byEmployee = p.userId ? linked.get(p.userId) : undefined;
+      const a = byEmployee ?? wanted.get(p.slot.id);
       if (!a || a.id !== p.owner) { this.unclaim(p); released++; }
     }
     return { claimed, released };
@@ -271,15 +351,15 @@ export class PlayerManager {
   /** The person stops being an account's: an ordinary NPC again, with an NPC's name. */
   private unclaim(person: Person): void {
     delete person.owner;
-    person.name = npcName();
+    if (!person.userId) person.name = npcName(); // (an employee keeps their own name)
     setLook(person, person.spec); // announces the change to viewers
   }
 
   /** Make `person` the account's: it belongs to them, carries their name, and wears their look if they have one. */
   private claim(person: Person, account: Account): void {
     person.owner = account.id;
-    person.name = account.username;
-    if (account.spec) person.spec = normalizeSpec(account.spec);
+    if (!person.userId) person.name = account.username; // (an employee keeps their own name, not the account's)
+    if (account.spec && !person.userId) person.spec = normalizeSpec(account.spec); // (an employee's look is the one on their record: see the character route)
     setLook(person, person.spec); // announces the change to viewers
   }
 }

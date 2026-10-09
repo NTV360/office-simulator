@@ -153,7 +153,7 @@ export function startOnline() {
         if (!account) { setStatus('wait', 'Please log in'); account = await showLogin(base, note); }
         net.account = account;
         // a person with a desk and no look yet makes their character before anything else (the first login after a desk is given)
-        if (account.slotSpot && !account.hasLook) {
+        if ((account.slotSpot || account.employeeId) && !account.hasLook) {
           const mine = await getCharacter(base);
           // (if saving keeps failing, the page is not a trap: log out, and the login screen comes back)
           if (await showCreator(base, mine?.starting, { required: true, onLogout: async () => { await logout(base); location.reload(); } })) account.hasLook = true;

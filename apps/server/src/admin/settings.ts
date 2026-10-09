@@ -8,6 +8,10 @@ export interface SettingsUpdate {
   /** Clock speed, clamped to 0.25 to 8. */
   speed?: number;
   paused?: boolean;
+  /** Simulate (the office's own faster clock) or Live (the real time in the office's time zone, and who is clocked in). One for the whole office. */
+  clockMode?: 'sim' | 'live';
+  /** With Simulate: start the day (09:25) or the night (21:30). */
+  simStart?: 'day' | 'night';
 }
 
 export interface Settings {
@@ -16,13 +20,16 @@ export interface Settings {
   speed: number;
   paused: boolean;
   tickRate: number;
+  clockMode: 'sim' | 'live';
+  /** Is who is clocked in readable (the employee records are reachable)? Live follows it when it is. */
+  attendance: boolean;
 }
 
 /** Check an untrusted request body. Unknown fields, wrong types and non-finite numbers are refused with a message. */
 export function parseSettingsUpdate(body: unknown): SettingsUpdate {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new BadRequestException('send a JSON object');
   const out: SettingsUpdate = {};
-  const known = new Set(['slots', 'speed', 'paused']);
+  const known = new Set(['slots', 'speed', 'paused', 'clockMode', 'simStart']);
   for (const key of Object.keys(body)) if (!known.has(key)) throw new BadRequestException(`unknown setting "${key}"`);
   const b = body as Record<string, unknown>;
   if (b.slots !== undefined) {
@@ -38,6 +45,15 @@ export function parseSettingsUpdate(body: unknown): SettingsUpdate {
     if (typeof b.paused !== 'boolean') throw new BadRequestException('paused must be true or false');
     out.paused = b.paused;
   }
-  if (Object.keys(out).length === 0) throw new BadRequestException('nothing to change: send slots, speed or paused');
+  if (b.clockMode !== undefined) {
+    if (b.clockMode !== 'sim' && b.clockMode !== 'live') throw new BadRequestException('clockMode must be "sim" or "live"');
+    out.clockMode = b.clockMode;
+  }
+  if (b.simStart !== undefined) {
+    if (b.simStart !== 'day' && b.simStart !== 'night') throw new BadRequestException('simStart must be "day" or "night"');
+    if (b.clockMode !== 'sim') throw new BadRequestException('simStart goes with clockMode "sim"');
+    out.simStart = b.simStart;
+  }
+  if (Object.keys(out).length === 0) throw new BadRequestException('nothing to change: send slots, speed, paused or clockMode');
   return out;
 }

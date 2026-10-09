@@ -11,6 +11,8 @@ import { MemoryAccountStore } from '../auth/account-store';
 import { AuthProvider } from '../auth/auth.provider';
 import { AuthService } from '../auth/auth.service';
 import { sessionFor, ticketFor, useAuth } from '../test-support';
+import { MemoryEmployeeStore } from '../employees/employee-store';
+import { EmployeeService } from '../employees/employee.service';
 
 process.env.WORLD_SEED = '1';
 delete process.env.DATABASE_URL;
@@ -26,6 +28,7 @@ async function boot() {
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
   const auth = new AuthService(new MemoryAccountStore(), { limits: { logins: 1000 } }); // players log in to watch
   app.get(AuthProvider).useService(auth);
+  app.get(EmployeeService).useStore(new MemoryEmployeeStore());
   useAuth(base, auth);
 }
 beforeEach(async () => { process.env.ADMIN_TOKEN = TOKEN; await boot(); });
@@ -66,7 +69,7 @@ describe('who may use the admin API', () => {
 
 describe('changing settings', () => {
   it('reports the current settings', async () => {
-    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 80, speed: 1, paused: false, tickRate: 20 });
+    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 80, speed: 1, paused: false, tickRate: 20, clockMode: 'sim', attendance: false });
   });
 
   it('slots: add and remove staff, never beyond the desks', async () => {

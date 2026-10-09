@@ -32,6 +32,13 @@ const MUTATIONS = [
   ['a desk someone chose is given to whoever comes first', sim + 'factory.ts', "const open = (s: Spot) => !s.owner && !chosen.has(s.deskId ?? '');", 'const open = (s: Spot) => !s.owner;'],
   ['a removed person stays in the meeting they were in', sim + 'factory.ts', 'for (const m of meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }', ''],
   ['a change in the toilet or clocked-in flag is not sent', 'apps/server/src/net/broadcaster.ts', 'a.absent !== b.absent || a.toilet !== b.toilet ||', ''],
+  ['a linked account renames the employee to the account name', 'apps/server/src/play/player-manager.ts', 'if (!person.userId) person.name = account.username; // (an employee keeps', 'person.name = account.username; // (an employee keeps'],
+  ['unlinking an account renames the employee to an NPC name', 'apps/server/src/play/player-manager.ts', 'if (!person.userId) person.name = npcName(); // (an employee keeps their own name)', 'person.name = npcName();'],
+  ['an import overwrites the look chosen here', 'apps/server/src/employees/employee-store.ts', 'const desk = old.desk ?? seedDesk, character = old.character ?? e.character;', 'const desk = old.desk ?? seedDesk, character = e.character;'],
+  ['an empty answer from the records is taken as everyone having left', 'apps/server/src/employees/employee.service.ts', "if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');", ''],
+  ['the secret key is in the message when the records refuse', 'apps/server/src/employees/supabase-source.ts', '`${table}: the employee records answered ${res.status}`', '`${table}: the employee records answered ${res.status} (${this.key})`'],
+  ['a row with no valid id or name is imported', 'apps/server/src/employees/supabase-source.ts', 'if (!id || !first || seen.has(id)) { skipped++; continue; }', 'if (!id) { skipped++; continue; }'],
+  ['an employee who belongs to an account is removed when they leave the records', 'packages/shared/src/sim/factory.ts', 'const removable = (p: Person): boolean => isAi(p) && hasSlot(p) && p.owner === undefined;', 'const removable = (p: Person): boolean => isAi(p) && hasSlot(p);'],
   ['an accessory named like an object method (constructor, toString) is accepted', 'packages/shared/src/character/spec.ts', 'Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined', 'table[key]'],
   ['a man can be in a dress', 'packages/shared/src/character/spec.ts', "if (spec.body === 'male' && spec.top.style === 'dress') spec.top.style = 'tshirt';", ''],
   ['skateboards and hoverboards are allowed in the office', 'packages/shared/src/character/spec.ts', 'return !!d && !SLOTS_OFF.includes(d.slot); };', 'return !!d; };'],
@@ -77,7 +84,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

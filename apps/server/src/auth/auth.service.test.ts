@@ -72,7 +72,7 @@ describe('createAccount', () => {
     const shown = JSON.stringify(publicAccount(account));
     expect(shown).not.toContain('argon2');
     expect(shown).not.toContain(GOOD);
-    expect(Object.keys(publicAccount(account)).sort()).toEqual(['hasLook', 'id', 'mustChangePassword', 'role', 'slotSpot', 'username']);
+    expect(Object.keys(publicAccount(account)).sort()).toEqual(['employeeId', 'hasLook', 'id', 'mustChangePassword', 'role', 'slotSpot', 'username']);
   });
 
   it('usernames: 3 to 24 of letters, digits, dot, dash, underscore; trimmed; unique whatever the capitals', async () => {

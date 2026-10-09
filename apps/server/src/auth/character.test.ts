@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_SPEC, normalizePlayerSpec, people, setSeed, type Message } from '@office/shared';
 import { api, bootTestServer, connect, enter, isWelcome, sessionFor, sleep, type Client, type TestServer } from '../test-support';
+import { syncRoster } from '../employees/roster-sync';
 
 // Character creation over HTTP: your own look only, always made valid, shown to everyone at once.
 
@@ -175,6 +176,30 @@ describe('everyone sees it at once', () => {
     await sleep(400);
     expect(lastInfo(watcher, person.info.id)?.spec).toEqual(NICE);
     expect(lastInfo(watcher, person.info.id)).toMatchObject({ name: 'deskstylist', controller: 'ai' });
+    watcher.socket.close();
+  });
+});
+
+describe('an account that plays an employee', () => {
+  const U = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const client = (): Client => { const c = connect(base); open.push(c.socket); return c; };
+  const lastInfo = (c: Client, id: number) => [...c.messages].reverse().find((m): m is Extract<Message, { type: 'person' }> => m.type === 'person' && m.info.id === id)?.info;
+
+  it('its look is kept on the employee, worn by their person, and seen by everyone under the employee\'s name', async () => {
+    await server.employees.applyImport([{ userId: U(1), firstName: 'Emp', lastName: 'One', department: 'UI/UX', intern: false, shift: null, character: null, desk: null }]);
+    await syncRoster(await server.employees.list());
+    const cookie = await sessionFor(base, 'linked');
+    const id = await accountIdOf('linked');
+    expect((await admin('POST', `/api/admin/users/${id}/employee`, { employeeId: U(1) })).status).toBe(201);
+    const watcher = client(); await watcher.ready; await enter(base, watcher, 'viewer3');
+    const w0 = await watcher.waitFor(isWelcome);
+    const person = w0.people.find(p => p.info.name === 'Emp One')!;
+    expect(person).toBeDefined();
+    expect((await put(cookie, NICE)).status).toBe(200);
+    await sleep(400);
+    expect((await server.employees.byId(U(1)))!.character).toEqual(NICE); // theirs on the staff list: it survives the account
+    expect(lastInfo(watcher, person.info.id)?.spec).toEqual(NICE);
+    expect(lastInfo(watcher, person.info.id)).toMatchObject({ name: 'Emp One' }); // (not "linked")
     watcher.socket.close();
   });
 });

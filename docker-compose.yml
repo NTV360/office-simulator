@@ -44,6 +44,11 @@ services:
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
       ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+      # the company's employee records (read-only, imported into this database); empty: the staff list is not imported
+      SUPABASE_URL: "${SUPABASE_URL:-}"
+      SUPABASE_SECRET_KEY: "${SUPABASE_SECRET_KEY:-}"
+      EMPLOYEE_IMPORT_MS: "${EMPLOYEE_IMPORT_MS:-}"
+      ATTENDANCE_MS: "${ATTENDANCE_MS:-}"
       RESET_WORLD: "${RESET_WORLD:-false}"
       SAVE_INTERVAL_MS: "${SAVE_INTERVAL_MS:-10000}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-office}:${POSTGRES_PASSWORD:-office_dev_password}@db:5432/${POSTGRES_DB:-office}"

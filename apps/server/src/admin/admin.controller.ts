@@ -1,11 +1,13 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { HAZEL_NAME, interactables, type Person } from '@office/shared';
+import { HAZEL_NAME, deskSeat, interactables, live, people, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { clientAddress, type Req as HttpReq } from '../auth/http';
 import type { AuditRow } from '../auth/account-store';
+import { EmployeeService, type ImportStatus } from '../employees/employee.service';
+import { SourceError } from '../employees/supabase-source';
 import { PlayError } from '../play/player-manager';
 import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
@@ -23,11 +25,20 @@ export class AccountIdPipe implements PipeTransform<string, number> {
   }
 }
 
+/** An employee id from the address: a UUID (anything else is a 400, not a database error). */
+@Injectable()
+export class EmployeeIdPipe implements PipeTransform<string, string> {
+  transform(value: string): string {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new BadRequestException('the employee id must be a UUID');
+    return value.toLowerCase();
+  }
+}
+
 /** The answer an admin gets for a refusal from the player manager. */
 function asHttp(err: unknown): never {
   if (!(err instanceof PlayError)) throw err;
-  if (err.code === 'no-account') throw new NotFoundException(err.message);
-  if (err.code === 'no-desk' || err.code === 'has-no-desk') throw new BadRequestException(err.message);
+  if (err.code === 'no-account' || err.code === 'no-employee') throw new NotFoundException(err.message);
+  if (err.code === 'no-desk' || err.code === 'has-no-desk' || err.code === 'has-no-employee') throw new BadRequestException(err.message);
   throw new ConflictException(err.message);
 }
 
@@ -45,6 +56,7 @@ export class AdminController {
     @Inject(WorldService) private readonly worlds: WorldService,
     @Inject(PlayService) private readonly play: PlayService,
     @Inject(AuthProvider) private readonly auth: AuthProvider,
+    @Inject(EmployeeService) private readonly employees: EmployeeService,
   ) {}
 
   /**
@@ -71,10 +83,12 @@ export class AdminController {
     return this.worlds.settings();
   }
 
-  /** Change the number of staff, the clock speed, or pause. Saved straight away and visible to every viewer. */
+  /** Change the number of staff, the clock speed, pause, or the clock mode. Saved straight away and visible to every viewer. */
   @Put('settings')
   async update(@Body() body: unknown, @Req() req: HttpReq): Promise<Settings> {
     const change = parseSettingsUpdate(body);
+    // Live follows who is clocked in: read it first, so everyone is seated as the records say when the clock switches
+    if (change.clockMode === 'live' && this.employees.status.configured) await this.employees.refreshAttendance().catch(() => {});
     const result = await this.worlds.applySettings(change);
     await this.note(req, 'settings.update', null, { ...change });
     return result;
@@ -92,11 +106,11 @@ export class AdminController {
 
   /** Every account: who they are, whether they have a desk, whether they are playing right now. */
   @Get('users')
-  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; disabled: boolean; muted: boolean; mustChangePassword: boolean; hasLook: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
+  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; employeeId: string | null; disabled: boolean; muted: boolean; mustChangePassword: boolean; hasLook: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
     const accounts = await this.auth.require().accounts.list();
     const manager = this.play.manager();
     return accounts.map(a => ({
-      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled, muted: a.muted, mustChangePassword: a.mustChangePassword, hasLook: a.spec !== null,
+      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, employeeId: a.employeeId, disabled: a.disabled, muted: a.muted, mustChangePassword: a.mustChangePassword, hasLook: a.spec !== null,
       online: manager.isOnline(a.id), createdAt: a.createdAt, lastLoginAt: a.lastLoginAt,
     }));
   }
@@ -214,5 +228,87 @@ export class AdminController {
       await this.note(req, 'desk.release', await this.nameOf(id));
       return { ok: true };
     } catch (err) { return asHttp(err); }
+  }
+
+  // ---- employees: the staff list, linking accounts to them, and the import from the company's records
+
+  /** Every employee in the staff list: who they are, where they sit, whether they have a look, and which account (if any) plays them. */
+  @Get('employees')
+  async employeeList(): Promise<Array<{ userId: string; name: string; department: string | null; intern: boolean; shift: unknown; desk: string | null; seat: string | null; hasLook: boolean; inOffice: boolean; present: boolean; account: { id: number; username: string } | null }>> {
+    const records = await this.employees.require().list();
+    const linked = new Map((await this.auth.require().accounts.list()).filter(a => a.employeeId).map(a => [a.employeeId as string, a]));
+    return records.map(r => {
+      const person = people.find(p => p.userId === r.userId);
+      const account = linked.get(r.userId);
+      return {
+        userId: r.userId, name: `${r.firstName} ${r.lastName}`.trim(), department: r.department, intern: r.intern, shift: r.shift, desk: r.desk,
+        seat: person?.slot?.deskId ?? null, hasLook: r.character !== null, inOffice: !!person, present: !!person && person.state !== 'away',
+        account: account ? { id: account.id, username: account.username } : null,
+      };
+    });
+  }
+
+  /** Link an account to an employee ({ "employeeId": "..." }) or unlink it ({ "employeeId": null }). Logging in then plays that employee. */
+  @Post('users/:id/employee')
+  async linkEmployee(@Param('id', AccountIdPipe) id: number, @Body() body: unknown, @Req() req: HttpReq): Promise<{ ok: true; employeeId: string | null; person: string | null }> {
+    const employeeId = (body as { employeeId?: unknown } | null)?.employeeId;
+    if (employeeId !== null && (typeof employeeId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeId))) throw new BadRequestException('send { "employeeId": "<uuid>" } or { "employeeId": null }');
+    try {
+      if (employeeId === null) {
+        const person = await this.play.manager().unlinkEmployee(id);
+        await this.note(req, 'employee.unlink', await this.nameOf(id));
+        return { ok: true, employeeId: null, person: person?.name ?? null };
+      }
+      const wanted = employeeId.toLowerCase();
+      const person = await this.play.manager().linkEmployee(id, wanted);
+      // they must not have to make a look again if one exists: the account's and the employee's are made the same
+      const accounts = this.auth.require().accounts, emp = await this.employees.require().byId(wanted), account = await accounts.byId(id);
+      if (emp?.character && account && !account.spec) await accounts.setSpec(id, emp.character);
+      else if (emp && !emp.character && account?.spec) { await this.employees.require().setCharacter(wanted, account.spec); await this.employees.syncWorld(); }
+      await this.note(req, 'employee.link', await this.nameOf(id), { employee: person.name });
+      return { ok: true, employeeId: wanted, person: person.name };
+    } catch (err) { return asHttp(err); }
+  }
+
+  /** Choose an employee's desk ({ "desk": "A3" }, or null for any free desk). The employee moves there if they can. */
+  @Put('employees/:userId')
+  async setEmployee(@Param('userId', EmployeeIdPipe) userId: string, @Body() body: unknown, @Req() req: HttpReq): Promise<{ ok: true; desk: string | null }> {
+    const b = (body ?? {}) as { desk?: unknown };
+    if (b.desk === undefined) throw new BadRequestException('send { "desk": "A3" } or { "desk": null }');
+    let desk: string | null = null;
+    if (b.desk !== null) {
+      const seat = typeof b.desk === 'string' ? deskSeat(b.desk) : null;
+      if (!seat) throw new BadRequestException('there is no such desk (use a seat id such as "A3" or "HR2")');
+      desk = seat.id;
+    }
+    const store = this.employees.require(), emp = await store.byId(userId);
+    if (!emp || emp.removed) throw new NotFoundException('there is no such employee');
+    if (desk) {
+      const seat = deskSeat(desk)!;
+      if (seat.island.department && seat.island.department !== emp.department) throw new ConflictException(`${seat.label} is for ${seat.island.department} only`);
+    }
+    const r = await store.setDesk(userId, desk);
+    if (r === 'taken') throw new ConflictException(`${desk} was chosen by someone else`);
+    if (r === 'missing') throw new NotFoundException('there is no such employee');
+    await this.employees.syncWorld();
+    await this.note(req, 'employee.desk', `${emp.firstName} ${emp.lastName}`.trim(), { desk });
+    return { ok: true, desk };
+  }
+
+  /** What the last import from the employee records did (and whether there is a source at all). */
+  @Get('import')
+  importStatus(): ImportStatus & { clockMode: string } { return { ...this.employees.status, clockMode: live.mode }; }
+
+  /** Import the employee records now. */
+  @Post('import')
+  async importNow(@Req() req: HttpReq): Promise<{ ok: true; result: unknown }> {
+    try {
+      const result = await this.employees.importNow();
+      await this.note(req, 'employees.import', null, { ...result });
+      return { ok: true, result };
+    } catch (err) {
+      if (err instanceof SourceError) throw new ConflictException(err.message);
+      throw err;
+    }
   }
 }

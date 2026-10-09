@@ -57,7 +57,7 @@ describe('there is no sign-up, and the cookie', () => {
   it('logging in gives a safe cookie', async () => {
     const r = await register('Ana');
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ account: { id: 1, username: 'Ana', role: 'player', slotSpot: null, hasLook: false, mustChangePassword: false } });
+    expect(r.body).toEqual({ account: { id: 1, username: 'Ana', role: 'player', slotSpot: null, employeeId: null, hasLook: false, mustChangePassword: false } });
     expect(r.setCookie).toMatch(/^office_session=[A-Za-z0-9_-]{43};/);
     expect(r.setCookie).toContain('HttpOnly');
     expect(r.setCookie).toContain('SameSite=Strict');

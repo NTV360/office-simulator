@@ -6,6 +6,8 @@ import { PROTOCOL_VERSION, decode, encode, type Message } from '@office/shared';
 import { AppModule } from './app.module';
 import { configureApp } from './app.config';
 import { MemoryAccountStore } from './auth/account-store';
+import { MemoryEmployeeStore } from './employees/employee-store';
+import { EmployeeService } from './employees/employee.service';
 import { AuthProvider } from './auth/auth.provider';
 import { AuthError, AuthService } from './auth/auth.service';
 
@@ -17,6 +19,8 @@ export interface TestServer {
   app: INestApplication;
   base: string;
   store: MemoryAccountStore;
+  /** The staff list (in memory). */
+  employees: MemoryEmployeeStore;
   auth: AuthService;
   close(): Promise<void>;
 }
@@ -30,8 +34,10 @@ export async function bootTestServer(): Promise<TestServer> {
   const store = new MemoryAccountStore();
   const auth = new AuthService(store, { limits: { logins: 10_000 } }); // many test logins come from one address
   app.get(AuthProvider).useService(auth);
+  const employees = new MemoryEmployeeStore();
+  app.get(EmployeeService).useStore(employees);
   useAuth(base, auth);
-  return { app, base, store, auth, close: () => app.close() };
+  return { app, base, store, employees, auth, close: () => app.close() };
 }
 
 export interface Reply { status: number; body: any; setCookie: string | null } // eslint-disable-line @typescript-eslint/no-explicit-any

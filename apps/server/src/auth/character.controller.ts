@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, Inject, Put, Req, UseGuards } from '@nestjs/common';
 import { DEFAULT_SPEC, normalizePlayerSpec, type CharacterSpec } from '@office/shared';
+import { EmployeeService } from '../employees/employee.service';
 import { PlayService } from '../play/play.service';
 import { AuthProvider } from './auth.provider';
 import { SameOriginGuard, SessionGuard } from './auth.controller';
@@ -17,6 +18,7 @@ export class CharacterController {
   constructor(
     @Inject(AuthProvider) private readonly auth: AuthProvider,
     @Inject(PlayService) private readonly play: PlayService,
+    @Inject(EmployeeService) private readonly employees: EmployeeService,
   ) {}
 
   /** Your saved look (or null if you have never made one), and the starting look the creation page begins from. */
@@ -41,6 +43,8 @@ export class CharacterController {
     if (!this.changes.allow(String(account.id))) throw new AuthError('rate', 'too many changes; wait a minute');
     const spec = normalizePlayerSpec(sent);
     await this.auth.require().accounts.setSpec(account.id, spec);
+    // an account that plays an employee gives that employee the look (it is theirs on the staff list, so it survives the account being unlinked)
+    if (account.employeeId && this.employees.available) await this.employees.require().setCharacter(account.employeeId, spec);
     this.play.manager().applyLook(account.id, spec);
     return { spec };
   }

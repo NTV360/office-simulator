@@ -33,11 +33,13 @@ export interface PublicAccount {
   username: string;
   role: 'player' | 'admin';
   slotSpot: string | null;
+  /** The employee this account plays, or null. */
+  employeeId: string | null;
   hasLook: boolean;
   mustChangePassword: boolean;
 }
 export const publicAccount = (a: Account): PublicAccount => ({
-  id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, hasLook: a.spec !== null, mustChangePassword: a.mustChangePassword,
+  id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, employeeId: a.employeeId, hasLook: a.spec !== null, mustChangePassword: a.mustChangePassword,
 });
 
 const USERNAME = /^[A-Za-z0-9_.-]{3,24}$/;
