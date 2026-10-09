@@ -22,6 +22,7 @@
     "test:db": "node scripts/test-db.mjs",
     "dev:online": "node scripts/dev-online.mjs",
     "perf": "node scripts/perf.mjs",
+    "pack:dump": "node scripts/dump-pack.mjs",
     "shots": "node scripts/shots.mjs",
     "e2e": "node scripts/e2e.mjs",
     "e2e:accounts": "node scripts/e2e-accounts.mjs",

@@ -17,7 +17,7 @@ import {
 
 const TAU = Math.PI * 2;
 const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
-  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', controller: 'ai', spec: { ...DEFAULT_SPEC, style: 'bun', scale: 1.05 }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
+  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
 });
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
   id: 7, state: 'doing', shown: true, absent: false, toilet: false, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
@@ -184,7 +184,7 @@ describe('from the real simulation', () => {
     const w = encode({ type: 'welcome', tick: 1, tickRate: 20, simTime: 1, day: 1, speed: 1, paused: false, you: NONE, layout: layoutCheck(), people: staff.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) })), meetings: meetings.map(meetingSnap), objects: [] }).length;
     console.log(`SIZES  join record ${record} B, full snapshot of 40 people ${full} B (${(full / 40).toFixed(1)} B each), welcome ${w} B`);
     expect(full / 40).toBeLessThan(50);
-    expect(w).toBeLessThan(20_000);
+    expect(w).toBeLessThan(30_000); // (about 550 B a person, most of it the look: the pack's spec is bigger than the old one; sent once per join)
     setSeed(null);
   });
 

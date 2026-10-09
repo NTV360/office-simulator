@@ -51,6 +51,10 @@
     </div>
   </div>
   <div class="row">
+    <span class="lbl">You</span>
+    <button type="button" class="btn sm" id="openCreator" title="Change how your character looks">Character lab</button>
+  </div>
+  <div class="row">
     <span class="lbl">Go to</span>
     <div class="chips" role="group" aria-label="Jump to an area">
       <button type="button" class="btn sm" data-go="pantry">Pantry &amp; dining</button>
@@ -114,11 +118,36 @@
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>
+  <button class="btn" id="fpCreator" type="button" title="Change how you look">Look</button>
   <button class="btn" id="fpExit" type="button">Exit</button>
 </section>
 <div id="fpPrompt" hidden><div id="fpLook"></div><button class="btn" id="fpAct" type="button" hidden></button></div>
 <div id="crosshair" hidden></div>
 <div id="stick" hidden><div id="knob"></div></div>
+<section id="creator" hidden role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
+  <div id="creatorStage">
+    <div class="cl-top">
+      <button class="btn" id="creatorBack" type="button">← Back to office</button>
+      <div class="eyebrow">Character lab</div>
+      <h2 id="creatorTitle">Your character</h2>
+      <div id="creatorWho">—</div>
+    </div>
+    <div class="cl-hint">Drag to turn · scroll to zoom</div>
+    <div class="cl-bar">
+      <div class="seg" id="creatorClips" role="group" aria-label="Preview animation"></div>
+      <button class="btn sm" id="creatorSpin" type="button" aria-pressed="false">Turntable</button>
+    </div>
+  </div>
+  <div id="creatorSide">
+    <div id="creatorPanel" aria-label="Character settings"></div>
+    <div class="cl-footer">
+      <span id="creatorMessage" role="alert"></span>
+      <button class="btn" id="creatorLogout" type="button" hidden>Log out</button>
+      <button class="btn" id="creatorCancel" type="button">Cancel</button>
+      <button class="btn primary" id="creatorSave" type="button">Save</button>
+    </div>
+  </div>
+</section>
 <div id="veil">Building the floor…</div>
 
 <script>

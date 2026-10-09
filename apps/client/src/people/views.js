@@ -1,4 +1,4 @@
-import { buildBody } from '../character/rig.js';
+import { buildBody, disposeBody } from '../character/rig.js';
 import { people, simEvents } from '@office/shared';
 import { select, selected } from '../ui/person.js';
 import { removeBubble } from './bubbles.js';
@@ -15,7 +15,7 @@ function attach(p) {
 }
 function detach(p) {
   dropNameTag(p); removeBubble(p); // (their textures and materials are freed with them)
-  peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring);
+  peopleGroup.remove(p.body.root); peopleGroup.remove(p.body.ring); disposeBody(p.body);
   if (selected === p) select(null);
 }
 

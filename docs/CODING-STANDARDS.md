@@ -53,7 +53,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 - **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `packages/shared/src/plan.ts`, `packages/shared/src/character/spec.ts`, `packages/shared/src/sim/data.ts`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
 - Do not hard-code magic numbers deep inside logic when they describe the world. Put them in a data module or at the top of the file with a name.
-- A character's look is a `CharacterSpec`. Add a look option to `packages/shared/src/character/spec.ts` (default, `PARTS`, `normalizeSpec`) **and** to the rig/parts. See [HOW-TO.md](HOW-TO.md#add-a-hairstyle-or-another-look-option).
+- A character's look is a `CharacterSpec`, made from the character pack's options. New hair, clothes or accessories are added to the pack (see [HOW-TO.md](HOW-TO.md#update-the-character-pack)); `normalizeSpec` makes any input valid, so use it on anything that comes from outside (a save, the network, a pasted config).
 
 ## 6. Coordinates and angles
 

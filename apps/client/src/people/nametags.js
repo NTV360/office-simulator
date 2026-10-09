@@ -6,7 +6,7 @@ import { isLocalPlayer } from '../player/player.js';
 // The "Names" button in the HUD turns them all off.
 
 const nameState = { on: true };
-const HEIGHT = 2.0; // metres above the floor
+const ABOVE_HEAD = .3; // metres above the top of the head
 const textures = new Map();
 const MAX_TEXTURES = 200;
 
@@ -55,7 +55,7 @@ function updateNameTag(p) {
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false }));
   const h = .24;
   sprite.scale.set(h * aspect, h, 1);
-  sprite.position.set(0, HEIGHT / (p.spec.scale || 1), 0); // (the body is scaled by the person's height)
+  sprite.position.set(0, p.body.topY + ABOVE_HEAD, 0);
   sprite.renderOrder = 12;
   sprite.userData = { text: name, body: p.body };
   p.body.root.add(sprite);

@@ -1,0 +1,2042 @@
+{
+ "options": {
+  "chibi": {
+   "body": [
+    "male",
+    "female"
+   ],
+   "build": [
+    "skinny",
+    "average",
+    "chubby"
+   ],
+   "height": [
+    "short",
+    "average",
+    "tall"
+   ],
+   "eyes": [
+    "round",
+    "big",
+    "closed",
+    "dots"
+   ],
+   "hair": [
+    "none",
+    "buzz",
+    "short",
+    "spiky",
+    "swept",
+    "quiff",
+    "curly",
+    "afro",
+    "long",
+    "bob",
+    "ponytail",
+    "bun",
+    "pigtails",
+    "mohawk"
+   ],
+   "facialHair": [
+    "none",
+    "stubble",
+    "moustache",
+    "goatee",
+    "beard",
+    "fullBeard"
+   ],
+   "top": [
+    "tshirt",
+    "polo",
+    "longsleeve",
+    "tanktop",
+    "hoodie",
+    "jacket",
+    "sweater",
+    "dress"
+   ],
+   "bottom": [
+    "bare",
+    "pants",
+    "jeans",
+    "joggers",
+    "shorts",
+    "skirt",
+    "leggings"
+   ],
+   "shoes": [
+    "bare",
+    "simple",
+    "sneakers",
+    "boots"
+   ],
+   "accessories": [
+    "cap",
+    "beanie",
+    "santaHat",
+    "headphones",
+    "glasses",
+    "sunglasses",
+    "earrings",
+    "scarf",
+    "tie",
+    "bowtie",
+    "belt",
+    "gloves",
+    "watch",
+    "backpack",
+    "briefcase",
+    "book",
+    "phone",
+    "coffee",
+    "tablet",
+    "icecream",
+    "balloon",
+    "skateboard",
+    "hoverboard"
+   ]
+  },
+  "blocky": {
+   "body": [
+    "male",
+    "female"
+   ],
+   "build": [
+    "skinny",
+    "average",
+    "chubby"
+   ],
+   "height": [
+    "short",
+    "average",
+    "tall"
+   ],
+   "hair": [
+    "none",
+    "buzz",
+    "short",
+    "quiff",
+    "spiky",
+    "afro",
+    "long",
+    "bob",
+    "ponytail",
+    "bun",
+    "pigtails",
+    "mohawk"
+   ],
+   "facialHair": [
+    "none",
+    "stubble",
+    "moustache",
+    "goatee",
+    "beard"
+   ],
+   "top": [
+    "tshirt",
+    "polo",
+    "longsleeve",
+    "tanktop",
+    "hoodie",
+    "jacket",
+    "sweater",
+    "dress"
+   ],
+   "bottom": [
+    "bare",
+    "pants",
+    "widePants",
+    "jeans",
+    "joggers",
+    "shorts",
+    "skirt",
+    "leggings"
+   ],
+   "shoes": [
+    "bare",
+    "simple",
+    "sneakers",
+    "hightops",
+    "boots"
+   ],
+   "accessories": [
+    "cap",
+    "beanie",
+    "headphones",
+    "glasses",
+    "sunglasses",
+    "earrings",
+    "watch",
+    "scarf",
+    "tie",
+    "camera",
+    "backpack",
+    "guitar",
+    "briefcase",
+    "book",
+    "phone",
+    "tablet",
+    "coffee",
+    "skateboard",
+    "hoverboard"
+   ]
+  }
+ },
+ "palettes": {
+  "chibi": {
+   "skin": {
+    "porcelain": "#fbd9c8",
+    "fair": "#f2c2a8",
+    "light": "#e8b59a",
+    "peach": "#e3a785",
+    "medium": "#cf9772",
+    "olive": "#b9845a",
+    "tan": "#a06c48",
+    "brown": "#7e5236",
+    "dark": "#603b27",
+    "deep": "#43281a"
+   },
+   "hair": {
+    "black": "#1c1715",
+    "darkBrown": "#3a2418",
+    "brown": "#5b3a22",
+    "chestnut": "#7a4425",
+    "auburn": "#94381f",
+    "ginger": "#c4552a",
+    "blonde": "#f2c94c",
+    "platinum": "#efe4c4",
+    "grey": "#a5a5a5",
+    "white": "#f4f4f4",
+    "pink": "#ee7fb0",
+    "blue": "#4a86e8",
+    "teal": "#2fb5a8",
+    "purple": "#8f63dd"
+   },
+   "eyes": {
+    "black": "#1b1514",
+    "brown": "#5a3216",
+    "hazel": "#7a6a2e",
+    "green": "#3f8a50",
+    "blue": "#2f6fd6",
+    "grey": "#6d7b86"
+   }
+  },
+  "blocky": {
+   "skin": {
+    "porcelain": "#ffe0cc",
+    "fair": "#f6c9a6",
+    "light": "#eab38c",
+    "medium": "#d39b72",
+    "olive": "#c08a5c",
+    "tan": "#a8704a",
+    "brown": "#87573a",
+    "dark": "#653f29",
+    "deep": "#46291b"
+   },
+   "hair": {
+    "black": "#1f1a18",
+    "darkBrown": "#3b2519",
+    "brown": "#5e3b24",
+    "auburn": "#8a3a22",
+    "ginger": "#b8402b",
+    "blonde": "#d9b25f",
+    "platinum": "#ece0c0",
+    "grey": "#9a9a9a",
+    "white": "#eeeeee",
+    "pink": "#e86fa3",
+    "blue": "#4a7fe0",
+    "green": "#3fae6c",
+    "purple": "#8a5ad8"
+   },
+   "eyes": {
+    "brown": "#3b2416",
+    "dark": "#1d1411",
+    "hazel": "#6b5a2e",
+    "green": "#3f7a4a",
+    "blue": "#3e6fb0",
+    "grey": "#6d7b86"
+   }
+  }
+ },
+ "accessories": {
+  "chibi": {
+   "cap": {
+    "slot": "head",
+    "hat": true,
+    "color": "#d64545"
+   },
+   "beanie": {
+    "slot": "head",
+    "hat": true,
+    "color": "#2fb5a8"
+   },
+   "santaHat": {
+    "slot": "head",
+    "hat": true,
+    "color": "#c8262f"
+   },
+   "headphones": {
+    "slot": "head",
+    "color": "#2a2d34"
+   },
+   "glasses": {
+    "slot": "face",
+    "color": "#2a2320"
+   },
+   "sunglasses": {
+    "slot": "face",
+    "color": "#15161b"
+   },
+   "earrings": {
+    "slot": "face",
+    "color": "#e8c25a"
+   },
+   "scarf": {
+    "slot": "body",
+    "color": "#c9473f"
+   },
+   "tie": {
+    "slot": "body",
+    "color": "#2f3d6e"
+   },
+   "bowtie": {
+    "slot": "body",
+    "color": "#c8262f"
+   },
+   "belt": {
+    "slot": "body",
+    "color": "#1d1a19"
+   },
+   "gloves": {
+    "slot": "body",
+    "color": "#1d1a19"
+   },
+   "watch": {
+    "slot": "body",
+    "color": "#1d2633"
+   },
+   "backpack": {
+    "slot": "back",
+    "color": "#3f7a5a"
+   },
+   "briefcase": {
+    "slot": "hand",
+    "hand": "R",
+    "color": "#5a2a1e"
+   },
+   "book": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#3a6ea5"
+   },
+   "phone": {
+    "slot": "hand",
+    "hand": "R",
+    "color": "#3d7bf2"
+   },
+   "coffee": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#f7f2ea"
+   },
+   "tablet": {
+    "slot": "hand",
+    "hand": "both",
+    "color": "#e8ecf2"
+   },
+   "icecream": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#f4a7c4"
+   },
+   "balloon": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#e2453b"
+   },
+   "skateboard": {
+    "slot": "ride",
+    "color": "#d9653b"
+   },
+   "hoverboard": {
+    "slot": "ride",
+    "color": "#e8ecf2"
+   }
+  },
+  "blocky": {
+   "cap": {
+    "slot": "head",
+    "hat": true,
+    "color": "#d64545"
+   },
+   "beanie": {
+    "slot": "head",
+    "hat": true,
+    "color": "#e0a23a"
+   },
+   "headphones": {
+    "slot": "head",
+    "color": "#2a2d34"
+   },
+   "glasses": {
+    "slot": "face",
+    "color": "#2a2320"
+   },
+   "sunglasses": {
+    "slot": "face",
+    "color": "#15161b"
+   },
+   "earrings": {
+    "slot": "face",
+    "color": "#e8c25a"
+   },
+   "watch": {
+    "slot": "body",
+    "color": "#1d2633"
+   },
+   "scarf": {
+    "slot": "body",
+    "color": "#c9473f"
+   },
+   "tie": {
+    "slot": "body",
+    "color": "#2f3d6e"
+   },
+   "camera": {
+    "slot": "body",
+    "color": "#2b2b30"
+   },
+   "backpack": {
+    "slot": "back",
+    "color": "#3f7a5a"
+   },
+   "guitar": {
+    "slot": "back",
+    "color": "#c9702e"
+   },
+   "briefcase": {
+    "slot": "hand",
+    "hand": "R",
+    "color": "#4a1f1c"
+   },
+   "book": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#3a6ea5"
+   },
+   "phone": {
+    "slot": "hand",
+    "hand": "R",
+    "color": "#3d7bf2"
+   },
+   "tablet": {
+    "slot": "hand",
+    "hand": "both",
+    "color": "#e8ecf2"
+   },
+   "coffee": {
+    "slot": "hand",
+    "hand": "L",
+    "color": "#f7f2ea"
+   },
+   "skateboard": {
+    "slot": "ride",
+    "color": "#d9653b"
+   },
+   "hoverboard": {
+    "slot": "ride",
+    "color": "#e8ecf2"
+   }
+  }
+ },
+ "presets": {
+  "chibi": {
+   "defaultMale": {
+    "type": "chibi",
+    "name": "Default Male",
+    "body": "male",
+    "build": "average",
+    "height": "average",
+    "skin": "#e8b59a",
+    "eyes": {
+     "style": "round",
+     "color": "#1b1514"
+    },
+    "cheeks": false,
+    "hair": {
+     "style": "short",
+     "color": "#5b3a22"
+    },
+    "facialHair": {
+     "style": "none"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#4f86d9"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#2f3f63"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2b2522"
+    },
+    "accessories": []
+   },
+   "defaultFemale": {
+    "type": "chibi",
+    "name": "Default Female",
+    "body": "female",
+    "build": "average",
+    "height": "average",
+    "skin": "#e8b59a",
+    "eyes": {
+     "style": "round",
+     "color": "#1b1514"
+    },
+    "cheeks": true,
+    "hair": {
+     "style": "long",
+     "color": "#5b3a22"
+    },
+    "facialHair": {
+     "style": "none"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#4f86d9"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#2f3f63"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2b2522"
+    },
+    "accessories": []
+   },
+   "santa": {
+    "type": "chibi",
+    "name": "Santa",
+    "body": "male",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#f2c2a8",
+    "cheeks": true,
+    "eyes": {
+     "style": "dots"
+    },
+    "hair": {
+     "style": "none"
+    },
+    "facialHair": {
+     "style": "fullBeard",
+     "color": "#f4f4f4"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#8e1b2a",
+     "accent": "#f6f1ea"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#8e1b2a"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#1d1a19"
+    },
+    "accessories": [
+     "santaHat",
+     "belt",
+     "gloves"
+    ]
+   },
+   "beardedGuy": {
+    "type": "chibi",
+    "name": "Bearded Guy",
+    "body": "male",
+    "skin": "#e3a785",
+    "eyes": {
+     "style": "closed"
+    },
+    "hair": {
+     "style": "short",
+     "color": "#1c1715"
+    },
+    "facialHair": {
+     "style": "beard",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "longsleeve",
+     "color": "#1f1f22"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#252c3d"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#1d1a19"
+    },
+    "accessories": []
+   },
+   "blondeKid": {
+    "type": "chibi",
+    "name": "Blonde Kid",
+    "body": "male",
+    "build": "skinny",
+    "height": "short",
+    "skin": "#f2c2a8",
+    "eyes": {
+     "style": "round",
+     "color": "#2f6fd6"
+    },
+    "hair": {
+     "style": "swept",
+     "color": "#f2c94c"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#c8262f"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#2d5ca8"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#1d1a19"
+    },
+    "accessories": []
+   },
+   "girlNextDoor": {
+    "type": "chibi",
+    "name": "Girl Next Door",
+    "body": "female",
+    "build": "skinny",
+    "height": "short",
+    "skin": "#f2c2a8",
+    "cheeks": true,
+    "eyes": {
+     "style": "big",
+     "color": "#5a3216"
+    },
+    "hair": {
+     "style": "long",
+     "color": "#3a2418"
+    },
+    "top": {
+     "style": "tanktop",
+     "color": "#b8479b"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#2d5ca8"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#f2c94c"
+    },
+    "accessories": []
+   },
+   "barista": {
+    "type": "chibi",
+    "name": "Barista",
+    "body": "female",
+    "skin": "#b9845a",
+    "cheeks": true,
+    "eyes": {
+     "style": "round",
+     "color": "#7a6a2e"
+    },
+    "hair": {
+     "style": "bun",
+     "color": "#7a4425"
+    },
+    "top": {
+     "style": "polo",
+     "color": "#2f6b4f",
+     "accent": "#f6f1ea"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#2a2a2e"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#f6f1ea"
+    },
+    "accessories": [
+     "coffee"
+    ]
+   },
+   "skater": {
+    "type": "chibi",
+    "name": "Skater",
+    "body": "male",
+    "build": "skinny",
+    "skin": "#a06c48",
+    "hair": {
+     "style": "curly",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#2fb5a8"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#c7b28a"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#2a2a2e"
+    },
+    "accessories": [
+     {
+      "type": "beanie",
+      "color": "#f2b43c"
+     },
+     "skateboard"
+    ]
+   },
+   "hoverKid": {
+    "type": "chibi",
+    "name": "Hover Kid",
+    "body": "female",
+    "height": "short",
+    "skin": "#cf9772",
+    "cheeks": true,
+    "eyes": {
+     "style": "big",
+     "color": "#3f8a50"
+    },
+    "hair": {
+     "style": "pigtails",
+     "color": "#ee7fb0"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#2d2d33",
+     "accent": "#37d6ff"
+    },
+    "bottom": {
+     "style": "leggings",
+     "color": "#1f2230"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#e8ecf2"
+    },
+    "accessories": [
+     "sunglasses",
+     "hoverboard"
+    ]
+   },
+   "developer": {
+    "type": "chibi",
+    "name": "Developer",
+    "body": "male",
+    "build": "chubby",
+    "skin": "#7e5236",
+    "hair": {
+     "style": "afro",
+     "color": "#1c1715"
+    },
+    "facialHair": {
+     "style": "stubble"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#3b3f4a"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#2a2a2e"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#e8e8ea",
+     "accent": "#2a2a2e"
+    },
+    "accessories": [
+     "headphones",
+     "tablet"
+    ]
+   },
+   "officeLady": {
+    "type": "chibi",
+    "name": "Office Lady",
+    "body": "female",
+    "height": "tall",
+    "skin": "#e8b59a",
+    "eyes": {
+     "style": "round",
+     "color": "#6d7b86"
+    },
+    "hair": {
+     "style": "bob",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#2f3d6e"
+    },
+    "bottom": {
+     "style": "skirt",
+     "color": "#2f3d6e"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#1d1a19"
+    },
+    "accessories": [
+     "earrings",
+     "phone",
+     "watch"
+    ]
+   },
+   "businessman": {
+    "type": "chibi",
+    "name": "Businessman",
+    "body": "male",
+    "height": "tall",
+    "skin": "#fbd9c8",
+    "eyes": {
+     "style": "round",
+     "color": "#2f6fd6"
+    },
+    "hair": {
+     "style": "quiff",
+     "color": "#c4552a"
+    },
+    "facialHair": {
+     "style": "beard",
+     "color": "#c4552a"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#8e1b2a"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#3b1714"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#b32642"
+    },
+    "accessories": [
+     "watch",
+     "briefcase"
+    ]
+   },
+   "grandpa": {
+    "type": "chibi",
+    "name": "Grandpa",
+    "body": "male",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#e8b59a",
+    "eyes": {
+     "style": "closed"
+    },
+    "hair": {
+     "style": "none"
+    },
+    "facialHair": {
+     "style": "moustache",
+     "color": "#f4f4f4"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#7a5a3a",
+     "accent": "#c9a76a"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#5b5b5b"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#5c6b4a"
+     },
+     "glasses",
+     "book"
+    ]
+   },
+   "grandma": {
+    "type": "chibi",
+    "name": "Grandma",
+    "body": "female",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#f2c2a8",
+    "cheeks": true,
+    "eyes": {
+     "style": "closed"
+    },
+    "hair": {
+     "style": "bun",
+     "color": "#a5a5a5"
+    },
+    "top": {
+     "style": "dress",
+     "color": "#8f63dd",
+     "accent": "#f2ece2"
+    },
+    "bottom": {
+     "style": "bare"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#5e3b24"
+    },
+    "accessories": [
+     "glasses",
+     "coffee"
+    ]
+   },
+   "musician": {
+    "type": "chibi",
+    "name": "Musician",
+    "body": "male",
+    "height": "tall",
+    "skin": "#b9845a",
+    "hair": {
+     "style": "long",
+     "color": "#3a2418"
+    },
+    "facialHair": {
+     "style": "goatee"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#1f1f22",
+     "accent": "#d64545"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#2f4e7a"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     "headphones",
+     "sunglasses"
+    ]
+   },
+   "student": {
+    "type": "chibi",
+    "name": "Student",
+    "body": "female",
+    "build": "skinny",
+    "skin": "#fbd9c8",
+    "cheeks": true,
+    "eyes": {
+     "style": "big",
+     "color": "#3f8a50"
+    },
+    "hair": {
+     "style": "ponytail",
+     "color": "#94381f"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#e8d6a8",
+     "accent": "#3a6ea5"
+    },
+    "bottom": {
+     "style": "skirt",
+     "color": "#3a3f5c"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     "glasses",
+     "backpack",
+     "book"
+    ]
+   },
+   "runner": {
+    "type": "chibi",
+    "name": "Runner",
+    "body": "male",
+    "build": "skinny",
+    "height": "tall",
+    "skin": "#43281a",
+    "hair": {
+     "style": "buzz",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "tanktop",
+     "color": "#e86f3a"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#1f2230"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#37d6ff",
+     "accent": "#ffffff"
+    },
+    "accessories": [
+     {
+      "type": "headphones",
+      "color": "#f2f2f2",
+      "accent": "#37d6ff"
+     },
+     "watch"
+    ]
+   },
+   "partyKid": {
+    "type": "chibi",
+    "name": "Party Kid",
+    "body": "male",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#e3a785",
+    "cheeks": true,
+    "eyes": {
+     "style": "big",
+     "color": "#5a3216"
+    },
+    "hair": {
+     "style": "spiky",
+     "color": "#7a4425"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#f2b43c"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#4f86d9"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#d64545"
+    },
+    "accessories": [
+     "bowtie",
+     "balloon"
+    ]
+   },
+   "icecreamGirl": {
+    "type": "chibi",
+    "name": "Ice Cream Day",
+    "body": "female",
+    "height": "short",
+    "skin": "#7e5236",
+    "cheeks": true,
+    "eyes": {
+     "style": "big",
+     "color": "#1b1514"
+    },
+    "hair": {
+     "style": "afro",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "dress",
+     "color": "#ee7fb0",
+     "accent": "#f6f1ea"
+    },
+    "bottom": {
+     "style": "bare"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#f6f1ea"
+    },
+    "accessories": [
+     {
+      "type": "icecream",
+      "color": "#8fdcc0"
+     }
+    ]
+   },
+   "punk": {
+    "type": "chibi",
+    "name": "Punk",
+    "body": "male",
+    "skin": "#f2c2a8",
+    "hair": {
+     "style": "mohawk",
+     "color": "#2fb5a8"
+    },
+    "facialHair": {
+     "style": "stubble"
+    },
+    "top": {
+     "style": "tanktop",
+     "color": "#1f1f22"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#2a2a2e"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#1d1a19"
+    },
+    "accessories": [
+     "sunglasses",
+     "belt",
+     "gloves"
+    ]
+   },
+   "hiker": {
+    "type": "chibi",
+    "name": "Hiker",
+    "body": "female",
+    "skin": "#a06c48",
+    "eyes": {
+     "style": "round",
+     "color": "#5a3216"
+    },
+    "hair": {
+     "style": "ponytail",
+     "color": "#5b3a22"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#d9653b"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#5c6b4a"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#6b4a2e"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#3f7a5a"
+     },
+     "backpack",
+     "watch"
+    ]
+   },
+   "winterWalker": {
+    "type": "chibi",
+    "name": "Winter Walker",
+    "body": "female",
+    "build": "average",
+    "height": "tall",
+    "skin": "#e8b59a",
+    "cheeks": true,
+    "hair": {
+     "style": "long",
+     "color": "#efe4c4"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#3a6ea5",
+     "accent": "#f6f1ea"
+    },
+    "bottom": {
+     "style": "leggings",
+     "color": "#2a2a2e"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#7a4425"
+    },
+    "accessories": [
+     {
+      "type": "beanie",
+      "color": "#c9473f"
+     },
+     "scarf"
+    ]
+   },
+   "gamer": {
+    "type": "chibi",
+    "name": "Gamer",
+    "body": "male",
+    "build": "chubby",
+    "skin": "#f2c2a8",
+    "eyes": {
+     "style": "round",
+     "color": "#3f8a50"
+    },
+    "hair": {
+     "style": "curly",
+     "color": "#8f63dd"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#2d2d33"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#3b4357"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#3fae6c"
+    },
+    "accessories": [
+     "headphones",
+     "glasses",
+     "phone"
+    ]
+   },
+   "teacher": {
+    "type": "chibi",
+    "name": "Teacher",
+    "body": "female",
+    "build": "chubby",
+    "skin": "#cf9772",
+    "eyes": {
+     "style": "round",
+     "color": "#5a3216"
+    },
+    "hair": {
+     "style": "bob",
+     "color": "#7a4425"
+    },
+    "top": {
+     "style": "longsleeve",
+     "color": "#5b8f6a"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#5b5b5b"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2b2522"
+    },
+    "accessories": [
+     "glasses",
+     {
+      "type": "book",
+      "side": "R"
+     },
+     "coffee"
+    ]
+   },
+   "gentleman": {
+    "type": "chibi",
+    "name": "Gentleman",
+    "body": "male",
+    "height": "tall",
+    "skin": "#603b27",
+    "hair": {
+     "style": "short",
+     "color": "#1c1715"
+    },
+    "facialHair": {
+     "style": "moustache",
+     "color": "#1c1715"
+    },
+    "top": {
+     "style": "longsleeve",
+     "color": "#f2f2f2"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#1f2230"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#1d1a19"
+    },
+    "accessories": [
+     "tie",
+     "watch",
+     "briefcase"
+    ]
+   }
+  },
+  "blocky": {
+   "defaultMale": {
+    "type": "blocky",
+    "name": "Default Male",
+    "body": "male",
+    "build": "average",
+    "height": "average",
+    "skin": "#eab38c",
+    "eyes": "#3b2416",
+    "freckles": false,
+    "hair": {
+     "style": "short",
+     "color": "#5e3b24"
+    },
+    "facialHair": {
+     "style": "none"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#4f86d9"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#3b4357"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2d2a2a"
+    },
+    "accessories": []
+   },
+   "defaultFemale": {
+    "type": "blocky",
+    "name": "Default Female",
+    "body": "female",
+    "build": "average",
+    "height": "average",
+    "skin": "#eab38c",
+    "eyes": "#3b2416",
+    "freckles": false,
+    "hair": {
+     "style": "long",
+     "color": "#5e3b24"
+    },
+    "facialHair": {
+     "style": "none"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#4f86d9"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#3b4357"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2d2a2a"
+    },
+    "accessories": []
+   },
+   "briefcaseWalker": {
+    "type": "blocky",
+    "name": "Briefcase Walker",
+    "body": "male",
+    "skin": "#f6c9a6",
+    "hair": {
+     "style": "quiff",
+     "color": "#b8402b"
+    },
+    "facialHair": {
+     "style": "beard"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#b3213d"
+    },
+    "bottom": {
+     "style": "widePants",
+     "color": "#3b1714"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#b32642"
+    },
+    "accessories": [
+     "watch",
+     "briefcase"
+    ]
+   },
+   "skater": {
+    "type": "blocky",
+    "name": "Skater",
+    "body": "male",
+    "build": "skinny",
+    "skin": "#a8704a",
+    "hair": {
+     "style": "short",
+     "color": "#1f1a18"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#2f8f8f"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#c7b28a"
+    },
+    "shoes": {
+     "style": "hightops",
+     "color": "#2a2a2e"
+    },
+    "accessories": [
+     {
+      "type": "beanie",
+      "color": "#e0a23a"
+     },
+     "skateboard"
+    ]
+   },
+   "hoverRider": {
+    "type": "blocky",
+    "name": "Hover Rider",
+    "body": "female",
+    "skin": "#d39b72",
+    "hair": {
+     "style": "mohawk",
+     "color": "#e86fa3"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#2d2d33",
+     "accent": "#37d6ff"
+    },
+    "bottom": {
+     "style": "leggings",
+     "color": "#1f2230"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#e8ecf2"
+    },
+    "accessories": [
+     "sunglasses",
+     "hoverboard"
+    ]
+   },
+   "musician": {
+    "type": "blocky",
+    "name": "Musician",
+    "body": "male",
+    "build": "average",
+    "height": "tall",
+    "skin": "#c08a5c",
+    "hair": {
+     "style": "long",
+     "color": "#3b2519"
+    },
+    "facialHair": {
+     "style": "goatee"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#1f1f22",
+     "accent": "#d64545"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#2f4e7a"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     "guitar"
+    ]
+   },
+   "student": {
+    "type": "blocky",
+    "name": "Student",
+    "body": "female",
+    "build": "skinny",
+    "height": "short",
+    "skin": "#ffe0cc",
+    "freckles": true,
+    "eyes": "#3f7a4a",
+    "hair": {
+     "style": "pigtails",
+     "color": "#8a3a22"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#e8d6a8",
+     "accent": "#3a6ea5"
+    },
+    "bottom": {
+     "style": "skirt",
+     "color": "#3a3f5c"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     "glasses",
+     "backpack",
+     "book"
+    ]
+   },
+   "coffeeLover": {
+    "type": "blocky",
+    "name": "Coffee Lover",
+    "body": "female",
+    "skin": "#eab38c",
+    "hair": {
+     "style": "bob",
+     "color": "#d9b25f"
+    },
+    "top": {
+     "style": "longsleeve",
+     "color": "#a3b18a"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#41608f"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#f2ece2",
+     "accent": "#c9473f"
+    },
+    "accessories": [
+     {
+      "type": "scarf",
+      "color": "#c9473f"
+     },
+     "coffee"
+    ]
+   },
+   "developer": {
+    "type": "blocky",
+    "name": "Developer",
+    "body": "male",
+    "build": "chubby",
+    "skin": "#87573a",
+    "hair": {
+     "style": "afro",
+     "color": "#1f1a18"
+    },
+    "facialHair": {
+     "style": "stubble"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#3b3f4a"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#2a2a2e"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#e8e8ea",
+     "accent": "#2a2a2e"
+    },
+    "accessories": [
+     "headphones",
+     "tablet"
+    ]
+   },
+   "designer": {
+    "type": "blocky",
+    "name": "Designer",
+    "body": "female",
+    "height": "tall",
+    "skin": "#653f29",
+    "hair": {
+     "style": "bun",
+     "color": "#1f1a18"
+    },
+    "eyes": "#1d1411",
+    "top": {
+     "style": "longsleeve",
+     "color": "#f2ece2"
+    },
+    "bottom": {
+     "style": "widePants",
+     "color": "#2d2d33"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#d64545"
+    },
+    "accessories": [
+     "glasses",
+     "earrings",
+     "tablet"
+    ]
+   },
+   "runner": {
+    "type": "blocky",
+    "name": "Runner",
+    "body": "male",
+    "build": "skinny",
+    "height": "tall",
+    "skin": "#46291b",
+    "hair": {
+     "style": "buzz",
+     "color": "#1f1a18"
+    },
+    "top": {
+     "style": "tanktop",
+     "color": "#e86f3a"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#1f2230"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#37d6ff",
+     "accent": "#ffffff"
+    },
+    "accessories": [
+     {
+      "type": "headphones",
+      "color": "#f2f2f2",
+      "accent": "#37d6ff"
+     },
+     "watch"
+    ]
+   },
+   "executive": {
+    "type": "blocky",
+    "name": "Executive",
+    "body": "female",
+    "skin": "#f6c9a6",
+    "hair": {
+     "style": "bun",
+     "color": "#3b2519"
+    },
+    "top": {
+     "style": "jacket",
+     "color": "#2f3d6e"
+    },
+    "bottom": {
+     "style": "skirt",
+     "color": "#2f3d6e"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#1d1d22"
+    },
+    "accessories": [
+     "earrings",
+     "phone",
+     "watch"
+    ]
+   },
+   "grandpa": {
+    "type": "blocky",
+    "name": "Grandpa",
+    "body": "male",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#eab38c",
+    "hair": {
+     "style": "none"
+    },
+    "facialHair": {
+     "style": "moustache",
+     "color": "#eeeeee"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#7a5a3a",
+     "accent": "#c9a76a"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#5b5b5b"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#5c6b4a"
+     },
+     "glasses",
+     "book"
+    ]
+   },
+   "grandma": {
+    "type": "blocky",
+    "name": "Grandma",
+    "body": "female",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#f6c9a6",
+    "hair": {
+     "style": "bun",
+     "color": "#9a9a9a"
+    },
+    "top": {
+     "style": "dress",
+     "color": "#8a5ad8",
+     "accent": "#f2ece2"
+    },
+    "bottom": {
+     "style": "bare"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#5e3b24"
+    },
+    "accessories": [
+     "glasses",
+     "coffee"
+    ]
+   },
+   "dj": {
+    "type": "blocky",
+    "name": "DJ",
+    "body": "male",
+    "skin": "#653f29",
+    "hair": {
+     "style": "short",
+     "color": "#1f1a18"
+    },
+    "facialHair": {
+     "style": "beard",
+     "color": "#1f1a18"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#8a5ad8"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#1f1f22",
+     "accent": "#8a5ad8"
+    },
+    "shoes": {
+     "style": "hightops",
+     "color": "#f2f2f2",
+     "accent": "#8a5ad8"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#1f1f22"
+     },
+     "headphones",
+     "sunglasses"
+    ]
+   },
+   "hiker": {
+    "type": "blocky",
+    "name": "Hiker",
+    "body": "female",
+    "build": "average",
+    "skin": "#a8704a",
+    "hair": {
+     "style": "ponytail",
+     "color": "#5e3b24"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#d9653b"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#5c6b4a"
+    },
+    "shoes": {
+     "style": "boots",
+     "color": "#6b4a2e"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#3f7a5a"
+     },
+     "backpack",
+     "watch"
+    ]
+   },
+   "officeWorker": {
+    "type": "blocky",
+    "name": "Office Worker",
+    "body": "male",
+    "build": "average",
+    "height": "tall",
+    "skin": "#ffe0cc",
+    "hair": {
+     "style": "short",
+     "color": "#d9b25f"
+    },
+    "eyes": "#3e6fb0",
+    "top": {
+     "style": "longsleeve",
+     "color": "#eef2f7"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#2d2d33"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#3b2a20"
+    },
+    "accessories": [
+     "tie",
+     "glasses",
+     "phone"
+    ]
+   },
+   "teen": {
+    "type": "blocky",
+    "name": "Teen",
+    "body": "female",
+    "build": "skinny",
+    "height": "short",
+    "skin": "#c08a5c",
+    "hair": {
+     "style": "pigtails",
+     "color": "#4a7fe0"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#e86fa3"
+    },
+    "bottom": {
+     "style": "jeans",
+     "color": "#41608f"
+    },
+    "shoes": {
+     "style": "hightops",
+     "color": "#f2f2f2",
+     "accent": "#e86fa3"
+    },
+    "accessories": [
+     "phone",
+     "earrings"
+    ]
+   },
+   "photographer": {
+    "type": "blocky",
+    "name": "Photographer",
+    "body": "male",
+    "build": "skinny",
+    "skin": "#d39b72",
+    "hair": {
+     "style": "spiky",
+     "color": "#3b2519"
+    },
+    "top": {
+     "style": "polo",
+     "color": "#3f7a5a"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#c7b28a"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#3b3f4a"
+    },
+    "accessories": [
+     "camera",
+     "backpack"
+    ]
+   },
+   "summer": {
+    "type": "blocky",
+    "name": "Summer Day",
+    "body": "female",
+    "skin": "#87573a",
+    "hair": {
+     "style": "afro",
+     "color": "#3b2519"
+    },
+    "top": {
+     "style": "dress",
+     "color": "#f2c94c",
+     "accent": "#e86f3a"
+    },
+    "bottom": {
+     "style": "bare"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#f2ece2"
+    },
+    "accessories": [
+     "sunglasses",
+     "earrings",
+     "coffee"
+    ]
+   },
+   "streetSkater": {
+    "type": "blocky",
+    "name": "Street Skater",
+    "body": "female",
+    "skin": "#eab38c",
+    "hair": {
+     "style": "ponytail",
+     "color": "#ece0c0"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#2d2d33"
+    },
+    "bottom": {
+     "style": "widePants",
+     "color": "#5b5b5b"
+    },
+    "shoes": {
+     "style": "hightops",
+     "color": "#d64545"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#d64545"
+     },
+     {
+      "type": "skateboard",
+      "color": "#3fae6c"
+     }
+    ]
+   },
+   "gamer": {
+    "type": "blocky",
+    "name": "Gamer",
+    "body": "male",
+    "build": "chubby",
+    "height": "short",
+    "skin": "#f6c9a6",
+    "hair": {
+     "style": "spiky",
+     "color": "#3fae6c"
+    },
+    "top": {
+     "style": "tshirt",
+     "color": "#2d2d33"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#3b4357"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#3fae6c"
+    },
+    "accessories": [
+     "headphones",
+     "glasses",
+     "phone"
+    ]
+   },
+   "futurist": {
+    "type": "blocky",
+    "name": "Futurist",
+    "body": "male",
+    "height": "tall",
+    "skin": "#46291b",
+    "hair": {
+     "style": "mohawk",
+     "color": "#ece0c0"
+    },
+    "facialHair": {
+     "style": "goatee",
+     "color": "#ece0c0"
+    },
+    "top": {
+     "style": "hoodie",
+     "color": "#e8ecf2",
+     "accent": "#37d6ff"
+    },
+    "bottom": {
+     "style": "joggers",
+     "color": "#2d2d33",
+     "accent": "#37d6ff"
+    },
+    "shoes": {
+     "style": "hightops",
+     "color": "#e8ecf2",
+     "accent": "#37d6ff"
+    },
+    "accessories": [
+     "sunglasses",
+     {
+      "type": "hoverboard",
+      "color": "#2d2d33"
+     }
+    ]
+   },
+   "teacher": {
+    "type": "blocky",
+    "name": "Teacher",
+    "body": "female",
+    "build": "chubby",
+    "skin": "#d39b72",
+    "hair": {
+     "style": "bob",
+     "color": "#1f1a18"
+    },
+    "top": {
+     "style": "sweater",
+     "color": "#3a6ea5",
+     "accent": "#f2ece2"
+    },
+    "bottom": {
+     "style": "pants",
+     "color": "#5b5b5b"
+    },
+    "shoes": {
+     "style": "simple",
+     "color": "#2d2a2a"
+    },
+    "accessories": [
+     "glasses",
+     {
+      "type": "book",
+      "side": "R"
+     },
+     "coffee"
+    ]
+   },
+   "traveler": {
+    "type": "blocky",
+    "name": "Traveler",
+    "body": "male",
+    "skin": "#c08a5c",
+    "hair": {
+     "style": "short",
+     "color": "#5e3b24"
+    },
+    "facialHair": {
+     "style": "stubble"
+    },
+    "top": {
+     "style": "polo",
+     "color": "#f2ece2",
+     "accent": "#2f8f8f"
+    },
+    "bottom": {
+     "style": "shorts",
+     "color": "#2f8f8f"
+    },
+    "shoes": {
+     "style": "sneakers",
+     "color": "#f2ece2"
+    },
+    "accessories": [
+     {
+      "type": "cap",
+      "color": "#f2ece2"
+     },
+     "sunglasses",
+     "backpack",
+     "camera"
+    ]
+   }
+  }
+ }
+}

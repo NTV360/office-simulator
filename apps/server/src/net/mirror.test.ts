@@ -55,7 +55,7 @@ describe('Mirror', () => {
     expectSame('welcome');
     expect(added).toHaveLength(40);
     const hazel = [...mirror.people.values()].find(p => p.name === 'Hazel Sellote')!;
-    expect(hazel.spec.scale).toBe(0.7);
+    expect(hazel.spec).toMatchObject({ type: 'blocky', height: 'short', angry: true });
     expect(hazel.slot!.kind).toBe('desk');
   });
 
@@ -184,13 +184,13 @@ describe('Mirror', () => {
     expect(mirror.people.get(sp.id)).toBe(mp); // the very same object: nothing was rebuilt
     expect([mp.controller, mp.name]).toEqual(['account', 'Renamed']);
     expect([added.length, removed.length]).toEqual([addedBefore, removedBefore]);
-    setLook(sp, { hair: '#abcdef' });
+    setLook(sp, { hair: { style: 'bun', color: '#abcdef' } });
     const m2 = decode(bc.joined(sp));
     if (m2.type !== 'person') throw new Error('expected a person message');
     mirror.applyJoin(m2.info, m2.snap);
     const rebuilt = mirror.people.get(sp.id)!;
     expect(rebuilt).not.toBe(mp);
-    expect(rebuilt.spec.hair).toBe('#abcdef');
+    expect(rebuilt.spec.hair).toEqual({ style: 'bun', color: '#abcdef' });
     expect([added.length - addedBefore, removed.length - removedBefore]).toEqual([1, 1]);
   });
 });

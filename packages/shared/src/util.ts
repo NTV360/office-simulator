@@ -64,7 +64,14 @@ const vpick = <T>(a: readonly T[]): T => a[Math.floor(vrandom() * a.length)];
  * A random stream you start yourself from a number: the same number gives the same sequence on every machine. For making things once
  * from fixed numbers (the starting decor on the desks), where the simulation's stream and the never-seeded visual stream are both wrong.
  */
-function seededRandom(seed: number): () => number { return mulberry32(seed); }
+function seededRandom(seed: number | string): () => number { return mulberry32(typeof seed === 'string' ? hashText(seed) : seed); }
+
+/** A number from a piece of text (FNV-1a): the same text always gives the same number. */
+function hashText(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
 
 const TAU = Math.PI * 2;
 

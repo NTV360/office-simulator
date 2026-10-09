@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TAU, angDiff, drawCount, pick, random, rnd, setSeed, shuffle, vpick, vrandom, vrnd } from './util';
+import { TAU, angDiff, drawCount, pick, random, rnd, seededRandom, setSeed, shuffle, vpick, vrandom, vrnd } from './util';
 
 const nativeRandom = Math.random; // before any test replaces it
 
@@ -31,6 +31,24 @@ describe('the seeded simulation stream', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.25);
     setSeed(null);
     expect(random()).toBe(0.25);
+  });
+});
+
+describe('seededRandom', () => {
+  it('a number or a piece of text always gives the same sequence, and different seeds differ', () => {
+    const seq = (seed: number | string) => { const r = seededRandom(seed); return [r(), r(), r(), r()]; };
+    expect(seq(7)).toEqual(seq(7));
+    expect(seq('employee-1')).toEqual(seq('employee-1'));
+    expect(seq('employee-1')).not.toEqual(seq('employee-2'));
+    expect(seq(7)).not.toEqual(seq(8));
+    for (const v of seq('x')) expect(v).toBeGreaterThanOrEqual(0), expect(v).toBeLessThan(1);
+  });
+  it('does not touch the simulation stream', () => {
+    setSeed(1);
+    const d0 = drawCount();
+    seededRandom('anything')();
+    expect(drawCount()).toBe(d0);
+    setSeed(null);
   });
 });
 

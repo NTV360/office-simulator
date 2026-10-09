@@ -1,4 +1,4 @@
-import type { CharacterSpec } from '../character/spec';
+import { normalizeSpec, type CharacterSpec } from '../character/spec';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
@@ -108,9 +108,9 @@ function readInfo(r: Reader): PersonInfo {
   let raw: unknown;
   try { raw = JSON.parse(r.str()); } catch { throw new DecodeError('invalid character spec'); }
   const slot = fromU16(r.u16()), screenKind = readIndex(r, SCREEN_KINDS, 'screen kind'), screenVariant = r.u8(), arriveAt = r.f32();
-  // not normalised: this comes from the server, and special characters (Hazel is 0.7 tall) sit outside what players may choose
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new DecodeError('invalid character spec');
-  return { id, name, role, title, department, controller, spec: raw as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
+  // made valid here too: the page draws and shows what it reads (Hazel's furious face is allowed: the server says so)
+  return { id, name, role, title, department, controller, spec: normalizeSpec(raw) as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
 }
 
 function writeMeetings(w: Writer, list: readonly MeetingSnap[]): void {

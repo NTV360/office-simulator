@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DEFAULT_SPEC, PARTS, normalizePlayerSpec, people, setSeed, type Message } from '@office/shared';
+import { DEFAULT_SPEC, normalizePlayerSpec, people, setSeed, type Message } from '@office/shared';
 import { api, bootTestServer, connect, enter, isWelcome, sessionFor, sleep, type Client, type TestServer } from '../test-support';
 
 // Character creation over HTTP: your own look only, always made valid, shown to everyone at once.
@@ -18,7 +18,12 @@ const put = (cookie: string, spec: unknown, headers: Record<string, string> = {}
 const admin = (method: string, path: string, body?: unknown) => api(base, method, path, body, { authorization: 'Bearer char-test-token' });
 const accountIdOf = async (name: string): Promise<number> => (await admin('GET', '/api/admin/users')).body.find((u: { username: string }) => u.username === name).id;
 
-const NICE = { ...DEFAULT_SPEC, skin: PARTS.skin[0], hair: PARTS.hair[4], style: 'bun', shirt: PARTS.shirt[3], glasses: true, headphones: PARTS.headphones[2], jacket: PARTS.jacket[1], longSleeve: true, scale: 1.05 };
+const NICE = normalizePlayerSpec({
+  type: 'blocky', body: 'female', build: 'chubby', height: 'tall', skin: '#c98f66', eyes: { style: 'big', color: '#224466' }, hair: { style: 'bun', color: '#2b201b' },
+  top: { style: 'hoodie', color: '#c45f4b' }, bottom: { style: 'jeans', color: '#263240' }, shoes: { style: 'boots', color: '#1b1b1b' },
+  accessories: [{ type: 'glasses' }, { type: 'headphones', color: '#3a7f86' }],
+});
+const colourOf = (c: string) => ({ top: { style: 'tshirt', color: c } });
 
 describe('reading and saving a look', () => {
   it('starts with no look and a valid starting point', async () => {
@@ -41,24 +46,20 @@ describe('reading and saving a look', () => {
     expect(stored.spec).toEqual(NICE);
   });
 
-  it('whatever is sent becomes a valid look: bad colours, styles and heights fall back or are held in range', async () => {
+  it('whatever is sent becomes a valid look: bad colours, styles, sizes and accessories fall back to the default or are dropped', async () => {
     const cookie = await sessionFor(base, 'sloppy');
-    const r = await put(cookie, { skin: 'red', hair: '#12345', shirt: '<script>alert(1)</script>', style: 'mohawk', scale: 99, glasses: 'yes', headphones: 'url(x)', jacket: 5, pants: null });
+    const r = await put(cookie, { skin: 'red', hair: { style: 'wizard', color: '#12345' }, top: '<script>alert(1)</script>', body: 'robot', height: 'giant', build: 5, eyes: { style: 'laser', color: 'url(x)' }, accessories: ['glasses', 'skateboard', 'nonsense', '<b>', 7] });
     expect(r.status).toBe(200);
-    expect(r.body.spec).toMatchObject({
-      skin: DEFAULT_SPEC.skin, hair: DEFAULT_SPEC.hair, shirt: DEFAULT_SPEC.shirt, pants: DEFAULT_SPEC.pants, style: DEFAULT_SPEC.style,
-      scale: 1.1, glasses: true, headphones: null, jacket: null,
-    });
-    expect((await put(cookie, { scale: -5 })).body.spec.scale).toBe(0.9);
-    expect((await put(cookie, { scale: 'tall' })).body.spec.scale).toBe(1);
-    expect((await put(cookie, { scale: NaN })).body.spec.scale).toBe(1);
+    expect(r.body.spec).toMatchObject({ skin: DEFAULT_SPEC.skin, hair: DEFAULT_SPEC.hair, top: DEFAULT_SPEC.top, body: 'male', height: 'average', build: 'average', eyes: DEFAULT_SPEC.eyes, accessories: [{ type: 'glasses' }] });
+    expect((await put(cookie, { accessories: 'glasses' })).body.spec.accessories).toEqual([]);
+    expect((await put(cookie, { type: 'voxel' })).body.spec.type).toBe('chibi');
   });
 
-  it('the looks that belong to Hazel cannot be chosen', async () => {
+  it('the furious face that belongs to Hazel cannot be chosen', async () => {
     const cookie = await sessionFor(base, 'wannabe');
-    const r = await put(cookie, { ...NICE, skirt: '#ff00ff', cube: true, angry: true });
-    expect(r.body.spec).toMatchObject({ skirt: null, cube: false, angry: false });
-    expect((await get(cookie)).body.spec).toMatchObject({ skirt: null, cube: false, angry: false });
+    const r = await put(cookie, { ...NICE, angry: true });
+    expect(r.body.spec).toMatchObject({ angry: false });
+    expect((await get(cookie)).body.spec).toMatchObject({ angry: false });
   });
 
   it('refuses a body that is not a look', async () => {
@@ -73,10 +74,13 @@ describe('reading and saving a look', () => {
 
   it('prototype tricks and extra fields do nothing', async () => {
     const cookie = await sessionFor(base, 'sneaky');
-    const r = await api(base, 'PUT', '/api/character', JSON.parse('{"spec":{"__proto__":{"scale":9},"constructor":{"x":1},"role":"admin","owner":1,"extra":"x"}}'), { cookie });
+    const r = await api(base, 'PUT', '/api/character', JSON.parse('{"spec":{"__proto__":{"height":"giant"},"constructor":{"x":1},"role":"admin","owner":1,"extra":"x"}}'), { cookie });
     expect(r.status).toBe(200);
     expect(Object.keys(r.body.spec).sort()).toEqual(Object.keys(normalizePlayerSpec({})).sort());
-    expect(({} as { scale?: number }).scale).toBeUndefined();
+    expect(r.body.spec.height).toBe(DEFAULT_SPEC.height); // (the pollution did not reach the look)
+    // names that every object inherits are not accessories
+    const hostile = await put(cookie, { accessories: ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'glasses'] });
+    expect(hostile.body.spec.accessories).toEqual([{ type: 'glasses' }]);
     expect((await server.store.byLower('sneaky'))!.role).toBe('player');
   });
 });
@@ -109,7 +113,7 @@ describe('who may', () => {
 
   it('is limited: ten changes a minute', async () => {
     const cookie = await sessionFor(base, 'fidget');
-    for (let i = 0; i < 10; i++) expect((await put(cookie, { ...NICE, scale: 0.9 + i / 100 })).status).toBe(200);
+    for (let i = 0; i < 10; i++) expect((await put(cookie, { ...NICE, name: 'Look ' + i })).status).toBe(200);
     const r = await put(cookie, NICE);
     expect(r.status).toBe(429);
     expect(r.body.code).toBe('rate');
@@ -118,14 +122,14 @@ describe('who may', () => {
 
   it('you can only change your own: nothing in the request names an account', async () => {
     const a = await sessionFor(base, 'ownerA'), b = await sessionFor(base, 'ownerB');
-    await put(a, { ...NICE, shirt: PARTS.shirt[1] });
-    await put(b, { ...NICE, shirt: PARTS.shirt[5] });
-    expect((await get(a)).body.spec.shirt).toBe(PARTS.shirt[1]);
-    expect((await get(b)).body.spec.shirt).toBe(PARTS.shirt[5]);
-    const sneaky = await api(base, 'PUT', '/api/character', { spec: { ...NICE, shirt: PARTS.shirt[2] }, accountId: await accountIdOf('ownerA'), id: 1 }, { cookie: b });
+    await put(a, { ...NICE, ...colourOf('#c45f4b') });
+    await put(b, { ...NICE, ...colourOf('#5f8f6e') });
+    expect((await get(a)).body.spec.top.color).toBe('#c45f4b');
+    expect((await get(b)).body.spec.top.color).toBe('#5f8f6e');
+    const sneaky = await api(base, 'PUT', '/api/character', { spec: { ...NICE, ...colourOf('#7a6aa3') }, accountId: await accountIdOf('ownerA'), id: 1 }, { cookie: b });
     expect(sneaky.status).toBe(200);
-    expect((await get(a)).body.spec.shirt).toBe(PARTS.shirt[1]); // unchanged
-    expect((await get(b)).body.spec.shirt).toBe(PARTS.shirt[2]);
+    expect((await get(a)).body.spec.top.color).toBe('#c45f4b'); // unchanged
+    expect((await get(b)).body.spec.top.color).toBe('#7a6aa3');
   });
 });
 
@@ -151,10 +155,10 @@ describe('everyone sees it at once', () => {
 
   it('a look saved before logging in is the look they arrive with', async () => {
     const cookie = await sessionFor(base, 'prepared');
-    await put(cookie, { ...NICE, hair: PARTS.hair[6] });
+    await put(cookie, { ...NICE, hair: { style: 'bun', color: '#abcdef' } });
     const c = client(); await c.ready; await enter(base, c, 'prepared');
     const w = await c.waitFor(isWelcome);
-    expect(w.people.find(p => p.info.id === w.you)!.info.spec).toMatchObject({ hair: PARTS.hair[6], style: 'bun' });
+    expect(w.people.find(p => p.info.id === w.you)!.info.spec).toMatchObject({ hair: { style: 'bun', color: '#abcdef' }, type: 'blocky' });
     c.socket.close();
   });
 

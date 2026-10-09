@@ -15,24 +15,6 @@
 @media (max-width: 640px) { #accountBox { bottom: 48px; } }
 
 /* The character creation page. */
-.creator-card { width: min(640px, 100%); max-height: 92vh; overflow: auto; }
-.creator-body { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
-.creator-preview { flex: 0 0 auto; margin: 0 auto; text-align: center; }
-.creator-preview canvas { display: block; width: 240px; height: 300px; border-radius: 10px; background: linear-gradient(#e6ecf0, #cfd8de); touch-action: none; cursor: grab; }
-.creator-controls { flex: 1 1 240px; min-width: 0; }
-.creator-field { margin: 0 0 10px; }
-.creator-label { display: block; margin-bottom: 4px; font-size: 12px; color: #4b5964; }
-.creator-swatches, .creator-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.creator-swatch { width: 24px; height: 24px; padding: 0; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #b9c5cd; cursor: pointer; }
-.creator-swatch.none { background: repeating-linear-gradient(45deg, #fff 0 4px, #dde3e8 4px 8px); }
-.creator-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #1c242b; }
-.creator-chip { padding: 4px 10px; border: 1px solid #cfd8de; border-radius: 999px; background: #f1f4f6; font: inherit; font-size: 12px; cursor: pointer; }
-.creator-chip[aria-pressed="true"] { background: #1c242b; color: #fff; border-color: #1c242b; }
-.creator-toggles { display: flex; gap: 16px; }
-.creator-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-#creatorHeight { width: 100%; }
-.creator-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.creator-actions .btn { width: auto; min-width: 96px; }
 
 /* Who you are, and the note a guest sees. */
 #accountBox #deskInfo { color: #b9c5cd; }

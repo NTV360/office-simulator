@@ -120,9 +120,9 @@ describe('a login', () => {
   it('wears the account\'s look when it has one', async () => {
     const bob = await account('bob', 'desk:5');
     deskPerson(5).owner = bob.id;
-    await store.setSpec(bob.id, { hair: '#abcdef' });
+    await store.setSpec(bob.id, { hair: { style: 'bun', color: '#abcdef' } });
     const p = await manager.attach((await store.byId(bob.id))!);
-    expect(p.spec.hair).toBe('#abcdef');
+    expect(p.spec.hair).toEqual({ style: 'bun', color: '#abcdef' });
   });
 
   it('releaseAll hands everybody back at once', async () => {

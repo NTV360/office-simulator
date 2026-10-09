@@ -1,6 +1,6 @@
 import { normalizeSpec, randomSpec, type CharacterSpec } from '../character/spec';
 import { clampSlotCount } from '../server-defaults';
-import { TAU, pick, random, rnd } from '../util';
+import { TAU, pick, random, rnd, seededRandom } from '../util';
 import { FIRST, LAST, SCREEN_VARIANTS, roleBag, type ScreenKind } from './data';
 import { simEvents } from './events';
 import { HAZEL_NAME, applyHazel } from './hazel';
@@ -52,8 +52,8 @@ export function makeStaff(): Person | null {
 function employee(e: (typeof roster.list & object)[number]): Who {
   const role = simRole(e.department), title = jobTitle(e);
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
-  let spec = e.character ?? randomSpec(role);
-  if (hazel) { if (e.character) spec = normalizeSpec({ ...e.character, angry: true }); else applyHazel(spec); }
+  let spec = e.character ? normalizeSpec(e.character) : randomSpec(role, seededRandom(e.userId)); // (the same look on every load)
+  if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
   return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, spec };
 }
 
@@ -65,11 +65,10 @@ function nextSeated(): { who: Who; seat: Spot } | null {
 
 /** No staff list: made-up names and roles, and the first person is Hazel. */
 function madeUp(): Who {
-  let role = pick(roleBag);
-  const spec = randomSpec(role);
+  let role = pick(roleBag), spec = randomSpec(role);
   const nameIdx = counters.nameIdx;
   let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
-  if (nameIdx === 0) ({ first, last, role } = applyHazel(spec));
+  if (nameIdx === 0) ({ first, last, role, spec } = applyHazel());
   counters.nameIdx++;
   return { name: `${first} ${last}`, role, title: role, userId: null, department: null, desk: null, shift: null, spec };
 }

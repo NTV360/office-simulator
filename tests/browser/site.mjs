@@ -87,7 +87,7 @@ export async function adminJson(url, method, path, body) {
 /** A person by name, as this page sees them: { id, x, z, controller, state, task, shirt }, or null. */
 export const personOf = (page, name) => page.evaluate(n => {
   const p = window.__sim.people.find(x => x.name === n);
-  return p ? { id: p.id, x: p.pos.x, z: p.pos.z, controller: p.controller, state: p.state, task: p.task ? p.task.kind : '', shirt: p.spec.shirt, style: p.spec.style } : null;
+  return p ? { id: p.id, x: p.pos.x, z: p.pos.z, controller: p.controller, state: p.state, task: p.task ? p.task.kind : '', shirt: p.spec.top.color, style: p.spec.hair.style } : null; // (the top's colour and the hair style: what the tests pick in the character lab)
 }, name);
 
 /**

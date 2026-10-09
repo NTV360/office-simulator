@@ -62,15 +62,18 @@ describe('breaks and work', () => {
     expect(played).toBeGreaterThan(0);
     expect(bad).toEqual([]);
   });
-  it('when the lunch hour starts most people get up from their desks within the hour', () => {
-    setSeed(2);
-    buildTestLayout({ desks: 40 });
-    initDay();
-    while (sim.t < 11 * 60 + 55) stepSim(DT);
-    const atDesk = () => staff().filter(p => p.state !== 'away' && p.state === 'doing' && p.task?.kind === 'work').length;
-    const before = atDesk();
-    while (sim.t < 12 * 60 + 25) stepSim(DT);
-    expect(atDesk()).toBeLessThan(before * .6);
+  it('when the lunch hour starts everybody at a desk gets up at once, not when their work session happens to end', () => {
+    for (const seed of [1, 2, 3]) {
+      setSeed(seed);
+      buildTestLayout({ desks: 40 });
+      initDay();
+      while (sim.t < 11 * 60 + 55) stepSim(DT);
+      const atDesk = () => staff().filter(p => p.state === 'doing' && p.task?.kind === 'work').length;
+      const before = atDesk();
+      expect(before, `seed ${seed}`).toBeGreaterThan(15);
+      while (sim.t < 12 * 60 + 8) stepSim(DT); // eight minutes into the lunch hour (a work session lasts 10 to 35, so left alone only about a third would have got up by now)
+      expect(atDesk(), `seed ${seed}: ${atDesk()} of ${before} still at their desks`).toBeLessThan(before * .2);
+    }
   });
 });
 

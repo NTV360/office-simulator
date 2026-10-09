@@ -9,6 +9,7 @@ import './styles/ledger.css';
 import './styles/person.css';
 import './styles/ui-toggle.css';
 import './styles/search.css';
+import './styles/creator.css';
 import './styles/first-person.css';
 import './styles/veil.css';
 import './styles/responsive.css';
@@ -16,7 +17,7 @@ import './styles/responsive.css';
 import { bootstrap } from './bootstrap.js';
 import { fingerprint, screenMismatches } from './debug.js';
 import { OBS } from './world/helpers.js';
-import { ENTRY, findPath, spotsToLayout, GC, GR, interactables, log, NAV, objects, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
+import { ENTRY, findPath, presetList, spotsToLayout, GC, GR, interactables, log, NAV, objects, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -39,6 +40,8 @@ import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './worl
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
 import { updateBucket } from './world/furniture/kitchen.js';
+import { creator } from './ui/creator.js';
+import { buildBody, disposeBody } from './character/rig.js';
 import { scalers, wall } from './world/helpers.js';
 
 // Development switch: ?seed=N makes the simulation repeatable (the same seed replays the same office day)
@@ -84,6 +87,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { net: live ? live.net : null, online, renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all()), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { net: live ? live.net : null, online, lab: creator, buildBody, disposeBody, presets: presetList().map(p => p.spec), renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all()), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

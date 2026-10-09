@@ -1,5 +1,6 @@
-import { buildBody } from '../character/rig.js';
-import { DEFAULT_SPEC, ENTRY, newProps, normalizeSpec, people } from '@office/shared';
+import { buildBody, disposeBody } from '../character/rig.js';
+import { DEFAULT_SPEC, ENTRY, newProps, normalizePlayerSpec, normalizeSpec, people } from '@office/shared';
+import { loadLocalSpec, saveLocalSpec } from '../persistence/store.js';
 import { peopleGroup } from '../people/group.js';
 import { N } from '../world/furniture/basics.js';
 
@@ -43,12 +44,19 @@ function spawnPlayer() {
 
 // Change how the player looks (character creation). Accepts any raw spec; invalid parts fall back.
 function setPlayerSpec(raw) {
-  player.spec = normalizeSpec(raw);
+  player.spec = normalizePlayerSpec(raw);
   const p = player.person; if (!p) return player.spec;
-  const visible = p.body.root.visible;
-  peopleGroup.remove(p.body.root);
+  const visible = p.body.root.visible, old = p.body;
+  peopleGroup.remove(old.root); disposeBody(old);
   p.spec = player.spec; p.body = makeBody(player.spec); p.body.root.visible = visible;
   return player.spec;
 }
 
-export { canPlay, isLocalPlayer, player, setPlayerSpec, spawnPlayer };
+// Keep the look between visits in this browser (the private office; online the look is the account's, on the server).
+function savePlayerSpec() { saveLocalSpec(player.spec); }
+function initPlayer() {
+  const saved = loadLocalSpec();
+  if (saved) player.spec = normalizePlayerSpec(saved); // (a hand-edited store cannot give you Hazel's face)
+}
+
+export { canPlay, initPlayer, isLocalPlayer, player, savePlayerSpec, setPlayerSpec, spawnPlayer };

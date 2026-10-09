@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
+import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
 import { setView, viewId } from '../camera/controller.js';
@@ -139,6 +140,9 @@ export function startOnline() {
     }
   }
 
+  // the HUD's character buttons edit your look on the server, not in this browser
+  setCreatorHandler(async () => { const mine = await getCharacter(base); if (mine) await showCreator(base, mine.spec ?? mine.starting); });
+
   // Make sure someone is logged in (showing the login screen if not), then open the connection.
   let loggingIn = null; // one login at a time, however many things ask for it
   function logIn(note = '') {
@@ -151,7 +155,8 @@ export function startOnline() {
         // a person with a desk and no look yet makes their character before anything else (the first login after a desk is given)
         if (account.slotSpot && !account.hasLook) {
           const mine = await getCharacter(base);
-          if (await showCreator(base, mine?.starting, { required: true })) account.hasLook = true;
+          // (if saving keeps failing, the page is not a trap: log out, and the login screen comes back)
+          if (await showCreator(base, mine?.starting, { required: true, onLogout: async () => { await logout(base); location.reload(); } })) account.hasLook = true;
         }
         showAccountBox(account);
         setStatus('wait', 'Connecting to the server…');

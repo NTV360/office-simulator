@@ -32,6 +32,12 @@ const MUTATIONS = [
   ['a desk someone chose is given to whoever comes first', sim + 'factory.ts', "const open = (s: Spot) => !s.owner && !chosen.has(s.deskId ?? '');", 'const open = (s: Spot) => !s.owner;'],
   ['a removed person stays in the meeting they were in', sim + 'factory.ts', 'for (const m of meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }', ''],
   ['a change in the toilet or clocked-in flag is not sent', 'apps/server/src/net/broadcaster.ts', 'a.absent !== b.absent || a.toilet !== b.toilet ||', ''],
+  ['an accessory named like an object method (constructor, toString) is accepted', 'packages/shared/src/character/spec.ts', 'Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined', 'table[key]'],
+  ['a man can be in a dress', 'packages/shared/src/character/spec.ts', "if (spec.body === 'male' && spec.top.style === 'dress') spec.top.style = 'tshirt';", ''],
+  ['skateboards and hoverboards are allowed in the office', 'packages/shared/src/character/spec.ts', 'return !!d && !SLOTS_OFF.includes(d.slot); };', 'return !!d; };'],
+  ['a player can choose the furious face', 'packages/shared/src/character/spec.ts', 'return { ...normalizeSpec(input), angry: false };', 'return normalizeSpec(input);'],
+  ['a spec can carry any number of accessories', 'packages/shared/src/character/spec.ts', 'seen.has(name) || seen.size >= MAX_ACCESSORIES', 'seen.has(name)'],
+  ['an employee without a saved look gets a different look on every load', 'packages/shared/src/sim/factory.ts', 'randomSpec(role, seededRandom(e.userId))', 'randomSpec(role)'],
   ['someone not clocked in gets an infinite time (it cannot be sent or saved)', sim + 'live.ts', 'p.arriveAt = NEVER; p.leaveAt = NEVER;', 'p.arriveAt = Infinity; p.leaveAt = Infinity;'],
   ['a takeover leaves the toilet bucket with the human', sim + 'takeover.ts', 'putBucketBack(p); p.toiletUntil = null; // (a person on the toilet run is not out of the building any more)', ''],
   ['a shift that starts before 06:00 ends before it starts', sim + 'schedule.ts', 'while (end <= start) end += 24 * 60;', 'if (end <= s.start) end += 24 * 60;'],
@@ -71,7 +77,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

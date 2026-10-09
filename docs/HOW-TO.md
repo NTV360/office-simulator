@@ -59,14 +59,20 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `packages
 
 ## Add a hairstyle or another look option
 
-All of these also apply to NPCs and the player, because they all share `CharacterSpec`.
+Looks come from the character pack (`apps/client/src/character/pack/`), which the upstream team delivers whole; it is not edited here. To offer a new hair style, clothes or an accessory:
 
-1. **`packages/shared/src/character/spec.ts`:** add the field to `DEFAULT_SPEC`, to `randomSpec` (usually a constant so NPCs do not change), and to `normalizeSpec`. Add the choices to `PARTS` (or `STYLE_OPTIONS` for a hairstyle). Keep this file free of Three.js.
-2. **Build it:**
-   - Hairstyle: add an entry to `HAIR_STYLES` in `character/parts.js` (`{ cap, extra(head, hair, spec) }`).
-   - Anything else on the head/face: add an `add<Thing>(head, spec)` in `parts.js` and call it from `buildBody` in `character/rig.js`.
-   - Body or clothing: edit `buildBody` in `rig.js`.
-3. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, and `setPlayerSpec(spec)` shows it on the player.
+1. **Get it into the pack** (a new pack version, or the pack's own `register*` calls: see `pack/README.md`, "Adding your own parts"). Our own additions that the pack lacks (like the furious face) go in `character/parts.js` and are attached in `buildBody` (`character/rig.js`).
+2. **Regenerate the plain data:** `npm run pack:dump` writes `packages/shared/src/character/pack-data.json` (the option lists, palettes, accessories and presets the shared code and the server validate against). Commit it with the pack.
+3. **Check:** `npm test` (the pack data test, the spec tests), and the browser check "all 50 designs build" (`npm run verify:browser`). The lab offers the new option by itself (it reads `specOptions`).
+
+## Update the character pack
+
+The pack (`apps/client/src/character/pack/`: `characters.js`, `blocky-character.js`, `chibi-character.js`, the two preset files, `README.md`) is delivered whole and kept exactly as delivered, so an update is a file copy and a few checks:
+
+1. Copy the new files over the old ones. Do not edit them.
+2. `npm run pack:dump` to rewrite `packages/shared/src/character/pack-data.json` from the new pack, and commit it.
+3. `npm test` (it fails if the data and the pack disagree, or if a preset no longer normalizes) and `npm run verify:browser` ("all 50 designs build": every preset builds at a sensible height and cost).
+4. If the pack changed the names of its skeleton nodes (`Hips`, `Spine`, `ArmL`...) or its sizes, `character/rig.js` (`buildBody`, `CHARACTER_SIZES`) is the one place that depends on them.
 
 ## Add a HUD control
 

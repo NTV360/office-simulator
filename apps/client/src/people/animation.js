@@ -3,7 +3,12 @@ import { isLocalPlayer, player } from '../player/player.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
 /* ================= Animation ================= */
-const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
+// Poses are written for a human with an elbow and a knee: hipY in metres for a .88 m hip, angles in radians.
+// applyPose maps them onto the character pack's skeleton, which has no elbows or knees (see below).
+const JOINTS = ['hipY', 'seat', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
+const POSE_HIP = .88;   // the standing hip height the poses are written for
+const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
+const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
   if (isLocalPlayer(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? (p.task.anim || 'listenSit') : (p.moving ? 'walk' : 'stand'); // a human somewhere else (online)
@@ -35,9 +40,9 @@ function emoteOverlay(p, o) {
 }
 
 function targetPose(p, k, T) {
-  const o = { hipY: .88, lean: 0, lShX: 0, lShZ: .07, lEl: -.12, rShX: 0, rShZ: -.07, rEl: -.12, lHip: 0, lKnee: 0, rHip: 0, rKnee: 0, headY: 0, headX: 0 };
+  const o = { hipY: POSE_HIP, seat: 0, lean: 0, lShX: 0, lShZ: .07, lEl: -.12, rShX: 0, rShZ: -.07, rEl: -.12, lHip: 0, lKnee: 0, rHip: 0, rKnee: 0, headY: 0, headX: 0 };
   const breathe = Math.sin(T * 1.6) * .012;
-  const sit = () => { o.hipY = p.task?.spot?.hipY ?? .53; const hi = o.hipY > .65; o.lHip = o.rHip = hi ? -1.2 : -1.5; o.lKnee = o.rKnee = hi ? .95 : 1.45; o.lShX = o.rShX = -.45; o.lEl = o.rEl = -.75; };
+  const sit = () => { o.seat = 1; o.hipY = p.task?.spot?.hipY ?? .53; const hi = o.hipY > .65; o.lHip = o.rHip = hi ? -1.2 : -1.5; o.lKnee = o.rKnee = hi ? .95 : 1.45; o.lShX = o.rShX = -.45; o.lEl = o.rEl = -.75; };
   switch (k) {
     case 'walk': {
       const s = Math.sin(p.walkPhase), c = Math.cos(p.walkPhase);
@@ -105,13 +110,20 @@ function targetPose(p, k, T) {
 function applyPose(p, dt) {
   const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
-  const b = p.body;
-  b.hips.position.y = c.hipY; b.torso.rotation.x = c.lean;
-  b.L.sh.rotation.set(c.lShX, 0, c.lShZ); b.L.el.rotation.x = c.lEl;
-  b.R.sh.rotation.set(c.rShX, 0, c.rShZ); b.R.el.rotation.x = c.rEl;
-  b.LL.hp.rotation.x = c.lHip; b.LL.kn.rotation.x = c.lKnee;
-  b.RL.hp.rotation.x = c.rHip; b.RL.kn.rotation.x = c.rKnee;
-  b.head.rotation.set(c.headX, c.headY, 0);
+  const b = p.body, hold = HOLDING.has(k) ? b.hold : null;
+  // standing poses move the hips relative to this character's own leg length; seated poses put them on the seat
+  const hip = (b.standHip + c.hipY - POSE_HIP) * (1 - c.seat) + c.hipY * c.seat;
+  b.hips.position.y = hip / b.unit; b.spine.rotation.x = c.lean;
+  arm(b.armL, hold?.L, c.lShX, c.lShZ, c.lEl, 1);
+  arm(b.armR, hold?.R, c.rShX, c.rShZ, c.rEl, -1);
+  b.legL.rotation.x = c.lHip; b.legR.rotation.x = c.rHip;
+  b.neck.rotation.set(c.headX, c.headY, 0);
+  for (const it of b.items) if (it.visible !== !!hold) it.visible = !!hold;
+}
+// One-piece arm: the shoulder takes part of the elbow bend. While carrying a pack item, use the pack's pose for it.
+function arm(node, held, shX, shZ, el, side) {
+  if (held?.pose) node.rotation.set(held.pose.x ?? 0, 0, -(held.pose.z ?? 0) * side);
+  else node.rotation.set((shX + el * ARM_BEND) * (held ? held.swing : 1), 0, shZ);
 }
 
 export { applyPose };

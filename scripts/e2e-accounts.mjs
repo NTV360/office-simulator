@@ -67,9 +67,9 @@ try {
   check('the first login asks her to choose her own password', true);
   await page.fill('#loginNew', 'Ana-chose-this-1'); await page.fill('#loginNew2', 'Ana-chose-this-1');
   await page.click('.login-form button[type=submit]');
-  await page.waitForSelector('#creatorScreen', { timeout: 15000 });
+  await page.waitForSelector('#creator:not([hidden])', { timeout: 15000 });
   check('then character creation opens, because she has a desk and no look yet', true);
-  await page.click(`[data-key="shirt"][data-color="${SHIRT}"]`); await page.click('[data-style="bun"]');
+  await page.fill('#cl-topColor', SHIRT); await page.locator('#creatorPanel section:has(h3:text-is("Hair")) button:text-is("Bun")').first().click();
   await page.click('#creatorSave');
   await joined(page);
   const arrived = await page.evaluate(() => ({ view: window.__sim.viewId(), me: window.__sim.player.person.name, ctl: window.__sim.player.controlling, controller: window.__sim.player.person.controller }));
@@ -111,7 +111,7 @@ try {
   await page.click('.login-form button[type=submit]');
   await joined(page);
   const again = await personOf(page, 'ana');
-  check('logging back in gives her the same person back, and no second character page', again && again.id === seated.id && again.controller === 'account' && !(await page.$('#creatorScreen')));
+  check('logging back in gives her the same person back, and no second character page', again && again.id === seated.id && again.controller === 'account' && (await page.evaluate(() => document.getElementById('creator').hidden)));
 
   // ---- 7. a hard kill: she is back by herself, still logged in
   console.log('killing the server (no goodbye) ...');

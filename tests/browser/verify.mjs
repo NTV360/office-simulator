@@ -154,6 +154,31 @@ try {
   if (!errors.length) pass('no errors in the browser console');
   await page.close();
 
+  // the character pack: all 50 designs build into a character of a sensible size and cost, in either style
+  console.log('\ncharacters');
+  {
+    const { page: cp, errors: cerr } = await openPage(browser, site.url, '?seed=1&offline');
+    const r = await cp.evaluate(async () => {
+      const S = window.__sim, out = [];
+      for (const spec of S.presets) {
+        const body = S.buildBody(spec);
+        let meshes = 0, tris = 0; body.root.traverse(o => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+        out.push({ name: spec.name, type: spec.type, meshes, tris: Math.round(tris), topY: body.topY, eyeY: body.eyeY, standHip: body.standHip, ok: !!(body.hips && body.spine && body.neck && body.armL && body.armR && body.legL && body.legR && body.bucket && body.mug) });
+        S.disposeBody(body);
+      }
+      return out;
+    }).catch(e => ({ error: String(e) }));
+    if (Array.isArray(r) && r.length === 50) pass('all 50 designs build'); else fail('presets: ' + JSON.stringify(r).slice(0, 300));
+    if (Array.isArray(r)) {
+      const bad = r.filter(x => !x.ok || !(x.topY > 1.0 && x.topY < 2.0) || !(x.eyeY > 0.9 && x.eyeY < x.topY) || !Number.isFinite(x.standHip) || x.meshes > 40);
+      if (!bad.length) pass(`each stands between 1.0 and 2.0 m, with its eyes below its head and at most ${Math.max(...r.map(x => x.meshes))} meshes`); else fail('odd bodies: ' + JSON.stringify(bad.map(x => [x.name, x.topY, x.eyeY, x.meshes])).slice(0, 400));
+      const types = new Set(r.map(x => x.type));
+      if (types.has('chibi') && types.has('blocky')) pass('in both styles'); else fail('styles: ' + [...types]);
+    }
+    cerr.forEach(e => fail(e));
+    await cp.close();
+  }
+
   // a scripted play-through of what people actually do, so code the recordings never reach (positions being
   // copied and measured, following, walking, sitting, jumping to areas, Hazel) is exercised too
   console.log('\ninteraction scenario');
@@ -354,57 +379,57 @@ try {
     if (assigned.status === 201) pass('an admin gave the new account a desk'); else fail(`assign-slot: ${assigned.status}`);
     const watcher = await openPage(browser, site.url, '?trace');
     const c = await openPage(browser, site.url, '?trace', { login: cname });
-    const creatorShown = await c.page.waitForSelector('#creatorScreen', { timeout: 20000 }).then(() => true, () => false);
+    const creatorShown = await c.page.waitForSelector('#creator:not([hidden])', { timeout: 20000 }).then(() => true, () => false);
     if (creatorShown) pass('the first login after a desk is given opens character creation'); else fail('character creation did not open');
     if (await c.page.evaluate(() => document.getElementById('creatorCancel').hidden)) pass('it cannot be skipped the first time'); else fail('the first-time page can be cancelled');
-    const drawn = () => c.page.evaluate(() => new Promise(done => requestAnimationFrame(() => {
-      const src = document.getElementById('creatorPreview');
-      const copy = document.createElement('canvas'); copy.width = src.width; copy.height = src.height;
-      const g = copy.getContext('2d'); g.drawImage(src, 0, 0);
-      const d = g.getImageData(0, 0, copy.width, copy.height).data;
-      let n = 0, red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) { n++; if (d[i] > 150 && d[i + 1] < 120 && d[i + 2] < 110) red++; }
-      done({ n, red });
-    })));
-    const before = await drawn();
-    if (before.n > 1500) pass(`the live preview draws the character (${before.n} pixels)`); else fail(`the preview looks empty (${before.n} pixels)`);
-    await c.page.click('[data-key="shirt"][data-color="#c45f4b"]');
-    await c.page.click('[data-style="bun"]');
-    await c.page.check('#creator-glasses');
-    await c.page.fill('#creatorHeight', '1.08');
+    // (a section of the lab by its title: its chips are buttons, its colours are colour inputs)
+    const sect = title => `#creatorPanel section:has(h3:text-is("${title}"))`;
+    const chip = (title, name) => c.page.locator(`${sect(title)} button:text-is("${name}")`).first();
+    const lookNow = () => c.page.evaluate(() => { const l = window.__sim.lab; return { drawn: !!(l.stage && l.stage.hero && l.stage.hero.root.children.length), draft: JSON.parse(JSON.stringify(l.draft)), meshes: (() => { let n = 0; l.stage.hero.root.traverse(o => { if (o.isMesh) n++; }); return n; })() }; });
+    const before = await lookNow();
+    if (before.drawn && before.meshes > 5) pass(`the live preview builds the character (${before.meshes} meshes)`); else fail(`the preview looks empty (${before.meshes} meshes)`);
+    const buildsBefore = await c.page.evaluate(() => window.__sim.lab.stage.hero.root.uuid + ':' + window.__sim.lab.stage.hero.root.children.length);
+    await c.page.fill('#cl-topColor', '#c45f4b');
+    await chip('Hair', 'Bun').click();
+    await chip('Accessories', 'Glasses').click();
+    await chip('Body', 'Tall').click();
     await sleep(300);
-    const after = await drawn();
-    if (after.red > before.red + 200) pass('the preview changes at once when a choice is made (red shirt)'); else fail(`preview did not change: red ${before.red} to ${after.red}`);
+    const after = await lookNow();
+    if (after.draft.top.color === '#c45f4b' && after.draft.hair.style === 'bun' && after.draft.accessories.some(a => a.type === 'glasses') && after.draft.height === 'tall') pass('the preview takes each choice at once (red top, bun, glasses, tall)'); else fail(`the lab draft: ${JSON.stringify(after.draft)}`);
+    const resolved = await c.page.evaluate(() => { const v = window.__sim.lab.view; return { top: v.top.color, hair: v.hair.style, height: v.height }; });
+    if (resolved.top === '#c45f4b' && resolved.hair === 'bun' && resolved.height === 'tall') pass('and the character in the preview is built from it'); else fail(`the preview was built from ${JSON.stringify(resolved)}`);
+    void buildsBefore;
     await screenshotOf(c.page, 'character-creator.png');
     await c.page.click('#creatorSave');
-    await c.page.waitForFunction(() => !document.getElementById('creatorScreen') && window.__sim.net.snapshots > 5, null, { timeout: 20000 }).then(() => pass('saving closes the page and the office appears'), () => fail('saving did not lead to the office'));
+    await c.page.waitForFunction(() => document.getElementById('creator').hidden && window.__sim.net.snapshots > 5, null, { timeout: 20000 }).then(() => pass('saving closes the page and the office appears'), () => fail('saving did not lead to the office'));
     const mine = await c.page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p ? { spec: p.spec, controller: p.controller } : null; }, cname);
-    if (mine && mine.controller === 'account' && mine.spec.shirt === '#c45f4b' && mine.spec.style === 'bun' && mine.spec.glasses === true && Math.abs(mine.spec.scale - 1.08) < 0.001) pass('their own person wears the new look'); else fail(`own person: ${JSON.stringify(mine)}`);
-    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.shirt === '#c45f4b' && p.spec.style === 'bun'; }, cname, { timeout: 10000 }).then(() => pass('another browser sees the new look'), () => fail('the other browser did not see the look'));
+    if (mine && mine.controller === 'account' && mine.spec.top.color === '#c45f4b' && mine.spec.hair.style === 'bun' && mine.spec.accessories.some(a => a.type === 'glasses') && mine.spec.height === 'tall') pass('their own person wears the new look'); else fail(`own person: ${JSON.stringify(mine)}`);
+    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.top.color === '#c45f4b' && p.spec.hair.style === 'bun'; }, cname, { timeout: 10000 }).then(() => pass('another browser sees the new look'), () => fail('the other browser did not see the look'));
     const seenBody = await watcher.page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return !!(p && p.body && p.body.root.parent); }, cname);
     if (seenBody) pass('and it has a body in the scene'); else fail('no body drawn for the new look');
 
     // change it later, from the account box; cancel leaves it alone
     await c.page.click('#characterBtn');
-    await c.page.waitForSelector('#creatorScreen', { timeout: 8000 });
+    await c.page.waitForSelector('#creator:not([hidden])', { timeout: 8000 });
     if (!(await c.page.evaluate(() => document.getElementById('creatorCancel').hidden))) pass('later it can be cancelled'); else fail('cancel is missing when changing');
-    if (await c.page.evaluate(() => document.querySelector('[data-style="bun"]').getAttribute('aria-pressed') === 'true' && document.getElementById('creator-glasses').checked)) pass('it starts from the saved look'); else fail('the editor did not start from the saved look');
-    await c.page.click('[data-style="curly"]');
+    if (await c.page.evaluate(() => { const l = window.__sim.lab; return l.draft.hair.style === 'bun' && l.draft.accessories.some(a => a.type === 'glasses') && l.draft.height === 'tall'; })) pass('it starts from the saved look'); else fail('the editor did not start from the saved look');
+    await chip('Hair', 'Curly').click();
     await c.page.keyboard.press('Escape');
-    await c.page.waitForFunction(() => !document.getElementById('creatorScreen'), null, { timeout: 5000 });
+    await c.page.waitForFunction(() => document.getElementById('creator').hidden, null, { timeout: 5000 });
     await sleep(500);
-    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.style, cname)) === 'bun') pass('closing without saving changes nothing'); else fail('an unsaved change was applied');
+    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.hair.style, cname)) === 'bun') pass('closing without saving changes nothing'); else fail('an unsaved change was applied');
     await c.page.click('#characterBtn');
-    await c.page.waitForSelector('#creatorScreen');
-    await c.page.click('[data-style="curly"]');
-    await c.page.click('[data-key="jacket"][data-color="#2f3a45"]');
+    await c.page.waitForSelector('#creator:not([hidden])');
+    await chip('Hair', 'Curly').click();
+    await chip('Top', 'Jacket').click();
     await c.page.click('#creatorSave');
-    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.style === 'curly' && p.spec.jacket === '#2f3a45'; }, cname, { timeout: 10000 }).then(() => pass('a later change reaches the other browser too'), () => fail('the later change was not seen'));
+    await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.hair.style === 'curly' && p.spec.top.style === 'jacket'; }, cname, { timeout: 10000 }).then(() => pass('a later change reaches the other browser too'), () => fail('the later change was not seen'));
 
     // a reload does not ask again, and keeps the look
     await c.page.reload({ waitUntil: 'load' });
     await c.page.waitForFunction(() => window.__sim && window.__sim.net && window.__sim.net.snapshots > 5, null, { timeout: 30000 });
-    if (!(await c.page.$('#creatorScreen'))) pass('a reload does not ask for a character again'); else fail('character creation opened again');
-    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.style, cname)) === 'curly') pass('and the look is kept'); else fail('the look was not kept across a reload');
+    if (await c.page.evaluate(() => document.getElementById('creator').hidden)) pass('a reload does not ask for a character again'); else fail('character creation opened again');
+    if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.hair.style, cname)) === 'curly') pass('and the look is kept'); else fail('the look was not kept across a reload');
     [...c.errors, ...watcher.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
     await c.page.close(); await watcher.page.close();
     await adminJson(site.url, 'POST', `/api/admin/users/${cid}/release-slot`); // (leave the desk free for the next run)
@@ -438,9 +463,9 @@ try {
     const did = await giveDesk(dname);
     const watcher2 = await openPage(browser, site.url, '?trace');
     const d = await openPage(browser, site.url, '?trace', { login: dname });
-    await d.page.waitForSelector('#creatorScreen', { timeout: 20000 });
+    await d.page.waitForSelector('#creator:not([hidden])', { timeout: 20000 });
     await d.page.click('#creatorSave');
-    await d.page.waitForFunction(() => !document.getElementById('creatorScreen') && window.__sim.net.joined, null, { timeout: 20000 });
+    await d.page.waitForFunction(() => document.getElementById('creator').hidden && window.__sim.net.joined, null, { timeout: 20000 });
     const arrived = await d.page.evaluate(() => ({ view: window.__sim.viewId(), you: window.__sim.net.you, mine: window.__sim.player.person && window.__sim.player.person.id, controlling: window.__sim.player.controlling, ctl: window.__sim.ctl.active }));
     if (arrived.view === 'third' && arrived.mine === arrived.you && arrived.controlling && arrived.ctl) pass('logging in puts you in third person, steering your own person'); else fail(`arrival: ${JSON.stringify(arrived)}`);
     const desk = await d.page.evaluate(() => { const s = window.__sim.player.person.slot; return s ? { place: s.place, id: s.id } : null; });

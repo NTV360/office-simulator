@@ -7,6 +7,8 @@ import { initPeopleGroup } from './people/group.js';
 import { initPeopleViews } from './people/views.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
+import { initPlayer } from './player/player.js';
+import { initCreator } from './ui/creator.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { initSearch } from './ui/search.js';
@@ -63,7 +65,8 @@ export function bootstrap({ simulate = true } = {}) {
   // navigation reads the obstacles registered by the world
   initGrid(OBS);
   lockLayoutCheck(); // the fingerprint of the starting layout, before anything is moved
-  // simulation
+  // simulation; the player's saved look is loaded before anything could spawn them
+  initPlayer();
   initPeopleGroup();
   initPeopleViews(); // before the simulation creates anyone, so each new person gets a body
   if (simulate) { initState(); initDay(); } // online, the server's people arrive in a message instead
@@ -74,5 +77,6 @@ export function bootstrap({ simulate = true } = {}) {
   initLedger();
   initControls();
   initControl();
+  initCreator();
   initSearch();
 }

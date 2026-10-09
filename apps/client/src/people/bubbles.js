@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // A speech bubble over whoever just spoke, for a few seconds. Drawn on a canvas as plain text (nothing from the server is read as markup),
 // one bubble per person: a new line replaces the old one.
 
-const BOTTOM = 2.28; // metres above the floor: just over the name label
+const BOTTOM = .58; // metres above the top of the head: just over the name label
 const MAX_WIDTH = 420, FONT_PX = 30, LINE_PX = 38, PAD = 22, MAX_LINES = 4;
 const FONT = `500 ${FONT_PX}px "Figtree", "Helvetica Neue", Arial, sans-serif`;
 
@@ -61,7 +61,7 @@ function showBubble(p, text) {
   const worldH = height / 190; // 190 canvas pixels to the metre
   sprite.scale.set(worldH * aspect, worldH, 1);
   sprite.center.set(.5, 0); // anchored at its bottom edge, so it grows upward
-  sprite.position.set(0, BOTTOM / (p.spec.scale || 1), 0);
+  sprite.position.set(0, p.body.topY + BOTTOM, 0);
   sprite.renderOrder = 13;
   sprite.userData = { until: performance.now() + Math.min(9000, 3500 + text.length * 60), body: p.body };
   p.body.root.add(sprite);

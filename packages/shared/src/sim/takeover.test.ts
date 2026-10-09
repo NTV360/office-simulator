@@ -221,19 +221,19 @@ describe('guests', () => {
   });
 
   it('take a given look, normalised', () => {
-    const g = makeGuest(7, 'visitor', { skin: '#123456', style: 'mohawk', scale: 9 });
+    const g = makeGuest(7, 'visitor', { skin: '#123456', hair: { style: 'wizard' }, height: 'giant' });
     expect(g.spec.skin).toBe('#123456');
-    expect(g.spec.style).toBe('short');
-    expect(g.spec.scale).toBe(1.1);
+    expect(g.spec.hair.style).toBe('short');
+    expect(g.spec.height).toBe('average');
   });
 });
 
 describe('look', () => {
   it('setLook normalises and tells viewers', () => {
     const p = people[2];
-    const out = setLook(p, { hair: '#abcdef', scale: 0.1 });
-    expect(out.hair).toBe('#abcdef');
-    expect(out.scale).toBe(0.9);
+    const out = setLook(p, { hair: { style: 'bun', color: '#abcdef' }, height: 'tall' });
+    expect(out.hair).toEqual({ style: 'bun', color: '#abcdef' });
+    expect(out.height).toBe('tall');
     expect(p.spec).toBe(out);
     expect(updated).toEqual([p]);
   });
