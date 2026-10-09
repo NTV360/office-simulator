@@ -28,13 +28,6 @@
       <button type="button" data-speed="8" aria-pressed="false">8×</button>
     </div>
   </div>
-  <div class="row">
-    <span class="lbl">Hazel</span>
-    <div class="seg hz" role="group" aria-label="Hazel Sellote">
-      <button type="button" id="findHazel" title="Find Hazel Sellote">Find her</button>
-      <button type="button" id="rageHazel" title="Make Hazel angry for 10 seconds">Make her angry</button>
-    </div>
-  </div>
   <button class="btn" id="moreBtn" type="button" aria-expanded="false" aria-controls="more">More options</button>
   <div id="more">
   <div class="row">
@@ -95,6 +88,11 @@
   <ul id="log" aria-live="polite"></ul>
 </aside>
 
+<div id="officeSearch" role="search">
+  <div id="officeMatches" role="listbox" aria-label="Matching employees" hidden></div>
+  <input type="search" id="officeSearchInput" placeholder="Search an employee in the office…" autocomplete="off" aria-label="Search an employee in the office">
+</div>
+
 <section class="card" id="person" hidden aria-label="Selected person">
   <div id="pAvatar"></div>
   <div id="pBody">
@@ -109,7 +107,10 @@
   </div>
 </section>
 
-<button class="btn" id="uiToggle" type="button" aria-pressed="false" title="Hide controls (H)">Hide controls</button>
+<div id="topButtons">
+  <button class="btn" id="uiToggle" type="button" aria-pressed="false" title="Hide controls (H)">Hide controls</button>
+  <button class="btn" id="fsToggle" type="button" aria-pressed="false" title="Fullscreen (F)" hidden>Fullscreen</button>
+</div>
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>

@@ -19,3 +19,6 @@ export const CATS: Record<string, { name: string; color: string }> = {
   chat: { name: 'Chatting', color: '#33aeb0' },
   walk: { name: 'Walking', color: '#8796a2' },
 };
+
+/** Task kinds done at a run (the bucket run). The simulation sets `run` on them; a viewer works it out from the kind. */
+export const RUNNING_KINDS: readonly string[] = ['bucket', 'toilet'];

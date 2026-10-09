@@ -11,6 +11,7 @@ import { makeStaff, removeStaff, setStaffCount } from './factory';
 import { interactables } from './interactables';
 import { hasSlot } from './person';
 import { PROP_KEYS } from './props';
+import { DAY_START } from './schedule';
 import { meetings, people, sim } from './state';
 import { screenState, stepSim } from './step';
 import { buildTestLayout } from './testing';
@@ -121,6 +122,9 @@ describe('a seeded day', () => {
       if (i % 20) continue;
       for (const p of staff()) {
         const holding = PROP_KEYS.filter(k => p.props[k]);
+        // (the bucket goes out of the building with whoever is on the toilet run, and comes back with them)
+        const onTheRun = !!p.toiletUntil || p.task?.kind === 'bucket' || p.task?.kind === 'toilet' || p.task?.kind === 'bucketBack';
+        if (onTheRun) { expect(holding.every(k => k === 'bucket'), p.name + ' on the run').toBe(true); continue; }
         if (p.state === 'away' || p.task?.kind === 'work') expect(holding, p.name + ' at ' + (p.task?.kind ?? 'away')).toEqual([]);
         if (p.state === 'doing' && p.task && HELD[p.task.kind]) { expect(holding, p.name + ' during ' + p.task.kind).toEqual([HELD[p.task.kind]]); seenHeld.add(p.task.kind); }
       }
@@ -152,16 +156,16 @@ describe('a seeded day', () => {
     gone.shown = true;
     while (sim.day === 1) stepSim(DT); // the clock jumps back to the morning at 19:10
     expect(sim.day).toBe(2);
-    expect(sim.t).toBeLessThan(8 * 60);
+    expect(sim.t).toBe(DAY_START); // the day starts at 06:00 now
     for (const p of staff()) {
       expect(p.state).toBe('away');
       expect(p.shown).toBe(false);
       expect(p.arrivedAt).toBeNull();
       expect(p.task).toBeNull();
-      expect(p.arriveAt).toBeGreaterThanOrEqual(7 * 60 + 50);
+      expect(p.arriveAt).toBeGreaterThanOrEqual(8 * 60 + 40 - 1); // (their shift starts at 09:00; they come in from 08:40)
     }
     expect(meetings).toHaveLength(0);
-    run(120); // and the next morning they come back in
+    run(300); // and the next morning, by 11:00, they have come back in
     expect(staff().filter(p => p.state !== 'away').length).toBeGreaterThan(20);
   });
 

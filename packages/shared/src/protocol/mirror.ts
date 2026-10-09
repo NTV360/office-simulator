@@ -1,4 +1,6 @@
 import { Vec3 } from '../vec3';
+import { RUNNING_KINDS } from '../sim/data';
+import { NEVER } from '../sim/schedule';
 import { PROP_KEYS, newProps } from '../sim/props';
 import type { Spot } from '../sim/interactables';
 import type { Meeting, Person, TaskSpot } from '../sim/types';
@@ -81,7 +83,7 @@ export class Mirror {
   applyJoin(info: PersonInfo, snap: PersonSnap): void {
     const old = this.people.get(info.id);
     if (old && JSON.stringify(old.spec) === JSON.stringify(info.spec)) {
-      old.name = info.name; old.role = info.role; old.controller = info.controller;
+      old.name = info.name; old.role = info.role; old.title = info.title; old.department = info.department || null; old.controller = info.controller;
       old.slot = info.slot >= 0 ? this.spots[info.slot] : undefined;
       old.screenKind = info.screenKind; old.screenVariant = info.screenVariant; old.arriveAt = info.arriveAt;
       this.update(old, snap);
@@ -102,7 +104,7 @@ export class Mirror {
 
   private create(info: PersonInfo, snap: PersonSnap): Person {
     const p: Person = {
-      id: info.id, name: info.name, role: info.role, controller: info.controller, spec: info.spec,
+      id: info.id, name: info.name, role: info.role, title: info.title, department: info.department || null, controller: info.controller, spec: info.spec,
       slot: info.slot >= 0 ? this.spots[info.slot] : undefined,
       pos: new Vec3(snap.x, 0, snap.z), face: snap.face, faceGoal: snap.face, speed: 1.3,
       state: snap.state, shown: snap.shown, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],
@@ -128,6 +130,8 @@ export class Mirror {
   private fill(p: Person, snap: PersonSnap): void {
     p.state = snap.state;
     p.shown = snap.shown;
+    p.absent = snap.absent;
+    p.toiletUntil = snap.toilet ? NEVER : null; // (only whether they are out matters to a viewer)
     p.arriveAt = snap.arriveAt;
     p.arrivedAt = snap.arrivedAt === NONE ? null : snap.arrivedAt;
     p.leaveAt = snap.leaveAt;
@@ -142,6 +146,7 @@ export class Mirror {
     const t = p.task;
     if (t && t.kind === snap.kind && t.anim === snap.anim && t.cat === snap.cat && sameSpot(t.spot, spot, snap)) return;
     p.task = { kind: snap.kind, cat: snap.cat, anim: snap.anim, spot };
+    if (RUNNING_KINDS.includes(snap.kind)) p.task.run = true; // the bucket run is done at a run (the server moves them; this is for the walking pose)
   }
 
   private update(p: Person, snap: PersonSnap): void {

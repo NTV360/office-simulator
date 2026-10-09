@@ -1,6 +1,6 @@
 // End to end: phase 4 "done when". Starts its own copy of the whole stack (its own project, port and database) and puts three players in
 // it, in three real browsers: they walk (with prediction), sit, see each other's names, talk (only those nearby hear), wave, and see
-// Hazel's rage together, with a server restart (polite, then a hard kill) in the middle. An admin mutes one of them.   npm run e2e:together
+// the same office (the same people doing the same things), with a server restart (polite, then a hard kill) in the middle. An admin mutes one of them.   npm run e2e:together
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -82,16 +82,12 @@ try {
   const wavedC = await C.page.waitForFunction(() => window.__sim.people.find(p => p.name === 'tog_ana')?.emote?.kind === 'wave', null, { timeout: 8000 }).then(() => true, () => false);
   check('Ana waves and both the others see it, near or far', wavedB && wavedC);
 
-  // ---- 7. Hazel's rage, together (when she is in the office at this time of the simulated day)
-  const hazelIn = await A.page.evaluate(() => { const h = window.__sim.people.find(p => p.name === 'Hazel Sellote'); return !!h && h.state !== 'away'; });
-  await B.page.evaluate(() => document.getElementById('rageHazel').click());
-  if (hazelIn) {
-    const when = page => page.evaluate(() => new Promise(resolve => { const t0 = Date.now(); const f = () => { const k = window.__sim.people.find(p => p.name === 'Hazel Sellote').rageK || 0; if (k > .3) resolve(Date.now()); else if (Date.now() - t0 > 8000) resolve(null); else requestAnimationFrame(f); }; f(); }));
-    const t = await Promise.all([A, B, C].map(x => when(x.page)));
-    check('Hazel\'s rage starts on all three pages at the same moment', t.every(Boolean) && Math.max(...t) - Math.min(...t) < 1500, t.every(Boolean) ? `${Math.max(...t) - Math.min(...t)} ms apart` : 'not seen on every page');
-  } else {
-    check('Hazel is not in at this time of the day: the one who asked is told so', await hears(B.page, "Hazel isn't in the office"));
-  }
+  // ---- 7. the same office on every page: the same people, with the same jobs, almost all doing the same thing at the same moment
+  const look = page => page.evaluate(() => window.__sim.people.map(p => [p.name, p.title || '', p.shown, p.task ? p.task.kind : '']).sort((x, y) => (x[0] < y[0] ? -1 : 1)));
+  const [pa, pb, pc] = [await look(A.page), await look(B.page), await look(C.page)];
+  check('all three pages list the same people', pa.length >= 40 && pa.map(p => p[0]).join('|') === pb.map(p => p[0]).join('|') && pa.map(p => p[0]).join('|') === pc.map(p => p[0]).join('|'), `${pa.length}, ${pb.length} and ${pc.length} people`);
+  const differ = (x, y) => x.filter((p, i) => JSON.stringify(p) !== JSON.stringify(y[i])).length;
+  check('and almost everyone is doing the same thing on each', differ(pa, pb) <= 4 && differ(pa, pc) <= 4, `${differ(pa, pb)} and ${differ(pa, pc)} differ`);
 
   // ---- 8. the server restarts politely: all three come back by themselves and can still talk
   console.log('restarting the server (graceful) ...');

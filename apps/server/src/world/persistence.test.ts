@@ -6,7 +6,7 @@ const quiet = (): LoggerLike & { errors: string[]; warns: string[] } => {
   const l = { errors: [] as string[], warns: [] as string[], log: () => {}, warn: (m: string) => l.warns.push(m), error: (m: string) => l.errors.push(m) };
   return l;
 };
-const world = (t: number): SavedWorld => ({ version: SAVE_VERSION, clock: { t, day: 1, speed: 1, paused: false, lastMinute: 0 }, nameIdx: 0, deskOrder: [], people: [], objects: [] });
+const world = (t: number): SavedWorld => ({ version: SAVE_VERSION, clock: { t, day: 1, speed: 1, paused: false, lastMinute: 0, mode: 'sim' }, nameIdx: 0, deskOrder: [], people: [], objects: [] });
 const noWait = { delayMs: 0, sleep: async () => {} };
 
 describe('loadForBoot', () => {

@@ -50,7 +50,6 @@ In practice:
 | `character/rig.js` | `@office/shared` (`sim/data.ts`) | the activity-ring colours come from `CATS` |
 | `people/views.js` | `ui/person.js` | deselects a removed person |
 | `people/animation.js` | `player/player.js` | the player's pose depends on sitting/moving |
-| `people/hazel.js` | `camera/`, `player/`, `ui/` | Hazel's HUD buttons, camera follow and rage effects live in one feature module |
 
 Some function-level cycles also exist (for example `camera/controller.js` and `player/control.js` call each other). They are fine as long as no module **reads another module's value at import time** (see [CODING-STANDARDS.md](CODING-STANDARDS.md#2-no-work-at-import-time)).
 
@@ -64,7 +63,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `world/furniture/*.js` | One file per area: desks, conference rooms, lounge, game console, bar, booths, dining, golf, darts, server rack, music corner, kitchen, storage, plants. `basics.js` has `mkSpot` and shared chairs |
 | `@office/shared` `sim/interactables.ts` | **Registry of everything a person can walk to and use** (desks, seats, counters, games). Look up by kind: `interactables.of('desk')`. `sim/spots.ts` has `mkSpot`, `ENTRY` and `exitSpot()` |
 | `character/` | `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` the shared body rig, `parts.js` hair and face parts, `props.js` held props, `gfx.js` cached materials/geometry |
-| `people/` | The client side of people: `views.js` (gives each person a body when the simulation creates them), `animation.js` (poses), `sync.js` (put meshes where the sim says), `screens.js` (desk monitors), `hazel.js` (her HUD buttons and rage effect) |
+| `people/` | The client side of people: `views.js` (gives each person a body when the simulation creates them), `animation.js` (poses), `sync.js` (put meshes where the sim says), `screens.js` (desk monitors), `group.js` (the group the bodies hang in) |
 | `player/` | The player's character: `player.js` (makes the person and holds the local control state), `control.js` (look angles, keys, touch stick), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
@@ -91,7 +90,7 @@ Each frame, in this order:
 1. If not paused: advance the sim clock, start meetings, roll the day over at 19:10, step every NPC (`stepPerson`), update desk screens and the day/night light.
 2. Pose and place every person's body, the player's included (`syncBody`).
 3. Selection ring, label visibility, and the wall-height easing (`wall.h` eases toward `wall.goal`).
-4. `updateRage` (Hazel), then input and camera (`keyCam`, `updateCamera`, which runs the active camera mode), camera shake, then the animated props (golf, darts, music).
+4. `updateBucket` (the toilet bucket on the kitchen floor is there unless somebody has it), then input and camera (`keyCam`, `updateCamera`, which runs the active camera mode), then the animated props (golf, darts, music).
 5. Swap the lounge TV to the fighting game when someone is playing, render, and refresh the HUD about four times a second.
 
 ## State: who owns what
@@ -110,7 +109,6 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | `labelState` | `render/labels.js` | `{ on }` |
 | `interactables` | `packages/shared/src/sim/interactables.ts` | The registry of usable spots |
 | `OBS`, `SOLIDS` | `world/helpers.js` | Obstacle rects (nav) and wall rects (camera collision), in plan pixels |
-| `RAGE` | `people/hazel.js` | Hazel's rage-mode state |
 
 ## Coordinates
 
@@ -128,7 +126,7 @@ A character is three separate things:
 
 **The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as a slot (the ledger and the slot number use `hasSlot`; meetings and the end-of-day reset use `isAi`). `controller`, `isAi`, `isDriven` and `hasSlot` live in `packages/shared/src/sim/person.ts`; on the page, `isLocalPlayer(p)` (in `player/player.js`) says whether a person is the one *this* page controls. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
-**Hazel** (`people/hazel.js`) is the one hand-written NPC: the first person created gets her look and name, she always leaves last, and the HUD can find her or make her angry.
+**Hazel** (`packages/shared/src/sim/hazel.ts`) is the one hand-written NPC: the first person created gets her look and name (or, with the real staff list, the employee with that name keeps her furious face), and she always leaves last. (Her "Make her angry" button and rage effect were removed, as on `main`.)
 
 ## Interactables and activities
 

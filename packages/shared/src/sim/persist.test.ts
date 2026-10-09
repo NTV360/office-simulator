@@ -3,6 +3,7 @@ import { loadLayout } from '../layout/layout';
 import { officeLayout } from '../layout/office';
 import { drawCount, setSeed } from '../util';
 import { initDay } from './day';
+import { live, resetLive } from './live';
 import { simEvents } from './events';
 import { hasSlot } from './person';
 import { SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
@@ -115,7 +116,7 @@ describe('parseSavedWorld refuses damaged saves', () => {
     expect(() => parseSavedWorld(null)).toThrow(SaveError);
     expect(() => parseSavedWorld([])).toThrow(SaveError);
     expect(() => parseSavedWorld('x')).toThrow(SaveError);
-    bad(s => { s.version = 4; }, /version/);
+    bad(s => { s.version = 99; }, /version/);
     bad(s => { delete s.clock; }, /clock/);
     bad(s => { s.people = 'no'; }, /people/);
     bad(s => { s.deskOrder = {}; }, /deskOrder/);
@@ -143,5 +144,51 @@ describe('parseSavedWorld refuses damaged saves', () => {
   });
   it('accepts a good one', () => {
     expect(parseSavedWorld(good()).people).toHaveLength(40);
+  });
+});
+
+describe('what version 4 adds: who the employee is, their shift, the toilet run, the clock mode', () => {
+  it('employee details, the shift and the toilet run come back', () => {
+    runningWorld(3, 4000);
+    const p = people.filter(hasSlot)[5];
+    Object.assign(p, { userId: 'u-5', title: 'UI/UX Department', department: 'UI/UX', shift: { code: 'NIGHT', start: 21 * 60, end: 6 * 60 }, shiftStart: 21 * 60, absent: true, toiletUntil: 700 });
+    const saved = viaJson();
+    restoreWorld(parseSavedWorld(saved));
+    const back = people.find(q => q.id === p.id)!;
+    expect(back).toMatchObject({ userId: 'u-5', title: 'UI/UX Department', department: 'UI/UX', shift: { code: 'NIGHT', start: 1260, end: 360 }, shiftStart: 1260, absent: true, toiletUntil: 700 });
+    expect(viaJson()).toEqual(saved);
+  });
+  it('the clock mode is kept (Live stays Live over a restart)', () => {
+    runningWorld(1, 200);
+    live.mode = 'live';
+    const saved = viaJson();
+    expect(saved.clock.mode).toBe('live');
+    live.mode = 'sim';
+    restoreWorld(parseSavedWorld(saved));
+    expect(live.mode).toBe('live');
+    resetLive();
+  });
+  it('a version 3 save (no employee details, no clock mode) still loads: the title is the role and the shift is the default', () => {
+    runningWorld(2, 3000);
+    const old = viaJson();
+    old.version = 3; delete old.clock.mode;
+    for (const p of old.people) for (const k of ['userId', 'title', 'department', 'shift', 'shiftStart', 'absent', 'toiletUntil']) delete p[k];
+    const parsed = parseSavedWorld(old);
+    expect(parsed.version).toBe(4);
+    expect(parsed.clock.mode).toBe('sim');
+    for (const p of parsed.people) expect(p).toMatchObject({ userId: null, title: p.role, department: null, shift: null, shiftStart: 540, absent: false, toiletUntil: null });
+    restoreWorld(parsed);
+    expect(people.filter(hasSlot)).toHaveLength(40);
+  });
+  it('damaged employee details are refused', () => {
+    runningWorld(1, 100);
+    const bad = (mutate: (s: any) => void) => { const s = viaJson(); mutate(s); expect(() => parseSavedWorld(s)).toThrow(SaveError); }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    bad(s => { s.people[0].userId = 5; });
+    bad(s => { s.people[0].shift = { code: 'X', start: 'a', end: 1 }; });
+    bad(s => { s.people[0].shift = 'DAY'; });
+    bad(s => { s.people[0].toiletUntil = 'soon'; });
+    bad(s => { s.people[0].absent = 'no'; });
+    bad(s => { s.clock.mode = 'turbo'; });
+    bad(s => { s.clock.t = 31 * 60; });
   });
 });

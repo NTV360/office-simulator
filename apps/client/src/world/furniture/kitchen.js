@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
+import { makeBucket } from '../../character/props.js';
 import { SO, WST, mkSpot } from './basics.js';
-import { addObs, box, boxGeo, cyl, staticRoot } from '../helpers.js';
+import { addObs, box, boxGeo, cyl, dynamic, staticRoot } from '../helpers.js';
+
+// The toilet bucket by the counter. `mesh` is the one on the floor: it is hidden while somebody has it out (see updateBucket).
+const BUCKET = { mesh: null };
 
 
 function buildKitchen() {
@@ -40,7 +44,20 @@ function buildKitchen() {
     [-1, 1].forEach(s => { box(staticRoot, w / 2 - .03, .56, .02, M.deskTop, cx + s * w / 4, 1.78, cz - .19, false); box(staticRoot, .02, .14, .03, M.steel, cx + s * .05, 1.7, cz - .2, false); });
     mkSpot('snack', 391, 1049, SO, { place: 'the snack cabinet' });
   }
-  // (the bucket by the counter, and its spot, come in step 2 of phase 6 with the bucket run)
+  // The green bucket on the floor at the counter's corner by the wall, with a spot to grab it from
+  {
+    const b = makeBucket(); b.position.set(wx(358), 0, wz(986)); b.traverse(o => dynamic(o)); staticRoot.add(b);
+    BUCKET.mesh = b; b.userData.isFloorBucket = true; // (a check in the browser tests finds it by this)
+    mkSpot('bucket', 368, 986, WST, { place: 'the bucket' });
+  }
 }
 
-export { buildKitchen };
+/** The floor bucket is there unless somebody has it (in hand, or out of the building with it). Cheap: once a frame. */
+function updateBucket(people) {
+  if (!BUCKET.mesh) return;
+  let taken = false;
+  for (const p of people) if (p.props.bucket) { taken = true; break; }
+  if (BUCKET.mesh.visible === taken) BUCKET.mesh.visible = !taken;
+}
+
+export { buildKitchen, updateBucket };

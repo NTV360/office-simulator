@@ -78,7 +78,7 @@ describe('changing settings', () => {
     expect((await r.json()).slots).toBe(12);
     expect((await world()).staff).toBe(12);
     r = await call('PUT', '/api/admin/settings', { slots: 5000 });
-    expect((await r.json()).slots).toBe(80); // (there are 80 desks)
+    expect((await r.json()).slots).toBe(74); // (there are 80 desks; the six in the HR office are only for HR staff)
     r = await call('PUT', '/api/admin/settings', { slots: 0 });
     expect((await r.json()).slots).toBe(0);
   });

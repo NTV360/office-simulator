@@ -1,6 +1,6 @@
 # How to add things
 
-Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.md](CODING-STANDARDS.md) and names the files to touch. The music corner and Hazel were added with these same steps; read them as worked examples.
+Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.md](CODING-STANDARDS.md) and names the files to touch. The music corner, the whiteboards and the toilet bucket were added with these same steps; read them as worked examples.
 
 - [Add furniture or an area](#add-furniture-or-an-area)
 - [Add an interactable and an activity](#add-an-interactable-and-an-activity)
@@ -77,11 +77,11 @@ All of these also apply to NPCs and the player, because they all share `Characte
 
 ## Add a special character
 
-Hazel (`people/hazel.js`) is the template.
+Hazel (`packages/shared/src/sim/hazel.ts`) is the template.
 
 1. Give the character a spec override (`apply<Name>(spec)`) and call it from `makeStaff` in `packages/shared/src/sim/factory.ts` for the person created at the right index. Add any new look options to the spec first (see above).
 2. Keep identity in one place: name constant, role, schedule overrides (see `packages/shared/src/sim/hazel.ts` and `scheduleDay` in `packages/shared/src/sim/factory.ts`).
-3. Put the character's own behaviour and effects in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
+3. Put any behaviour or effect only this character has in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
 4. Poses and status texts go in `people/animation.js` and `ui/person.js` like any other activity.
 
 ## Run and test the simulation without a browser

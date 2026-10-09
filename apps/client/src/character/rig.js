@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CATS } from '@office/shared';
 import { boxGeo } from '../world/helpers.js';
 import { addAngry, addGlasses, addHair, addHeadphones } from './parts.js';
-import { makeGuitar } from './props.js';
+import { makeBucket, makeGuitar } from './props.js';
 import { eyeMat, limb, sph, stdMat } from './gfx.js';
 
 const ringGeo = new THREE.RingGeometry(.27, .33, 32);
@@ -64,10 +64,11 @@ function buildBody(spec) {
   [-1, 1].forEach(sd => { const gp = new THREE.Mesh(sph(.03, 8, 6), pw); gp.position.set(sd * .066, -.006, -.03); gp.scale.set(1, .8, 1.5); pad.add(gp); });
   const tp = new THREE.Mesh(boxGeo(.065, .006, .035), pk); tp.position.set(0, .016, .005); pad.add(tp);
   pad.position.set(.08, -.07, .05); pad.visible = false; R.hand.add(pad);
+  const bucket = makeBucket(); bucket.position.set(0, -.32, .02); bucket.visible = false; R.hand.add(bucket); // hangs from the hand by its handle
   const guitar = makeGuitar(); guitar.position.set(-.04, .14, .2); guitar.rotation.z = .35; guitar.scale.setScalar(.95); guitar.visible = false; torso.add(guitar);
   const skinMeshes = []; root.traverse(o => { if (o.isMesh && o.material === skin) skinMeshes.push(o); });
   const sockets = { head, torso, leftHand: L.hand, rightHand: R.hand };
-  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, guitar, ring, chest, skin, skinMeshes, sockets };
+  return { root, hips, torso, head, L, R, LL, RL, mug, phone, pad, putter, bucket, guitar, ring, chest, skin, skinMeshes, sockets };
 }
 
 export { buildBody, ringMats };

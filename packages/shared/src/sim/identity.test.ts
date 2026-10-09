@@ -21,7 +21,7 @@ const takeOver = (p: Person) => { p.controller = 'account'; p.state = 'controlle
 const guest = (account: number): Person => {
   const g = {
     id: allocatePersonId(), name: 'Guest', role: 'Guest', controller: 'account', owner: account, state: 'controlled', shown: true,
-    pos: new Vec3(ENTRY.x, 0, ENTRY.z), face: 0, faceGoal: 0, props: { mug: false, phone: false, pad: false, guitar: false, putter: false },
+    pos: new Vec3(ENTRY.x, 0, ENTRY.z), face: 0, faceGoal: 0, props: { mug: false, phone: false, pad: false, guitar: false, putter: false, bucket: false },
     task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: 0, animT: 0, pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false,
     arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0, speed: 1.3, spec: {} as Person['spec'],
   } as Person;
@@ -183,7 +183,7 @@ describe('the save remembers owners, and still reads old saves', () => {
   });
 
   it('refuses versions it does not know, and owners that are not account ids', () => {
-    for (const bad of [0, 4, 99, '2', null]) expect(() => parseSavedWorld({ ...via(), version: bad })).toThrow(SaveError);
+    for (const bad of [0, 5, 99, '2', null]) expect(() => parseSavedWorld({ ...via(), version: bad })).toThrow(SaveError);
     for (const owner of [0, -1, 1.5, 'x', NaN, {}]) {
       const s = via(); s.people[0].owner = owner;
       expect(() => parseSavedWorld(s), String(owner)).toThrow(/owner|number/);

@@ -5,7 +5,7 @@ import { scheduleDay } from './factory';
 import { newProps } from './props';
 import { allocatePersonId, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
-import { endTask } from './tasks';
+import { endTask, putBucketBack } from './tasks';
 import type { Person } from './types';
 
 // A human taking over a person, handing them back, and a guest (a human with no desk). See docs/PHASE-3-BREAKDOWN.md, step 3.
@@ -21,6 +21,7 @@ export function takeControl(p: Person): void {
   endTask(p); // runs the task's end hook: props down, a shared seat freed
   leaveMeeting(p);
   clearChatsWith(p);
+  putBucketBack(p); p.toiletUntil = null; // (a person on the toilet run is not out of the building any more)
   p.controller = 'account';
   p.drivenOnDay = sim.day;
   p.state = 'controlled';
@@ -45,6 +46,7 @@ export function handBack(p: Person): void {
   if (p.controller === 'ai') return;
   if (!p.slot) { removeGuest(p); return; } // a guest has no desk to go back to: they are simply gone
   endTask(p); // a seat the human was in is freed
+  putBucketBack(p); p.toiletUntil = null;
   p.controller = 'ai';
   p.state = 'idle';
   p.task = null; p.path = null; p.pi = 0; p.queue = []; p.until = 0;

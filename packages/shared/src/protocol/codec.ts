@@ -11,16 +11,16 @@ import {
 const STATES: PersonState[] = ['away', 'idle', 'walking', 'doing', 'controlled'];
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
-const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice', 'rage'];
+const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
-export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit'];
-export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit'];
+export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit', 'bucket', 'toilet', 'bucketBack', 'snack', 'snackDesk', 'whiteboard'];
+export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit', 'present'];
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, rage: 0x07,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06,
   welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89, object: 0x8a,
 } as const;
 
@@ -66,7 +66,7 @@ const unquantAngle = (q: number): number => q / 65536 * TAU;
 
 function writeSnap(w: Writer, s: PersonSnap): void {
   w.u16(s.id);
-  w.u8(s.shown ? 1 : 0);
+  w.u8((s.shown ? 1 : 0) | (s.absent ? 2 : 0) | (s.toilet ? 4 : 0));
   w.u8(index(STATES, s.state, 'state'));
   w.f32(s.x).f32(s.z);
   w.u16(quantAngle(s.face)).u16(quantAngle(s.walkPhase));
@@ -94,23 +94,23 @@ function readSnap(r: Reader): PersonSnap {
   const partner = fromU16(r.u16()), chatWith = fromU16(r.u16());
   const m = r.u8();
   const props = r.u8(), arrivedAt = r.f32(), arriveAt = r.f32(), leaveAt = r.f32(), coffees = r.u8();
-  const snap: PersonSnap = { id, state, shown: !!(flags & 1), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees };
+  const snap: PersonSnap = { id, state, shown: !!(flags & 1), absent: !!(flags & 2), toilet: !!(flags & 4), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees };
   if (oneOff) snap.oneOff = oneOff;
   return snap;
 }
 
 function writeInfo(w: Writer, p: PersonInfo): void {
-  w.u16(p.id).str(p.name).str(p.role).u8(index(CONTROLLERS, p.controller, 'controller')).str(JSON.stringify(p.spec));
+  w.u16(p.id).str(p.name).str(p.role).str(p.title).str(p.department).u8(index(CONTROLLERS, p.controller, 'controller')).str(JSON.stringify(p.spec));
   w.u16(toU16(p.slot)).u8(index(SCREEN_KINDS, p.screenKind, 'screen kind')).u8(p.screenVariant).f32(p.arriveAt);
 }
 function readInfo(r: Reader): PersonInfo {
-  const id = r.u16(), name = r.str(), role = r.str(), controller = readIndex(r, CONTROLLERS, 'controller');
+  const id = r.u16(), name = r.str(), role = r.str(), title = r.str(), department = r.str(), controller = readIndex(r, CONTROLLERS, 'controller');
   let raw: unknown;
   try { raw = JSON.parse(r.str()); } catch { throw new DecodeError('invalid character spec'); }
   const slot = fromU16(r.u16()), screenKind = readIndex(r, SCREEN_KINDS, 'screen kind'), screenVariant = r.u8(), arriveAt = r.f32();
   // not normalised: this comes from the server, and special characters (Hazel is 0.7 tall) sit outside what players may choose
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new DecodeError('invalid character spec');
-  return { id, name, role, controller, spec: raw as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
+  return { id, name, role, title, department, controller, spec: raw as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
 }
 
 function writeMeetings(w: Writer, list: readonly MeetingSnap[]): void {
@@ -149,7 +149,6 @@ export function encode(msg: Message): Uint8Array {
       break;
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
     case 'say': if (msg.text.length > MAX_CHAT) throw new RangeError('chat line too long for the protocol'); w.u8(T.say).str(msg.text); break;
-    case 'rage': w.u8(T.rage); break;
     case 'object': w.u8(T.object); writeObjectPose(w, msg.pose); break;
     case 'emote': w.u8(T.emote).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'emoted': w.u8(T.emoted).u16(msg.from).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
@@ -181,9 +180,9 @@ export function encode(msg: Message): Uint8Array {
   return w.bytes();
 }
 
-/** Decode a message from a client: only hello, ping, input, act, say, emote and rage are accepted, and nothing else is parsed. */
+/** Decode a message from a client: only hello, ping, input, act, say and emote are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.rage)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -196,7 +195,6 @@ export function decode(bytes: Uint8Array): Message {
     case T.hello: { const version = r.u8(), ticket = r.str(); if (ticket.length > MAX_TICKET) throw new DecodeError('ticket too long'); msg = { type: 'hello', version, ticket }; break; }
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
     case T.say: { const text = r.str(); if (text.length > MAX_CHAT) throw new DecodeError('chat line too long'); msg = { type: 'say', text }; break; }
-    case T.rage: msg = { type: 'rage' }; break;
     case T.object: msg = { type: 'object', pose: readObjectPose(r) }; break;
     case T.emote: msg = { type: 'emote', kind: readIndex(r, EMOTE_KINDS, 'emote') }; break;
     case T.emoted: { const from = r.u16(); msg = { type: 'emoted', from, kind: readIndex(r, EMOTE_KINDS, 'emote') }; break; }
@@ -236,4 +234,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'rage'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote'; }

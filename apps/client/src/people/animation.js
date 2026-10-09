@@ -1,15 +1,13 @@
 import { TAU, angDiff } from '@office/shared';
 import { isLocalPlayer, player } from '../player/player.js';
-import { HAZEL, RAGE } from './hazel.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
 /* ================= Animation ================= */
 const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 function animKey(p) {
-  if (p.rageK > .3) return 'rage';
   if (isLocalPlayer(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? (p.task.anim || 'listenSit') : (p.moving ? 'walk' : 'stand'); // a human somewhere else (online)
-  if (p.state === 'walking') return 'walk';
+  if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
   if (t.kind === 'meeting') return t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
@@ -49,6 +47,14 @@ function targetPose(p, k, T) {
       o.hipY = .87 + .022 * Math.abs(Math.cos(p.walkPhase)); o.lean = .05;
       break;
     }
+    case 'run': {
+      const s = Math.sin(p.walkPhase), c = Math.cos(p.walkPhase);
+      o.lHip = -.85 * s; o.rHip = .85 * s;
+      o.lKnee = .2 + 1.1 * Math.max(0, c); o.rKnee = .2 + 1.1 * Math.max(0, -c);
+      o.lShX = .8 * s; o.lEl = -1.2; o.rShX = p.body.bucket.visible ? -.1 * s : -.8 * s; o.rEl = p.body.bucket.visible ? -.1 : -1.2; // the bucket hand stays down
+      o.hipY = .86 + .05 * Math.abs(Math.cos(p.walkPhase)); o.lean = .22;
+      break;
+    }
     case 'type': sit(); o.lean = .12; o.lShX = -.6; o.rShX = -.6; o.lEl = -1.2 + Math.sin(T * 13) * .06; o.rEl = -1.2 + Math.sin(T * 13 + 2) * .06; o.lShZ = -.05; o.rShZ = .05; o.headX = .1 + Math.sin(T * .4) * .05; o.headY = Math.sin(T * .23) * .15; break;
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;
     case 'listen': sit(); o.lean = -.03; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -1.0; o.headX = Math.sin(T * 2.1) * .04; break;
@@ -58,18 +64,6 @@ function targetPose(p, k, T) {
     case 'phone': sit(); o.lean = .02; o.rShX = -.45; o.rShZ = .55; o.rEl = -2.55; o.lShX = -.4 + Math.sin(T * 2.2) * .15; o.lEl = -1.0; o.headY = Math.sin(T * .5) * .3; o.headX = -.05 + Math.sin(T * 4) * .03; break;
     case 'piano': { sit(); o.lean = .1; o.lShX = -.75; o.rShX = -.75; o.lEl = -1.0 + Math.sin(T * 7) * .08; o.rEl = -1.0 + Math.sin(T * 8 + 1) * .08; o.lShZ = .05 + Math.sin(T * 1.3) * .18; o.rShZ = -.05 + Math.sin(T * 1.1 + 2) * .18; o.headX = .2; o.headY = Math.sin(T * .9) * .15; o.lean += Math.sin(T * 2) * .03; break; }
     case 'guitar': { sit(); o.lean = .06; o.lShX = -1.05; o.lShZ = .55; o.lEl = -1.2 + Math.sin(T * 3) * .05; o.rShX = -.35; o.rShZ = -.15; o.rEl = -1.35 + Math.sin(T * 12) * .2; o.headX = .25; o.headY = .35 + Math.sin(T * 2) * .08; break; }
-    case 'rage': {
-      const roar = RAGE.t < 1.6;
-      o.hipY = .86 + Math.abs(Math.sin(T * 9)) * .02; o.lean = roar ? -.18 : .12 + Math.sin(T * 14) * .03;
-      if (roar) { o.lShZ = 1.25; o.rShZ = -1.25; o.lShX = -.3; o.rShX = -.3; o.lEl = o.rEl = -1.5; o.headX = -.45; }
-      else {
-        const s = Math.sin(T * 7);
-        o.lShX = -1.1 - s * .55; o.rShX = -1.1 + s * .55; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -1.7;
-        const st = Math.sin(T * 5); o.lHip = Math.min(0, st) * .7; o.lKnee = Math.max(0, -st) * 1.1; o.rHip = Math.min(0, -st) * .7; o.rKnee = Math.max(0, st) * 1.1;
-        o.headY = Math.sin(T * 3) * .5; o.headX = .1;
-      }
-      break;
-    }
     case 'darts': {
       const ph = (T + (p.task?.spot?.dartOff || 0)) % 6;
       o.lShX = -.3; o.lEl = -.6; o.headX = -.05; o.lean = .04;
@@ -92,6 +86,7 @@ function targetPose(p, k, T) {
     case 'drink': { o.rShX = -.45; o.rEl = -1.5; const sip = (T % 6) < 1.2; if (sip) { o.rEl = -2.35; o.rShX = -.55; o.headX = -.18; } o.lShZ = .12; o.headY = Math.sin(T * .4) * .4; break; }
     case 'sink': o.lean = .2; o.lShX = o.rShX = -.75; o.lEl = -.6 + Math.sin(T * 7) * .15; o.rEl = -.6 + Math.sin(T * 7 + 1.5) * .15; o.headX = .3; break;
     case 'locker': o.lShX = -1.1 + Math.sin(T * 2) * .2; o.lEl = -.4; o.rShX = -.6; o.rEl = -.5 + Math.sin(T * 3) * .2; o.headX = Math.sin(T) * .1; break;
+    case 'present': o.rShX = -1.75 + Math.sin(T * 1.7) * .25; o.rShZ = -.25 + Math.sin(T * 2.3) * .2; o.rEl = -.35; o.lShX = Math.sin(T * 1.1) * .15; o.headY = Math.sin(T * .6) * .5; o.headX = -.08; break;
     case 'talkStand': o.rShX = -.55 + Math.sin(T * 2.7) * .3; o.rEl = -1.2 + Math.sin(T * 3.9) * .3; o.rShZ = -.15; o.lShX = Math.sin(T * 1.3) * .1; o.headX = Math.sin(T * 4.4) * .05; break;
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
   }
@@ -104,12 +99,11 @@ function targetPose(p, k, T) {
   else if (k === 'talkSit' && p.task?.meeting) { const others = p.task.meeting.members.filter(q => q !== p); if (others.length) look = others[Math.floor(T / 2.5) % others.length].pos; }
   else if (k === 'talkStand' && p.task?.partner) look = p.task.partner.pos;
   else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && !isLocalPlayer(p)) look = LOUNGE_TV_POS;
-  if (k !== 'rage' && RAGE.on && HAZEL() && HAZEL() !== p && p.pos.distanceTo(HAZEL().pos) < 6) look = HAZEL().pos;
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;
 }
 function applyPose(p, dt) {
-  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' ? 22 : 9));
+  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
   const b = p.body;
   b.hips.position.y = c.hipY; b.torso.rotation.x = c.lean;

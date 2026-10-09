@@ -2,7 +2,6 @@ import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
-import { setRageRequest, startRage } from '../people/hazel.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
@@ -87,9 +86,6 @@ export function startOnline() {
   const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
   const chat = initChat({ send: text => send({ type: 'say', text }), sendEmote: kind => send({ type: 'emote', kind }), personById: id => mirror.people.get(id) });
-
-  // Hazel's rage: the button asks the server, which starts it for everybody at once
-  setRageRequest(() => { if (net.joined) send({ type: 'rage' }); });
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
   let seq = 1, lastSentAt = 0, lastSent = null;
@@ -292,7 +288,6 @@ export function startOnline() {
   }
 
   function pushEvent(e) {
-    if (e.kind === 'rage') { startRage({ shared: true }); return; } // the server started it: it starts here too
     if (e.kind === 'notice') { chat.system(e.text, 'notice'); return; } // for this player alone: in the chat panel
     if (e.kind === 'announce') chat.system(`Announcement: ${e.text}`, 'announce');
     // the log lines also reach the ledger the way local ones do

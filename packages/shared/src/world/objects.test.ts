@@ -234,6 +234,6 @@ describe('saving objects', () => {
     bad([{ id: 'obj:1', x: 0, z: 0, rot: Infinity }], /\.rot/);
     bad([{ id: 'obj:1', x: 0, z: 0, rot: 0 }, { id: 'obj:1', x: 1, z: 1, rot: 1 }], /repeats/);
     bad(Array.from({ length: 6000 }, (_, i) => ({ id: `obj:${i}`, x: 0, z: 0, rot: 0 })), /not a list/);
-    expect(() => parseSavedWorld({ ...good(), version: 4 })).toThrow(SaveError);
+    expect(() => parseSavedWorld({ ...good(), version: 99 })).toThrow(SaveError);
   });
 });

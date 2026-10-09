@@ -4,9 +4,9 @@ import { DecodeError, Reader, Writer } from './binary';
 import { decode, decodeClient, encode } from './codec';
 import { NONE, type MeetingSnap, type PersonInfo, type PersonSnap } from './messages';
 
-const info: PersonInfo = { id: 1, name: 'A', role: 'R', controller: 'ai', spec: DEFAULT_SPEC, slot: 0, screenKind: 'code', screenVariant: 0, arriveAt: 500 };
+const info: PersonInfo = { id: 1, name: 'A', role: 'R', title: 'R', department: '', controller: 'ai', spec: DEFAULT_SPEC, slot: 0, screenKind: 'code', screenVariant: 0, arriveAt: 500 };
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
-  id: 1, state: 'doing', shown: true, x: 0, z: 0, face: 0, walkPhase: 0, kind: 'work', anim: 'type', cat: 'work', spot: 1, partner: NONE, chatWith: NONE, meeting: NONE, props: 0, arrivedAt: 500, arriveAt: 500, leaveAt: 1000, coffees: 0, ...over,
+  id: 1, state: 'doing', shown: true, absent: false, toilet: false, x: 0, z: 0, face: 0, walkPhase: 0, kind: 'work', anim: 'type', cat: 'work', spot: 1, partner: NONE, chatWith: NONE, meeting: NONE, props: 0, arrivedAt: 500, arriveAt: 500, leaveAt: 1000, coffees: 0, ...over,
 });
 const meeting = (i: number): MeetingSnap => ({ room: 1, topic: 't' + i, start: 1, end: 2, speaker: NONE, members: [] });
 
@@ -60,7 +60,9 @@ describe('decodeClient only accepts what a client may send', () => {
     expect(decodeClient(encode({ type: 'ping', ts: 5 }))).toEqual({ type: 'ping', ts: 5 });
     expect(decodeClient(encode({ type: 'say', text: 'hi' }))).toEqual({ type: 'say', text: 'hi' });
     expect(decodeClient(encode({ type: 'emote', kind: 'clap' }))).toEqual({ type: 'emote', kind: 'clap' });
-    expect(decodeClient(encode({ type: 'rage' }))).toEqual({ type: 'rage' });
+  });
+  it('the old rage message (byte 7) is refused: Hazel no longer rages', () => {
+    expect(() => decodeClient(new Uint8Array([7]))).toThrow(DecodeError);
   });
   it('nothing else, and the rest is not even parsed', () => {
     for (const m of [{ type: 'pong', ts: 1 }, { type: 'ack', seq: 1, tick: 1, x: 0, z: 0, face: 0 }, { type: 'chat', from: 1, name: 'x', text: 'y' }, { type: 'emoted', from: 1, kind: 'wave' }, { type: 'object', pose: { index: 1, x: 0, z: 0, rot: 0, carriedBy: -1 } }, { type: 'kick', reason: 'x' }, { type: 'leave', id: 1 }, { type: 'person', info, snap: snap() }] as const) {

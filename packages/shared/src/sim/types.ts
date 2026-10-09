@@ -4,6 +4,7 @@ import type { Spot } from './interactables';
 import type { Controller } from './person';
 import type { HeldProps } from './props';
 import type { ScreenKind } from './data';
+import type { Shift } from './schedule';
 
 /** What a person is doing right now. 'controlled' people are driven by a human, not by the simulation. */
 export type PersonState = 'away' | 'idle' | 'walking' | 'doing' | 'controlled';
@@ -17,6 +18,8 @@ export interface Task {
   cat: string;
   /** Which pose the client plays. */
   anim: string;
+  /** Walk at running speed (the bucket run). */
+  run?: boolean;
   spot: TaskSpot;
   /** How long it lasts in sim minutes. Meetings use `until` instead. */
   dur?: number;
@@ -77,8 +80,20 @@ export interface Person {
   meeting: Meeting | null;
   screenKind: ScreenKind;
   screenVariant: number;
-  /** 0 to 1, set by the client's rage effect for one character; the simulation pauses her while it is above a little. */
-  rageK?: number;
+  /** The employee this person is (the id in the staff list), or null/unset for made-up staff and guests. */
+  userId?: string | null;
+  /** What the card says they are: "UI/UX Department", "Intern HR". Falls back to the role. */
+  title?: string;
+  department?: string | null;
+  shift?: Shift | null;
+  /** When their shift starts on the sim clock (06:00 to 30:00); their breaks are counted from it. */
+  shiftStart?: number;
+  /** Live clock: not clocked in today. */
+  absent?: boolean;
+  /** "Deploying to the toilet": out of the building until this time, then back with the bucket. */
+  toiletUntil?: number | null;
+  /** The break (day and index) that already stopped this person's desk work, so it stops it once. */
+  breakKey?: number;
   /** The client's mesh rig for this person, attached by the client's people views. The simulation never reads it. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any;

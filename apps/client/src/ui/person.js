@@ -18,6 +18,8 @@ function select(p) {
 const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (isLocalPlayer(p)) return 'Controlled by you';
+  if (p.toiletUntil) return 'Deploying to the toilet';
+  if (p.absent) return 'Not in today';
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? `Sitting at ${p.task.spot?.place || 'a seat'}` : p.moving ? 'Walking around' : 'Standing here';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;
   const t = p.task; if (!t) return 'Getting settled';
@@ -41,13 +43,19 @@ function statusText(p) {
     case 'lunch': return going ? `Bringing lunch to ${where}` : `Having lunch at ${where}`;
     case 'lunchDesk': return going ? 'Taking lunch back to the desk' : `Eating lunch at ${where}`;
     case 'chat': return going ? `Walking over to ${t.partner.name.split(' ')[0]}` : `Chatting with ${t.partner.name.split(' ')[0]}`;
+    case 'snack': return going ? 'Getting a snack' : 'Grabbing a snack from the cabinet';
+    case 'snackDesk': return going ? `Taking a snack back to ${where}` : `Having a snack at ${where}`;
+    case 'whiteboard': return going ? 'Heading to the whiteboard' : t.anim === 'present' ? 'Leading a whiteboard discussion' : `Discussing at the whiteboard with ${t.partner.name.split(' ')[0]}`;
+    case 'bucket': return 'Running for the bucket';
+    case 'toilet': return 'Deploying to the toilet';
+    case 'bucketBack': return 'Putting the bucket back';
     case 'exit': return 'Heading home';
   }
   return '';
 }
 function renderPerson() {
   const p = selected; if (!p) return;
-  $('pName').textContent = p.name; $('pRole').textContent = `${p.role} · ${p.slot ? p.slot.place : 'visiting'}`;
+  $('pName').textContent = p.name; $('pRole').textContent = `${p.title ?? p.role} · ${p.slot ? p.slot.label ?? p.slot.place : 'visiting'}`;
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';

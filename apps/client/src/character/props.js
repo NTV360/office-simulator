@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { M } from '../render/materials.js';
 import { boxGeo } from '../world/helpers.js';
+import { stdMat } from './gfx.js';
 
 // Props that a character holds. Shared by the rig (carried) and the world (the guitar on its stand).
 function makeGuitar() {
@@ -15,4 +16,14 @@ function makeGuitar() {
   return g;
 }
 
-export { makeGuitar };
+// The green toilet bucket: on the floor by the counter, or carried by whoever is "deploying to the toilet". Its origin is the bottom centre.
+function makeBucket() {
+  const g = new THREE.Group(), green = stdMat('#2f9e57', .55), dark = stdMat('#23774a', .6);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.15, .12, .3, 18, 1, true), green); body.material.side = THREE.DoubleSide; body.position.y = .15; body.castShadow = true; g.add(body);
+  const base = new THREE.Mesh(new THREE.CircleGeometry(.12, 18), dark); base.rotation.x = -Math.PI / 2; base.position.y = .005; g.add(base);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.15, .012, 6, 24), dark); rim.rotation.x = Math.PI / 2; rim.position.y = .3; g.add(rim);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(.15, .007, 6, 20, Math.PI), stdMat('#c6ced4', .3)); handle.position.y = .3; g.add(handle);
+  return g;
+}
+
+export { makeBucket, makeGuitar };

@@ -8,7 +8,7 @@ The goal of the whole multiplayer work: **what one player sees, every player see
 - **The page is a viewer** of that office. Online, it does not run its own simulation: it draws what the server says. (Offline, `?offline`, it runs a private copy, which is how the simulation recordings and quick look-and-feel work are done.)
 - **Your own movement is predicted**: your character moves at once, and the server confirms (and corrects, smoothly, if it disagrees). So controls feel instant at any tick rate.
 - **Everybody else is drawn about 100-150 ms in the past**, smoothed between updates, so their movement is not jerky.
-- **Anything that happens in the world** (a wave, Hazel's rage, a chair being moved) is decided by the server and *told to everyone*, so all screens show it together.
+- **Anything that happens in the world** (a wave, someone starting the toilet run, a chair being moved) is decided by the server and *told to everyone*, so all screens show it together.
 - **Clients ask, the server decides.** A client sends a small request ("I want to wave"). The server checks it (is it allowed, are they close enough, is it too soon?) and answers everybody. Nothing a client sends is believed without checking.
 
 The full design and the reasons are in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) (sections 6 and 11).
@@ -68,7 +68,7 @@ Then try it by hand: `npm run dev:online`, two windows, and do the thing in one 
 
 - Your own actions are instant (prediction). Do not make your own movement wait for the server.
 - What other people do reaches you in roughly 100-150 ms: the network, plus being drawn about two ticks in the past on purpose so that it is smooth.
-- A one-off event arrives when the server broadcasts it, so all screens show it within the same fraction of a second. If you must show something "at the same moment", send a start time and let each page start it then, as Hazel's rage does.
+- A one-off event arrives when the server broadcasts it, so all screens show it within the same fraction of a second. If you must show something "at the same moment", send a start time and let each page start it then.
 - Do not add work on the server for every snapshot, or messages per player per tick, without measuring. The budget and the figures are in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#14-performance-budget-and-load-testing).
 
 ## 6. You already have a client-only change: what now?

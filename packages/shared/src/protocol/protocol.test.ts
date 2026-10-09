@@ -17,10 +17,10 @@ import {
 
 const TAU = Math.PI * 2;
 const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
-  id: 7, name: 'Ana B.', role: 'Developer', controller: 'ai', spec: { ...DEFAULT_SPEC, style: 'bun', scale: 1.05 }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
+  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', controller: 'ai', spec: { ...DEFAULT_SPEC, style: 'bun', scale: 1.05 }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
 });
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
-  id: 7, state: 'doing', shown: true, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
+  id: 7, state: 'doing', shown: true, absent: false, toilet: false, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
   partner: NONE, chatWith: NONE, meeting: NONE, props: 0b00001, arrivedAt: 500.25, arriveAt: 512.5, leaveAt: 1030.5, coffees: 2, ...over,
 });
 
@@ -46,19 +46,27 @@ const welcome = (): Welcome => ({
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'rage' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, carriedBy: 300 } }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, carriedBy: 300 } }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });
   it('event', () => {
     const m: Message = { type: 'event', kind: 'log', simTime: 600.5, text: 'Ana arrived' };
     expect(decode(encode(m))).toEqual(m);
-    for (const kind of ['announce', 'day', 'notice', 'rage'] as const) { const e: Message = { type: 'event', kind, simTime: 1, text: kind === 'rage' ? '' : 'x' }; expect(decode(encode(e))).toEqual(e); }
+    for (const kind of ['announce', 'day', 'notice'] as const) { const e: Message = { type: 'event', kind, simTime: 1, text: 'x' }; expect(decode(encode(e))).toEqual(e); }
   });
   it('person (joined)', () => {
     const m = decode(encode({ type: 'person', info: info(), snap: snap() }));
     expect(m.type).toBe('person');
     if (m.type === 'person') { expect(m.info).toEqual(info()); expectSameSnap(m.snap, snap()); }
+  });
+  it('a person who is out of the building on the toilet run, or not clocked in, keeps those flags; title and department travel', () => {
+    for (const [absent, toilet] of [[false, false], [true, false], [false, true], [true, true]] as const) {
+      const m = decode(encode({ type: 'person', info: info(), snap: snap({ absent, toilet, shown: !toilet, kind: 'bucket', anim: 'stand', cat: 'walk', props: 0b100000 }) }));
+      if (m.type !== 'person') throw new Error('not a person');
+      expect(m.snap.absent).toBe(absent); expect(m.snap.toilet).toBe(toilet); expect(m.snap.shown).toBe(!toilet); expect(m.snap.kind).toBe('bucket'); expect(m.snap.props).toBe(0b100000);
+      expect(m.info.title).toBe('UI/UX Department'); expect(m.info.department).toBe('UI/UX');
+    }
   });
   it('snapshot with a one-off chat place, ids that are none, and meetings', () => {
     const s: Snapshot = {
@@ -182,7 +190,7 @@ describe('from the real simulation', () => {
 
   it('the layout check is stable, and changes when a spot moves', () => {
     const a = layoutCheck();
-    expect(a.spots).toBe(157);
+    expect(a.spots).toBe(158);
     loadLayout(officeLayout);
     expect(layoutCheck()).toEqual(a);
     const moved = JSON.parse(JSON.stringify(officeLayout));

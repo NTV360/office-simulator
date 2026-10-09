@@ -15,7 +15,7 @@ const MUTATIONS = [
   ['walkers never move', sim + 'step.ts', 'else { p.pos.x += dx / d * step; p.pos.z += dz / d * step; moved += step; step = 0; }', 'else { moved += step; step = 0; }'],
   ['finishing a task skips its end hook (props stay in hand)', sim + 'tasks.ts', '  if (t.onEnd) t.onEnd(p);', ''],
   ['the simulation steps the human-controlled person', sim + 'step.ts', '  if (isDriven(p)) return;', ''],
-  ['Hazel loses her late-stay rule', sim + 'factory.ts', 'if (p.name === HAZEL_NAME) p.leaveAt = HAZEL_LEAVE_AT;', ''],
+  ['Hazel loses her late-stay rule', sim + 'factory.ts', 'if (p.name === HAZEL_NAME) p.leaveAt = Math.min(DAY_END - 3, end + 62);', ''],
   ['the new day does not clear the arrival record', sim + 'factory.ts', 'p.hadLunch = false; p.arrivedAt = null; p.coffees = 0;', 'p.hadLunch = false; p.coffees = 0;'],
   ['the same seed no longer gives the same day', sim + 'tasks.ts', 'const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant));', 'const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant)).sort(() => Math.random() - .5);'],
   ['taking a person over does not stop what they were doing', sim + 'takeover.ts', "  endTask(p); // runs the task's end hook: props down, a shared seat freed\n", ''],
@@ -23,6 +23,20 @@ const MUTATIONS = [
   ['taking over always teleports the person to the entrance', sim + 'takeover.ts', 'if (!p.shown || p.arrivedAt == null) {', 'if (true) {'],
   ['a guest who leaves is not removed', sim + 'takeover.ts', '  if (i >= 0) people.splice(i, 1);', ''],
   ['an input longer than 1 is not shortened (speed hack)', sim + 'driven.ts', 'if (len > 1) { mx /= len; mz /= len; }', ''],
+  ['games can start on any working hour, not just breaks', sim + 'tasks.ts', 'if (onBreak(p, t)) { if (play(p)) return; }\n  else if (p.task', 'if (play(p)) return;\n  else if (p.task'],
+  ['two people can be on the toilet run with the one bucket', sim + 'tasks.ts', 'if (!s || s.occupant || bucketTaken()) return false;', 'if (!s || s.occupant) return false;'],
+  ['someone on the toilet run stays drawn', sim + 'tasks.ts', "endTask(q); q.state = 'away'; q.task = null; q.shown = false;", "endTask(q); q.state = 'away'; q.task = null;"],
+  ['a break does not stop desk work', sim + 'step.ts', '{ p.breakKey = key; p.until = sim.t; }', '{ p.breakKey = key; }'],
+  ['every shift uses the day shift break times', sim + 'schedule.ts', 'const from = t - (p.shiftStart ?? DEFAULT_SHIFT.start);', 'const from = t - DEFAULT_SHIFT.start;'],
+  ['made-up staff can sit in the HR office', sim + 'factory.ts', '?? deskPool.find(s => open(s) && !s.department) ?? null;', '?? deskPool.find(s => open(s)) ?? null;'],
+  ['a desk someone chose is given to whoever comes first', sim + 'factory.ts', "const open = (s: Spot) => !s.owner && !chosen.has(s.deskId ?? '');", 'const open = (s: Spot) => !s.owner;'],
+  ['a removed person stays in the meeting they were in', sim + 'factory.ts', 'for (const m of meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }', ''],
+  ['a change in the toilet or clocked-in flag is not sent', 'apps/server/src/net/broadcaster.ts', 'a.absent !== b.absent || a.toilet !== b.toilet ||', ''],
+  ['someone not clocked in gets an infinite time (it cannot be sent or saved)', sim + 'live.ts', 'p.arriveAt = NEVER; p.leaveAt = NEVER;', 'p.arriveAt = Infinity; p.leaveAt = Infinity;'],
+  ['a takeover leaves the toilet bucket with the human', sim + 'takeover.ts', 'putBucketBack(p); p.toiletUntil = null; // (a person on the toilet run is not out of the building any more)', ''],
+  ['a shift that starts before 06:00 ends before it starts', sim + 'schedule.ts', 'while (end <= start) end += 24 * 60;', 'if (end <= s.start) end += 24 * 60;'],
+  ['anyone can choose a desk in the HR office', sim + 'factory.ts', 's.deskId === who.desk && !s.owner && mayUse(s))', 's.deskId === who.desk && !s.owner)'],
+  ['a server restarted in Live sends everybody home', sim + 'persist.ts', "live.date = mode === 'live' ? liveDay() : null;", 'live.date = null;'],
   ['the bottom row of a desk island is numbered from 1 again', 'packages/shared/src/layout/desks.ts', 'const n = si * isl.cols + c + 1;', 'const n = c + 1;'],
   ['an HR desk is not reserved for the HR department', 'packages/shared/src/layout/desks.ts', "department: 'Human Resources', room: true", 'room: true'],
   ['a stick pushed half way still walks at full speed', sim + 'driven.ts', ' * Math.min(1, len) * dt;', ' * dt;'],
@@ -38,10 +52,7 @@ const MUTATIONS = [
   ['chat keeps direction-changing characters', 'apps/server/src/play/chat.ts', "raw.replace(UNWANTED, ' ')", 'raw'],
   ['emotes have no cooldown', 'apps/server/src/play/emotes.ts', "if (!this.limiter.allow(String(accountId))) return { ok: false, reason: 'cooldown' };", ''],
   ['an emote that is not on the list is accepted', 'apps/server/src/play/emotes.ts', "if (typeof kind !== 'string' || !(EMOTE_KINDS as readonly string[]).includes(kind)) return { ok: false, reason: 'bad' };", ''],
-  ['the rage can start again at once', 'apps/server/src/play/shared-events.ts', 'if (left > 0) return', 'if (left > 1e12) return'],
-  ['the rage starts while Hazel is away', 'apps/server/src/play/shared-events.ts', "if (!this.lookup.hazelPresent()) return { ok: false, reason: 'away' };", ''],
   ['a running player is pulled back by a repeated ack', sim + 'prediction.ts', 'if (!at && !idle) {', 'if (false) {'],
-  ['one player can keep the rage going all day', 'apps/server/src/play/shared-events.ts', "if (mine > 0) return { ok: false, reason: 'you-again', secondsLeft: Math.ceil(mine / 1000) };", ''],
   ['a moved chair leaves its seat behind', 'packages/shared/src/world/objects.ts', 'spot.pos.x = x + p.x; spot.pos.z = z + p.z;', ''],
   ['moved objects are not saved', sim + 'persist.ts', 'objects: movedObjects().map(', 'objects: [].map('],
   ['a restore forgets the moved objects', sim + 'persist.ts', 'if (o) setObjectPose(o, s.x, s.z, s.rot);', ''],
@@ -60,7 +71,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'apps/server/src/net/rage.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

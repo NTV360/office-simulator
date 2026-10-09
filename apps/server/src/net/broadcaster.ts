@@ -8,7 +8,7 @@ import {
 
 const same = (a: PersonSnap, b: PersonSnap): boolean => {
   if (a.x !== b.x || a.z !== b.z || a.face !== b.face || a.walkPhase !== b.walkPhase) return false;
-  if (a.state !== b.state || a.shown !== b.shown || a.kind !== b.kind || a.anim !== b.anim || a.cat !== b.cat || a.spot !== b.spot) return false;
+  if (a.state !== b.state || a.shown !== b.shown || a.absent !== b.absent || a.toilet !== b.toilet || a.kind !== b.kind || a.anim !== b.anim || a.cat !== b.cat || a.spot !== b.spot) return false;
   if (a.partner !== b.partner || a.chatWith !== b.chatWith || a.meeting !== b.meeting || a.props !== b.props || a.arrivedAt !== b.arrivedAt || a.arriveAt !== b.arriveAt || a.leaveAt !== b.leaveAt || a.coffees !== b.coffees) return false;
   return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z && a.oneOff?.face === b.oneOff?.face;
 };

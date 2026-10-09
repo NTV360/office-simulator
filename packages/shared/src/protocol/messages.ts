@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 9;
+export const WIRE_VERSION = 10;
 
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
@@ -27,6 +27,10 @@ export interface PersonInfo {
   id: number;
   name: string;
   role: string;
+  /** What the card says they are ("UI/UX Department"); the role when they have no better. */
+  title: string;
+  /** '' when they have none. */
+  department: string;
   controller: 'ai' | 'account';
   spec: CharacterSpec;
   /** Index in the layout's spot list of the desk they own, or NONE. */
@@ -42,6 +46,10 @@ export interface PersonSnap {
   id: number;
   state: PersonState;
   shown: boolean;
+  /** Live clock: not clocked in today. */
+  absent: boolean;
+  /** Out of the building on the toilet run (they come back with the bucket). */
+  toilet: boolean;
   x: number;
   z: number;
   /** Radians. */
@@ -60,7 +68,7 @@ export interface PersonSnap {
   chatWith: number;
   /** Index into the snapshot's meetings, or NONE. */
   meeting: number;
-  /** Bit i set when the i-th held prop (mug, phone, pad, guitar, putter) is in hand. */
+  /** Bit i set when the i-th held prop (mug, phone, pad, guitar, putter, bucket) is in hand. */
   props: number;
   /** When they came in today (sim minutes), or NONE if they have not. */
   arrivedAt: number;
@@ -125,8 +133,8 @@ export interface ObjectMoved { type: 'object'; pose: ObjectPose }
 export interface PersonJoined { type: 'person'; info: PersonInfo; snap: PersonSnap }
 export interface PersonLeft { type: 'leave'; id: number }
 
-/** 'rage' is Hazel's rage starting: every page starts it together (it lasts 10 seconds on the page). 'notice' is for one player alone ("you are chatting too fast"); the others go to everybody. */
-export type EventKind = 'log' | 'announce' | 'day' | 'notice' | 'rage';
+/** 'notice' is for one player alone ("you are chatting too fast"); the others go to everybody. */
+export type EventKind = 'log' | 'announce' | 'day' | 'notice';
 export interface GameEvent { type: 'event'; kind: EventKind; simTime: number; text: string }
 
 /** The first thing a client says: its protocol version and the one-time ticket from POST /api/play/ticket. */
@@ -143,8 +151,6 @@ export const EMOTE_KINDS = ['wave', 'cheer', 'clap', 'nod'] as const;
 export type EmoteKind = typeof EMOTE_KINDS[number];
 /** Do an emote (the server limits how often). */
 export interface Emote { type: 'emote'; kind: EmoteKind }
-/** Make Hazel angry (the server allows it now and then, for everybody at once). */
-export interface Rage { type: 'rage' }
 export interface Ping { type: 'ping'; ts: number }
 export interface Pong { type: 'pong'; ts: number }
 export interface Kick { type: 'kick'; reason: string }
@@ -158,6 +164,6 @@ export interface Chat { type: 'chat'; from: number; name: string; text: string }
 export interface Emoted { type: 'emoted'; from: number; kind: EmoteKind }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
-export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Rage;
+export type ClientMessage = Hello | Ping | Input | Act | Say | Emote;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;
 export type Message = ClientMessage | ServerMessage;

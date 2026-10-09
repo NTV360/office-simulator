@@ -48,6 +48,17 @@ describe('Broadcaster', () => {
     expect(s.people.some(x => x.id === p.id && Math.abs(x.x - p.pos.x) < 1e-4)).toBe(true);
   });
 
+  it('a change in only the clocked-in or the toilet flag still shows up (they are not position or task changes)', () => {
+    snapshot(2);
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    p.absent = true;
+    expect(snapshot(4).people.find(x => x.id === p.id)?.absent).toBe(true);
+    p.absent = false; p.toiletUntil = 700;
+    expect(snapshot(6).people.find(x => x.id === p.id)?.toilet).toBe(true);
+    p.toiletUntil = null;
+    expect(snapshot(8).people.find(x => x.id === p.id)?.toilet).toBe(false);
+  });
+
   it('announces people who join or leave', () => {
     const gone = removeStaff()!;
     const left = decode(bc.left(gone.id));

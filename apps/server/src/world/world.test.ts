@@ -25,7 +25,7 @@ describe('World', () => {
     const w = new World({ ...base, slotCount: 12 }); w.init();
     expect(w.status()).toMatchObject({ staff: 12, desks: 80, tick: 0 });
     const many = new World({ ...base, slotCount: 500 }); many.init();
-    expect(many.status().staff).toBe(80);
+    expect(many.status().staff).toBe(74); // (80 desks; the six in the HR office are only for the HR department, and made-up staff have none)
   });
 
   it('steps the clock at the tick rate, and not while paused', () => {

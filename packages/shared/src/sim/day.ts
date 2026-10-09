@@ -1,22 +1,41 @@
 import { random, rnd, shuffle } from '../util';
 import { makeStaff, scheduleDay } from './factory';
 import { interactables } from './interactables';
+import { live, usesAttendance } from './live';
 import { isAi } from './person';
+import { roster } from './roster';
+import { DAY_START } from './schedule';
 import { addLog, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
-import { endTask, goWork, lockerTrip, placeNow } from './tasks';
+import { endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks';
 import type { Meeting, Person } from './types';
 
 /* ---------- Day cycle ---------- */
 export function phaseName(t: number): string {
-  if (t < 9 * 60) return 'Arrivals'; if (t < 12 * 60) return 'Morning focus'; if (t < 13 * 60 + 10) return 'Lunch hour';
-  if (t < 17 * 60) return 'Afternoon work'; if (t < 18 * 60 + 50) return 'Wrapping up'; return 'Lights out';
+  if (t < 9 * 60) return 'Arrivals'; if (t < 12 * 60) return 'Morning focus'; if (t < 13 * 60) return 'Lunch hour';
+  if (t < 15 * 60) return 'Afternoon work'; if (t < 15 * 60 + 25) return 'Afternoon break'; if (t < 17 * 60) return 'Afternoon work';
+  if (t < 17 * 60 + 25) return 'Late break'; if (t < 18 * 60 + 30) return 'Wrapping up'; if (t < 21 * 60) return 'Evening';
+  return 'Night shift';
 }
 export function newDay(): void {
-  sim.day++; sim.t = 7 * 60 + 45;
-  meetings.length = 0;
-  people.filter(isAi).forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
+  sim.day++; if (live.mode !== 'live') sim.t = DAY_START; // the live clock is already the real time
+  clearDay();
   addLog(`Day ${sim.day} begins`);
+}
+/** Everyone out, today's times recomputed. */
+function clearDay(): void {
+  meetings.length = 0;
+  people.forEach(p => { if (p.props.bucket) putBucketBack(p); if (isAi(p)) p.toiletUntil = null; }); // (the one bucket is always back by morning)
+  people.filter(isAi).forEach(p => { endTask(p); p.queue = []; p.state = 'away'; p.task = null; p.chatWith = null; p.meeting = null; p.shown = false; scheduleDay(p); });
+}
+/** After the clock jumps (switching to Live, or back to Simulate): everyone who should be in right now is at their desk. */
+export function resetDay(): void {
+  clearDay();
+  for (const p of people.filter(isAi)) if (sim.t >= p.arriveAt && sim.t < p.leaveAt) seatNow(p);
+}
+function seatNow(p: Person): void {
+  p.arrivedAt = p.arriveAt; p.shown = true;
+  placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: rnd(2, 40) });
 }
 export function arriveNow(p: Person, quiet?: boolean): void {
   p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI; p.arrivedAt = sim.t;
@@ -30,18 +49,18 @@ export function arriveNow(p: Person, quiet?: boolean): void {
 function populate(n: number): void {
   for (let i = 0; i < n; i++) {
     const p = makeStaff(); if (!p) break;
-    if (i < n * .88) {
-      p.arriveAt = rnd(8 * 60, 9 * 60 + 20); p.arrivedAt = p.arriveAt; p.shown = true;
-      placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: rnd(2, 40) });
-    } else p.arriveAt = rnd(sim.t + 1, sim.t + 40);
+    const onShift = sim.t >= p.arriveAt && sim.t < p.leaveAt;
+    if (onShift && (usesAttendance() || random() < .92)) seatNow(p); // clocked in means at their desk
+    else if (onShift) p.arriveAt = rnd(sim.t + 1, sim.t + 40); // running late
   }
 }
 
-/** Start a live mid-morning with `staff` people (default 40; never more than there are desks). */
-export function initDay(staff = 40): void {
+/** Start the day with `staff` people (default: everyone on the staff list, else 40; never more than there are desks). */
+export function initDay(staff: number = roster.list ? roster.list.length : 40): void {
   populate(staff);
-  // kick things off: a training in Conference 1, a sync in Conference 3, calls, coffee and a break (Conference 2 is the HR office)
-  {
+  // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion (only if the
+  // day starts during office hours)
+  if (sim.t > 9 * 60 + 15 && sim.t < 17 * 60) {
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task!.kind === 'work'));
     const meet = (room: number, n: number, topic: string, mins: number) => {
       const m: Meeting = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic };
@@ -54,12 +73,7 @@ export function initDay(staff = 40): void {
     const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: interactables.of('booth')[1], dur: 12, onStart: q => { q.props.phone = true; }, onEnd: q => { q.props.phone = false; } });
     const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: interactables.of('counter')[0], dur: 5, onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
     const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: interactables.of('bar')[0], dur: 6, onStart: q => { q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
-    { const g = here()[0]; if (g) placeNow(g, { kind: 'piano', cat: 'break', anim: 'piano', spot: interactables.of('piano')[0], dur: 12 }); }
-    { const g = here()[0]; if (g) placeNow(g, { kind: 'guitar', cat: 'break', anim: 'guitar', spot: interactables.of('guitar')[0], dur: 14, onStart: q => { q.props.guitar = true; }, onEnd: q => { q.props.guitar = false; } }); }
-    interactables.of('darts').forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'darts', cat: 'break', anim: 'darts', spot: sp, dur: 10 + i * 2 }); });
-    interactables.of('golf').forEach((sp, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'golf', cat: 'break', anim: 'putt', spot: sp, dur: 9 + i * 3, onStart: q => { q.props.putter = true; }, onEnd: q => { q.props.putter = false; } }); });
-    [5, 6, 7].forEach((k, i) => { const g = here()[0]; if (g) placeNow(g, { kind: 'game', cat: 'break', anim: 'game', spot: interactables.of('lounge')[k], dur: 14 + i * 3, onStart: q => { q.props.pad = true; }, onEnd: q => { q.props.pad = false; } }); });
-    const d = here()[0]; if (d) placeNow(d, { kind: 'sofa', cat: 'break', anim: 'relax', spot: interactables.of('lounge')[10], dur: 10 });
+    whiteboard(here()[0]);
     here().slice(0, 3).forEach(p => { p.until = sim.t + rnd(.2, 2); });
   }
 }

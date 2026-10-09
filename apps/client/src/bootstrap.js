@@ -5,11 +5,11 @@ import { OBS } from './world/helpers.js';
 import { initLabels } from './render/labels.js';
 import { initPeopleGroup } from './people/group.js';
 import { initPeopleViews } from './people/views.js';
-import { initHazel } from './people/hazel.js';
 import { initControls } from './ui/controls.js';
 import { initControl } from './player/control.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
+import { initSearch } from './ui/search.js';
 import { buildBake } from './world/bake.js';
 import { initObjectViews } from './render/objects.js';
 import { buildDoors } from './world/doors.js';
@@ -67,7 +67,6 @@ export function bootstrap({ simulate = true } = {}) {
   initPeopleGroup();
   initPeopleViews(); // before the simulation creates anyone, so each new person gets a body
   if (simulate) { initState(); initDay(); } // online, the server's people arrive in a message instead
-  initHazel();
   // input and UI
   initCamera();
   initInput();
@@ -75,4 +74,5 @@ export function bootstrap({ simulate = true } = {}) {
   initLedger();
   initControls();
   initControl();
+  initSearch();
 }

@@ -1,7 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, HAZEL_NAME, PROTOCOL_VERSION, addLog, decodeClient, encode, people, sim, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, PROTOCOL_VERSION, addLog, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
 import { addressKey } from '../auth/http';
 import { parseTrustProxy } from '../app.config';
 import { AuthProvider } from '../auth/auth.provider';
@@ -10,7 +10,6 @@ import { TicketService } from '../auth/tickets';
 import { ChatService, type SayResult } from '../play/chat';
 import { EmoteService } from '../play/emotes';
 import { PlayService } from '../play/play.service';
-import { RageService } from '../play/shared-events';
 import { WorldService } from '../world/world.service';
 import { Broadcaster } from './broadcaster';
 
@@ -70,11 +69,9 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private chat!: ChatService;
   private readonly leaveTimers = new Map<number, NodeJS.Timeout>();
   private emotes!: EmoteService;
-  private rage!: RageService;
 
   afterInit(): void {
     const world = this.worlds.world;
-    this.rage = new RageService({ hazelPresent: () => people.some(p => p.name === HAZEL_NAME && p.controller === 'ai' && p.state !== 'away') });
     this.emotes = new EmoteService({ personOf: id => this.players.manager().speaker(id)?.personId ?? null });
     this.chat = new ChatService({
       speaker: id => this.players.manager().speaker(id),
@@ -174,17 +171,6 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         void this.say(socket, msg.text);
         return;
-      case 'rage': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.rage.trigger(socket.data.accountId);
-        if (r.ok) { this.broadcast(encode({ type: 'event', kind: 'rage', simTime: sim.t, text: '' })); return; } // everybody, at the same moment
-        const notice = r.reason === 'away' ? "Hazel isn't in the office right now."
-          : r.reason === 'you-again' ? `You made her angry a little while ago. Try again in ${Math.ceil(r.secondsLeft / 60)} min.`
-          : `Hazel is still calming down. Try again in ${r.secondsLeft} s.`;
-        socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
-        return;
-      }
       case 'emote': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;

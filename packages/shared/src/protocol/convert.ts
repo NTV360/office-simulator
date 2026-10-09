@@ -53,7 +53,7 @@ export function applyObjectPoses(poses: readonly ObjectPose[]): void {
 
 export function personInfo(p: Person): PersonInfo {
   return {
-    id: p.id, name: p.name, role: p.role, controller: p.controller, spec: p.spec,
+    id: p.id, name: p.name, role: p.role, title: p.title ?? p.role, department: p.department ?? '', controller: p.controller, spec: p.spec,
     slot: p.slot ? interactables.indexOf(p.slot) : NONE,
     screenKind: p.screenKind, screenVariant: p.screenVariant, arriveAt: p.arriveAt,
   };
@@ -74,7 +74,7 @@ export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap 
   }
   const meeting = t?.meeting ?? p.meeting;
   const snap: PersonSnap = {
-    id: p.id, state: p.state, shown: p.shown, x: p.pos.x, z: p.pos.z, face: p.face, walkPhase: p.walkPhase,
+    id: p.id, state: p.state, shown: p.shown, absent: !!p.absent, toilet: !!p.toiletUntil, x: p.pos.x, z: p.pos.z, face: p.face, walkPhase: p.walkPhase,
     kind: t ? t.kind : '', anim: t ? t.anim : '', cat: t ? t.cat : '', spot,
     partner: t?.partner ? t.partner.id : NONE, chatWith: p.chatWith ? p.chatWith.id : NONE,
     meeting: meeting ? meetings.indexOf(meeting) : NONE,

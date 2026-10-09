@@ -129,13 +129,13 @@ That commit added a special character, a rage mode, a music corner and new look 
 
 | What the commit added | Where it lives now |
 |---|---|
-| Hazel's HUD row and styles | `index.html`, `apps/client/src/styles/hazel.css` |
+| Hazel's HUD row and styles | `index.html` (removed in phase 6: main dropped the Hazel buttons) |
 | `makeGuitar` (held and on a stand) | `apps/client/src/character/props.js` |
 | Music corner (piano, guitar, notes) | `apps/client/src/world/furniture/music.js` (`buildMusic`, `updateMusic`) |
 | `SEATS.music` | spots with `group: 'music'`: `interactables.of('music')` |
 | New materials | `apps/client/src/render/materials.js` |
 | Cube head, skirt, bob hair, angry face, guitar on the rig | `apps/client/src/character/rig.js`, `parts.js`, and new `spec` fields (`skirt`, `cube`, `angry`) |
-| Hazel's identity, rage mode, find/rage buttons | `apps/client/src/people/hazel.js` |
+| Hazel's identity, rage mode, find/rage buttons | her identity is `packages/shared/src/sim/hazel.ts` (the rage mode and the find/rage buttons were removed in phase 6) |
 | Music activity and its start-of-day placement | `packages/shared/src/sim/tasks.ts` (`musicBreak`), `packages/shared/src/sim/day.ts` |
 | Piano, guitar and rage poses | `apps/client/src/people/animation.js` |
 | Rage freezes walking | `packages/shared/src/sim/step.ts` |
