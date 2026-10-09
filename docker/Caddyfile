@@ -9,6 +9,10 @@
 :80 {
 	encode zstd gzip
 
+	# the admin page (a second page of the site)
+	@admin path /admin /admin/
+	rewrite @admin /admin.html
+
 	handle /api/* {
 		reverse_proxy server:3000
 	}

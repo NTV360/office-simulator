@@ -2,7 +2,7 @@ import {
   BadRequestException, Body, ConflictException, Controller, Get, Inject, Injectable, NotFoundException, Param, PipeTransform, Post, Put, UseGuards,
 } from '@nestjs/common';
 import { HAZEL_NAME, interactables, type Person } from '@office/shared';
-import { publicAccount, type PublicAccount } from '../auth/auth.service';
+import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { PlayError } from '../play/player-manager';
 import { PlayService } from '../play/play.service';
@@ -60,20 +60,61 @@ export class AdminController {
 
   /** Every account: who they are, whether they have a desk, whether they are playing right now. */
   @Get('users')
-  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; disabled: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
+  async users(): Promise<Array<{ id: number; username: string; role: string; slotSpot: string | null; disabled: boolean; mustChangePassword: boolean; hasLook: boolean; online: boolean; createdAt: Date; lastLoginAt: Date | null }>> {
     const accounts = await this.auth.require().accounts.list();
     const manager = this.play.manager();
     return accounts.map(a => ({
-      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled,
+      id: a.id, username: a.username, role: a.role, slotSpot: a.slotSpot, disabled: a.disabled, mustChangePassword: a.mustChangePassword, hasLook: a.spec !== null,
       online: manager.isOnline(a.id), createdAt: a.createdAt, lastLoginAt: a.lastLoginAt,
     }));
   }
 
   /** Make an account for a person in the office. There is no sign-up page: this is the only way accounts come to exist. They choose their own password at first login. */
   @Post('users')
-  async createUser(@Body() body: unknown): Promise<{ account: PublicAccount }> {
+  async createUser(@Body() body: unknown): Promise<{ account: PublicAccount; password?: string }> {
     const b = (body ?? {}) as { username?: unknown; password?: unknown };
-    return { account: publicAccount(await this.auth.require().createAccount({ username: b.username, password: b.password, mustChange: true })) };
+    const generated = b.password === undefined || b.password === '' ? generatePassword() : undefined; // no password given: make one, and say it
+    const account = await this.auth.require().createAccount({ username: b.username, password: generated ?? b.password, mustChange: true });
+    return { account: publicAccount(account), ...(generated ? { password: generated } : {}) };
+  }
+
+  /** Make many accounts at once (the whole office): each gets a generated first password, returned once, to hand out. */
+  @Post('users/bulk')
+  async createUsers(@Body() body: unknown): Promise<{ results: Array<{ username: string; ok: boolean; id?: number; password?: string; code?: string; message?: string }> }> {
+    const names = (body as { usernames?: unknown } | null)?.usernames;
+    if (!Array.isArray(names) || names.length < 1 || names.length > 200 || names.some(n => typeof n !== 'string')) throw new BadRequestException('send { "usernames": ["ana", "ben"] } with 1 to 200 names');
+    const auth = this.auth.require();
+    const results = [];
+    for (const name of names as string[]) {
+      const password = generatePassword();
+      try {
+        const account = await auth.createAccount({ username: name, password, mustChange: true });
+        results.push({ username: account.username, ok: true, id: account.id, password });
+      } catch (err) {
+        if (!(err instanceof AuthError)) throw err;
+        results.push({ username: name.slice(0, 40), ok: false, code: err.code, message: err.message });
+      }
+    }
+    return { results };
+  }
+
+  /**
+   * Set or reset an account's password (a typed one, or a generated one if none is sent). The password is in the answer, once.
+   * Its owner must choose their own at the next login, and their sessions and connections end now.
+   */
+  @Post('users/:id/password')
+  async resetPassword(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ username: string; password: string }> {
+    const { account, password } = await this.auth.require().adminSetPassword(id, (body as { password?: unknown } | null)?.password);
+    return { username: account.username, password };
+  }
+
+  /** Disable or enable an account. A disabled account cannot log in and is dropped at once. */
+  @Post('users/:id/disabled')
+  async disable(@Param('id', AccountIdPipe) id: number, @Body() body: unknown): Promise<{ id: number; disabled: boolean }> {
+    const disabled = (body as { disabled?: unknown } | null)?.disabled;
+    if (typeof disabled !== 'boolean') throw new BadRequestException('send { "disabled": true } or { "disabled": false }');
+    const account = await this.auth.require().setDisabled(id, disabled);
+    return { id: account.id, disabled: account.disabled };
   }
 
   /** Every desk with a person at it: free to give away, belonging to an account, or reserved (Hazel). */

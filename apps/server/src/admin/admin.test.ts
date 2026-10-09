@@ -206,3 +206,100 @@ describe('making accounts (the only way they come to exist)', () => {
     expect(JSON.stringify(list)).not.toContain('argon2');
   });
 });
+
+describe('managing accounts: passwords, disabling, many at once', () => {
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loginAs = async (username: string, password: string) => { const r = await post('/api/auth/login', { username, password }); return { status: r.status, cookie: r.headers.get('set-cookie')?.split(';')[0] ?? '', body: await r.json().catch(() => null) as any }; };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const makeUser = async (username: string, password = 'first-password-1') => ((await (await call('POST', '/api/admin/users', { username, password })).json()) as any).account.id as number;
+  const me = (cookie: string) => fetch(base + '/api/auth/me', { headers: { cookie } });
+
+  it('an account made with no password gets a generated one, returned once, that works', async () => {
+    const r = await call('POST', '/api/admin/users', { username: 'gen_user' });
+    expect(r.status).toBe(201);
+    const body = await r.json();
+    expect(body.password).toMatch(/^[A-Za-z0-9]{12}$/);
+    expect(body.password).not.toMatch(/[0OIl1]/);
+    expect((await loginAs('gen_user', body.password)).status).toBe(200);
+    const typed = await (await call('POST', '/api/admin/users', { username: 'typed_user', password: 'typed-password-9' })).json();
+    expect(typed.password).toBeUndefined(); // a typed one is not echoed back
+  });
+
+  it('resets a password: shown once, the old one stops working, sessions end, and the person must choose their own', async () => {
+    const id = await makeUser('marco');
+    const old = await loginAs('marco', 'first-password-1');
+    expect((await post('/api/auth/password', { current: 'first-password-1', next: 'my-own-password-2' }, { cookie: old.cookie })).status).toBe(200);
+    const live = await loginAs('marco', 'my-own-password-2');
+    expect((await me(live.cookie)).status).toBe(200);
+
+    const r = await call('POST', `/api/admin/users/${id}/password`, {});
+    expect(r.status).toBe(201);
+    const { username, password } = await r.json();
+    expect(username).toBe('marco');
+    expect(password).toMatch(/^[A-Za-z0-9]{12}$/);
+    expect((await me(live.cookie)).status).toBe(401); // thrown out
+    expect((await loginAs('marco', 'my-own-password-2')).status).toBe(401);
+    const again = await loginAs('marco', password);
+    expect(again.status).toBe(200);
+    expect(again.body.account.mustChangePassword).toBe(true);
+    expect((await post('/api/play/ticket', {}, { cookie: again.cookie })).status).toBe(403);
+  });
+
+  it('a typed password is checked like any other, and an unknown account is a 404', async () => {
+    const id = await makeUser('marco');
+    expect((await call('POST', `/api/admin/users/${id}/password`, { password: 'short' })).status).toBe(400);
+    expect((await call('POST', `/api/admin/users/${id}/password`, { password: 'marco' })).status).toBe(400);
+    const typed = await call('POST', `/api/admin/users/${id}/password`, { password: 'typed-by-the-admin-1' });
+    expect((await typed.json()).password).toBe('typed-by-the-admin-1');
+    expect((await loginAs('marco', 'typed-by-the-admin-1')).status).toBe(200);
+    expect((await call('POST', '/api/admin/users/9999/password', {})).status).toBe(404);
+    expect((await call('POST', '/api/admin/users/abc/password', {})).status).toBe(400);
+  });
+
+  it('disabling ends their sessions and stops logins; enabling lets them back', async () => {
+    const id = await makeUser('marco');
+    const s = await loginAs('marco', 'first-password-1');
+    expect((await call('POST', `/api/admin/users/${id}/disabled`, { disabled: true })).status).toBe(201);
+    expect((await me(s.cookie)).status).toBe(401);
+    expect((await loginAs('marco', 'first-password-1')).status).toBe(403);
+    const list = await (await call('GET', '/api/admin/users')).json();
+    expect(list.find((u: { id: number }) => u.id === id).disabled).toBe(true);
+    expect((await call('POST', `/api/admin/users/${id}/disabled`, { disabled: false })).status).toBe(201);
+    expect((await loginAs('marco', 'first-password-1')).status).toBe(200);
+    expect((await call('POST', `/api/admin/users/${id}/disabled`, { disabled: 'yes' })).status).toBe(400);
+    expect((await call('POST', '/api/admin/users/9999/disabled', { disabled: true })).status).toBe(404);
+  });
+
+  it('makes many accounts at once, reporting each: new ones with a generated password, bad and duplicate names with the reason', async () => {
+    await makeUser('already_here');
+    const r = await call('POST', '/api/admin/users/bulk', { usernames: ['ana_1', 'ben_2', 'ALREADY_HERE', 'x', 'bad name', 'admin', 'ana_1'] });
+    expect(r.status).toBe(201);
+    const { results } = await r.json() as { results: Array<{ username: string; ok: boolean; password?: string; code?: string }> };
+    expect(results.map(x => [x.username, x.ok, x.code])).toEqual([
+      ['ana_1', true, undefined], ['ben_2', true, undefined], ['ALREADY_HERE', false, 'taken'], ['x', false, 'username'], ['bad name', false, 'username'], ['admin', false, 'username'], ['ana_1', false, 'taken'],
+    ]);
+    const ana = results[0];
+    expect(ana.password).toMatch(/^[A-Za-z0-9]{12}$/);
+    expect(new Set(results.filter(x => x.ok).map(x => x.password)).size).toBe(2);
+    const login = await loginAs('ana_1', ana.password!);
+    expect(login.status).toBe(200);
+    expect(login.body.account.mustChangePassword).toBe(true);
+    for (const bad of [undefined, [], 'ana', [1], Array.from({ length: 201 }, (_, i) => 'user' + i)]) expect((await call('POST', '/api/admin/users/bulk', { usernames: bad })).status, JSON.stringify(bad)?.slice(0, 30)).toBe(400);
+  });
+
+  it('every one of these needs the admin password', async () => {
+    const id = await makeUser('marco');
+    for (const [path, body] of [['/api/admin/users/bulk', { usernames: ['zed'] }], [`/api/admin/users/${id}/password`, {}], [`/api/admin/users/${id}/disabled`, { disabled: true }]] as const) {
+      expect((await call('POST', path, body, null)).status, path).toBe(403);
+      expect((await call('POST', path, body, 'wrong')).status, path).toBe(403);
+    }
+    expect((await loginAs('marco', 'first-password-1')).status).toBe(200); // nothing changed
+  });
+
+  it('the list says who must still choose a password and who has a look', async () => {
+    await makeUser('marco');
+    const list = await (await call('GET', '/api/admin/users')).json();
+    expect(list[0]).toMatchObject({ username: 'marco', mustChangePassword: true, hasLook: false, disabled: false });
+  });
+});

@@ -39,6 +39,8 @@ export interface AccountStore {
   setSlot(id: number, slotSpot: string | null): Promise<'ok' | 'taken' | 'missing'>;
   /** Remember the account's character look (already normalised). */
   setSpec(id: number, spec: unknown): Promise<void>;
+  /** Disable or enable the account (a disabled account cannot log in). */
+  setDisabled(id: number, disabled: boolean): Promise<void>;
   touchLogin(id: number): Promise<void>;
   createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void>;
   sessionByHash(tokenHash: Buffer): Promise<{ session: SessionInfo; account: Account } | null>;
@@ -116,6 +118,10 @@ export class PgAccountStore implements AccountStore {
     await this.pool.query('UPDATE accounts SET spec = $2 WHERE id = $1', [id, JSON.stringify(spec)]);
   }
 
+  async setDisabled(id: number, disabled: boolean): Promise<void> {
+    await this.pool.query('UPDATE accounts SET disabled = $2 WHERE id = $1', [id, disabled]);
+  }
+
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null): Promise<void> {
     await this.pool.query('INSERT INTO sessions (account_id, token_hash, expires_at, user_agent) VALUES ($1, $2, $3, $4)', [accountId, tokenHash, expiresAt, userAgent]);
   }
@@ -176,6 +182,7 @@ export class MemoryAccountStore implements AccountStore {
     return 'ok' as const;
   }
   async setSpec(id: number, spec: unknown) { this.accounts.get(id)!.spec = spec; }
+  async setDisabled(id: number, disabled: boolean) { this.accounts.get(id)!.disabled = disabled; }
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null) {
     this.sessions.set(tokenHash.toString('hex'), { info: { id: this.nextSession++, accountId, createdAt: new Date(), expiresAt, lastSeenAt: new Date() }, userAgent });
   }

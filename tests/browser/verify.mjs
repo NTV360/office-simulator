@@ -404,6 +404,91 @@ try {
     if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.style, cname)) === 'curly') pass('and the look is kept'); else fail('the look was not kept across a reload');
     [...c.errors, ...watcher.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
     await c.page.close(); await watcher.page.close();
+    await adminJson(site.url, 'POST', `/api/admin/users/${cid}/release-slot`); // (leave the desk free for the next run)
+
+    // the admin page: one password, make accounts, reset a password, disable, desks
+    console.log('\nthe admin page');
+    const tag = String(Date.now() % 1e6);
+    const [n1, n2, n3] = [`adm_a${tag}`, `adm_b${tag}`, `adm_c${tag}`];
+    const actx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const ap = await actx.newPage();
+    const aerrors = collectErrors(ap);
+    await ap.goto(site.url + '/admin', { waitUntil: 'load' });
+    await ap.waitForSelector('#adminPassword', { timeout: 10000 }).then(() => pass('/admin asks for the admin password'), () => fail('/admin shows no password box'));
+    await ap.fill('#adminPassword', 'definitely-not-the-password');
+    await ap.keyboard.press('Enter');
+    await ap.waitForFunction(() => /Wrong password/.test(document.querySelector('.a-note')?.textContent || ''), null, { timeout: 8000 }).then(() => pass('a wrong password is refused'), () => fail('no wrong-password message'));
+    await ap.fill('#adminPassword', process.env.VERIFY_ADMIN_TOKEN);
+    await ap.keyboard.press('Enter');
+    await ap.waitForSelector('#adminAccounts table', { timeout: 10000 }).then(() => pass('the right password opens the account list'), () => fail('the account list did not open'));
+
+    await ap.fill('#bulkNames', `${n1}\n${n2}, bad!name\nx`);
+    await ap.check('#bulkDesk');
+    await ap.click('#bulkGo');
+    await ap.waitForSelector('#bulkTable', { timeout: 20000 });
+    const rows = await ap.evaluate(() => [...document.querySelectorAll('#bulkTable tbody tr')].map(tr => [...tr.children].map(td => td.textContent)));
+    const pw1 = rows.find(r => r[0] === n1)?.[1];
+    if (rows.find(r => r[0] === n1)?.[3] === 'made' && rows.find(r => r[0] === n2)?.[3] === 'made' && /^[A-Za-z0-9]{12}$/.test(pw1 || '')) pass('making accounts shows each one with a generated first password'); else fail(`bulk rows: ${JSON.stringify(rows)}`);
+    const refused = rows.filter(r => r[3] !== "made");
+    if (refused.length === 2 && refused.every(r => /username/i.test(r[3]))) pass('names that are not allowed are reported with the reason'); else fail(`refused rows: ${JSON.stringify(refused)}`);
+    if (rows.filter(r => r[3] === 'made').every(r => r[2])) pass('each new account was given a free desk'); else fail('a new account has no desk');
+    const first = await fetch(site.url + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: n1, password: pw1 }) });
+    if (first.ok && (await first.json()).account.mustChangePassword === true) pass('the generated password works, and asks for a new one'); else fail('the generated password did not work');
+
+    // search
+    await ap.fill('#adminFilter', n2);
+    const shown = await ap.evaluate(() => [...document.querySelectorAll('#adminAccounts tbody tr[data-user]')].map(r => r.dataset.user));
+    if (shown.length === 1 && shown[0] === n2) pass('searching narrows the list'); else fail(`search shows ${JSON.stringify(shown)}`);
+    await ap.fill('#adminFilter', '');
+
+    // reset a password: shown once, old one stops, the new one works
+    await ap.click(`tr[data-user="${n1}"] [data-do="password"]`);
+    await ap.click('[data-do="set-password"]');
+    await ap.waitForSelector('[data-result="password"]', { timeout: 10000 });
+    const pw2 = await ap.textContent('[data-result="password"]');
+    const tryLogin = async (u, p) => (await fetch(site.url + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) })).status;
+    if (/^[A-Za-z0-9]{12}$/.test(pw2) && pw2 !== pw1 && (await tryLogin(n1, pw1)) === 401 && (await tryLogin(n1, pw2)) === 200) pass('resetting shows a new password once; the old one stops working'); else fail(`reset: ${pw2}`);
+    await ap.fill('[aria-label="New password for ' + n1 + '"]', 'short');
+    await ap.click('[data-do="set-password"]');
+    await ap.waitForFunction(() => [...document.querySelectorAll('.a-note')].some(n => /at least 8/.test(n.textContent)), null, { timeout: 8000 }).then(() => pass('a typed password that is too weak is refused with the reason'), () => fail('weak password was not refused'));
+    await ap.fill('[aria-label="New password for ' + n1 + '"]', 'typed by the admin 77');
+    await ap.click('[data-do="set-password"]');
+    await ap.waitForFunction(() => document.querySelector('[data-result="password"]')?.textContent === 'typed by the admin 77', null, { timeout: 8000 }).then(() => pass('an admin can type the password instead'), () => fail('typed password not applied'));
+    if ((await tryLogin(n1, 'typed by the admin 77')) === 200) pass('and it works'); else fail('typed password does not log in');
+
+    // disable needs a second click, then enable
+    await ap.click(`tr[data-user="${n1}"] [data-do="disable"]`);
+    if ((await tryLogin(n1, 'typed by the admin 77')) === 200) pass('one click on Disable does nothing yet (it asks "Sure?")'); else fail('disabled on a single click');
+    await ap.click(`tr[data-user="${n1}"] [data-do="disable"]`);
+    await ap.waitForSelector(`tr[data-user="${n1}"] .a-chip.bad`, { timeout: 8000 });
+    if ((await tryLogin(n1, 'typed by the admin 77')) === 403) pass('a disabled account cannot log in'); else fail('disabled account could log in');
+    await ap.click(`tr[data-user="${n1}"] [data-do="disable"]`);
+    await ap.click(`tr[data-user="${n1}"] [data-do="disable"]`);
+    await ap.waitForFunction(u => !document.querySelector(`tr[data-user="${u}"] .a-chip.bad`), n1, { timeout: 8000 });
+    if ((await tryLogin(n1, 'typed by the admin 77')) === 200) pass('enabling lets them back in'); else fail('enabled account cannot log in');
+
+    // desks: take one away, give one back from the list
+    await ap.click(`tr[data-user="${n2}"] [data-do="release"]`);
+    await ap.click(`tr[data-user="${n2}"] [data-do="release"]`);
+    await ap.waitForSelector(`tr[data-user="${n2}"] select`, { timeout: 8000 }).then(() => pass('taking a desk away offers a free desk to give again'), () => fail('desk was not taken away'));
+    await ap.selectOption(`tr[data-user="${n2}"] select`, { index: 1 });
+    await ap.click(`tr[data-user="${n2}"] [data-do="assign"]`);
+    await ap.waitForFunction(u => !document.querySelector(`tr[data-user="${u}"] select`), n2, { timeout: 8000 }).then(() => pass('a desk can be given from the list'), () => fail('desk was not given'));
+    await screenshotOf(ap, 'admin-page.png');
+
+    // a reload keeps you in for this tab, log out forgets it
+    await ap.reload({ waitUntil: 'load' });
+    await ap.waitForSelector('#adminAccounts table', { timeout: 10000 }).then(() => pass('a reload stays logged in (this tab only)'), () => fail('reload logged out'));
+    await ap.click('#adminLogout');
+    await ap.waitForSelector('#adminPassword', { timeout: 5000 });
+    await ap.reload({ waitUntil: 'load' });
+    if (await ap.waitForSelector('#adminPassword', { timeout: 5000 }).then(() => true, () => false)) pass('logging out forgets the password'); else fail('still logged in after logout');
+    aerrors.filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+    for (const n of [n1, n2]) { // (leave the desks free for the next run)
+      const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n);
+      if (u?.slotSpot) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/release-slot`);
+    }
+    await actx.close();
   }
 } finally {
   await browser.close();

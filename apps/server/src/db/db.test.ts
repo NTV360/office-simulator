@@ -295,6 +295,10 @@ d('desks and accounts across restarts', () => {
     expect((await store.list()).map(x => [x.username, x.slotSpot])).toEqual([['First', null], ['Second', 'desk:5']]);
     await store.setSpec(a.id, { hair: '#123456' });
     expect((await store.byId(a.id))!.spec).toEqual({ hair: '#123456' });
+    await store.setDisabled(a.id, true);
+    expect((await store.byId(a.id))!.disabled).toBe(true);
+    await store.setDisabled(a.id, false);
+    expect((await store.byId(a.id))!.disabled).toBe(false);
   });
 });
 

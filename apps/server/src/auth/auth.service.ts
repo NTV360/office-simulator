@@ -1,15 +1,15 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import type { Account, AccountStore } from './account-store';
 import { hashPassword, passwordProblem, verifyAgainstDummy, verifyPassword, warmDummy } from './password';
 import { RateLimiter } from './rate-limit';
 
-export type AuthErrorCode = 'invalid' | 'taken' | 'rate' | 'disabled' | 'unauthenticated' | 'weak' | 'username';
+export type AuthErrorCode = 'invalid' | 'taken' | 'rate' | 'disabled' | 'unauthenticated' | 'weak' | 'username' | 'missing';
 
 /** A refusal with a stable code (for tests and the client) and a message that is safe to show. */
 export class AuthError extends Error {
   constructor(readonly code: AuthErrorCode, message: string) { super(message); this.name = 'AuthError'; }
   get status(): number {
-    return { invalid: 401, taken: 409, rate: 429, disabled: 403, unauthenticated: 401, weak: 400, username: 400 }[this.code];
+    return { invalid: 401, taken: 409, rate: 429, disabled: 403, unauthenticated: 401, weak: 400, username: 400, missing: 404 }[this.code];
   }
 }
 
@@ -43,6 +43,10 @@ export const publicAccount = (a: Account): PublicAccount => ({
 const USERNAME = /^[A-Za-z0-9_.-]{3,24}$/;
 const RESERVED = new Set(['admin', 'administrator', 'root', 'system', 'server', 'guest', 'you', 'moderator', 'mod', 'staff', 'hazel']);
 const DAY = 24 * 60 * 60 * 1000;
+
+// A password an admin hands out: 12 characters, no look-alikes (no 0/O, 1/l/I), easy to read out or type from a printout.
+const READABLE = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const generatePassword = (): string => Array.from({ length: 12 }, () => READABLE[randomInt(READABLE.length)]).join('');
 
 const sha256 = (s: string): Buffer => createHash('sha256').update(s).digest();
 
@@ -157,6 +161,30 @@ export class AuthService {
   async endAllSessions(accountId: number): Promise<void> {
     await this.store.deleteAccountSessions(accountId);
     this.ended({ accountId });
+  }
+
+  /**
+   * An admin sets (or, with no password given, generates) an account's password. The person must choose their own at the next
+   * login, and every session and connection the account has ends. Returns the password so the admin can read it out: it is
+   * shown once and cannot be looked up afterwards (only a one-way hash is kept).
+   */
+  async adminSetPassword(id: number, password?: unknown): Promise<{ account: Account; password: string }> {
+    const account = await this.store.byId(id);
+    if (!account) throw new AuthError('missing', 'there is no such account');
+    const chosen = password === undefined || password === '' ? generatePassword() : password;
+    const problem = passwordProblem(chosen, account.username);
+    if (problem) throw new AuthError('weak', problem);
+    await this.store.setPassword(id, await hashPassword(chosen as string), true);
+    await this.endAllSessions(id);
+    return { account: (await this.store.byId(id))!, password: chosen as string };
+  }
+
+  /** Disable (cannot log in; connections end) or enable an account. */
+  async setDisabled(id: number, disabled: boolean): Promise<Account> {
+    if (!(await this.store.byId(id))) throw new AuthError('missing', 'there is no such account');
+    await this.store.setDisabled(id, disabled);
+    if (disabled) await this.endAllSessions(id);
+    return (await this.store.byId(id))!;
   }
 
   /** Change your own password. Every other session of the account ends. */
