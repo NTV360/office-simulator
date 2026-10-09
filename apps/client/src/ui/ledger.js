@@ -1,9 +1,9 @@
-import { CATS, hasSlot, log, logState, people, phaseName, sim } from '@office/shared';
+import { CATS, hasSlot, live, log, logState, people, phaseName, sim } from '@office/shared';
 import { $ } from './dom.js';
 import { fmt, renderPerson } from './person.js';
 function renderUI() {
   $('clock').textContent = fmt(sim.t);
-  $('phase').innerHTML = `Day ${sim.day}<br>${phaseName(sim.t)}`;
+  $('phase').innerHTML = `${live.mode === 'live' ? '<span class="live">Live</span>' : `Day ${sim.day}`}<br>${phaseName(sim.t)}`;
   const counts = Object.fromEntries(Object.keys(CATS).map(k => [k, 0]));
   let present = 0;
   const staff = people.filter(hasSlot);

@@ -40,6 +40,8 @@ const MUTATIONS = [
   ['control characters stay in names', 'apps/server/src/employees/supabase-source.ts', "v.replace(INVISIBLE, '').trim()", 'v.trim()'],
   ['unreadable shifts are taken as no shifts', 'apps/server/src/employees/supabase-source.ts', "await this.rows('shifts',", "await this.optional('shifts',"],
   ['a redirect is followed with the key', 'apps/server/src/employees/supabase-source.ts', "redirect: 'error',", "redirect: 'follow',"],
+  ['the snapshot does not tell the browsers the clock is Live', 'apps/server/src/net/broadcaster.ts', "paused: sim.paused, live: live.mode === 'live', full,", 'paused: sim.paused, full,'],
+  ['the codec drops the Live flag', 'packages/shared/src/protocol/codec.ts', '| (msg.live ? 4 : 0)', ''],
   ['an empty answer from the records is taken as everyone having left', 'apps/server/src/employees/employee.service.ts', "if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');", ''],
   ['the secret key is in the message when the records refuse', 'apps/server/src/employees/supabase-source.ts', '`${table}: the employee records answered ${res.status}`', '`${table}: the employee records answered ${res.status} (${this.key})`'],
   ['a row with no valid id or name is imported', 'apps/server/src/employees/supabase-source.ts', 'if (!id || !first || seen.has(id)) { skipped++; continue; }', 'if (!id) { skipped++; continue; }'],

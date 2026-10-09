@@ -1,5 +1,5 @@
 import {
-  NONE, encode, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectPose, people, personInfo, personSnap, sim,
+  NONE, encode, live, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectPose, people, personInfo, personSnap, sim,
   type WorldObject,
   type GameEvent, type Person, type PersonSnap,
 } from '@office/shared';
@@ -37,7 +37,7 @@ export class Broadcaster {
   welcome(tick: number, you: number = NONE): Uint8Array {
     const list = people.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) }));
     return encode({
-      type: 'welcome', tick, tickRate: this.opts.tickRate, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, you,
+      type: 'welcome', tick, tickRate: this.opts.tickRate, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', you,
       layout: layoutCheck(), people: list, meetings: meetings.map(meetingSnap), objects: movedObjectPoses(),
     });
   }
@@ -56,7 +56,7 @@ export class Broadcaster {
       if (full || !prev || !same(prev, snap)) { out.push(snap); this.last.set(p.id, snap); }
     }
     for (const id of this.last.keys()) if (!seen.has(id)) this.last.delete(id);
-    return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, full, people: out, meetings: meetings.map(meetingSnap) });
+    return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', full, people: out, meetings: meetings.map(meetingSnap) });
   }
 
   /** New lines in the simulation's log since the last call, oldest first, as event messages. */

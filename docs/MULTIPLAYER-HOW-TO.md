@@ -48,7 +48,7 @@ The chat emotes (wave, cheer, clap, nod) are the smallest complete example. Read
 6. **Never block the tick.** The server runs one loop, 20 times a second, in one process. A handler must be quick and do no waiting, no big loops over the world, no database call in the middle of a tick. Slow work goes elsewhere and its result comes back as a message.
 7. **Keep it cheap on the page.** Nothing per frame that you can do once when something changes (see `render/objects.js`: a moved chair writes one matrix when it moves; nothing runs per frame). Draw many similar things with instancing, not many meshes. Measure with `npm run perf` (draw calls and frame time) before and after.
 8. **Online and offline.** If a feature cannot work offline (a chat with nobody), switch it off there cleanly rather than leaving a dead button. If it can, it should look the same.
-9. **If it changes the protocol or what is saved, say so.** `WIRE_VERSION` and `SAVE_VERSION` go up, and the PR says so at the top.
+9. **If it changes the protocol or what is saved, say so.** `WIRE_VERSION` (now 11) and `SAVE_VERSION` (now 4) go up, and the PR says so at the top.
 
 ## 4. How to test a feature that is shared
 

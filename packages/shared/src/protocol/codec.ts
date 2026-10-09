@@ -162,13 +162,13 @@ export function encode(msg: Message): Uint8Array {
     case 'person': w.u8(T.person); writeInfo(w, msg.info); writeSnap(w, msg.snap); break;
     case 'event': w.u8(T.event).u8(index(EVENT_KINDS, msg.kind, 'event kind')).f32(msg.simTime).str(msg.text); break;
     case 'snapshot':
-      w.u8(T.snapshot).u32(msg.tick).f64(msg.simTime).u16(msg.day).f32(msg.speed).u8((msg.paused ? 1 : 0) | (msg.full ? 2 : 0));
+      w.u8(T.snapshot).u32(msg.tick).f64(msg.simTime).u16(msg.day).f32(msg.speed).u8((msg.paused ? 1 : 0) | (msg.full ? 2 : 0) | (msg.live ? 4 : 0));
       w.u16(msg.people.length);
       for (const p of msg.people) writeSnap(w, p);
       writeMeetings(w, msg.meetings);
       break;
     case 'welcome':
-      w.u8(T.welcome).u8(WIRE_VERSION).u32(msg.tick).u8(msg.tickRate).f64(msg.simTime).u16(msg.day).f32(msg.speed).u8(msg.paused ? 1 : 0).u16(toU16(msg.you));
+      w.u8(T.welcome).u8(WIRE_VERSION).u32(msg.tick).u8(msg.tickRate).f64(msg.simTime).u16(msg.day).f32(msg.speed).u8((msg.paused ? 1 : 0) | (msg.live ? 2 : 0)).u16(toU16(msg.you));
       writeLayout(w, msg.layout);
       w.u16(msg.people.length);
       for (const p of msg.people) { writeInfo(w, p.info); writeSnap(w, p.snap); }
@@ -211,20 +211,21 @@ export function decode(bytes: Uint8Array): Message {
       const tick = r.u32(), simTime = r.f64(), day = r.u16(), speed = r.f32(), flags = r.u8();
       const n = count(r, 36, 'person'), people: PersonSnap[] = [];
       for (let i = 0; i < n; i++) people.push(readSnap(r));
-      msg = { type: 'snapshot', tick, simTime, day, speed, paused: !!(flags & 1), full: !!(flags & 2), people, meetings: readMeetings(r) };
+      msg = { type: 'snapshot', tick, simTime, day, speed, paused: !!(flags & 1), full: !!(flags & 2), live: !!(flags & 4), people, meetings: readMeetings(r) };
       break;
     }
     case T.welcome: {
       const version = r.u8();
       if (version !== WIRE_VERSION) throw new DecodeError(`protocol version ${version}, expected ${WIRE_VERSION}`);
-      const tick = r.u32(), tickRate = r.u8(), simTime = r.f64(), day = r.u16(), speed = r.f32(), paused = !!r.u8(), you = fromU16(r.u16());
+      const tick = r.u32(), tickRate = r.u8(), simTime = r.f64(), day = r.u16(), speed = r.f32(), clockFlags = r.u8(), you = fromU16(r.u16());
+      const paused = !!(clockFlags & 1), live = !!(clockFlags & 2);
       const layout = readLayout(r);
       const n = count(r, 53, 'person'), people: Array<{ info: PersonInfo; snap: PersonSnap }> = [];
       for (let i = 0; i < n; i++) { const info = readInfo(r); people.push({ info, snap: readSnap(r) }); }
       const meetings = readMeetings(r);
       const nObjects = count(r, 16, 'object'), objectsList: ObjectPose[] = [];
       for (let i = 0; i < nObjects; i++) objectsList.push(readObjectPose(r));
-      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, you, layout, people, meetings, objects: objectsList };
+      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, live, you, layout, people, meetings, objects: objectsList };
       break;
     }
     default: throw new DecodeError(`unknown message type ${type}`);

@@ -126,6 +126,15 @@ describe('Mirror', () => {
     expect(removed.map(p => p.id)).toContain(gone.id);
   });
 
+  it('the clock mode follows the welcome and each snapshot', () => {
+    connect();
+    expect(mirror.clock.live).toBe(false);
+    mirror.applySnapshot({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, live: true, full: false, people: [], meetings: [] });
+    expect(mirror.clock.live).toBe(true);
+    mirror.applySnapshot({ type: 'snapshot', tick: 2, simTime: 1, day: 1, speed: 1, paused: false, full: false, people: [], meetings: [] });
+    expect(mirror.clock.live).toBe(false);
+  });
+
   it('a record for someone it never heard of is ignored and counted', () => {
     connect();
     const fake: PersonSnap = { ...personSnap([...mirror.people.values()][0], mirror.meetings), id: 999 };

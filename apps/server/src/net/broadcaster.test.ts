@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { addLog, decode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { addLog, decode, live, resetLive, setMode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { Broadcaster } from './broadcaster';
 
@@ -7,6 +7,7 @@ const options: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: f
 let world: World;
 let bc: Broadcaster;
 
+afterEach(() => resetLive());
 beforeEach(() => {
   simEvents.clear();
   world = new World(options); world.init();
@@ -23,6 +24,13 @@ describe('Broadcaster', () => {
     // a welcome must not make the next snapshot think nothing changed for the other clients
     const first = snapshot(2);
     expect(first.people).toHaveLength(40);
+  });
+
+  it('says in every welcome and snapshot whether the clock is Live or Simulate', () => {
+    expect([(decode(bc.welcome(0)) as Welcome).live, snapshot(2).live]).toEqual([false, false]);
+    setMode('live');
+    expect(live.mode).toBe('live');
+    expect([(decode(bc.welcome(0)) as Welcome).live, snapshot(4).live]).toEqual([true, true]);
   });
 
   it('sends only people who changed, staff on every second tick, and everyone on a keyframe', () => {

@@ -6,7 +6,7 @@ import { initChat } from './chat.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
-  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
+  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, interactables, layoutCheck, live, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
@@ -116,6 +116,7 @@ export function startOnline() {
   /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
   function resetLocal() {
     net.you = null; net.joined = false; net.autoView = false;
+    live.mode = 'sim'; // (the copy of the server's clock mode: the next welcome says)
     player.person = null; player.sitting = null; player.moving = false;
     if (player.controlling) setView('free');
     chat.setActive(false);
@@ -277,13 +278,15 @@ export function startOnline() {
   function syncClock() {
     const c = mirror.clock;
     sim.t = c.simTime; sim.day = c.day; sim.speed = c.speed; sim.paused = c.paused;
+    live.mode = c.live ? 'live' : 'sim'; // the server's clock mode (this page never steps the simulation, it only shows it)
     const staffEl = document.getElementById('staff'), valEl = document.getElementById('staffVal');
     const n = people.filter(hasSlot).length;
     if (staffEl) staffEl.value = String(n);
     if (valEl) valEl.textContent = String(n);
     const play = document.getElementById('play');
-    if (play) play.textContent = c.paused ? 'Paused' : 'Running';
-    document.querySelectorAll('[data-speed]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === c.speed)));
+    if (play) play.textContent = c.live ? 'Live' : c.paused ? 'Paused' : 'Running';
+    document.querySelectorAll('[data-speed]').forEach(b => b.setAttribute('aria-pressed', String(!c.live && Number(b.dataset.speed) === c.speed)));
+    document.body.classList.toggle('clock-live', !!c.live);
   }
 
   /** Shared places (darts, golf, the keyboard) show who is using them: rebuild that from where everyone is. */

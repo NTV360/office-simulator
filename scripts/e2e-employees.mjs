@@ -138,19 +138,58 @@ try {
   check('an empty answer from the records is refused and nobody is removed', empty.status === 409 && (await (await fetch(base + '/api/world')).json()).staff === 6);
 
   // ---- 5. Live: the clock follows the real time and who is clocked in
-  const now = new Date(Date.now() - 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+  // (a minute ago: the office's day starts at 06:00, and a clock-in before that belongs to the day before)
+  const now = new Date(Date.now() - 60e3).toISOString().slice(0, 19).replace('T', ' ');
   records.attendances.push({ employee_id: id(2), clock_in: now, clock_out: null }, { employee_id: id(6), clock_in: now, clock_out: null });
   const live = await admin('PUT', '/api/admin/settings', { clockMode: 'live' });
   check('the clock goes Live, for the whole office', live.status === 200 && live.body.clockMode === 'live' && live.body.attendance === true, JSON.stringify(live.body));
   const absent = await until(async () => watcher.page.evaluate(() => { const p = window.__sim.people.find(x => x.name === 'Hazel Sellote'); return p && p.absent === true && p.state === 'away'; }));
   check('Hazel, not clocked in, is not in the office ("Not in today")', !!absent);
   const evePresent = await until(async () => watcher.page.evaluate(() => { const p = window.__sim.people.find(x => x.name === 'Eve Santos'); return p && p.absent === false && p.state !== 'away'; }));
-  check('Eve, clocked in an hour ago, is in', !!evePresent);
+  check('Eve, clocked in a minute ago, is in', !!evePresent);
   records.attendances.push({ employee_id: id(1), clock_in: new Date().toISOString().slice(0, 19).replace('T', ' '), clock_out: null });
   const hazelIn = await until(async () => watcher.page.evaluate(() => { const p = window.__sim.people.find(x => x.name === 'Hazel Sellote'); return p && p.absent === false && p.state !== 'away'; }), 30000);
   check('when Hazel clocks in she walks in (the records are read again every few seconds)', !!hazelIn);
   const back = await admin('PUT', '/api/admin/settings', { clockMode: 'sim' });
   check('and Simulate comes back, starting the day', back.body.clockMode === 'sim');
+
+  // ---- 5b. the admin page: the staff list, linking, desks, the clock
+  await admin('POST', '/api/admin/import', {}); // (a good import again: the page shows the last one, which was the refused empty answer)
+  const adm = await browser.newPage();
+  const admErrors = [];
+  adm.on('pageerror', e => admErrors.push(String(e)));
+  await adm.goto(base + '/admin');
+  await adm.fill('#adminPassword', TOKEN);
+  await adm.press('#adminPassword', 'Enter');
+  const staffUp = await adm.waitForSelector('#adminStaff tr[data-employee]', { timeout: 20000 }).then(() => true, () => false);
+  check('the admin page lists the six employees', staffUp && (await adm.$$('#adminStaff tr[data-employee]')).length === 6);
+  check('it says when the records were imported', /Imported/.test(await adm.textContent('#importStatus')), await adm.textContent('#importStatus'));
+  check('it shows who plays Anna Lopez', (await adm.textContent('#adminStaff tr[data-employee="Anna Lopez"]')).includes('ana_e2e'));
+  await adm.selectOption('select[data-link="Gus Tan"]', { label: 'ben_e2e' });
+  await adm.click('tr[data-employee="Gus Tan"] button[data-do="link"]');
+  const linkedGus = await adm.waitForSelector('tr[data-employee="Gus Tan"] [data-linked="ben_e2e"]', { timeout: 15000 }).then(() => true, () => false);
+  const gus = (await admin('GET', '/api/admin/employees')).body.find(e => e.name === 'Gus Tan');
+  check('linking an account to Gus Tan on the page links it on the server', linkedGus && gus.account?.username === 'ben_e2e');
+  check('the accounts table says that account plays Gus Tan', (await adm.textContent('tr[data-user="ben_e2e"]')).includes('plays Gus Tan'));
+  await adm.click('tr[data-employee="Gus Tan"] button[data-do="unlink"]');
+  await adm.click('tr[data-employee="Gus Tan"] button[data-do="unlink"]'); // (the first click asks "Sure?")
+  const unlinked = await adm.waitForSelector('tr[data-employee="Gus Tan"] select[data-link]', { timeout: 15000 }).then(() => true, () => false);
+  check('unlinking on the page unlinks it', unlinked && (await admin('GET', '/api/admin/employees')).body.find(e => e.name === 'Gus Tan').account === null);
+  await adm.selectOption('select[data-desk="Gus Tan"]', 'C5');
+  const deskSet = await until(async () => (await admin('GET', '/api/admin/employees')).body.find(e => e.name === 'Gus Tan').desk === 'C5');
+  check('choosing a desk on the page saves it (and the office moves Gus there)', !!deskSet && (await admin('GET', '/api/admin/employees')).body.find(e => e.name === 'Gus Tan').seat === 'C5');
+  const hrOptions = await adm.$$eval('select[data-desk="Cat Dizon"] option', os => os.map(o => o.value).filter(Boolean));
+  const otherOptions = await adm.$$eval('select[data-desk="Gus Tan"] option', os => os.map(o => o.value).filter(Boolean));
+  check('only the HR employee is offered the HR desks', hrOptions.some(v => v.startsWith('HR')) && !otherOptions.some(v => v.startsWith('HR')));
+  const clickSure = async what => { await adm.click(`#adminClock button[data-do="${what}"]`); await adm.click(`#adminClock button[data-do="${what}"]`); };
+  await clickSure('clock-live');
+  const liveShown = await until(async () => watcher.page.evaluate(() => document.getElementById('phase').textContent.includes('Live') && document.body.classList.contains('clock-live')));
+  check('the clock button makes the clock Live, and every page shows it', !!liveShown && (await admin('GET', '/api/admin/settings')).body.clockMode === 'live');
+  await clickSure('clock-day');
+  const simShown = await until(async () => watcher.page.evaluate(() => !document.getElementById('phase').textContent.includes('Live') && !document.body.classList.contains('clock-live')));
+  check('and the other button brings Simulate back', !!simShown && (await admin('GET', '/api/admin/settings')).body.clockMode === 'sim');
+  check('the admin page threw no errors', admErrors.length === 0, admErrors.slice(0, 2).join(' | '));
+  await adm.close();
 
   // ---- 6. the secret
   const leaks = [];

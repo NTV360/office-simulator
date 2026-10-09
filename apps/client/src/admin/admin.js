@@ -1,4 +1,5 @@
 import './admin.css';
+import { deskSeats } from '@office/shared';
 
 // The admin page (/admin). One password (the server's ADMIN_TOKEN); with it you make accounts, hand out and reset passwords,
 // disable people, and give or take desks. Plain DOM, and only ever text (nothing from the server is put in as HTML).
@@ -46,6 +47,7 @@ const when = d => (d ? new Date(d).toLocaleString([], { dateStyle: 'short', time
 
 // ---------------------------------------------------------------- login
 function showLogin(note = '') {
+  employees = null; importInfo = null; settings = null; ui.linkPick.clear(); ui.staffFilter = ''; // (nothing from the last login stays)
   const pass = el('input', { type: 'password', id: 'adminPassword', autocomplete: 'current-password', required: true });
   const msg = el('p', { class: 'a-note', role: 'alert' }, note);
   const form = el('form', { class: 'a-card a-login' },
@@ -63,8 +65,11 @@ function showLogin(note = '') {
 
 // ---------------------------------------------------------------- state and data
 let accounts = [], slots = [], audit = [], settings = null;
-const ui = { filter: '', panel: new Map(), picked: new Map(), armed: null };
-let tableHost, statsHost, bulkResult, auditHost, officeHost;
+/** The staff list (null: the server has none, e.g. no database) and what the last import did. */
+let employees = null, importInfo = null;
+const SEATS = deskSeats();
+const ui = { filter: '', panel: new Map(), picked: new Map(), armed: null, staffFilter: '', linkPick: new Map() };
+let tableHost, statsHost, bulkResult, auditHost, officeHost, staffHost;
 
 async function load() {
   const [u, s] = await Promise.all([api('GET', '/users'), api('GET', '/slots')]);
@@ -74,6 +79,9 @@ async function load() {
   audit = a.status === 200 ? a.body : [];
   const st = await api('GET', '/settings');
   settings = st.status === 200 ? st.body : null;
+  const em = await api('GET', '/employees'), im = await api('GET', '/import');
+  employees = em.status === 200 ? em.body : null;
+  importInfo = im.status === 200 ? im.body : null;
   return null;
 }
 /** A desk by name: its island and its number, e.g. "Table B · seat 9" (every desk gets a different one). */
@@ -102,9 +110,11 @@ function showMain() {
   bulkResult = el('div', { id: 'bulkResult' });
   auditHost = el('div', { id: 'adminAudit' });
   officeHost = el('section', { class: 'a-card', id: 'adminOffice' });
+  staffHost = el('section', { class: 'a-card', id: 'adminStaff' });
   app.replaceChildren(
     el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
     officeHost,
+    staffHost,
     makeCard(),
     el('section', { class: 'a-card' },
       el('h2', {}, 'Accounts'),
@@ -124,11 +134,11 @@ async function reload() {
   if (failed) { remember(''); return showLogin(failed.status === 403 ? 'Wrong password.' : problem(failed)); }
   drawAll();
 }
-function drawAll() { drawStats(); drawOffice(); drawTable(); drawAudit(); }
+function drawAll() { drawStats(); drawOffice(); drawStaff(); drawTable(); drawAudit(); }
 
 const ACTIONS = {
   'account.create': 'Made an account', 'account.bulk-create': 'Made accounts', 'password.set': 'Set a password', 'account.disable': 'Disabled an account',
-  'account.enable': 'Enabled an account', 'account.mute': 'Muted an account', 'account.unmute': 'Unmuted an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', announce: 'Sent an announcement',
+  'account.enable': 'Enabled an account', 'account.mute': 'Muted an account', 'account.unmute': 'Unmuted an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', 'employees.import': 'Imported the employee records', 'employee.link': 'Linked an account to an employee', 'employee.unlink': 'Unlinked an account from an employee', 'employee.desk': 'Chose an employee\'s desk', announce: 'Sent an announcement',
 };
 function drawAudit() {
   const rows = audit.map(l => {
@@ -171,7 +181,109 @@ function drawOffice() {
     el('div', { class: 'a-row' },
       el('label', { class: 'a-field' }, 'People', count), el('label', { class: 'a-field' }, 'Clock speed', speed),
       el('label', { class: 'a-row' }, paused, 'Paused'), save),
-    note);
+    note,
+    clockControls());
+}
+
+/** Simulate or Live: one clock for the whole office. Choosing restarts the day (everyone is seated as the new clock says), so it asks first. */
+function clockControls() {
+  const note = el('span', { class: 'a-note', id: 'clockNote', role: 'alert' });
+  const choose = (label, id, body, pressed) => {
+    const b = sure(label, id, async () => {
+      const r = await api('PUT', '/settings', body);
+      if (r.status !== 200) { note.textContent = problem(r); return; }
+      await reload();
+    }, pressed ? 'a-btn primary' : 'a-btn');
+    b.setAttribute('aria-pressed', String(pressed));
+    return b;
+  };
+  const isLive = settings.clockMode === 'live';
+  return el('div', { id: 'adminClock' },
+    el('h3', {}, 'The clock'),
+    el('p', {}, isLive
+      ? `Live: the real time in the office's time zone${settings.attendance ? ', and who is clocked in' : ' (the employee records are not readable, so everyone follows their shift)'}. There is no speed.`
+      : 'Simulate: the office runs its own faster day. Live follows the real time and who is clocked in.'),
+    el('div', { class: 'a-row' },
+      choose('Simulate from the morning', 'clock-day', { clockMode: 'sim', simStart: 'day' }, false),
+      choose('Simulate from the night', 'clock-night', { clockMode: 'sim', simStart: 'night' }, false),
+      choose('Live', 'clock-live', { clockMode: 'live' }, isLive),
+      note));
+}
+
+// ---------------------------------------------------------------- the staff list
+const ago = d => (d ? when(d) : 'never');
+const DASH = '\u2014';
+
+/** The staff list: where each employee sits, which account plays them, and the import from the company's records. */
+function drawStaff() {
+  if (employees === null) {
+    staffHost.replaceChildren(el('h2', {}, 'Staff'), el('p', {}, 'The staff list is not available (the server has no database).'));
+    return;
+  }
+  const info = importInfo;
+  const note = el('p', { class: 'a-note', role: 'alert', id: 'staffNote' });
+  const runImport = async force => {
+    note.textContent = '';
+    const r = await api('POST', '/import', force ? { force: true } : {});
+    if (r.status >= 300) note.textContent = problem(r);
+    await reload();
+  };
+  let status;
+  if (!info || !info.configured) status = 'The employee records are not connected (SUPABASE_URL and SUPABASE_SECRET_KEY are not set). What is stored stays as it is.';
+  else if (info.lastImportOk === null) status = 'Not imported yet.';
+  else if (info.lastImportOk) { const r = info.lastResult; status = `Imported ${ago(info.lastImportAt)}${r ? `: ${r.added} new, ${r.updated} changed, ${r.removed} gone, ${r.restored} back` : ''}.`; }
+  else status = `The last import (${ago(info.lastImportAt)}) failed and changed nothing: ${info.lastImportError}`;
+  if (info && info.configured && info.lastAttendanceOk === false) status += ` Who is clocked in could not be read (${info.lastAttendanceError}).`;
+  const head = el('div', { class: 'a-row' },
+    el('p', { id: 'importStatus' }, status),
+    info && info.configured && el('button', { type: 'button', class: 'a-btn', id: 'importNow', onclick: () => runImport(false) }, 'Import now'),
+    info && info.configured && info.lastImportOk === false && /import anyway/.test(info.lastImportError || '') && sure('Import anyway', 'import-force', () => runImport(true)));
+
+  const q = ui.staffFilter.trim().toLowerCase();
+  const list = employees.filter(e => !q || e.name.toLowerCase().includes(q) || (e.department || '').toLowerCase().includes(q));
+  const linkable = accounts.filter(a => !a.employeeId && !a.slotSpot).sort((a, b) => a.username.toLowerCase().localeCompare(b.username.toLowerCase()));
+  const body = el('tbody');
+  for (const e of list) {
+    const rowNote = el('span', { class: 'a-note' });
+    const takenByOthers = new Set(employees.filter(x => x.userId !== e.userId && x.desk).map(x => x.desk));
+    const seats = SEATS.filter(s => (!s.island.department || s.island.department === e.department) && !takenByOthers.has(s.id));
+    const current = SEATS.find(s => s.id === e.desk);
+    if (current && !seats.includes(current)) seats.unshift(current); // (the desk they have is always shown, whatever the rules)
+    const deskSel = el('select', { 'aria-label': `Desk for ${e.name}`, 'data-desk': e.name },
+      el('option', { value: '' }, DASH + ' any free desk ' + DASH),
+      seats.map(s => el('option', { value: s.id, selected: s.id === e.desk }, s.label)));
+    deskSel.addEventListener('change', async () => {
+      const r = await api('PUT', `/employees/${e.userId}`, { desk: deskSel.value || null });
+      if (r.status >= 300) { rowNote.textContent = problem(r); return; }
+      await reload();
+    });
+    let accountCell;
+    if (e.account) {
+      accountCell = el('div', { class: 'a-row' }, el('span', { class: 'mono', 'data-linked': e.account.username }, e.account.username),
+        sure('Unlink', 'unlink', () => act(() => api('POST', `/users/${e.account.id}/employee`, { employeeId: null }), rowNote)));
+    } else {
+      if (!linkable.some(a => String(a.id) === ui.linkPick.get(e.userId))) ui.linkPick.delete(e.userId); // (the account may have been linked elsewhere since)
+      const sel = el('select', { 'aria-label': `Account for ${e.name}`, 'data-link': e.name },
+        el('option', { value: '' }, DASH + (linkable.length ? ' no account ' : ' no free account ') + DASH),
+        linkable.map(a => el('option', { value: String(a.id), selected: ui.linkPick.get(e.userId) === String(a.id) }, a.username)));
+      sel.addEventListener('change', () => ui.linkPick.set(e.userId, sel.value));
+      accountCell = el('div', { class: 'a-row' }, sel, el('button', { type: 'button', class: 'a-btn', 'data-do': 'link', onclick: () => {
+        const id = ui.linkPick.get(e.userId);
+        if (id) { ui.linkPick.delete(e.userId); act(() => api('POST', `/users/${id}/employee`, { employeeId: e.userId }), rowNote); }
+      } }, 'Link'));
+    }
+    body.append(el('tr', { 'data-employee': e.name },
+      el('td', {}, e.name, e.intern && el('span', { class: 'a-chip' }, 'intern'), !e.inOffice && el('span', { class: 'a-chip warn' }, 'not in the office')),
+      el('td', { class: 'hide-s' }, e.department || ''), el('td', {}, deskSel), el('td', {}, accountCell, rowNote)));
+  }
+  if (!list.length) body.append(el('tr', {}, el('td', { colspan: '4' }, employees.length ? 'No one matches.' : 'No employees yet.')));
+  staffHost.replaceChildren(
+    el('h2', {}, 'Staff'),
+    el('p', {}, 'The employees of the office, imported (read-only) from the company\'s records. Link an account to an employee and that person plays them: their name, look, desk and shift. The desk and the look chosen here are kept and an import never overwrites them.'),
+    head, note,
+    el('input', { type: 'text', class: 'a-search', id: 'staffFilter', placeholder: 'Search by name or department\u2026', 'aria-label': 'Search staff', value: ui.staffFilter, oninput: e => { ui.staffFilter = e.target.value; drawStaff(); const f = document.getElementById('staffFilter'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } } }),
+    el('div', { class: 'a-scroll' }, el('table', { class: 'a-table' },
+      el('thead', {}, el('tr', {}, ['Employee', 'Department', 'Desk', 'Account'].map((h, i) => el('th', { class: i === 1 ? 'hide-s' : '' }, h)))), body)));
 }
 
 function drawStats() {
@@ -273,7 +385,8 @@ function drawTable() {
     const note = el('span', { class: 'a-note' });
     const desk = slotOf(a.slotSpot);
     let deskCell;
-    if (a.slotSpot) deskCell = desk ? deskLabel(desk) : a.slotSpot;
+    if (a.employeeId) deskCell = el('span', { 'data-employee': a.employeeId }, 'plays ' + ((employees && employees.find(e => e.userId === a.employeeId)?.name) || 'an employee'));
+    else if (a.slotSpot) deskCell = desk ? deskLabel(desk) : a.slotSpot;
     else {
       const sel = el('select', { 'aria-label': `Desk for ${a.username}`, 'data-pick': a.username },
         el('option', { value: '' }, free.length ? '— no desk —' : '— none free —'),

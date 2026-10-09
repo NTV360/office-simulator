@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 10;
+export const WIRE_VERSION = 11;
 
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
@@ -105,6 +105,8 @@ export interface Welcome {
   day: number;
   speed: number;
   paused: boolean;
+  /** The clock follows the real time and who is clocked in (the server's Live mode), not the simulated day. Absent: Simulate. */
+  live?: boolean;
   /** The person id this connection drives, or NONE for a viewer. */
   you: number;
   layout: LayoutCheck;
@@ -121,6 +123,8 @@ export interface Snapshot {
   day: number;
   speed: number;
   paused: boolean;
+  /** The server's clock mode (see Welcome). */
+  live?: boolean;
   /** True when `people` lists everyone; otherwise only people whose record changed. */
   full: boolean;
   people: PersonSnap[];

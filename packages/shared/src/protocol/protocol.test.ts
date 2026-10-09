@@ -85,6 +85,15 @@ describe('round trips', () => {
     expect(got).toMatchObject({ type: 'welcome', tick: w.tick, tickRate: 20, simTime: w.simTime, day: 3, paused: false, you: NONE, layout: w.layout, meetings: w.meetings });
     got.people.forEach((p, i) => { expect(p.info).toEqual(w.people[i].info); expectSameSnap(p.snap, w.people[i].snap); });
   });
+  it('the clock mode (Live or Simulate) rides on both the snapshot and the welcome, next to paused and full', () => {
+    for (const live of [true, false]) for (const paused of [true, false]) {
+      const s = decode(encode({ type: 'snapshot', tick: 1, simTime: 2, day: 1, speed: 1, paused, live, full: !live, people: [], meetings: [] })) as Snapshot;
+      expect([s.live, s.paused, s.full]).toEqual([live, paused, !live]);
+      const w = decode(encode({ ...welcome(), paused, live })) as Welcome;
+      expect([w.live, w.paused]).toEqual([live, paused]);
+    }
+    expect((decode(encode(welcome())) as Welcome).live).toBe(false); // (a message that does not say is Simulate)
+  });
   it('angles wrap into one turn', () => {
     for (const a of [-0.5, 7, 1000, -1000, 0]) {
       const got = (decode(encode({ type: 'person', info: info(), snap: snap({ face: a }) })) as { snap: PersonSnap }).snap.face;

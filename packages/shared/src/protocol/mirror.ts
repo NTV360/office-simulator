@@ -27,12 +27,14 @@ export interface MirrorClock {
   day: number;
   speed: number;
   paused: boolean;
+  /** The server's clock follows the real time (Live), not the simulated day. */
+  live: boolean;
 }
 
 export class Mirror {
   readonly people = new Map<number, Person>();
   meetings: Meeting[] = [];
-  clock: MirrorClock = { tick: 0, tickRate: 20, simTime: 0, day: 1, speed: 1, paused: false };
+  clock: MirrorClock = { tick: 0, tickRate: 20, simTime: 0, day: 1, speed: 1, paused: false, live: false };
   /** The person this connection drives, or NONE for a viewer. */
   you = NONE;
   /** Records for people we have not heard about (a join we missed); counted so a test or the UI can notice. */
@@ -45,7 +47,7 @@ export class Mirror {
     for (const p of [...this.people.values()]) this.drop(p);
     this.meetingIndex.clear();
     this.you = w.you;
-    this.clock = { tick: w.tick, tickRate: w.tickRate, simTime: w.simTime, day: w.day, speed: w.speed, paused: w.paused };
+    this.clock = { tick: w.tick, tickRate: w.tickRate, simTime: w.simTime, day: w.day, speed: w.speed, paused: w.paused, live: !!w.live };
     for (const { info, snap } of w.people) this.create(info, snap);
     this.applyMeetings(w.meetings);
     for (const { snap } of w.people) this.link(this.people.get(snap.id)!, snap);
@@ -59,7 +61,7 @@ export class Mirror {
   }
 
   applySnapshot(s: Snapshot): void {
-    this.clock = { ...this.clock, tick: s.tick, simTime: s.simTime, day: s.day, speed: s.speed, paused: s.paused };
+    this.clock = { ...this.clock, tick: s.tick, simTime: s.simTime, day: s.day, speed: s.speed, paused: s.paused, live: !!s.live };
     const listed = new Set<number>();
     const touched: Array<[Person, PersonSnap]> = [];
     for (const snap of s.people) {
