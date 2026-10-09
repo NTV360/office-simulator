@@ -9,11 +9,10 @@
 // and compares __sim.fingerprint() with tests/browser/golden/seed-N.json. It then visits every camera view,
 // saves a screenshot of each to tests/browser/out/, and fails if the browser console shows any error.
 import { chromium } from 'playwright';
-import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
-import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectErrors, freePort, openPage, sleep, startSite } from './site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const goldenDir = path.join(root, 'tests/browser/golden');
@@ -26,59 +25,9 @@ const SEEDS = record || thorough ? ALL_SEEDS : [1, 2, 3];
 const CHECKPOINTS = [0, 600, 3000, 12000, 36000]; // steps from the start (0.05 s of sim time each at 1x)
 const VIEWS = ['angle', 'top', 'follow', 'fp', 'third', 'angle'];
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-// Ask the OS for an unused port, so two checkouts can run this at the same time (set VERIFY_PORT to force one).
-const freePort = () => new Promise((resolve, reject) => {
-  const s = net.createServer();
-  s.on('error', reject);
-  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
-});
 let failures = 0;
 const fail = msg => { failures++; console.log('  FAIL  ' + msg); };
 const pass = msg => console.log('  ok    ' + msg);
-
-// ---- the site under test
-// Vite does not export its binary, so find it from its package.json (it may or may not be hoisted).
-function findVite() {
-  for (const d of ['apps/client/node_modules/vite', 'node_modules/vite']) {
-    const dir = path.join(root, d), pj = path.join(dir, 'package.json');
-    if (fs.existsSync(pj)) { const bin = JSON.parse(fs.readFileSync(pj, 'utf8')).bin; return path.join(dir, typeof bin === 'string' ? bin : bin.vite); }
-  }
-  throw new Error('vite is not installed; run npm install');
-}
-
-async function startSite() {
-  if (process.env.VERIFY_URL) return { url: process.env.VERIFY_URL.replace(/\/$/, ''), stop() {} };
-  execSync('npm run build -w @office/client', { cwd: root, stdio: 'ignore' }); // always test the current source
-  const vite = findVite();
-  const port = Number(process.env.VERIFY_PORT) || await freePort();
-  const child = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
-    cwd: path.join(root, 'apps/client'), stdio: 'ignore',
-  });
-  const url = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 60; i++) {
-    try { if ((await fetch(url)).ok) return { url, stop: () => child.kill() }; } catch { /* not up yet */ }
-    await sleep(250);
-  }
-  child.kill();
-  throw new Error('the preview server did not start');
-}
-
-// ---- helpers
-function collectErrors(page) {
-  const errors = [];
-  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });
-  return errors;
-}
-
-async function openPage(browser, url, query = '') {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  const errors = collectErrors(page);
-  await page.goto(`${url}/${query}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__simReady === true, null, { timeout: 90000 });
-  return { page, errors };
-}
 
 // Step the simulation to each checkpoint and return the fingerprints.
 async function runSeed(browser, url, seed) {
@@ -127,6 +76,19 @@ const browser = await chromium.launch({ headless: true, args: ['--use-angle=swif
 try {
   console.log(`${record ? 'Recording' : 'Verifying'} the simulation under seeds ${SEEDS.join(', ')} at steps ${CHECKPOINTS.join(', ')}\n`);
   fs.mkdirSync(goldenDir, { recursive: true });
+
+  // the committed layout data (what the server loads) must equal what the client's own furniture code builds
+  if (!record) {
+    console.log('office layout data');
+    const { page: lp, errors: le } = await openPage(browser, site.url, '?seed=1');
+    const live = JSON.parse(JSON.stringify(await lp.evaluate(() => window.__sim.layoutData())));
+    const saved = JSON.parse(fs.readFileSync(path.join(root, 'packages/shared/src/layout/office.json'), 'utf8'));
+    const d = diffs(saved, live);
+    if (!d.length) pass(`the client\'s furniture matches packages/shared/src/layout/office.json (${live.spots.length} spots, ${live.obstacles.length} obstacles)`);
+    else fail('the layout data is stale; run npm run layout:dump. First differences:\n          ' + d.join('\n          '));
+    le.forEach(e => fail(e));
+    await lp.close();
+  }
 
   for (const seed of SEEDS) {
     console.log(`seed ${seed}`);

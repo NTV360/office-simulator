@@ -24,12 +24,14 @@ export interface Spot {
 }
 
 const byKind = new Map<string, Spot[]>();
+const ordered: Spot[] = []; // every spot once, in creation order
 const EMPTY: Spot[] = [];
 
 /** A spot is listed under its kind, and also under spot.group if it has one (e.g. 'piano' and 'guitar' are both in 'music'). */
 function add<T extends Omit<Spot, 'id'>>(spot: T): T & { id: string } {
   const withId = spot as T & { id: string };
   withId.id = `${spot.kind}:${of(spot.kind).length}`; // stable: kind plus position in creation order
+  ordered.push(withId as unknown as Spot);
   for (const k of spot.group ? [spot.kind, spot.group] : [spot.kind]) {
     if (!byKind.has(k)) byKind.set(k, []);
     byKind.get(k)!.push(withId as unknown as Spot);
@@ -40,6 +42,9 @@ function add<T extends Omit<Spot, 'id'>>(spot: T): T & { id: string } {
 /** All spots of a kind, in creation order. The array is live: don't mutate it. */
 function of(kind: string): Spot[] { return byKind.get(kind) || EMPTY; }
 
+/** Every spot once, in the order they were created (a layout is saved and rebuilt in this order so ids match). */
+const all = (): readonly Spot[] => ordered;
+
 /** Conference seats of one room (1-3). */
 function conf(room: number): Spot[] { return of('conf').filter(s => s.room === room); }
 
@@ -47,6 +52,6 @@ function conf(room: number): Spot[] { return of('conf').filter(s => s.room === r
 const kinds = (): string[] => [...byKind.keys()];
 
 /** Forget every spot (tests build a small layout from scratch). */
-function clear(): void { byKind.clear(); }
+function clear(): void { byKind.clear(); ordered.length = 0; }
 
-export const interactables = { add, of, conf, kinds, clear };
+export const interactables = { add, of, all, conf, kinds, clear };

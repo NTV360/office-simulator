@@ -1,6 +1,6 @@
 # Phase 2 breakdown: server and persistence
 
-**Status: in progress.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
+**Status: in progress. Step 0 is done; steps 1 to 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
 
 **Done when (from the plan):** two browsers see the same office, and a server restart brings back the same people, positions and clock. Players, accounts and prediction are phases 3 and 4; here every browser is a **viewer**.
 
@@ -18,7 +18,7 @@
 
 | # | Step | Delivers | Proof |
 |---|---|---|---|
-| **0** | Layout as data | `interactables.all()` records creation order. A dump script writes `packages/shared/src/layout/office.json` (spots with all their plain fields, plus the obstacle rects). `loadLayout(data)` rebuilds the registry and the nav grid | Unit test: loading the data gives the same ids, positions and nav cell count as the client builds. Browser runner check: the client's registry equals the data file |
+| **0** (**done**) | Layout as data | `interactables.all()` records creation order. A dump script writes `packages/shared/src/layout/office.json` (spots with all their plain fields, plus the obstacle rects). `loadLayout(data)` rebuilds the registry and the nav grid | Unit test: loading the data gives the same ids, positions and nav cell count as the client builds. Browser runner check: the client's registry equals the data file |
 | **1** | The server runs the world | A Nest `WorldService` loads the layout, builds the simulation (same seed rules), and ticks at `TICK_RATE` (20 Hz) with drift correction and a logged tick time. Settings from the environment: slot count, speed, paused. `GET /api/world` status | Server test: boot, tick N times, the people exist and the clock advances; the same seed gives the same world as the Node scenario tests |
 | **2** | The protocol | `shared/src/protocol`: encode/decode for `welcome`, `snapshot`, `event`, `spec`, `ping/pong`, with change-only person records | Round-trip tests, size checks against the plan's budget, bad input is rejected |
 | **3** | Realtime gateway | Socket.IO (websocket only) gateway: a viewer connects, gets `welcome` (full world), then `volatile` snapshots each tick and events; clean disconnect | Node integration test with `socket.io-client`: two clients receive the same tick; a slow client does not block |
@@ -47,3 +47,13 @@ Every step runs the phase 1 checks (`npm test`, `npm run typecheck`, `npm run bu
 | Restoring mid-meeting or mid-walk looks odd | Present people resume idle at their position; meetings end. Acceptable for v1 and written down |
 | Snapshot size grows | Change-only records and the budget tests from step 2 |
 | The client online mode and offline mode diverge | They share `people/sync.js`, `animation.js` and the views; only the source of the numbers differs |
+
+## 6. What each step turned out to need
+
+### Step 0
+
+1. **The server-side simulation reproduces the browser recordings exactly.** `packages/shared/src/layout/golden.test.ts` loads the layout data, runs the Node simulation with seeds 1 to 3 and compares every person at every recorded checkpoint, and the number of random draws, with the browser's golden files. That is a stronger proof than "it runs": the server and the browser are the same simulation.
+2. **The layout is 145 spots (70 desks, 21 conference seats, 18 dining seats and so on) and 112 obstacles**, with the nav grid at 11,643 walkable cells, as in the browser.
+3. **The browser runner now shares `tests/browser/site.mjs`** with the dump script (start the site, open a page, collect errors).
+4. **Spots need to be in creation order** because ids are `kind:n`. `interactables.all()` keeps that order and `loadLayout` refuses data that would produce different ids.
+5. **Anything not plain data on a spot is an error** when dumping, so a future feature cannot silently leave something out of the layout file.

@@ -20,6 +20,7 @@ Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.
 6. Add `build<Area>()` to [`apps/client/src/bootstrap.js`](../apps/client/src/bootstrap.js), **before `buildBake()`** (static meshes are merged there) and **before `initGrid()`**.
 7. If the area needs a name on the map, add a `label(...)` line in `render/labels.js`.
 8. Check: the nav cell count (`__sim.NAV`) changes by about the size of your furniture, and people walk around it.
+9. **Regenerate the layout data** with `npm run layout:dump`. The server does not run furniture code; it loads `packages/shared/src/layout/office.json` (every spot and obstacle). `npm run verify:browser` fails with "the layout data is stale" until you do, and a test requires the server-side simulation to match the browser recordings. Commit the changed file. If the change alters behaviour on purpose, re-record with `npm run verify:browser:record` and say why in the commit.
 
 Meshes you will move or animate later must be marked so `bake` leaves them alone: set `mesh.userData.dynamic = true`.
 

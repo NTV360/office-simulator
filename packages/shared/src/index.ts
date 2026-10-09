@@ -45,3 +45,5 @@ export * from './sim/day';
 export * from './sim/step';
 export * from './sim/factory';
 export * from './sim/testing';
+export * from './layout/layout';
+export * from './layout/office';

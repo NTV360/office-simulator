@@ -17,7 +17,8 @@
     "verify:browser:record": "node tests/browser/verify.mjs --record",
     "verify:browser:thorough": "node tests/browser/verify.mjs --thorough",
     "check:docs": "node scripts/check-docs.mjs",
-    "check:mutations": "node scripts/mutation-check.mjs"
+    "check:mutations": "node scripts/mutation-check.mjs",
+    "layout:dump": "node scripts/dump-layout.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
