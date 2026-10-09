@@ -37,8 +37,9 @@ function populate(n: number): void {
   }
 }
 
-export function initDay(): void {
-  populate(40);
+/** Start a live mid-morning with `staff` people (default 40; never more than there are desks). */
+export function initDay(staff = 40): void {
+  populate(staff);
   // kick things off: a training in Conference 1, a sync in Conference 2, calls, coffee and a break
   {
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task!.kind === 'work'));

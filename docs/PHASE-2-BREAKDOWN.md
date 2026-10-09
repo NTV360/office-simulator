@@ -1,6 +1,6 @@
 # Phase 2 breakdown: server and persistence
 
-**Status: in progress. Step 0 is done; steps 1 to 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
+**Status: in progress. Steps 0 and 1 are done; steps 2 to 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
 
 **Done when (from the plan):** two browsers see the same office, and a server restart brings back the same people, positions and clock. Players, accounts and prediction are phases 3 and 4; here every browser is a **viewer**.
 
@@ -19,7 +19,7 @@
 | # | Step | Delivers | Proof |
 |---|---|---|---|
 | **0** (**done**) | Layout as data | `interactables.all()` records creation order. A dump script writes `packages/shared/src/layout/office.json` (spots with all their plain fields, plus the obstacle rects). `loadLayout(data)` rebuilds the registry and the nav grid | Unit test: loading the data gives the same ids, positions and nav cell count as the client builds. Browser runner check: the client's registry equals the data file |
-| **1** | The server runs the world | A Nest `WorldService` loads the layout, builds the simulation (same seed rules), and ticks at `TICK_RATE` (20 Hz) with drift correction and a logged tick time. Settings from the environment: slot count, speed, paused. `GET /api/world` status | Server test: boot, tick N times, the people exist and the clock advances; the same seed gives the same world as the Node scenario tests |
+| **1** (**done**) | The server runs the world | A Nest `WorldService` loads the layout, builds the simulation (same seed rules), and ticks at `TICK_RATE` (20 Hz) with drift correction and a logged tick time. Settings from the environment: slot count, speed, paused. `GET /api/world` status | Server test: boot, tick N times, the people exist and the clock advances; the same seed gives the same world as the Node scenario tests |
 | **2** | The protocol | `shared/src/protocol`: encode/decode for `welcome`, `snapshot`, `event`, `spec`, `ping/pong`, with change-only person records | Round-trip tests, size checks against the plan's budget, bad input is rejected |
 | **3** | Realtime gateway | Socket.IO (websocket only) gateway: a viewer connects, gets `welcome` (full world), then `volatile` snapshots each tick and events; clean disconnect | Node integration test with `socket.io-client`: two clients receive the same tick; a slow client does not block |
 | **4** | Persistence | Prisma schema and migration; the world is saved on an interval and on shutdown, and restored at boot (people, desks, schedules, positions, clock, day, settings) | Test: save, rebuild a fresh world from the database, and compare. Docker: restart the server container and the same people appear |
@@ -57,3 +57,11 @@ Every step runs the phase 1 checks (`npm test`, `npm run typecheck`, `npm run bu
 3. **The browser runner now shares `tests/browser/site.mjs`** with the dump script (start the site, open a page, collect errors).
 4. **Spots need to be in creation order** because ids are `kind:n`. `interactables.all()` keeps that order and `loadLayout` refuses data that would produce different ids.
 5. **Anything not plain data on a spot is an error** when dumping, so a future feature cannot silently leave something out of the layout file.
+
+### Step 1
+
+1. **`World` is a plain class** (`apps/server/src/world/world.ts`); Nest only wraps it (`WorldService`, `WorldController`). That keeps it testable without HTTP. It is a thin wrapper over the shared singletons, so there is one World per process.
+2. **The tick is fixed-step and drift-corrected.** Each tick runs `stepSim(1 / TICK_RATE)`, the same 0.05 s step the browser recordings use. A late timer catches up by at most 3 ticks and then skips ahead rather than spiralling; late ticks are counted. Paused ticks still count (snapshots keep flowing).
+3. **The server world is the browser world.** A test runs the server's `World` with seed 1 and compares the clock and every person to the browser recordings at all five checkpoints.
+4. **Measured:** about 0.07 ms per tick for 40 staff (budget: well inside 50 ms). `GET /api/world` shows tick, clock, who is in, and tick timings; `npm run smoke` checks it.
+5. **Settings** come from the environment: `TICK_RATE`, `SLOT_COUNT`, `SIM_SPEED`, `SIM_PAUSED`, `WORLD_SEED` (see `.env.example`). Changing them at runtime is step 5.

@@ -32,6 +32,13 @@ try {
   check('GET /api/health answers', health.res.ok && body !== null, `status ${health.res.status}`);
   check('the server says it is ok', body?.status === 'ok', JSON.stringify(body));
   check('the database is reachable', body?.db === 'ok');
+
+  const w1 = JSON.parse((await get('/api/world')).text);
+  await new Promise(r => setTimeout(r, 1200));
+  const w2 = JSON.parse((await get('/api/world')).text);
+  check('the world is running: ticks and the clock advance', w2.tick > w1.tick && (w2.paused || w2.simTime !== w1.simTime), `tick ${w1.tick} to ${w2.tick}`);
+  check('the office has its staff', w2.staff > 0 && w2.desks === 70, `${w2.staff} staff, ${w2.desks} desks`);
+  check('ticks fit their budget', w2.tickMs.avgMs < 10, `avg ${w2.tickMs.avgMs.toFixed(2)} ms, max ${w2.tickMs.maxMs.toFixed(2)} ms`);
 } catch (err) {
   check(`could not reach ${base}`, false, err.message);
 }

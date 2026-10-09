@@ -2,7 +2,7 @@
 # Then open http://localhost:8080    (change the port with WEB_PORT in .env)
 #
 # web     the built frontend, served by Caddy, which also forwards /api and /socket.io to the server
-# server  the NestJS server (health check only in phase 0)
+# server  the NestJS server: runs the office simulation at TICK_RATE and reports it at /api/world
 # db      PostgreSQL, data kept in the "pgdata" volume
 #
 # The defaults below are for local development only. For anything shared, copy .env.example to .env
@@ -33,6 +33,11 @@ services:
     environment:
       PORT: "3000"
       TZ: "${TZ:-UTC}"
+      TICK_RATE: "${TICK_RATE:-20}"
+      SLOT_COUNT: "${SLOT_COUNT:-40}"
+      SIM_SPEED: "${SIM_SPEED:-1}"
+      SIM_PAUSED: "${SIM_PAUSED:-false}"
+      WORLD_SEED: "${WORLD_SEED:-}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-office}:${POSTGRES_PASSWORD:-office_dev_password}@db:5432/${POSTGRES_DB:-office}"
     depends_on:
       db:
