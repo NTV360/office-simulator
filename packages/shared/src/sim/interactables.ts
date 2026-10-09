@@ -21,6 +21,8 @@ export interface Spot {
   group?: string;
   /** On a desk: the role of whoever sits here (HR, CTO, Cleaner). Desks without one seat the usual mix of roles. */
   role?: string;
+  /** The world object (a chair or stool) this seat belongs to: when it moves, the seat moves. */
+  object?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [extra: string]: any;
 }

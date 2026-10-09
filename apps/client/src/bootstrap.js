@@ -1,6 +1,6 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initDay, initGrid, initState } from '@office/shared';
+import { initDay, initGrid, initState, lockLayoutCheck } from '@office/shared';
 import { OBS } from './world/helpers.js';
 import { initLabels } from './render/labels.js';
 import { initPeopleGroup } from './people/group.js';
@@ -60,6 +60,7 @@ export function bootstrap({ simulate = true } = {}) {
   initLabels();
   // navigation reads the obstacles registered by the world
   initGrid(OBS);
+  lockLayoutCheck(); // the fingerprint of the starting layout, before anything is moved
   // simulation
   initPeopleGroup();
   initPeopleViews(); // before the simulation creates anyone, so each new person gets a body

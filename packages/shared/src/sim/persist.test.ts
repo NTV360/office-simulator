@@ -115,7 +115,7 @@ describe('parseSavedWorld refuses damaged saves', () => {
     expect(() => parseSavedWorld(null)).toThrow(SaveError);
     expect(() => parseSavedWorld([])).toThrow(SaveError);
     expect(() => parseSavedWorld('x')).toThrow(SaveError);
-    bad(s => { s.version = 3; }, /version/);
+    bad(s => { s.version = 4; }, /version/);
     bad(s => { delete s.clock; }, /clock/);
     bad(s => { s.people = 'no'; }, /people/);
     bad(s => { s.deskOrder = {}; }, /deskOrder/);

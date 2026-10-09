@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 8;
+export const WIRE_VERSION = 9;
 
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
@@ -86,6 +86,9 @@ export interface LayoutCheck {
   hash: number;
 }
 
+/** Where a world object is now: its place in the layout's object list, its pose, and who carries it (NONE if nobody). */
+export interface ObjectPose { index: number; x: number; z: number; rot: number; carriedBy: number }
+
 export interface Welcome {
   type: 'welcome';
   tick: number;
@@ -99,6 +102,8 @@ export interface Welcome {
   layout: LayoutCheck;
   people: Array<{ info: PersonInfo; snap: PersonSnap }>;
   meetings: MeetingSnap[];
+  /** The objects that are not where they started (everything else is at home, which every page knows from the layout). */
+  objects: ObjectPose[];
 }
 
 export interface Snapshot {
@@ -115,6 +120,8 @@ export interface Snapshot {
   meetings: MeetingSnap[];
 }
 
+/** A world object moved, was picked up or put down. Sent to everybody playing. */
+export interface ObjectMoved { type: 'object'; pose: ObjectPose }
 export interface PersonJoined { type: 'person'; info: PersonInfo; snap: PersonSnap }
 export interface PersonLeft { type: 'leave'; id: number }
 
@@ -152,5 +159,5 @@ export interface Emoted { type: 'emoted'; from: number; kind: EmoteKind }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
 export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Rage;
-export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted;
+export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;
 export type Message = ClientMessage | ServerMessage;

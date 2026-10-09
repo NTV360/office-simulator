@@ -41,11 +41,12 @@ const welcome = (): Welcome => ({
   type: 'welcome', tick: 123456, tickRate: 20, simTime: 601.25, day: 3, speed: 3, paused: false, you: NONE, layout: { spots: 145, hash: 0xdeadbeef },
   people: [{ info: info(), snap: snap() }, { info: info({ id: 8, name: 'Marco C.', slot: NONE }), snap: snap({ id: 8, state: 'away', shown: false, kind: '', anim: '', cat: '', spot: 0, arrivedAt: NONE }) }],
   meetings: [{ room: 1, topic: 'sprint review', start: 580, end: 610.5, speaker: 7, members: [7, 8] }],
+  objects: [{ index: 3, x: 1.5, z: -2.25, rot: 0.5, carriedBy: NONE }, { index: 140, x: -30.5, z: 12, rot: -3, carriedBy: 7 }],
 });
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'rage' }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'rage' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, carriedBy: 300 } }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });
@@ -172,7 +173,7 @@ describe('from the real simulation', () => {
     const staff = people.filter(hasSlot);
     const record = encode({ type: 'person', info: personInfo(staff[3]), snap: personSnap(staff[3], meetings) }).length;
     const full = encode({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, full: true, people: staff.map(p => personSnap(p, meetings)), meetings: meetings.map(meetingSnap) }).length;
-    const w = encode({ type: 'welcome', tick: 1, tickRate: 20, simTime: 1, day: 1, speed: 1, paused: false, you: NONE, layout: layoutCheck(), people: staff.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) })), meetings: meetings.map(meetingSnap) }).length;
+    const w = encode({ type: 'welcome', tick: 1, tickRate: 20, simTime: 1, day: 1, speed: 1, paused: false, you: NONE, layout: layoutCheck(), people: staff.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) })), meetings: meetings.map(meetingSnap), objects: [] }).length;
     console.log(`SIZES  join record ${record} B, full snapshot of 40 people ${full} B (${(full / 40).toFixed(1)} B each), welcome ${w} B`);
     expect(full / 40).toBeLessThan(50);
     expect(w).toBeLessThan(20_000);

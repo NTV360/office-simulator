@@ -2,6 +2,7 @@ import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { doorLeaf } from '../doors.js';
 import { SO, mkSpot, officeChair } from './basics.js';
+import { placeObject } from '../objects.js';
 import { addObs, box, cyl, frame, staticRoot } from '../helpers.js';
 import { wallSeg } from '../walls.js';
 
@@ -22,8 +23,9 @@ function buildBooths() {
     box(staticRoot, (x1 - x0 - 4) * S, .04, .34, M.diningWood, wx(cx), .74, wz(932.5));
     box(staticRoot, (x1 - x0 - 4) * S, .7, .04, M.diningWood2, wx(cx), .37, wz(936.5));
     cyl(staticRoot, .07, .05, .05, M.dark, wx(cx) + .45, .785, wz(933), 10);
-    mkSpot('booth', cx, 914, SO, { sit: true, place: `Booth B${i + 1}`, ap: [x0 + 17.5, 906] });
+    const spot = mkSpot('booth', cx, 914, SO, { sit: true, place: `Booth B${i + 1}`, ap: [x0 + 17.5, 906] });
     officeChair(frame(cx, 914, SO));
+    placeObject('chair-office', cx, 914, SO, { variant: 0, spot: spot.id });
   }
 }
 

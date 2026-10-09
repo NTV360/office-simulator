@@ -6,7 +6,7 @@ import { setRageRequest, startRage } from '../people/hazel.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
-  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
+  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
@@ -217,6 +217,7 @@ export function startOnline() {
           return;
         }
         mirror.applyWelcome(msg);
+        applyObjectPoses(msg.objects); // chairs and things that are not where they started
         net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; reconciler.reset(); // (a new connection numbers its messages from the start)
         player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
@@ -254,6 +255,7 @@ export function startOnline() {
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
       case 'chat': chat.receive(msg); break;
+      case 'object': applyObjectPose(msg.pose); break;
       case 'emoted': { net.emotesSeen = (net.emotesSeen ?? 0) + 1; const who = mirror.people.get(msg.from); if (who) { const t = performance.now(); who.emote = { kind: msg.kind, t0: t, until: t + 2600 }; } break; }
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':

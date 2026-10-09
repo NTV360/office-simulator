@@ -183,7 +183,7 @@ describe('the save remembers owners, and still reads old saves', () => {
   });
 
   it('refuses versions it does not know, and owners that are not account ids', () => {
-    for (const bad of [0, 3, 99, '2', null]) expect(() => parseSavedWorld({ ...via(), version: bad })).toThrow(SaveError);
+    for (const bad of [0, 4, 99, '2', null]) expect(() => parseSavedWorld({ ...via(), version: bad })).toThrow(SaveError);
     for (const owner of [0, -1, 1.5, 'x', NaN, {}]) {
       const s = via(); s.people[0].owner = owner;
       expect(() => parseSavedWorld(s), String(owner)).toThrow(/owner|number/);

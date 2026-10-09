@@ -1,5 +1,6 @@
 import {
-  NONE, encode, isDriven, layoutCheck, log, meetingSnap, meetings, people, personInfo, personSnap, sim,
+  NONE, encode, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectPose, people, personInfo, personSnap, sim,
+  type WorldObject,
   type GameEvent, type Person, type PersonSnap,
 } from '@office/shared';
 
@@ -37,7 +38,7 @@ export class Broadcaster {
     const list = people.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) }));
     return encode({
       type: 'welcome', tick, tickRate: this.opts.tickRate, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, you,
-      layout: layoutCheck(), people: list, meetings: meetings.map(meetingSnap),
+      layout: layoutCheck(), people: list, meetings: meetings.map(meetingSnap), objects: movedObjectPoses(),
     });
   }
 
@@ -74,6 +75,11 @@ export class Broadcaster {
     const snap = personSnap(p, meetings);
     this.last.set(p.id, snap);
     return encode({ type: 'person', info: personInfo(p), snap });
+  }
+
+  /** An object was moved, picked up or put down. */
+  objectMoved(o: WorldObject): Uint8Array {
+    return encode({ type: 'object', pose: objectPose(o) });
   }
 
   left(id: number): Uint8Array {

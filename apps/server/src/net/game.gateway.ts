@@ -86,6 +86,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
     simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p))); // who drives them, their name or look changed
     this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason));
+    simEvents.on('objectMoved', o => this.broadcast(this.broadcaster.objectMoved(o))); // a chair or a mug was moved: everybody sees it
     simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
     this.auth.onSessionEnd(e => this.onSessionEnd(e));
     this.sweepTimer = setInterval(() => { void this.sweep(); }, this.options.sweepMs);

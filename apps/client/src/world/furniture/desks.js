@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { S, vpick, wx, wz } from '@office/shared';
+import { S, seededRandom, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { SCREENS, registerScreen } from '../../render/screens.js';
 import { N, SO, mkSpot, officeChair } from './basics.js';
 import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
+import { placeObject, placeObjectLocal } from '../objects.js';
 
 // Shared desk islands
 let seatCounter = 0;
@@ -24,7 +25,9 @@ function island(name, x1, y1, x2, y2, cols, sides = ['top', 'bottom'], gap = 12.
       const spot = mkSpot('desk', px, py, face, { sit: true, place: name, shared: false });
       spot.index = ++seatCounter;
       const f = frame(px, py, face);
-      officeChair(f, (i + (top ? 0 : 1)) % 3 === 0 ? M.chairSeat2 : M.chairSeat);
+      const alt = (i + (top ? 0 : 1)) % 3 === 0;
+      officeChair(f, alt ? M.chairSeat2 : M.chairSeat);
+      placeObject('chair-office', px, py, face, { variant: alt ? 1 : 0, spot: spot.id, station: spot.id });
       const mz = edge + half - .16;
       box(f, .22, .012, .16, M.monitor, 0, .766, mz);
       box(f, .05, .14, .04, M.monitor, 0, .84, mz + .02);
@@ -34,10 +37,11 @@ function island(name, x1, y1, x2, y2, cols, sides = ['top', 'bottom'], gap = 12.
       registerScreen(spot.id, scr);
       box(f, .4, .018, .13, M.keyboard, -.03, .77, edge + .2, false);
       box(f, .05, .02, .08, M.keyboard, .26, .77, edge + .2, false);
-      const r = Math.random();
-      if (r < .3) cyl(f, .04, .035, .1, M.white, -.38, .81, edge + .32, 10);
-      else if (r < .45) box(f, .2, .025, .27, vpick(M.notebook), .36, .775, edge + .35, false);
-      else if (r < .52) { cyl(f, .06, .05, .1, M.pot, -.4, .81, mz - .05, 10); const l = new THREE.Mesh(new THREE.IcosahedronGeometry(.09, 0), M.leaf); l.position.set(-.4, .92, mz - .05); f.add(l); }
+      // what is on the desk: chosen once, from a fixed number per seat (it used to be different on every page load, so no two pages agreed)
+      const rng = seededRandom(spot.index * 7919 + 17), r = rng(), nv = Math.floor(rng() * M.notebook.length);
+      if (r < .3) { cyl(f, .04, .035, .1, M.white, -.38, .81, edge + .32, 10); placeObjectLocal('mug', px, py, face, -.38, edge + .32, { station: spot.id }); }
+      else if (r < .45) { box(f, .2, .025, .27, M.notebook[nv], .36, .775, edge + .35, false); placeObjectLocal('notebook', px, py, face, .36, edge + .35, { variant: nv, station: spot.id }); }
+      else if (r < .52) { cyl(f, .06, .05, .1, M.pot, -.4, .81, mz - .05, 10); const l = new THREE.Mesh(new THREE.IcosahedronGeometry(.09, 0), M.leaf); l.position.set(-.4, .92, mz - .05); f.add(l); placeObjectLocal('plant-desk', px, py, face, -.4, mz - .05, { station: spot.id }); }
     }
   }
   return { name, cx, cz };

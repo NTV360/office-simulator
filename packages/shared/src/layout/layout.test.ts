@@ -8,6 +8,7 @@ import { ENTRY } from '../sim/spots';
 import { meetings, people, resetSim, sim, initState } from '../sim/state';
 import { stepSim } from '../sim/step';
 import { setSeed } from '../util';
+import { objects } from '../world/objects';
 import { loadLayout, spotsToLayout } from './layout';
 import { officeLayout } from './office';
 
@@ -27,7 +28,7 @@ describe('the office layout data', () => {
     expect(interactables.conf(1).length + interactables.conf(2).length + interactables.conf(3).length).toBe(14);
   });
   it('saving what was loaded gives the same data (round trip)', () => {
-    const again = spotsToLayout(interactables.all(), officeLayout.obstacles);
+    const again = spotsToLayout(interactables.all(), officeLayout.obstacles, objects.all());
     expect(JSON.parse(JSON.stringify(again))).toEqual(JSON.parse(JSON.stringify(officeLayout)));
   });
   it('builds the same walkable grid the browser has (11,527 cells)', () => {

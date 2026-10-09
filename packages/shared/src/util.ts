@@ -60,6 +60,12 @@ const vrandom = Math.random;
 const vrnd = (a: number, b: number): number => a + vrandom() * (b - a);
 const vpick = <T>(a: readonly T[]): T => a[Math.floor(vrandom() * a.length)];
 
+/**
+ * A random stream you start yourself from a number: the same number gives the same sequence on every machine. For making things once
+ * from fixed numbers (the starting decor on the desks), where the simulation's stream and the never-seeded visual stream are both wrong.
+ */
+function seededRandom(seed: number): () => number { return mulberry32(seed); }
+
 const TAU = Math.PI * 2;
 
 /** The shortest signed angle from a to b, in (-PI, PI]. */
@@ -70,4 +76,4 @@ const angDiff = (a: number, b: number): number => {
   return d;
 };
 
-export { TAU, angDiff, drawCount, pick, random, rnd, setSeed, shuffle, vpick, vrandom, vrnd };
+export { TAU, angDiff, drawCount, pick, random, rnd, seededRandom, setSeed, shuffle, vpick, vrandom, vrnd };

@@ -34,6 +34,8 @@ export * from './sim/factory';
 export * from './sim/testing';
 export * from './layout/layout';
 export * from './layout/office';
+export * from './world/catalogue';
+export * from './world/objects';
 export * from './protocol';
 export * from './sim/persist';
 export * from './sim/takeover';

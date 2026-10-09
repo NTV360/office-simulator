@@ -42,6 +42,10 @@ const MUTATIONS = [
   ['the rage starts while Hazel is away', 'apps/server/src/play/shared-events.ts', "if (!this.lookup.hazelPresent()) return { ok: false, reason: 'away' };", ''],
   ['a running player is pulled back by a repeated ack', sim + 'prediction.ts', 'if (!at && !idle) {', 'if (false) {'],
   ['one player can keep the rage going all day', 'apps/server/src/play/shared-events.ts', "if (mine > 0) return { ok: false, reason: 'you-again', secondsLeft: Math.ceil(mine / 1000) };", ''],
+  ['a moved chair leaves its seat behind', 'packages/shared/src/world/objects.ts', 'spot.pos.x = x + p.x; spot.pos.z = z + p.z;', ''],
+  ['moved objects are not saved', sim + 'persist.ts', 'objects: movedObjects().map(', 'objects: [].map('],
+  ['a restore forgets the moved objects', sim + 'persist.ts', 'if (o) setObjectPose(o, s.x, s.z, s.rot);', ''],
+  ['the layout fingerprint follows a moved chair', 'packages/shared/src/protocol/convert.ts', 'if (locked && locked.spots ===', 'if (false && locked && locked.spots ==='],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
 
@@ -56,7 +60,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'apps/server/src/net/rage.gateway.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', 'packages/shared/src/layout/stations.test.ts', sim + 'prediction.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'apps/server/src/net/rage.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

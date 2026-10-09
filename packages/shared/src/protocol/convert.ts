@@ -1,19 +1,54 @@
 import { PROP_KEYS } from '../sim/props';
 import { interactables } from '../sim/interactables';
+import { movedObjects, objects, resetAllObjects, setObjectPose, type WorldObject } from '../world/objects';
 import type { Meeting, Person } from '../sim/types';
-import { NONE, ONE_OFF_SPOT, type LayoutCheck, type MeetingSnap, type PersonInfo, type PersonSnap } from './messages';
+import { NONE, ONE_OFF_SPOT, type LayoutCheck, type MeetingSnap, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
 
 // Turning simulation objects into protocol records (server side).
 
-/** A short fingerprint of the registered spots, to check the client and the server run the same office. */
-export function layoutCheck(): LayoutCheck {
+let locked: (LayoutCheck & { objects: number }) | null = null;
+
+function computeLayoutCheck(): LayoutCheck {
   const all = interactables.all();
   let h = 0x811c9dc5;
-  for (const s of all) {
-    const text = s.id + '@' + s.pos.x.toFixed(4) + ',' + s.pos.z.toFixed(4) + ';';
-    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
-  }
+  const mix = (text: string) => { for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); } };
+  for (const s of all) mix(s.id + '@' + s.pos.x.toFixed(4) + ',' + s.pos.z.toFixed(4) + ';');
+  for (const o of objects.all()) mix(o.id + ':' + o.type + '@' + o.home.x.toFixed(4) + ',' + o.home.z.toFixed(4) + ',' + o.home.rot.toFixed(4) + ';');
   return { spots: all.length, hash: h >>> 0 };
+}
+
+/**
+ * Take the fingerprint of the layout as it is now and keep it. Call it once the starting layout is built, before anything is moved: a
+ * chair that has been moved must not make a page that joins later disagree with the server about which office this is.
+ */
+export function lockLayoutCheck(): void { locked = { ...computeLayoutCheck(), objects: objects.count() }; }
+
+/** A short fingerprint of the starting layout (spots, and where every object starts), to check the client and the server run the same office. */
+export function layoutCheck(): LayoutCheck {
+  // (a locked value only counts while the layout it was taken from is still the one loaded: a different layout built later is measured afresh)
+  if (locked && locked.spots === interactables.all().length && locked.objects === objects.count()) return { spots: locked.spots, hash: locked.hash };
+  return computeLayoutCheck();
+}
+
+/** Where an object is now, as the protocol says it. */
+export const objectPose = (o: WorldObject): ObjectPose => ({ index: o.index, x: o.x, z: o.z, rot: o.rot, carriedBy: o.carriedBy ?? NONE });
+
+/** The objects that are not at home: what a new page is told. */
+export const movedObjectPoses = (): ObjectPose[] => movedObjects().map(objectPose);
+
+/** Put one object where the server says (an object we do not know is ignored). Returns the object, or null. */
+export function applyObjectPose(p: ObjectPose): WorldObject | null {
+  const o = objects.at(p.index);
+  if (!o || !Number.isFinite(p.x) || !Number.isFinite(p.z) || !Number.isFinite(p.rot)) return null;
+  o.carriedBy = p.carriedBy === NONE ? null : p.carriedBy;
+  setObjectPose(o, p.x, p.z, p.rot);
+  return o;
+}
+
+/** A welcome: every object goes home, then the listed ones go where they are. */
+export function applyObjectPoses(poses: readonly ObjectPose[]): void {
+  resetAllObjects();
+  for (const p of poses) applyObjectPose(p);
 }
 
 export function personInfo(p: Person): PersonInfo {

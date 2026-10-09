@@ -16,7 +16,7 @@ import './styles/responsive.css';
 import { bootstrap } from './bootstrap.js';
 import { fingerprint, screenMismatches } from './debug.js';
 import { OBS } from './world/helpers.js';
-import { ENTRY, findPath, spotsToLayout, GC, GR, interactables, log, NAV, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
+import { ENTRY, findPath, spotsToLayout, GC, GR, interactables, log, NAV, objects, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -81,6 +81,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { net: live ? live.net : null, online, layoutData: () => spotsToLayout(interactables.all(), OBS), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { net: live ? live.net : null, online, renderer, scene, objects, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all()), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

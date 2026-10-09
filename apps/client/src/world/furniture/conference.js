@@ -4,6 +4,7 @@ import { E, N, SO, WST, mkSpot, officeChair } from './basics.js';
 import { cabinet } from './cabinet.js';
 import { tv } from './tv.js';
 import { addObs, box, frame, staticRoot } from '../helpers.js';
+import { placeObject } from '../objects.js';
 
 function table(x1, y1, x2, y2, top = M.confTable, legs = M.dark, h = .74) {
   addObs(x1, y1, x2, y2);
@@ -12,8 +13,9 @@ function table(x1, y1, x2, y2, top = M.confTable, legs = M.dark, h = .74) {
   [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(staticRoot, .05, h - .04, .05, legs, cx + a * (w / 2 - .07), (h - .04) / 2, cz + b * (d / 2 - .07)));
 }
 function confSeat(n, px, py, face) {
-  mkSpot('conf', px, py, face, { sit: true, place: `Conference ${n}`, room: n });
+  const spot = mkSpot('conf', px, py, face, { sit: true, place: `Conference ${n}`, room: n });
   officeChair(frame(px, py, face), M.chairSeat2);
+  placeObject('chair-office', px, py, face, { variant: 1, spot: spot.id });
 }
 
 

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { SaveError, people, serializeWorld, setSeed, sim, hasSlot } from '@office/shared';
+import { SaveError, people, serializeWorld, setSeed, sim, hasSlot, interactables, movedObjects, objects, resetAllObjects, restoreWorld, setObjectPose } from '@office/shared';
 import { AppModule } from '../app.module';
 import { configureApp } from '../app.config';
 import { World } from '../world/world';
@@ -74,6 +74,26 @@ d('the world store', () => {
     await store.save(second);
     expect(await store.load()).toEqual(JSON.parse(JSON.stringify(second)));
     expect((await pool.query('SELECT count(*)::int AS n FROM world_state')).rows[0].n).toBe(1);
+  });
+
+  it('moved chairs and things are saved and come back, seats and all; a world saved with nothing moved has an empty list', async () => {
+    const store = new WorldStore(pool);
+    const w = new World(options); w.init();
+    resetAllObjects();
+    await store.save(serializeWorld());
+    expect((await store.load())!.objects).toEqual([]);
+    const chair = objects.all().find(o => o.spot === 'desk:7')!, mug = objects.all().find(o => o.type === 'mug')!;
+    setObjectPose(chair, chair.x + 2, chair.z - 1, 1.5); setObjectPose(mug, 3, 4, 5);
+    const seat = interactables.all().find(s => s.id === 'desk:7')!;
+    const where = [seat.pos.x, seat.pos.z, seat.face];
+    await store.save(serializeWorld());
+    resetAllObjects(); // (a restart: everything starts at home)
+    expect(movedObjects()).toEqual([]);
+    restoreWorld((await store.load())!);
+    expect(movedObjects().map(o => o.id).sort()).toEqual([chair.id, mug.id].sort());
+    expect([seat.pos.x, seat.pos.z, seat.face]).toEqual(where);
+    expect(objects.byId(mug.id)!.x).toBe(3);
+    resetAllObjects();
   });
 
   it('a restored world is the saved one: same people, same positions, same clock', async () => {

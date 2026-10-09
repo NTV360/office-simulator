@@ -2,7 +2,7 @@ import type { CharacterSpec } from '../character/spec';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
-  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, WIRE_VERSION,
+  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, WIRE_VERSION, type ObjectPose,
   type ActKind, type ClientMessage, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
 } from './messages';
 
@@ -21,7 +21,7 @@ export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'br
 
 const T = {
   hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, rage: 0x07,
-  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89,
+  welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89, object: 0x8a,
 } as const;
 
 const CUSTOM = 0xff;
@@ -32,6 +32,9 @@ const TAU = Math.PI * 2;
 // 0xffff and 0xff mean "none", so real ids and indexes stop one short of them
 const toU16 = (id: number) => { if (id === NONE) return NO_U16; if (id >= NO_U16) throw new RangeError(`id ${id} is too big for the protocol`); return id; };
 const fromU16 = (v: number) => (v === NO_U16 ? NONE : v);
+
+function writeObjectPose(w: Writer, p: ObjectPose): void { w.u16(p.index).f32(p.x).f32(p.z).f32(p.rot).u16(toU16(p.carriedBy)); }
+function readObjectPose(r: Reader): ObjectPose { const index = r.u16(), x = r.f32(), z = r.f32(), rot = r.f32(); return { index, x, z, rot, carriedBy: fromU16(r.u16()) }; }
 
 function writeName(w: Writer, table: readonly string[], value: string): void {
   const i = table.indexOf(value);
@@ -147,6 +150,7 @@ export function encode(msg: Message): Uint8Array {
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
     case 'say': if (msg.text.length > MAX_CHAT) throw new RangeError('chat line too long for the protocol'); w.u8(T.say).str(msg.text); break;
     case 'rage': w.u8(T.rage); break;
+    case 'object': w.u8(T.object); writeObjectPose(w, msg.pose); break;
     case 'emote': w.u8(T.emote).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'emoted': w.u8(T.emoted).u16(msg.from).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
@@ -170,6 +174,8 @@ export function encode(msg: Message): Uint8Array {
       w.u16(msg.people.length);
       for (const p of msg.people) { writeInfo(w, p.info); writeSnap(w, p.snap); }
       writeMeetings(w, msg.meetings);
+      w.u16(msg.objects.length);
+      for (const o of msg.objects) writeObjectPose(w, o);
       break;
   }
   return w.bytes();
@@ -191,6 +197,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
     case T.say: { const text = r.str(); if (text.length > MAX_CHAT) throw new DecodeError('chat line too long'); msg = { type: 'say', text }; break; }
     case T.rage: msg = { type: 'rage' }; break;
+    case T.object: msg = { type: 'object', pose: readObjectPose(r) }; break;
     case T.emote: msg = { type: 'emote', kind: readIndex(r, EMOTE_KINDS, 'emote') }; break;
     case T.emoted: { const from = r.u16(); msg = { type: 'emoted', from, kind: readIndex(r, EMOTE_KINDS, 'emote') }; break; }
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
@@ -216,7 +223,10 @@ export function decode(bytes: Uint8Array): Message {
       const layout = readLayout(r);
       const n = count(r, 53, 'person'), people: Array<{ info: PersonInfo; snap: PersonSnap }> = [];
       for (let i = 0; i < n; i++) { const info = readInfo(r); people.push({ info, snap: readSnap(r) }); }
-      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, you, layout, people, meetings: readMeetings(r) };
+      const meetings = readMeetings(r);
+      const nObjects = count(r, 16, 'object'), objectsList: ObjectPose[] = [];
+      for (let i = 0; i < nObjects; i++) objectsList.push(readObjectPose(r));
+      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, you, layout, people, meetings, objects: objectsList };
       break;
     }
     default: throw new DecodeError(`unknown message type ${type}`);

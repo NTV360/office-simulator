@@ -6,6 +6,7 @@ import { interactables } from './interactables';
 import { hasSlot } from './person';
 import { newProps } from './props';
 import { counters, deskPool, meetings, people, resetSim, sim } from './state';
+import { movedObjects, objects, resetAllObjects, setObjectPose } from '../world/objects';
 import type { Person } from './types';
 
 // Saving and restoring the world. Only what cannot be recomputed is kept: who is in the office, where they sit and
@@ -13,9 +14,9 @@ import type { Person } from './types';
 // resume as idle where they stood and choose what to do next. Meetings end. Props in hand are dropped.
 // The random stream is not saved either; a restored world continues with fresh randomness.
 
-export const SAVE_VERSION = 2;
-/** Saves written by earlier versions that can still be read (they simply have no owners). */
-const READABLE_VERSIONS = [1, SAVE_VERSION];
+export const SAVE_VERSION = 3;
+/** Saves written by earlier versions that can still be read (version 1 has no owners, versions 1 and 2 no moved objects). */
+const READABLE_VERSIONS = [1, 2, SAVE_VERSION];
 
 export interface SavedPerson {
   id: number;
@@ -43,6 +44,9 @@ export interface SavedPerson {
   owner: number | null;
 }
 
+/** A world object that is not where it started. (Only these are saved: everything else is at home, which the layout data says.) */
+export interface SavedObject { id: string; x: number; z: number; rot: number }
+
 export interface SavedWorld {
   version: typeof SAVE_VERSION;
   clock: { t: number; day: number; speed: number; paused: boolean; lastMinute: number };
@@ -51,6 +55,8 @@ export interface SavedWorld {
   /** The order desks are handed out to new staff, as spot ids. */
   deskOrder: string[];
   people: SavedPerson[];
+  /** The objects that are not at home. */
+  objects: SavedObject[];
 }
 
 export function serializeWorld(): SavedWorld {
@@ -66,6 +72,7 @@ export function serializeWorld(): SavedWorld {
       present: p.state !== 'away', arriveAt: p.arriveAt, leaveAt: p.leaveAt, lunchAt: p.lunchAt, hadLunch: p.hadLunch,
       arrivedAt: p.arrivedAt, coffees: p.coffees, screenKind: p.screenKind, screenVariant: p.screenVariant, owner: p.owner ?? null,
     })),
+    objects: movedObjects().map(o => ({ id: o.id, x: o.x, z: o.z, rot: o.rot })), // (one being carried is saved where it was picked up)
   };
 }
 
@@ -123,7 +130,19 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
       owner: p.owner === undefined || p.owner === null ? null : whole(num(p.owner, w + '.owner', 1, 2 ** 31 - 1), w + '.owner'),
     };
   });
-  return { version: SAVE_VERSION, clock, nameIdx: num(raw.nameIdx, 'nameIdx', 0, 1e9), deskOrder, people: list };
+  const rawObjects = raw.objects === undefined ? [] : raw.objects; // (saves from before objects had none)
+  if (!Array.isArray(rawObjects) || rawObjects.length > 5000) throw new SaveError('objects is not a list');
+  const seenObjects = new Set<string>();
+  const moved = rawObjects.map((o: unknown, i: number): SavedObject => {
+    if (!isObj(o)) throw new SaveError(`objects[${i}] is not an object`);
+    const w = `objects[${i}]`;
+    const id = str(o.id, w + '.id', 40);
+    if (!/^obj:[0-9]{1,5}$/.test(id)) throw new SaveError(`${w}.id is not an object id`);
+    if (seenObjects.has(id)) throw new SaveError(`${w} repeats ${id}`);
+    seenObjects.add(id);
+    return { id, x: num(o.x, w + '.x', -500, 500), z: num(o.z, w + '.z', -500, 500), rot: num(o.rot, w + '.rot', -1000, 1000) };
+  });
+  return { version: SAVE_VERSION, clock, nameIdx: num(raw.nameIdx, 'nameIdx', 0, 1e9), deskOrder, people: list, objects: moved };
 }
 
 /**
@@ -159,5 +178,11 @@ export function restoreWorld(saved: SavedWorld): void {
     people.push(p);
     simEvents.emit('personAdded', p);
   });
+  // objects: everything goes home, then the saved ones go where they were (one this office no longer has is ignored)
+  resetAllObjects();
+  for (const s of saved.objects) {
+    const o = objects.byId(s.id);
+    if (o) setObjectPose(o, s.x, s.z, s.rot);
+  }
   meetings.length = 0;
 }
