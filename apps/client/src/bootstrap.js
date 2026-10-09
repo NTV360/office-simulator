@@ -33,7 +33,7 @@ import { buildWalls } from './world/walls.js';
 
 // The order below is the order the scene is assembled in. It matters: furniture registers interactables and
 // the obstacle list, the nav grid reads those obstacles, and people are seated at the desks.
-export function bootstrap() {
+export function bootstrap({ simulate = true } = {}) {
   // world: building shell, then furniture, then bake static meshes into few draw calls
   buildFloor();
   buildWalls();
@@ -61,8 +61,7 @@ export function bootstrap() {
   // simulation
   initPeopleGroup();
   initPeopleViews(); // before the simulation creates anyone, so each new person gets a body
-  initState();
-  initDay();
+  if (simulate) { initState(); initDay(); } // online, the server's people arrive in a message instead
   initHazel();
   // input and UI
   initCamera();

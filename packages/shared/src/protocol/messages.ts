@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 1;
+export const WIRE_VERSION = 2;
 
 /** Used where a person id, meeting index or similar is "none". */
 export const NONE = -1;
@@ -52,8 +52,12 @@ export interface PersonSnap {
   meeting: number;
   /** Bit i set when the i-th held prop (mug, phone, pad, guitar, putter) is in hand. */
   props: number;
-  arrived: boolean;
+  /** When they came in today (sim minutes), or NONE if they have not. */
+  arrivedAt: number;
   arriveAt: number;
+  leaveAt: number;
+  /** Coffees today, up to 255. */
+  coffees: number;
 }
 
 export interface MeetingSnap {

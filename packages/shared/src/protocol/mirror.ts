@@ -106,7 +106,9 @@ export class Mirror {
     p.state = snap.state;
     p.shown = snap.shown;
     p.arriveAt = snap.arriveAt;
-    p.arrivedAt = snap.arrived ? 1 : null; // the views only ask whether they have arrived
+    p.arrivedAt = snap.arrivedAt === NONE ? null : snap.arrivedAt;
+    p.leaveAt = snap.leaveAt;
+    p.coffees = snap.coffees;
     PROP_KEYS.forEach((k, i) => { p.props[k] = !!(snap.props & (1 << i)); });
     if (snap.kind === '') { p.task = null; return; }
     const spot: TaskSpot | undefined = snap.spot === ONE_OFF_SPOT

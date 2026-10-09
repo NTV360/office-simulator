@@ -44,7 +44,7 @@ export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap 
     partner: t?.partner ? t.partner.id : NONE, chatWith: p.chatWith ? p.chatWith.id : NONE,
     meeting: meeting ? meetings.indexOf(meeting) : NONE,
     props: PROP_KEYS.reduce((bits, k, i) => bits | (p.props[k] ? 1 << i : 0), 0),
-    arrived: p.arrivedAt != null, arriveAt: p.arriveAt,
+    arrivedAt: p.arrivedAt == null ? NONE : p.arrivedAt, arriveAt: p.arriveAt, leaveAt: p.leaveAt, coffees: p.coffees,
   };
   if (oneOff) snap.oneOff = oneOff;
   return snap;

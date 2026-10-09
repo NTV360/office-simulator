@@ -21,15 +21,15 @@ const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
 });
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
   id: 7, state: 'doing', shown: true, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
-  partner: NONE, chatWith: NONE, meeting: NONE, props: 0b00001, arrived: true, arriveAt: 512.5, ...over,
+  partner: NONE, chatWith: NONE, meeting: NONE, props: 0b00001, arrivedAt: 500.25, arriveAt: 512.5, leaveAt: 1030.5, coffees: 2, ...over,
 });
 
 /** Compare a decoded snapshot record with the original, allowing for the format's rounding. */
 function expectSameSnap(got: PersonSnap, want: PersonSnap) {
   const angle = (a: number) => ((a % TAU) + TAU) % TAU;
-  const { x, z, face, walkPhase, oneOff, arriveAt, ...rest } = got;
-  const { x: wx, z: wz, face: wf, walkPhase: ww, oneOff: wo, arriveAt: wa, ...wrest } = want;
-  expect(arriveAt).toBeCloseTo(wa, 3);
+  const { x, z, face, walkPhase, oneOff, arriveAt, arrivedAt, leaveAt, ...rest } = got;
+  const { x: wx, z: wz, face: wf, walkPhase: ww, oneOff: wo, arriveAt: wa, arrivedAt: wd, leaveAt: wl, ...wrest } = want;
+  expect(arriveAt).toBeCloseTo(wa, 3); expect(arrivedAt).toBeCloseTo(wd, 3); expect(leaveAt).toBeCloseTo(wl, 3);
   expect(rest).toEqual(wrest);
   expect(x).toBeCloseTo(wx, 4); expect(z).toBeCloseTo(wz, 4);
   const d = (a: number, b: number) => Math.min(Math.abs(angle(a) - angle(b)), TAU - Math.abs(angle(a) - angle(b)));
@@ -39,7 +39,7 @@ function expectSameSnap(got: PersonSnap, want: PersonSnap) {
 
 const welcome = (): Welcome => ({
   type: 'welcome', tick: 123456, tickRate: 20, simTime: 601.25, day: 3, speed: 3, paused: false, you: NONE, layout: { spots: 145, hash: 0xdeadbeef },
-  people: [{ info: info(), snap: snap() }, { info: info({ id: 8, name: 'Marco C.', slot: NONE }), snap: snap({ id: 8, state: 'away', shown: false, kind: '', anim: '', cat: '', spot: 0, arrived: false }) }],
+  people: [{ info: info(), snap: snap() }, { info: info({ id: 8, name: 'Marco C.', slot: NONE }), snap: snap({ id: 8, state: 'away', shown: false, kind: '', anim: '', cat: '', spot: 0, arrivedAt: NONE }) }],
   meetings: [{ room: 1, topic: 'sprint review', start: 580, end: 610.5, speaker: 7, members: [7, 8] }],
 });
 
@@ -173,7 +173,7 @@ describe('from the real simulation', () => {
     const full = encode({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, full: true, people: staff.map(p => personSnap(p, meetings)), meetings: meetings.map(meetingSnap) }).length;
     const w = encode({ type: 'welcome', tick: 1, tickRate: 20, simTime: 1, day: 1, speed: 1, paused: false, you: NONE, layout: layoutCheck(), people: staff.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) })), meetings: meetings.map(meetingSnap) }).length;
     console.log(`SIZES  join record ${record} B, full snapshot of 40 people ${full} B (${(full / 40).toFixed(1)} B each), welcome ${w} B`);
-    expect(full / 40).toBeLessThan(40);
+    expect(full / 40).toBeLessThan(50);
     expect(w).toBeLessThan(20_000);
     setSeed(null);
   });

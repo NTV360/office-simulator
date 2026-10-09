@@ -230,17 +230,67 @@ try {
 
   // without a seed the game must behave exactly as it always did: live, and different every time
   console.log('\ndefault mode (no seed)');
-  const a = await openPage(browser, site.url);
+  const a = await openPage(browser, site.url, '?offline');
   const first = await a.page.evaluate(() => ({ paused: window.__sim.sim.paused, t: window.__sim.sim.t, hash: window.__sim.fingerprint().hash }));
   await sleep(1500);
   const later = await a.page.evaluate(() => window.__sim.sim.t);
-  const b = await openPage(browser, site.url);
+  const b = await openPage(browser, site.url, '?offline');
   const other = await b.page.evaluate(() => window.__sim.fingerprint().hash);
   if (first.paused === false) pass('the simulation runs live'); else fail('the simulation started paused without a seed');
   if (later > first.t) pass(`the clock advances on its own (${first.t.toFixed(2)} to ${later.toFixed(2)})`); else fail('the clock did not advance');
   if (first.hash !== other) pass('two loads without a seed differ (still random)'); else fail('two loads without a seed were identical');
   [...a.errors, ...b.errors].forEach(e => fail(e));
   await a.page.close(); await b.page.close();
+
+  // online mode: two browsers watching one server
+  const probe = await openPage(browser, site.url, '?trace');
+  const isOnline = await probe.page.evaluate(() => window.__sim.online);
+  await probe.page.close();
+  if (isOnline) {
+    console.log('\nonline mode (two browsers, one server)');
+    const p1 = await openPage(browser, site.url, '?trace'), p2 = await openPage(browser, site.url, '?trace');
+    const ready = p => p.page.waitForFunction(() => window.__sim.net && window.__sim.net.snapshots > 25, null, { timeout: 15000 });
+    await Promise.all([ready(p1), ready(p2)]);
+    await sleep(2500); // a few keyframes
+    const view = p => p.page.evaluate(() => ({
+      people: window.__sim.people.filter(x => x.controller === 'ai').length,
+      shown: window.__sim.people.filter(x => x.controller === 'ai' && x.body && x.body.root.visible).length,
+      status: document.getElementById('netStatus')?.className,
+      statusText: document.getElementById('netStatus')?.textContent,
+      locked: [...document.querySelectorAll('#staff, #play, [data-speed]')].every(e => e.disabled),
+      layoutOk: window.__sim.net.layoutOk,
+      clock: window.__sim.sim.t,
+      trace: [...window.__sim.net.trace.entries()],
+    }));
+    const [v1, v2] = await Promise.all([view(p1), view(p2)]);
+    if (v1.people === 40 && v2.people === 40) pass('both pages show the 40 people the server has'); else fail(`people: ${v1.people} and ${v2.people}`);
+    if (v1.shown > 20 && v2.shown > 20) pass(`bodies are drawn (${v1.shown} and ${v2.shown} visible)`); else fail(`few bodies visible: ${v1.shown}, ${v2.shown}`);
+    if (v1.status === 'ok' && v2.status === 'ok') pass(`the status says "${v1.statusText}"`); else fail(`status: ${v1.status} / ${v2.status}`);
+    if (v1.locked && v2.locked && v1.layoutOk && v2.layoutOk) pass('server-owned controls are locked, and both offices match the server'); else fail('controls not locked or layout mismatch');
+    if (Math.abs(v1.clock - v2.clock) < 1) pass(`the two clocks agree (${v1.clock.toFixed(2)} and ${v2.clock.toFixed(2)})`); else fail(`clocks differ: ${v1.clock} vs ${v2.clock}`);
+    // at every keyframe both pages hold exactly the server's picture, so the pictures must be identical
+    const m2 = new Map(v2.trace);
+    let common = 0, bad = 0;
+    for (const [tick, people] of v1.trace) {
+      const other = m2.get(tick);
+      if (!other) continue;
+      common++;
+      const same = people.length === other.length && people.every((q, i) => q[0] === other[i][0] && q[3] === other[i][3] && q[4] === other[i][4] && Math.abs(q[1] - other[i][1]) < 1e-4 && Math.abs(q[2] - other[i][2]) < 1e-4);
+      if (!same) bad++;
+    }
+    if (common >= 2 && !bad) pass(`at ${common} shared keyframes both pages hold identical positions, states and tasks`); else fail(`keyframes in common: ${common}, different: ${bad}`);
+    // the ledger and the info card work on mirrored people
+    const ui = await p1.page.evaluate(() => {
+      const p = window.__sim.people.find(x => x.controller === 'ai' && x.state !== 'away');
+      window.__sim.select(p);
+      return { present: document.getElementById('present')?.textContent, card: document.getElementById('pName')?.textContent, status: document.getElementById('pStatus')?.textContent || document.getElementById('pRole')?.textContent };
+    });
+    if (/^\d+ \/ 40 in$/.test(ui.present || '') && ui.card) pass(`ledger "${ui.present}", info card for ${ui.card}`); else fail(`ledger/card: ${JSON.stringify(ui)}`);
+    await p1.page.screenshot({ path: path.join(outDir, 'online-1.png') });
+    [...p1.errors, ...p2.errors].forEach(e => fail(e));
+    if (!p1.errors.length && !p2.errors.length) pass('no errors in either browser console');
+    await p1.page.close(); await p2.page.close();
+  }
 } finally {
   await browser.close();
   site.stop();

@@ -20,6 +20,7 @@ import { following, setView, updateCamera, viewId } from './camera/controller.js
 import { camGoal, camState } from './camera/state.js';
 import { ctl } from './player/control.js';
 import { tp } from './camera/modes/thirdPerson.js';
+import { startOnline } from './net/online.js';
 import { rageShake, updateRage } from './people/hazel.js';
 import { syncBody } from './people/sync.js';
 import { player } from './player/player.js';
@@ -40,13 +41,22 @@ import { scalers, wall } from './world/helpers.js';
 const seedParam = new URLSearchParams(location.search).get('seed');
 if (seedParam !== null) { setSeed(Number(seedParam)); sim.paused = true; }
 
-bootstrap();
+// Online or offline? In the Docker stack the page is built with VITE_ONLINE=1 and is a viewer of the server's office.
+// Anywhere else it runs its own office, as before, unless the address has ?online (same origin, e.g. the dev server
+// proxying to a running server) or ?online=http://host:3000. ?offline forces the old way, and ?seed=N (scripted checks) always does.
+const params = new URLSearchParams(location.search);
+const forceOffline = seedParam !== null || params.has('offline');
+const online = !forceOffline && (import.meta.env.VITE_ONLINE === '1' || params.has('online'));
+
+bootstrap({ simulate: !online });
+const live = online ? startOnline() : null;
 
 /* ================= Main loop ================= */
 let last = performance.now(), uiAcc = 0;
 function tick(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (!sim.paused) {
+  if (live) { live.frame(dt, now); updateScreens(); updateLight(); } // the server runs the simulation; paused or not, keep drawing
+  else if (!sim.paused) {
     stepSim(dt);
     updateScreens(); updateLight();
   }
@@ -69,6 +79,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { layoutData: () => spotsToLayout(interactables.all(), OBS), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { net: live ? live.net : null, online, layoutData: () => spotsToLayout(interactables.all(), OBS), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

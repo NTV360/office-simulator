@@ -6,7 +6,7 @@ import { NONE, type MeetingSnap, type PersonInfo, type PersonSnap } from './mess
 
 const info: PersonInfo = { id: 1, name: 'A', role: 'R', controller: 'ai', spec: DEFAULT_SPEC, slot: 0, screenKind: 'code', screenVariant: 0, arriveAt: 500 };
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
-  id: 1, state: 'doing', shown: true, x: 0, z: 0, face: 0, walkPhase: 0, kind: 'work', anim: 'type', cat: 'work', spot: 1, partner: NONE, chatWith: NONE, meeting: NONE, props: 0, arrived: true, arriveAt: 500, ...over,
+  id: 1, state: 'doing', shown: true, x: 0, z: 0, face: 0, walkPhase: 0, kind: 'work', anim: 'type', cat: 'work', spot: 1, partner: NONE, chatWith: NONE, meeting: NONE, props: 0, arrivedAt: 500, arriveAt: 500, leaveAt: 1000, coffees: 0, ...over,
 });
 const meeting = (i: number): MeetingSnap => ({ room: 1, topic: 't' + i, start: 1, end: 2, speaker: NONE, members: [] });
 

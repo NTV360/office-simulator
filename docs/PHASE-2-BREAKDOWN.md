@@ -1,6 +1,6 @@
 # Phase 2 breakdown: server and persistence
 
-**Status: in progress. Steps 0 to 5 are done; steps 6 and 7 are next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
+**Status: in progress. Steps 0 to 6 are done; step 7 is next.** This turns phase 2 of [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#17-phased-plan) into small, ordered, individually testable steps. Phase 1 made the simulation run in Node; phase 2 runs it on a server and lets browsers watch.
 
 **Done when (from the plan):** two browsers see the same office, and a server restart brings back the same people, positions and clock. Players, accounts and prediction are phases 3 and 4; here every browser is a **viewer**.
 
@@ -24,7 +24,7 @@
 | **3** (**done**) | Realtime gateway | Socket.IO (websocket only) gateway: a viewer connects, gets `welcome` (full world), then `volatile` snapshots each tick and events; clean disconnect | Node integration test with `socket.io-client`: two clients receive the same tick; a slow client does not block |
 | **4** (**done**) | Persistence | Prisma schema and migration; the world is saved on an interval and on shutdown, and restored at boot (people, desks, schedules, positions, clock, day, settings) | Test: save, rebuild a fresh world from the database, and compare. Docker: restart the server container and the same people appear |
 | **5** (**done**) | Admin settings | Slot count, pause, speed changeable at runtime through `/api/admin/*`, guarded by an `ADMIN_TOKEN` from the environment (real accounts come in phase 3); changes are saved and broadcast | Tests: auth required, values clamped, change shows up in snapshots and survives a restart |
-| **6** | Viewer client | An online mode: connect, apply `welcome`, interpolate snapshots, draw. The client does not step the simulation in this mode. Offline mode stays as it is | Browser runner: two pages connected to one server show the same positions and clock; the offline recordings are unchanged |
+| **6** (**done**) | Viewer client | An online mode: connect, apply `welcome`, interpolate snapshots, draw. The client does not step the simulation in this mode. Offline mode stays as it is | Browser runner: two pages connected to one server show the same positions and clock; the offline recordings are unchanged |
 | **7** | Docker and end to end | Compose wires the server to the database and the proxy for `/socket.io`; a single script starts the stack, connects two browsers, restarts the server and checks the office came back | `npm run e2e` passes against the compose stack |
 
 ## 3. How each step is checked
@@ -109,3 +109,14 @@ A fresh review of the first four steps found, and the follow-up commit fixed: a 
 4. **Effects reach everyone.** Speed and pause are in every snapshot; staff added or removed are announced as `person`/`leave` messages (the gateway already listened for the simulation's events); an announcement is a new simulation event and arrives as an `event` of kind `announce`.
 5. **Saved at once.** Each change triggers a save, and a test with a real database shows slots, speed and pause surviving a restart. Checked in the Docker stack too (30 staff at 3x came back after `docker compose restart server`).
 6. **Still to come with accounts (phase 3):** the shared token is replaced by admin accounts; `kick`, `assign-slot` and `reset-password` need accounts to mean anything.
+
+### Step 6
+
+1. **The client copy of the world is `Mirror`** (`packages/shared/src/protocol/mirror.ts`). It turns messages back into ordinary people objects (task, place, chat partner, meeting, props, times), so animation, the info card, the ledger, the camera and Hazel's buttons work unchanged. It holds its own state, so a test runs it next to a live server world in one process: through a whole working day, every few hundred ticks, every person's state, position, task, place, props, partner and meeting, and every meeting, match the server's.
+2. **Online or offline is decided at build time**, not by probing: the Docker web image is built with `VITE_ONLINE=1`; anywhere else the page runs its own office as before unless the address has `?online` (same origin, for example the dev server, which now proxies `/api` and `/socket.io` to a server on port 3000) or `?online=http://host:3000`. `?offline` and `?seed=N` always mean the old way. Probing was tried first and dropped: a failed request is a console error, which would have made every offline run noisy.
+3. **What the online page does each frame:** no simulation step; people are drawn 150 ms in the past, blended between the two surrounding snapshots (a jump over 2.5 m is a teleport, not a walk); the stride is computed from the movement, like the simulation does; the clock keeps running between snapshots and is corrected by each one. Desk screens and the "who is using the keyboard / darts / golf" markers are rebuilt from where everyone is.
+4. **Controls that belong to the server** (staff count, run/pause, speed) are disabled and say so; they show the server's values. A small status pill shows "Online · N people · latency", "reconnecting", or why the server refused the page (a different office layout or protocol version).
+5. **The wire gained what the info card needs** (when they came in, when they leave, coffees): protocol version 2.
+6. **A fresh welcome replaces everything**, so a dropped connection that reconnects shows the current world with no duplicates. A keyframe repairs a missed leave. A record for someone unknown is ignored and counted.
+7. **Verified in the real stack** by the browser runner: two headless browsers on the Docker site show the same 40 people, identical positions, states and tasks at every shared keyframe, agreeing clocks, drawn bodies, a working ledger and info card, locked controls, and no console errors. The offline recordings are unchanged.
+8. **Local only for now:** the first or third person camera still works online, but your own character is not sent to the server, so nobody else sees it. That arrives with accounts and players (phases 3 and 4).

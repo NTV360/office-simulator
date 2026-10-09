@@ -12,6 +12,8 @@ RUN npm ci -w @office/client
 COPY tsconfig.base.json ./
 COPY apps/client apps/client
 COPY packages/shared packages/shared
+# In this stack the page is a viewer of the server next to it (see apps/client/src/net/online.js).
+ENV VITE_ONLINE=1
 RUN npm run build -w @office/client
 
 FROM caddy:2-alpine

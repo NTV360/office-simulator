@@ -61,7 +61,7 @@ const unquantAngle = (q: number): number => q / 65536 * TAU;
 
 function writeSnap(w: Writer, s: PersonSnap): void {
   w.u16(s.id);
-  w.u8((s.shown ? 1 : 0) | (s.arrived ? 2 : 0));
+  w.u8(s.shown ? 1 : 0);
   w.u8(index(STATES, s.state, 'state'));
   w.f32(s.x).f32(s.z);
   w.u16(quantAngle(s.face)).u16(quantAngle(s.walkPhase));
@@ -74,7 +74,7 @@ function writeSnap(w: Writer, s: PersonSnap): void {
   }
   if (s.meeting !== NONE && s.meeting >= NO_U8) throw new RangeError('meeting index too big for the protocol');
   w.u16(toU16(s.partner)).u16(toU16(s.chatWith)).u8(s.meeting === NONE ? NO_U8 : s.meeting);
-  w.u8(s.props).f32(s.arriveAt);
+  w.u8(s.props).f32(s.arrivedAt).f32(s.arriveAt).f32(s.leaveAt).u8(Math.min(255, s.coffees));
 }
 function readSnap(r: Reader): PersonSnap {
   const id = r.u16();
@@ -88,8 +88,8 @@ function readSnap(r: Reader): PersonSnap {
   if (spot === ONE_OFF_SPOT) oneOff = { x: r.f32(), z: r.f32(), face: unquantAngle(r.u16()), place: r.str() };
   const partner = fromU16(r.u16()), chatWith = fromU16(r.u16());
   const m = r.u8();
-  const props = r.u8(), arriveAt = r.f32();
-  const snap: PersonSnap = { id, state, shown: !!(flags & 1), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrived: !!(flags & 2), arriveAt };
+  const props = r.u8(), arrivedAt = r.f32(), arriveAt = r.f32(), leaveAt = r.f32(), coffees = r.u8();
+  const snap: PersonSnap = { id, state, shown: !!(flags & 1), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees };
   if (oneOff) snap.oneOff = oneOff;
   return snap;
 }
@@ -183,7 +183,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.event: { const kind = readIndex(r, EVENT_KINDS, 'event kind'); msg = { type: 'event', kind, simTime: r.f32(), text: r.str() }; break; }
     case T.snapshot: {
       const tick = r.u32(), simTime = r.f64(), day = r.u16(), speed = r.f32(), flags = r.u8();
-      const n = count(r, 28, 'person'), people: PersonSnap[] = [];
+      const n = count(r, 36, 'person'), people: PersonSnap[] = [];
       for (let i = 0; i < n; i++) people.push(readSnap(r));
       msg = { type: 'snapshot', tick, simTime, day, speed, paused: !!(flags & 1), full: !!(flags & 2), people, meetings: readMeetings(r) };
       break;
@@ -193,7 +193,7 @@ export function decode(bytes: Uint8Array): Message {
       if (version !== WIRE_VERSION) throw new DecodeError(`protocol version ${version}, expected ${WIRE_VERSION}`);
       const tick = r.u32(), tickRate = r.u8(), simTime = r.f64(), day = r.u16(), speed = r.f32(), paused = !!r.u8(), you = fromU16(r.u16());
       const layout = readLayout(r);
-      const n = count(r, 45, 'person'), people: Array<{ info: PersonInfo; snap: PersonSnap }> = [];
+      const n = count(r, 53, 'person'), people: Array<{ info: PersonInfo; snap: PersonSnap }> = [];
       for (let i = 0; i < n; i++) { const info = readInfo(r); people.push({ info, snap: readSnap(r) }); }
       msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, you, layout, people, meetings: readMeetings(r) };
       break;

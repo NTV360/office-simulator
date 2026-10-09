@@ -39,8 +39,9 @@ function expectSame(label: string) {
     const a = personSnap(sp, meetings), b = personSnap(mp, mirror.meetings);
     expect(b.state, `${label}: ${sp.name} state`).toBe(a.state);
     expect(near(a.x, b.x, 1e-4) && near(a.z, b.z, 1e-4), `${label}: ${sp.name} at (${a.x}, ${a.z}) vs (${b.x}, ${b.z})`).toBe(true);
-    for (const k of ['shown', 'kind', 'anim', 'cat', 'spot', 'partner', 'chatWith', 'props', 'arrived'] as const) expect(b[k], `${label}: ${sp.name} ${k}`).toEqual(a[k]);
+    for (const k of ['shown', 'kind', 'anim', 'cat', 'spot', 'partner', 'chatWith', 'props', 'coffees'] as const) expect(b[k], `${label}: ${sp.name} ${k}`).toEqual(a[k]);
     expect(b.meeting, `${label}: ${sp.name} meeting`).toBe(a.meeting);
+    expect(near(a.arrivedAt, b.arrivedAt, 1e-2) && near(a.leaveAt, b.leaveAt, 1e-2), `${label}: ${sp.name} times`).toBe(true);
     expect(mp.name).toBe(sp.name); expect(mp.slot).toBe(sp.slot); expect(mp.screenKind).toBe(sp.screenKind);
   }
   expect(mirror.meetings.map(m => [m.room, m.topic, m.members.map(p => p.id), m.speaker?.id ?? -1]))
