@@ -15,7 +15,7 @@ function applyVisibility(p) {
 function syncBody(p, dt) {
   applyVisibility(p);
   if (p.state === 'away') return;
-  if (!sim.paused || isLocalPlayer(p)) applyPose(p, dt);
+  if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)
   const b = p.body; b.root.position.set(p.pos.x, 0, p.pos.z); b.root.rotation.y = p.face;
   b.ring.position.set(p.pos.x, .015, p.pos.z);
   const cat = p.state === 'walking' ? 'walk' : (p.task?.kind === 'work' && p.chatWith ? 'chat' : p.task?.cat || 'walk');

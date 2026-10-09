@@ -6,10 +6,20 @@ import { N } from '../world/furniture/basics.js';
 // The player's character. A person like the NPCs (same rig, animation and list), but controller 'account':
 // no desk, no schedule, never stepped or picked by the simulation, and not counted as staff. It appears at the entrance the first
 // time it is needed and then stays where it was left.
-const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC), sitting: null, moving: false };
+//
+// Online (see net/online.js) the player is not made here: it is the server's person for this account (`player.person` is set from the
+// welcome message), `player.online` carries `input` and `act` to the server, and `sitting` and `moving` are read back from what the
+// server says. `controlling` is true while a first or third person camera is steering it.
+const player = { person: null, spec: normalizeSpec(DEFAULT_SPEC), sitting: null, moving: false, online: null, controlling: false };
 
-/** Is this person the one the user of THIS page controls? (Other people a human drives are drawn like anyone else.) */
-const isLocalPlayer = p => p === player.person;
+/**
+ * Is this person the one the user of THIS page is steering right now? (Other people a human drives are drawn like anyone else.)
+ * Online, your own person is an ordinary person on the server's list until a first or third person camera is steering it.
+ */
+const isLocalPlayer = p => p === player.person && (!player.online || player.controlling);
+
+/** Can a first or third person view start? Offline always; online only once the server has told us which person is ours. */
+const canPlay = () => !player.online || !!player.person;
 
 function makeBody(spec) {
   const body = buildBody(spec);
@@ -19,7 +29,8 @@ function makeBody(spec) {
 }
 
 function spawnPlayer() {
-  if (player.person) return player.person;
+  if (player.person || player.online) return player.person; // online: the server's person, or none yet
+
   const p = {
     id: -1, name: 'You', role: 'You', spec: player.spec, body: makeBody(player.spec),
     pos: ENTRY.clone(), face: N, faceGoal: N, controller: 'account', state: 'controlled', shown: true, props: newProps(), task: null, chatWith: null,
@@ -40,4 +51,4 @@ function setPlayerSpec(raw) {
   return player.spec;
 }
 
-export { isLocalPlayer, player, setPlayerSpec, spawnPlayer };
+export { canPlay, isLocalPlayer, player, setPlayerSpec, spawnPlayer };

@@ -23,7 +23,7 @@ const thirdPersonMode = {
   enter() {
     const p = spawnPlayer();
     select(null);
-    if (!player.sitting) p.task = null;
+    if (!player.sitting && !player.online) p.task = null;
     beginControl('tp', p, { title: 'Third person', keys: 'WASD move · drag look · wheel zoom · C swap shoulder · Shift run · E sit · V first person · Esc exit' });
     ctl.pitchMin = -.75; ctl.pitchMax = .7; ctl.pitch = -.14;
     ctl.keyHook = k => { if (k === 'c') tp.side = -tp.side; };
@@ -38,7 +38,7 @@ const thirdPersonMode = {
     endControl(ctrl.nextId);
     camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
     $('crosshair').hidden = true;
-    if (p) { p.body.root.visible = true; p.task = player.sitting ? p.task : null; settleOn(p); }
+    if (p) { p.body.root.visible = true; if (!player.online) p.task = player.sitting ? p.task : null; settleOn(p); }
   },
   update(dt) {
     const p = player.person; if (!p) return;

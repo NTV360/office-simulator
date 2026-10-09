@@ -141,6 +141,7 @@ try {
   console.log('\ncamera views');
   fs.mkdirSync(outDir, { recursive: true });
   const { page, errors } = await openPage(browser, site.url);
+  await page.waitForFunction(() => !window.__sim.net || (window.__sim.net.joined && window.__sim.viewId() === 'third'), null, { timeout: 30000 }); // (online: you arrive as your person, in third person)
   let n = 0;
   for (const v of VIEWS) {
     await page.evaluate(view => window.__sim.setView(view), v);
@@ -405,6 +406,123 @@ try {
     [...c.errors, ...watcher.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
     await c.page.close(); await watcher.page.close();
     await adminJson(site.url, 'POST', `/api/admin/users/${cid}/release-slot`); // (leave the desk free for the next run)
+
+    {
+    // driving in the browser: log in, arrive as your person, walk and sit with the keyboard, others see it, log out, come back
+    console.log('\ndriving in the browser');
+    const dtag = String(Date.now() % 1e6);
+    const dname = `drv_${dtag}`, gname = `drg_${dtag}`;
+    const personOf = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p ? { id: p.id, x: p.pos.x, z: p.pos.z, controller: p.controller, state: p.state, task: p.task ? p.task.kind : '' } : null; }, name);
+    const giveDesk = async name => {
+      await adminCreate(site.url, name, 'first-pass-from-admin-1');
+      const id = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(a => a.username === name).id;
+      const spot = (await adminJson(site.url, 'GET', '/api/admin/slots')).body.find(s => s.status === 'unclaimed').spot;
+      const r = await adminJson(site.url, 'POST', `/api/admin/users/${id}/assign-slot`, { spot });
+      if (r.status !== 201) fail(`could not give ${name} a desk: ${r.status}`);
+      return id;
+    };
+    /** Steer the person with the real keys (W, and Shift while far away), following the office's own route, to within a step of `target`. */
+    const walkTo = async (page, getTarget) => {
+      const t0 = Date.now(); let shift = false, last = null;
+      await page.keyboard.down('w');
+      try {
+        while (Date.now() - t0 < 60000) {
+          const st = await page.evaluate(g => {
+            const t = new Function('s', 'with (s) { return ' + g + '; }')(window.__sim); const p = window.__sim.player.person;
+            if (!p || !t) return { err: 'no person or target' };
+            const route = window.__sim.findPath({ x: p.pos.x, z: p.pos.z }, t);
+            if (!route) return { err: 'no route' };
+            const wp = route.find(q => Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > .3) ?? route[route.length - 1];
+            window.__sim.ctl.yaw = Math.atan2(wp.x - p.pos.x, wp.z - p.pos.z);
+            return { d: Math.hypot(t.x - p.pos.x, t.z - p.pos.z) };
+          }, getTarget);
+          if (st.err) throw new Error(st.err);
+          last = st.d;
+          if (st.d < .3) break;
+          if (st.d > 3 && !shift) { await page.keyboard.down('Shift'); shift = true; }
+          if (st.d <= 3 && shift) { await page.keyboard.up('Shift'); shift = false; }
+          await sleep(50);
+        }
+      } finally { await page.keyboard.up('w'); if (shift) await page.keyboard.up('Shift'); }
+      await sleep(500);
+      return last;
+    };
+
+    const did = await giveDesk(dname);
+    const watcher2 = await openPage(browser, site.url, '?trace');
+    const d = await openPage(browser, site.url, '?trace', { login: dname });
+    await d.page.waitForSelector('#creatorScreen', { timeout: 20000 });
+    await d.page.click('#creatorSave');
+    await d.page.waitForFunction(() => !document.getElementById('creatorScreen') && window.__sim.net.joined, null, { timeout: 20000 });
+    const arrived = await d.page.evaluate(() => ({ view: window.__sim.viewId(), you: window.__sim.net.you, mine: window.__sim.player.person && window.__sim.player.person.id, controlling: window.__sim.player.controlling, ctl: window.__sim.ctl.active }));
+    if (arrived.view === 'third' && arrived.mine === arrived.you && arrived.controlling && arrived.ctl) pass('logging in puts you in third person, steering your own person'); else fail(`arrival: ${JSON.stringify(arrived)}`);
+    const desk = await d.page.evaluate(() => { const s = window.__sim.player.person.slot; return s ? { place: s.place, id: s.id } : null; });
+    const info = await d.page.textContent('#deskInfo');
+    if (desk && info === desk.place) pass(`the account box says where you sit ("${info}")`); else fail(`desk info "${info}" vs ${JSON.stringify(desk)}`);
+    if (!(await d.page.$('#guestNote:not([hidden])'))) pass('no guest note for someone with a desk'); else fail('a guest note for someone with a desk');
+
+    // walk to the desk with the keyboard; another browser sees you there
+    const before = await personOf(d.page, dname);
+    const outLeft = await walkTo(d.page, "interactables.of('lounge')[0].approach");
+    const out = await personOf(d.page, dname);
+    if (outLeft < .6 && Math.hypot(out.x - before.x, out.z - before.z) > 2) pass(`walked ${Math.hypot(out.x - before.x, out.z - before.z).toFixed(1)} m to the lounge with W (and Shift)`); else fail(`walk out: ${outLeft} m left, moved ${Math.hypot(out.x - before.x, out.z - before.z)}`);
+    const left = await walkTo(d.page, "interactables.of('desk').find(s => s.id === '" + desk.id + "').approach");
+    const after = await personOf(d.page, dname);
+    if (left < .6 && Math.hypot(after.x - out.x, after.z - out.z) > 2) pass(`and back to the desk (${Math.hypot(after.x - out.x, after.z - out.z).toFixed(1)} m)`); else fail(`walk back: ${left} m left, moved ${Math.hypot(after.x - out.x, after.z - out.z)}`);
+    await sleep(400);
+    const seenWalk = await personOf(watcher2.page, dname);
+    if (seenWalk && Math.hypot(seenWalk.x - after.x, seenWalk.z - after.z) < .5 && seenWalk.controller === 'account') pass('another browser sees them in the same place, driven by a player'); else fail(`watcher sees ${JSON.stringify(seenWalk)} vs ${JSON.stringify(after)}`);
+
+    // sit with E; stand by walking
+    await d.page.keyboard.press('e');
+    await d.page.waitForFunction(() => window.__sim.player.sitting, null, { timeout: 5000 }).then(() => pass('E sits you down'), () => fail('E did not sit'));
+    await watcher2.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.task && p.task.kind === 'playerSit'; }, dname, { timeout: 5000 }).then(() => pass('another browser sees them seated'), () => fail('the watcher does not see them seated'));
+    await screenshotOf(d.page, 'driving-seated.png');
+    await d.page.keyboard.down('s'); await sleep(500); await d.page.keyboard.up('s');
+    await d.page.waitForFunction(() => !window.__sim.player.sitting, null, { timeout: 5000 }).then(() => pass('walking away stands you up'), () => fail('still seated after walking'));
+
+    // log out: the person stays where it is for a while, log back in and it is the same person in the same place
+    const spot0 = await personOf(d.page, dname);
+    await d.page.click('#accountBox button:last-child');
+    await d.page.waitForSelector('#loginScreen', { timeout: 8000 });
+    await sleep(1200);
+    const held = await personOf(watcher2.page, dname);
+    if (held && held.controller === 'account' && Math.hypot(held.x - spot0.x, held.z - spot0.z) < .5) pass('after logging out the person waits where it stood (the grace period)'); else fail(`after logout: ${JSON.stringify(held)} vs ${JSON.stringify(spot0)}`);
+    await d.page.fill('#loginName', dname);
+    await d.page.fill('#loginPass', 'verify-test-pass-1');
+    await d.page.click('.login-form button[type=submit]');
+    await d.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 20000 });
+    const back = await personOf(d.page, dname);
+    if (back && back.id === spot0.id && Math.hypot(back.x - spot0.x, back.z - spot0.z) < .5) pass('logging back in returns to the same person, where it stands'); else fail(`back: ${JSON.stringify(back)} vs ${JSON.stringify(spot0)}`);
+    if ((await d.page.evaluate(() => window.__sim.viewId())) === 'third') pass('and you are steering it again'); else fail('not in third person after logging back in');
+
+    // log out for good: after the grace period the autopilot takes over, and everyone sees it
+    await d.page.click('#accountBox button:last-child');
+    await watcher2.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.controller === 'ai'; }, dname, { timeout: 60000 }).then(() => pass('after the grace period the person carries on by itself, and others see that'), () => fail('the person was not handed back to the autopilot'));
+    const carried = await personOf(watcher2.page, dname);
+    if (carried && carried.state !== 'controlled') pass(`it is back on autopilot (${carried.state}${carried.task ? ', ' + carried.task : ''})`); else fail(`state after hand back: ${JSON.stringify(carried)}`);
+    const dErr = d.errors.filter(e => !/401|403|Failed to load resource/.test(e));
+    dErr.forEach(e => fail(e));
+    await d.page.close();
+    await adminJson(site.url, 'POST', `/api/admin/users/${did}/release-slot`);
+
+    // a guest: no desk, a note says so, but they can walk and sit in a shared seat
+    const gid = await (async () => { await adminCreate(site.url, gname, 'first-pass-from-admin-1'); return (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(a => a.username === gname).id; })();
+    const g = await openPage(browser, site.url, '?trace', { login: gname });
+    await g.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 20000 });
+    if (await g.page.waitForSelector('#guestNote:not([hidden])', { timeout: 5000 }).then(() => true, () => false)) pass('a guest sees a note that they have no desk yet'); else fail('no guest note');
+    if ((await g.page.textContent('#deskInfo')) === 'Guest · no desk yet') pass('and the account box says "Guest · no desk yet"'); else fail('guest account box text');
+    const g0 = await personOf(g.page, gname);
+    const sofaLeft = await walkTo(g.page, "interactables.of('lounge').find(s => !s.occupant).approach");
+    const g1 = await personOf(g.page, gname);
+    if (sofaLeft < .6 && Math.hypot(g1.x - g0.x, g1.z - g0.z) > 2) pass('a guest walks to the lounge with the keyboard'); else fail(`guest walk: ${sofaLeft} left, moved ${Math.hypot(g1.x - g0.x, g1.z - g0.z)}`);
+    await g.page.keyboard.press('e');
+    await g.page.waitForFunction(() => window.__sim.player.sitting && window.__sim.player.sitting.shared, null, { timeout: 5000 }).then(() => pass('and sits in a shared seat with E'), () => fail('guest could not sit'));
+    await screenshotOf(g.page, 'driving-guest.png');
+    await g.page.close(); await watcher2.page.close();
+    await adminJson(site.url, 'POST', `/api/admin/users/${gid}/disabled`, { disabled: true }); // (a guest who is not coming back)
+
+    }
 
     // the admin page: one password, make accounts, reset a password, disable, desks
     console.log('\nthe admin page');

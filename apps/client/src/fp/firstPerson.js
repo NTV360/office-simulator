@@ -12,7 +12,7 @@ let eye = 1.6;
 function enterFP() {
   const p = spawnPlayer();
   select(null);
-  if (!player.sitting) p.task = null;
+  if (!player.sitting && !player.online) p.task = null;
   beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit' });
   ctl.pitchMin = -1.2; ctl.pitchMax = 1.2;
   eye = 1.6 * p.spec.scale;
@@ -26,7 +26,7 @@ function leaveFP(nextId) {
   endControl(nextId);
   camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
   $('crosshair').hidden = true;
-  if (p) { p.body.root.visible = true; if (!player.sitting) p.task = null; settleOn(p); }
+  if (p) { p.body.root.visible = true; if (!player.sitting && !player.online) p.task = null; settleOn(p); }
 }
 function fpUpdate(dt) {
   const p = player.person; if (!p) return;

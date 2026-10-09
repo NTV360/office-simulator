@@ -33,3 +33,9 @@
 #creatorHeight { width: 100%; }
 .creator-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .creator-actions .btn { width: auto; min-width: 96px; }
+
+/* Who you are, and the note a guest sees. */
+#accountBox #deskInfo { color: #b9c5cd; }
+#accountBox #deskInfo:empty { display: none; }
+#guestNote { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 30; max-width: min(560px, calc(100vw - 24px)); padding: 6px 14px; border-radius: 999px; font: 12px/1.5 system-ui, sans-serif; color: #5a3a00; background: #fbe7c8; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); text-align: center; }
+#guestNote[hidden] { display: none; }

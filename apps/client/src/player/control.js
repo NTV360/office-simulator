@@ -20,7 +20,7 @@ const ctl = {
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
 function beginControl(mode, p, hud) {
   Object.assign(ctl, { active: true, mode, yaw: p.face, pitch: -.08, savedWall: wall.goal });
-  player.moving = false;
+  player.moving = false; player.controlling = true;
   wall.goal = FULL_H;
   document.body.classList.add(mode);
   $('fpBar').hidden = false; $('stick').hidden = !ctl.coarse; $('fpPrompt').hidden = false;
@@ -29,7 +29,8 @@ function beginControl(mode, p, hud) {
 const PLAY_VIEWS = new Set(['fp', 'third']);
 // Stop steering. Stand up unless we are just swapping between first and third person.
 function endControl(nextId) {
-  const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId)) standUp(p);
+  const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId) && !player.online) standUp(p); // (online you stay in your seat until you stand up)
+  player.controlling = false;
   document.body.classList.remove(ctl.mode);
   Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
   wall.goal = ctl.savedWall; ctl.stick.x = ctl.stick.y = 0;
@@ -63,6 +64,7 @@ function pointerUp(e) {
 
 // Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
 function driveLocomotion(dt, p) {
+  if (player.online) return driveOnline(dt, p);
   let f = 0, r = 0, turn = 0;
   if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
   if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
@@ -79,6 +81,31 @@ function driveLocomotion(dt, p) {
   }
   player.moving = moved > 1e-4; p.walkPhase += moved * 4.6; p.animT += dt;
   return { moved, dx, dz };
+}
+
+// Online: the same keys and stick, but nothing moves here. What is wanted (which way, how fast, which way to face) goes to the server,
+// which does the walking by the same rules and sends the result back; where you are, whether you are seated and whether you are
+// moving are read from what it says. The server also stands you up when you walk.
+function driveOnline(dt, p) {
+  let f = 0, r = 0, turn = 0;
+  if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
+  if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
+  if (keys.has('arrowleft')) turn += 1; if (keys.has('arrowright')) turn -= 1;
+  f -= ctl.stick.y; r += ctl.stick.x;
+  ctl.yaw += turn * 2.2 * dt;
+  const len = Math.hypot(f, r);
+  let mx = 0, mz = 0;
+  if (len > .08) {
+    const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw), k = Math.min(1, len) / len;
+    mx = (fx * f + rx * r) * k; mz = (fz * f + rz * r) * k;
+  }
+  // first person faces where you look; third person faces where you walk
+  const heading = ctl.mode === 'fp' ? ctl.yaw : (len > .08 ? Math.atan2(mx, mz) : p.face);
+  player.online.input(mx, mz, heading, keys.has('shift'));
+  const seat = p.task && p.task.kind === 'playerSit' ? p.task.spot : null;
+  if (seat && !player.sitting) { ctl.yaw = seat.face; ctl.pitch = -.12; } // just sat down: look the way the seat faces
+  player.sitting = seat; player.moving = !!p.moving;
+  return { moved: 0, dx: mx, dz: mz };
 }
 
 // Refresh the sit/stand button and the "who am I looking at" label a few times a second.

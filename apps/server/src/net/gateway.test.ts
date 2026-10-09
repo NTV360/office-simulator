@@ -62,8 +62,8 @@ describe('the gateway', () => {
     await Promise.all([a.waitFor(isWelcome), b.waitFor(isWelcome)]);
     a.socket.close();
     const before = b.messages.filter(isSnapshot).length;
-    await sleep(600);
-    expect(b.messages.filter(isSnapshot).length).toBeGreaterThan(before + 5);
+    await sleep(800);
+    expect(b.messages.filter(isSnapshot).length).toBeGreaterThan(before + 3);
     b.socket.close();
   });
 

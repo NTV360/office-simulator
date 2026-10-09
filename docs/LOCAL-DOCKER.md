@@ -70,7 +70,7 @@ curl http://localhost:8080/api/health                    # {"status":"ok","db":"
 
 `npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`. It logs in as a smoke account; the first time, give it `SMOKE_ADMIN_TOKEN` (the server's `ADMIN_TOKEN`) so it can make that account.
 
-For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=<the stack's ADMIN_TOKEN> npm run verify:browser` (the token is how it makes its test accounts). It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
+For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=<the stack's ADMIN_TOKEN> npm run verify:browser` (the token is how it makes its test accounts; start the stack with `GRACE_MS=4000` so its log-out check does not wait 30 seconds). It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
 
 ## Checking the whole thing
 

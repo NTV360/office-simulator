@@ -8,6 +8,7 @@ const JOINTS = ['hipY', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'l
 function animKey(p) {
   if (p.rageK > .3) return 'rage';
   if (isLocalPlayer(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
+  if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? (p.task.anim || 'listenSit') : (p.moving ? 'walk' : 'stand'); // a human somewhere else (online)
   if (p.state === 'walking') return 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;

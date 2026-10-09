@@ -5,7 +5,8 @@ import { updatePrompts } from './prompts.js';
 
 // Sitting down and standing up as the player.
 function seatOK(sp, p) {
-  if (sp.shared) return !sp.occupant || sp.occupant === p;
+  if (sp.occupant && sp.occupant !== p) return false; // somebody (a human at a desk too) is in it
+  if (sp.shared) return true;
   return !sp.owner || sp.owner === p || sp.owner.state === 'away';
 }
 function nearestSeat(p) {
@@ -29,6 +30,7 @@ function standUp(p) {
 }
 function toggleSit() {
   const p = player.person; if (!ctl.active || !p) return;
+  if (player.online) { player.online.act(player.sitting ? 'stand' : 'sit'); return; } // the server decides; the answer arrives as the next snapshot
   if (player.sitting) standUp(p); else { const sp = nearestSeat(p); if (sp) sitDown(p, sp); }
   updatePrompts();
 }

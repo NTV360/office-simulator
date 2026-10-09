@@ -18,6 +18,7 @@ function select(p) {
 const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (isLocalPlayer(p)) return 'Controlled by you';
+  if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? `Sitting at ${p.task.spot?.place || 'a seat'}` : p.moving ? 'Walking around' : 'Standing here';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;
   const t = p.task; if (!t) return 'Getting settled';
   const going = p.state === 'walking';

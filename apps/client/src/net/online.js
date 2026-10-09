@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
 import { getCharacter, showCreator } from './creator.js';
+import { setView, viewId } from '../camera/controller.js';
+import { player } from '../player/player.js';
 import {
   CLOCK, Mirror, PROTOCOL_VERSION, addLog, angDiff, decode, encode, interactables, layoutCheck, people, simEvents, sim, hasSlot,
 } from '@office/shared';
@@ -66,11 +68,51 @@ export function startOnline() {
   const tracing = new URLSearchParams(location.search).has('trace');
   const net = { mirror, rttMs: null, connected: false, layoutOk: true, fatal: null, snapshots: 0, trace: new Map() };
   net.account = null;
+  net.you = null; // the id of the person this account drives (from the welcome)
+  net.joined = false; // the server has accepted our hello: inputs may be sent
+  net.autoView = false; // the first welcome of a login puts you in third person, once
   lockServerControls();
   setStatus('wait', 'Connecting to the server…');
 
   const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
+
+  // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
+  let seq = 1, lastSentAt = 0, lastSent = null;
+  const INPUT_MS = 50, URGENT_MS = 20;
+  function sendInput(mx, mz, heading, run) {
+    if (!net.joined) return;
+    const moving = Math.hypot(mx, mz) > .08;
+    const was = lastSent !== null && lastSent.moving;
+    const turned = lastSent === null ? true : Math.abs(angDiff(lastSent.heading, heading)) > .03;
+    if (!moving && !was && !turned) return; // standing still and not turning: nothing to say (the server stands you still)
+    const now = performance.now(), since = now - lastSentAt;
+    // while moving, repeat every 50 ms so the server keeps believing it (it stops you after a quarter second of silence);
+    // starting or stopping is sent at once
+    if (!(since >= INPUT_MS || (moving !== was && since >= URGENT_MS))) return;
+    lastSentAt = now; lastSent = { moving, heading };
+    send({ type: 'input', seq: seq++, mx, mz, heading, run: !!run });
+  }
+  const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
+  player.online = { input: sendInput, act: sendAct };
+
+  /** Say who you are and whether you have a desk: in the account box, and a note for guests. */
+  function showWho() {
+    const me = net.you !== null ? mirror.people.get(net.you) : null;
+    const box = document.getElementById('accountBox');
+    if (box) {
+      let info = document.getElementById('deskInfo');
+      if (!info) { info = document.createElement('span'); info.id = 'deskInfo'; box.insertBefore(info, box.children[1] ?? null); }
+      info.textContent = !me ? '' : me.slot ? me.slot.place : 'Guest · no desk yet';
+    }
+    let note = document.getElementById('guestNote');
+    const guest = !!me && !me.slot;
+    if (guest && !note) { note = document.createElement('div'); note.id = 'guestNote'; note.setAttribute('role', 'status'); document.body.append(note); }
+    if (note) {
+      note.hidden = !guest;
+      note.textContent = 'You are a guest. You can walk around and sit in shared seats; an admin will give you a desk.';
+    }
+  }
 
   // Make sure someone is logged in (showing the login screen if not), then open the connection.
   let loggingIn = null; // one login at a time, however many things ask for it
@@ -111,7 +153,9 @@ export function startOnline() {
         net.fatal = null;
         socket.disconnect();
         await logout(base);
+        net.you = null; net.joined = false; net.autoView = false; player.person = null;
         mirror.clear();
+        showWho();
         await logIn('You are logged out.');
       });
       document.body.append(box);
@@ -128,7 +172,7 @@ export function startOnline() {
     if (got.loggedOut) { socket.disconnect(); await logIn('Your session has ended. Please log in again.'); return; }
     send({ type: 'hello', version: PROTOCOL_VERSION, ticket: got.ticket });
   });
-  socket.on('disconnect', () => { net.connected = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
+  socket.on('disconnect', () => { net.connected = false; net.joined = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
   socket.on('connect_error', () => { if (!net.fatal) setStatus('wait', 'Cannot reach the server, retrying…'); });
   void logIn();
 
@@ -145,9 +189,13 @@ export function startOnline() {
           return;
         }
         mirror.applyWelcome(msg);
+        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; // (a new connection numbers its messages from the start)
+        player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
         reassignOccupants();
+        showWho();
         setStatus('ok', `Online · ${people.length} people`);
+        if (!net.autoView && player.person && viewId() !== 'fp' && viewId() !== 'third') { net.autoView = true; setView('third'); } // you arrive as your person
         break;
       }
       case 'snapshot':
@@ -162,7 +210,7 @@ export function startOnline() {
         syncClock();
         reassignOccupants();
         break;
-      case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); break;
+      case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); if (msg.info.id === net.you) { player.person = mirror.people.get(net.you) ?? null; showWho(); } break;
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
@@ -194,8 +242,8 @@ export function startOnline() {
 
   /** Shared places (darts, golf, the keyboard) show who is using them: rebuild that from where everyone is. */
   function reassignOccupants() {
-    for (const s of interactables.all()) if (s.shared) s.occupant = null;
-    for (const p of people) if (p.task && p.task.spot.shared && (p.state === 'doing' || p.state === 'walking')) p.task.spot.occupant = p;
+    for (const s of interactables.all()) s.occupant = null;
+    for (const p of people) if (p.task && (p.task.kind === 'playerSit' || (p.task.spot.shared && (p.state === 'doing' || p.state === 'walking')))) p.task.spot.occupant = p; // (a human in a seat, at a desk too)
   }
 
   function pushEvent(e) {
@@ -203,15 +251,41 @@ export function startOnline() {
     addLog(e.kind === 'announce' ? `Announcement: ${e.text}` : e.text);
   }
 
+  /** Walking legs: the stride follows the distance covered (as in the simulation); a human is `moving` if they cover ground. */
+  function trackMotion(p, px, pz, dt) {
+    const d = Math.hypot(p.pos.x - px, p.pos.z - pz);
+    if (p.state === 'walking' || p.state === 'controlled') p.walkPhase += d * 4.6;
+    if (p.state === 'controlled') {
+      p._speed = (p._speed ?? 0) + ((dt > 0 ? d / dt : 0) - (p._speed ?? 0)) * (1 - Math.exp(-dt * 12));
+      p.moving = p._speed > .25;
+    }
+  }
+
   /** Called every frame instead of the simulation step. */
   function frame(dt, now) {
     if (!sim.paused) sim.t += dt * sim.speed * CLOCK; // keep the clock moving between snapshots; the next one corrects it
     const renderT = now - DELAY_MS;
+    // your person is looked up again each frame: a changed look replaces the object
+    if (net.you !== null) player.person = mirror.people.get(net.you) ?? null;
+    if (player.controlling && !player.person) setView('free');
     for (const p of people) {
       const buf = p._buf;
       if (!buf || buf.length === 0) continue; // not someone the server told us about (for example your own local visitor)
       if (p.state !== 'away') p.animT += dt * Math.min(sim.speed, 2.5);
       const px = p.pos.x, pz = p.pos.z;
+      if (p.id === net.you) {
+        // you: the newest position the server has told us, lightly smoothed (not 150 ms in the past like everyone else), so you
+        // react after about one round trip. (Prediction, which removes even that, is phase 4.)
+        const n = buf[buf.length - 1];
+        while (buf.length > 1) buf.shift();
+        if (Math.hypot(n.x - p.pos.x, n.z - p.pos.z) > SNAP_DISTANCE) { p.pos.x = n.x; p.pos.z = n.z; } else {
+          const k = 1 - Math.exp(-dt * 30);
+          p.pos.x += (n.x - p.pos.x) * k; p.pos.z += (n.z - p.pos.z) * k;
+        }
+        if (!player.controlling) { p.face += angDiff(p.face, n.face) * (1 - Math.exp(-dt * 20)); p.faceGoal = p.face; } // (while steering, the camera owns the facing)
+        trackMotion(p, px, pz, dt);
+        continue;
+      }
       let a = buf[0], b = buf[buf.length - 1];
       for (let i = buf.length - 1; i > 0; i--) if (buf[i - 1].t <= renderT) { a = buf[i - 1]; b = buf[i]; break; }
       if (buf.length > 2) while (buf.length > 2 && buf[1].t <= renderT) buf.shift(); // keep the segment we are in
@@ -222,7 +296,7 @@ export function startOnline() {
       p.pos.z = a.z + (b.z - a.z) * k;
       p.face = a.face + angDiff(a.face, b.face) * k;
       p.faceGoal = p.face;
-      if (p.state === 'walking') p.walkPhase += Math.hypot(p.pos.x - px, p.pos.z - pz) * 4.6; // the same stride as the simulation
+      trackMotion(p, px, pz, dt);
     }
     const el = document.getElementById('netStatus');
     if (net.connected && !net.fatal && el && el.className === 'ok') {
