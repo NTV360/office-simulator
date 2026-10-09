@@ -30,6 +30,7 @@ function leaveFP(nextId) {
 }
 function fpUpdate(dt) {
   const p = player.person; if (!p) return;
+  p.body.root.visible = false; // every frame: online a changed look (or a reconnect) replaces the body with a visible one
   driveLocomotion(dt, p);
   p.face = p.faceGoal = player.sitting ? player.sitting.face : ctl.yaw;
   const eyeGoal = (player.sitting ? 1.2 : 1.6) * p.spec.scale; eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));

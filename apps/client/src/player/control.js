@@ -115,6 +115,10 @@ function tickPrompts(dt) { promptAcc += dt; if (promptAcc > .2) { promptAcc = 0;
 function initControl() {
   ctl.coarse = matchMedia('(pointer: coarse)').matches;
   $('fpAct').onclick = toggleSit;
+  // losing the window (or a cancelled touch) must not leave the stick held: online that is a stream of walking orders
+  const releaseStick = () => { ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0; };
+  addEventListener('blur', releaseStick);
+  el.addEventListener('pointercancel', releaseStick);
   $('fpExit').onclick = exitPlay;
   addEventListener('keydown', e => {
     if (!ctl.active || e.target.tagName === 'INPUT') return;

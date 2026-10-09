@@ -79,9 +79,9 @@ export function startOnline() {
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
   let seq = 1, lastSentAt = 0, lastSent = null;
-  const INPUT_MS = 50, URGENT_MS = 20;
+  const INPUT_MS = 50, URGENT_MS = 33;
   function sendInput(mx, mz, heading, run) {
-    if (!net.joined) return;
+    if (!net.joined || !Number.isFinite(mx + mz + heading)) return;
     const moving = Math.hypot(mx, mz) > .08;
     const was = lastSent !== null && lastSent.moving;
     const turned = lastSent === null ? true : Math.abs(angDiff(lastSent.heading, heading)) > .03;
@@ -95,6 +95,14 @@ export function startOnline() {
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
   player.online = { input: sendInput, act: sendAct };
+
+  /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
+  function resetLocal() {
+    net.you = null; net.joined = false; net.autoView = false;
+    player.person = null; player.sitting = null; player.moving = false;
+    if (player.controlling) setView('free');
+    showWho();
+  }
 
   /** Say who you are and whether you have a desk: in the account box, and a note for guests. */
   function showWho() {
@@ -153,9 +161,8 @@ export function startOnline() {
         net.fatal = null;
         socket.disconnect();
         await logout(base);
-        net.you = null; net.joined = false; net.autoView = false; player.person = null;
+        resetLocal();
         mirror.clear();
-        showWho();
         await logIn('You are logged out.');
       });
       document.body.append(box);
@@ -169,7 +176,7 @@ export function startOnline() {
     let got = await mintTicket(base);
     while (got.retryable && socket.connected && !net.fatal) { await new Promise(r => setTimeout(r, 2000)); got = await mintTicket(base); } // busy or no network: wait, do not log out
     if (!socket.connected) return;
-    if (got.loggedOut) { socket.disconnect(); await logIn('Your session has ended. Please log in again.'); return; }
+    if (got.loggedOut) { socket.disconnect(); resetLocal(); mirror.clear(); await logIn('Your session has ended. Please log in again.'); return; }
     send({ type: 'hello', version: PROTOCOL_VERSION, ticket: got.ticket });
   });
   socket.on('disconnect', () => { net.connected = false; net.joined = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
@@ -216,8 +223,9 @@ export function startOnline() {
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':
         socket.disconnect();
-        if (/logged out|session/.test(msg.reason)) { void logIn('Your session has ended. Please log in again.'); break; } // log in and the connection comes back
+        if (/logged out|session/.test(msg.reason)) { resetLocal(); mirror.clear(); void logIn('Your session has ended. Please log in again.'); break; } // log in and the connection comes back
         net.fatal = msg.reason;
+        resetLocal();
         setStatus('bad', `Disconnected: ${msg.reason}`);
         break;
     }
@@ -267,6 +275,7 @@ export function startOnline() {
     const renderT = now - DELAY_MS;
     // your person is looked up again each frame: a changed look replaces the object
     if (net.you !== null) player.person = mirror.people.get(net.you) ?? null;
+    if (net.you !== null && !player.person) net.autoView = false; // (arrive in third person again when the person is back)
     if (player.controlling && !player.person) setView('free');
     for (const p of people) {
       const buf = p._buf;
