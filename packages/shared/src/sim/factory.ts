@@ -14,7 +14,7 @@ import type { Person } from './types';
 /** Create the next staff member at a free desk. Returns null when no desk is free. The new person is away until their arrival time. */
 export function makeStaff(): Person | null {
   const slot = deskPool.find(s => !s.owner); if (!slot) return null;
-  let role = (slot.role as string | undefined) ?? pick(roleBag); // an HR, CTO or cleaner desk seats that role
+  let role = pick(roleBag);
   const spec = randomSpec(role);
   const nameIdx = counters.nameIdx;
   let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';

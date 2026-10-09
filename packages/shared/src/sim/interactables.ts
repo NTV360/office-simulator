@@ -19,8 +19,10 @@ export interface Spot {
   occupant: unknown;
   room?: number;
   group?: string;
-  /** On a desk: the role of whoever sits here (HR, CTO, Cleaner). Desks without one seat the usual mix of roles. */
-  role?: string;
+  /** On a desk: its seat id in the desk data ('A3', 'HR2'), its label ('Desk A3'), and the department it is reserved for (the HR office), if any. */
+  deskId?: string;
+  label?: string;
+  department?: string | null;
   /** The world object (a chair or stool) this seat belongs to: when it moves, the seat moves. */
   object?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

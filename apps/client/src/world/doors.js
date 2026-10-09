@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { S, W, wx, wz } from '@office/shared';
+import { FRONT_Y, S, W, wx, wz } from '@office/shared';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
 import { box, dynamic, scalers, staticRoot } from './helpers.js';
@@ -17,9 +17,9 @@ function buildDoors() {
   doorLeaf(299, 193.6, 25, -1.3, -1);
   doorLeaf(218.5, 224, 24, Math.PI / 2 + 1.25, 1);
   doorLeaf(351.8, 1062, 21, Math.PI / 2 + 1.25, 1);
-  doorLeaf(189.6, 389, 33, -1.15, 1, M.glass, 2.4);
-  doorLeaf(257.4, 389, 33, 1.15, -1, M.glass, 2.4);
-  [189.6, 257.4].forEach(x => { box(staticRoot, .1, 2.4, .1, M.cap, wx(x), 1.2, wz(389)); });
+  doorLeaf(189.6, FRONT_Y, 33, -1.15, 1, M.glass, 2.4);
+  doorLeaf(257.4, FRONT_Y, 33, 1.15, -1, M.glass, 2.4);
+  [189.6, 257.4].forEach(x => { box(staticRoot, .1, 2.4, .1, M.cap, wx(x), 1.2, wz(FRONT_Y)); });
 }
 
 export { doorLeaf, buildDoors };

@@ -96,4 +96,4 @@ describe('stepPlayer', () => {
     expect(walkPx(p.pos.x / S + OX, p.pos.z / S + OY)).toBe(true);
   });
 });
-const OPEN_CELLS = 20647;
+const OPEN_CELLS = 21071;

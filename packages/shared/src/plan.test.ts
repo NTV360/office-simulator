@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FULL_H, LOW_H, OUTER, OX, OY, S, W, WALLS, WALL_T, toPx, wx, wz } from './plan';
+import { FRONT_Y, FULL_H, GLASS_WALLS, LOW_H, OUTER, OX, OY, S, W, WALLS, WALL_T, toPx, wx, wz } from './plan';
 import { Vec3 } from './vec3';
 
 describe('plan coordinates', () => {
@@ -36,12 +36,14 @@ describe('plan coordinates', () => {
 describe('the floor plan data', () => {
   it('has the recorded outline and walls', () => {
     expect(OUTER).toHaveLength(10);
-    expect(WALLS).toHaveLength(20);
+    expect(WALLS).toHaveLength(12);
+    expect(GLASS_WALLS).toHaveLength(8);
     expect(OUTER[0]).toEqual([113.5, 70.8]);
+    expect(FRONT_Y).toBe(425); // the front wall with the entrance doors
   });
 
   it('has only horizontal or vertical walls (the third-person camera collision relies on this)', () => {
-    for (const [x1, y1, x2, y2] of WALLS) expect(x1 === x2 || y1 === y2).toBe(true);
+    for (const [x1, y1, x2, y2] of [...WALLS, ...GLASS_WALLS]) expect(x1 === x2 || y1 === y2).toBe(true);
   });
 
   it('has sensible wall dimensions', () => {

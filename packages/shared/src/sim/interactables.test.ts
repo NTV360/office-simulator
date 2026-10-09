@@ -34,9 +34,9 @@ describe('interactables', () => {
     expect(mkSpot('desk', 1, 1, 0).id).toBe('desk:0');
   });
   it('the entry is the same point as the exit door, and the exit spot is found once registered', () => {
-    expect(ENTRY).toEqual(W(223.5, 420));
+    expect(ENTRY).toEqual(W(223.5, 456));
     expect(exitSpot()).toBeUndefined();
-    const e = mkSpot('exit', 223.5, 420, Math.PI, { shared: false });
+    const e = mkSpot('exit', 223.5, 456, Math.PI, { shared: false });
     expect(exitSpot()).toBe(e);
   });
 });

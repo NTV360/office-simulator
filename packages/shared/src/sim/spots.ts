@@ -1,4 +1,4 @@
-import { W } from '../plan';
+import { FRONT_Y, W } from '../plan';
 import { interactables, type Spot } from './interactables';
 
 export interface SpotOptions {
@@ -10,20 +10,18 @@ export interface SpotOptions {
   shared?: boolean;
   room?: number;
   group?: string;
-  /** A desk that belongs to a role ("HR", "CTO", "Cleaner"): whoever is seated there has that role. */
-  role?: string;
 }
 
 /** Register a spot at a floor-plan position (plan pixels) facing `face`. */
 export function mkSpot(kind: string, px: number, py: number, face: number, o: SpotOptions = {}): Spot {
   return interactables.add({
     kind, pos: W(px, py), approach: o.ap ? W(o.ap[0], o.ap[1]) : W(px, py), face, sit: !!o.sit, hipY: o.hipY ?? .53,
-    place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group, role: o.role,
+    place: o.place || '', shared: o.shared !== false, occupant: null, room: o.room, group: o.group,
   }) as Spot;
 }
 
 /** Where people appear when they arrive in the morning (the door). */
-export const ENTRY = W(223.5, 420);
+export const ENTRY = W(223.5, FRONT_Y + 31);
 
 /** The spot people walk to when they leave. Registered by the world (`buildEntrance`); undefined until then. */
 export const exitSpot = (): Spot | undefined => interactables.of('exit')[0];

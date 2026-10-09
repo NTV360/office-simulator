@@ -145,6 +145,11 @@ describe('a seeded day', () => {
 
   it('the day rolls over: everyone goes home, then gets a new schedule', () => {
     start(1);
+    while (sim.day === 1 && sim.t < 19 * 60 + 5) stepSim(DT);
+    // somebody who has gone home but is still on show when the day ends (otherwise everyone has already hidden themselves and nothing can fail)
+    const gone = staff().find(p => p.state === 'away' && p.task === null)!;
+    expect(gone).toBeDefined();
+    gone.shown = true;
     while (sim.day === 1) stepSim(DT); // the clock jumps back to the morning at 19:10
     expect(sim.day).toBe(2);
     expect(sim.t).toBeLessThan(8 * 60);

@@ -182,7 +182,7 @@ describe('from the real simulation', () => {
 
   it('the layout check is stable, and changes when a spot moves', () => {
     const a = layoutCheck();
-    expect(a.spots).toBe(148);
+    expect(a.spots).toBe(157);
     loadLayout(officeLayout);
     expect(layoutCheck()).toEqual(a);
     const moved = JSON.parse(JSON.stringify(officeLayout));

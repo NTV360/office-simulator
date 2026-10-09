@@ -18,7 +18,6 @@ import { buildFloor } from './world/floor.js';
 import { buildBar } from './world/furniture/bar.js';
 import { buildBooths } from './world/furniture/booths.js';
 import { buildConference } from './world/furniture/conference.js';
-import { buildStations } from './world/furniture/stations.js';
 import { buildDarts } from './world/furniture/darts.js';
 import { buildDesks } from './world/furniture/desks.js';
 import { buildDining } from './world/furniture/dining.js';
@@ -32,6 +31,7 @@ import { buildServer } from './world/furniture/server.js';
 import { buildStorage } from './world/furniture/storage.js';
 import { buildWorkfloor } from './world/furniture/workfloor.js';
 import { buildWalls } from './world/walls.js';
+import { buildWhiteboards } from './world/furniture/whiteboard.js';
 
 // The order below is the order the scene is assembled in. It matters: furniture registers interactables and
 // the obstacle list, the nav grid reads those obstacles, and people are seated at the desks.
@@ -41,6 +41,7 @@ export function bootstrap({ simulate = true } = {}) {
   buildWalls();
   buildDoors();
   buildDesks();
+  buildWhiteboards();
   buildConference();
   buildLounge();
   buildGame();
@@ -54,7 +55,6 @@ export function bootstrap({ simulate = true } = {}) {
   buildMusic();
   buildKitchen();
   buildStorage();
-  buildStations(); // after every other desk, so their ids do not move
   buildPlants();
   buildEntrance();
   buildBake();

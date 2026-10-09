@@ -33,6 +33,14 @@ function buildKitchen() {
     box(staticRoot, .03, .03, .16, M.steel, wx(370.3), 1.21, cz + .19);
     mkSpot('sink', 374, 1049, SO, { place: 'the sink' }); mkSpot('sink', 408, 1049, SO, { place: 'the sink' });
   }
+  // Snack cabinet on the wall above the sink, with a spot in front to grab something from it
+  {
+    const cx = wx(392), cz = wz(1083.3) - .2, w = 1.3;
+    box(staticRoot, w, .62, .36, M.sinkCab, cx, 1.78, cz);
+    [-1, 1].forEach(s => { box(staticRoot, w / 2 - .03, .56, .02, M.deskTop, cx + s * w / 4, 1.78, cz - .19, false); box(staticRoot, .02, .14, .03, M.steel, cx + s * .05, 1.7, cz - .2, false); });
+    mkSpot('snack', 391, 1049, SO, { place: 'the snack cabinet' });
+  }
+  // (the bucket by the counter, and its spot, come in step 2 of phase 6 with the bucket run)
 }
 
 export { buildKitchen };

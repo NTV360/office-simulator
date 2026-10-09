@@ -1,4 +1,4 @@
-import { OUTER } from '../plan';
+import { FRONT_Y, OUTER } from '../plan';
 
 /* ================= Navigation grid ================= */
 /** An obstacle rectangle in plan pixels: [x1, y1, x2, y2] with x1 <= x2 and y1 <= y2. */
@@ -33,7 +33,7 @@ export function nearestWalk(c: number, r: number): [number, number] | null {
 export function initGrid(obstacles: readonly ObstacleRect[]): void {
   for (let r = 0; r < GR; r++) for (let c = 0; c < GC; c++) {
     const x = GX0 + (c + .5) * CS, y = GY0 + (r + .5) * CS;
-    let ok = inPoly(x, y, OUTER) || (x > 182 && x < 265 && y > 385 && y < 432);
+    let ok = inPoly(x, y, OUTER) || (x > 182 && x < 265 && y > FRONT_Y - 4 && y < FRONT_Y + 43); // + the walkway outside the doors
     if (ok) for (const o of obstacles) if (x > o[0] - MARGIN && x < o[2] + MARGIN && y > o[1] - MARGIN && y < o[3] + MARGIN) { ok = false; break; }
     NAV[r * GC + c] = ok ? 1 : 0;
   }
