@@ -337,3 +337,52 @@ describe('session lifetime', () => {
     expect(await auth.authenticate(token)).toBeNull(); // day 31: used daily, still over the limit
   });
 });
+
+describe('an admin reset or disable that lands while a login or a password change is in progress', () => {
+  /** Run `during` at the moment a login is about to store its session (after the password was checked). */
+  const hookSession = (when: 'before' | 'after', during: () => Promise<unknown>) => {
+    const real = store.createSession.bind(store);
+    store.createSession = async (...args: Parameters<typeof real>) => {
+      if (when === 'before') await during();
+      await real(...args);
+      if (when === 'after') await during();
+    };
+  };
+  beforeEach(async () => { await auth.createAccount({ username: 'racer', password: GOOD }); });
+
+  it('a reset after the password was checked but before the session was stored leaves no session behind', async () => {
+    const id = (await store.byLower('racer'))!.id;
+    hookSession('before', () => auth.adminSetPassword(id));
+    expect(await code(auth.login({ username: 'racer', password: GOOD }, ctx()))).toBe('invalid');
+    expect(store.sessions.size).toBe(0);
+  });
+
+  it('a reset just after the session was stored leaves no session behind either', async () => {
+    const id = (await store.byLower('racer'))!.id;
+    hookSession('after', () => auth.adminSetPassword(id));
+    expect(await code(auth.login({ username: 'racer', password: GOOD }, ctx()))).toBe('invalid');
+    expect(store.sessions.size).toBe(0);
+  });
+
+  it('disabling in that moment does the same', async () => {
+    const id = (await store.byLower('racer'))!.id;
+    hookSession('before', () => auth.setDisabled(id, true));
+    expect(await code(auth.login({ username: 'racer', password: GOOD }, ctx()))).toBe('invalid');
+    expect(store.sessions.size).toBe(0);
+  });
+
+  it('a password change that was checked against the old password cannot overwrite the admin reset', async () => {
+    const { account, token } = await auth.login({ username: 'racer', password: GOOD }, ctx());
+    const id = account.id;
+    await auth.adminSetPassword(id, 'set-by-the-admin-1'); // lands while the person is typing the change
+    expect(await code(auth.changePassword(account, token, GOOD, 'my-new-passphrase-9'))).toBe('invalid');
+    const stored = (await store.byId(id))!;
+    expect(stored.mustChangePassword).toBe(true); // the reset still stands
+    expect(await verifyPassword(stored.passwordHash, 'set-by-the-admin-1')).toBe(true);
+  });
+
+  it('without a race all of this still works', async () => {
+    expect((await auth.login({ username: 'racer', password: GOOD }, ctx())).token).toBeTruthy();
+    expect(store.sessions.size).toBe(1);
+  });
+});

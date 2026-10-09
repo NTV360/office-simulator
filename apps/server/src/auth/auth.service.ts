@@ -113,7 +113,15 @@ export class AuthService {
     if (account.disabled) throw new AuthError('disabled', 'this account has been disabled; ask an admin');
     this.failuresByNameAndIp.reset(pair);
     await this.store.touchLogin(account.id);
-    return { account, token: await this.startSession(account, ctx) };
+    const token = await this.startSession(account, ctx);
+    // The password was checked a moment ago (argon2 is slow). If an admin reset it, or disabled the account, in that moment,
+    // the session just made belongs to an old password: drop it.
+    const now = await this.store.byId(account.id);
+    if (!now || now.passwordHash !== account.passwordHash || now.disabled) {
+      await this.store.deleteSession(sha256(token));
+      throw bad;
+    }
+    return { account, token };
   }
 
   /** The account behind a session token, or null. Expired sessions are removed; a used session is renewed. */
@@ -200,6 +208,8 @@ export class AuthService {
     const problem = passwordProblem(next, account.username);
     if (problem) throw new AuthError('weak', problem);
     if (next === current) throw new AuthError('weak', 'choose a different password from the old one');
+    const fresh = await this.store.byId(account.id);
+    if (!fresh || fresh.passwordHash !== account.passwordHash) throw new AuthError('invalid', 'your password was changed meanwhile; log in again'); // (an admin reset it while this was being checked)
     await this.store.setPassword(account.id, await hashPassword(next as string), false);
     await this.store.deleteAccountSessions(account.id, currentToken ? sha256(currentToken) : undefined);
     this.ended({ accountId: account.id, except: currentToken ? sha256(currentToken).toString('hex') : undefined });

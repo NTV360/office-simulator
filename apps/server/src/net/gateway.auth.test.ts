@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setSeed } from '@office/shared';
 import { TicketService } from '../auth/tickets';
 import { GameGateway } from './game.gateway';
+import { PlayService } from '../play/play.service';
 import {
   PASSWORD, api, bootTestServer, connect, enter, hello, isKick, isSnapshot, isWelcome, sessionFor, sleep, ticketFor, type TestServer,
 } from '../test-support';
@@ -137,6 +138,27 @@ describe('one connection per account', () => {
     await sleep(300);
     expect(second.messages.filter(isSnapshot).length).toBeGreaterThan(3); // the newcomer keeps getting the world
     second.socket.close();
+  });
+
+  it('two connections that say hello at the same moment leave only one: the other is dropped, whichever finishes last wins', async () => {
+    const cookie = await sessionFor(base, 'twin_race');
+    const [t1, t2] = [await ticketFor(base, cookie), await ticketFor(base, cookie)];
+    const manager = server.app.get(PlayService).manager();
+    const realAttach = manager.attach.bind(manager);
+    manager.attach = async acc => { await sleep(250); return realAttach(acc); }; // (admission takes a moment, so both are in it together)
+    const a = client(), b = client(); await Promise.all([a.ready, b.ready]);
+    hello(a, t1); hello(b, t2); // back to back: both are being admitted at once
+    await sleep(1500);
+    manager.attach = realAttach;
+    const alive = [a, b].filter(c => c.socket.connected);
+    expect(alive).toHaveLength(1);
+    expect(server.app.get(GameGateway).connectedAccounts).toBeGreaterThanOrEqual(1);
+    const dropped = [a, b].find(c => !c.socket.connected)!;
+    expect(dropped.messages.some(isKick)).toBe(true);
+    expect(alive[0].messages.some(isWelcome)).toBe(true);
+    // the one left is the account's only connection: kicking the account reaches it
+    server.app.get(GameGateway).kickAccount((await server.store.byLower('twin_race'))!.id, 'test over');
+    await alive[0].disconnected;
   });
 
   it('different accounts do not disturb each other', async () => {

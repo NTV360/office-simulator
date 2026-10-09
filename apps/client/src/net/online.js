@@ -16,10 +16,17 @@ const DELAY_MS = 150; // people are drawn this far in the past, so there are alw
 const SNAP_DISTANCE = 2.5; // a jump bigger than this (metres) is a teleport, not a walk
 const MAX_BUFFER = 8;
 
-/** Where /api and /socket.io live. `?online=http://host:3000` points at another server; otherwise the page's own origin. */
+/** Where /api and /socket.io live. `?online=http://localhost:3000` points at a server on this computer; otherwise the page's own origin. */
 export function serverBase() {
   const v = new URLSearchParams(location.search).get('online');
-  return v && /^https?:\/\//.test(v) ? v.replace(/\/$/, '') : '';
+  if (!v || !/^https?:\/\//.test(v)) return '';
+  // only this page's own origin or a server on this computer: a link must not be able to point the login screen (and the
+  // password typed into it) at somebody else's server
+  try {
+    const u = new URL(v);
+    if (u.origin !== location.origin && !['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)) return '';
+    return u.origin;
+  } catch { return ''; }
 }
 
 function statusBox() {

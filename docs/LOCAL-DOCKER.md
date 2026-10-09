@@ -78,6 +78,7 @@ For a deeper check of the containerised site, run the simulation recordings agai
 npm run smoke        # page, files, health, the running world, a realtime connection through the proxy
 npm run test:db      # database tests against a throwaway PostgreSQL (needs Docker)
 npm run e2e          # its OWN copy of the stack: two browsers, an admin change, a restart, a hard kill
+npm run e2e:accounts # its OWN copy again: accounts end to end (admin makes one, first login, drive, restart, kill, log out and back, reset, disable)
 ```
 
 ## Troubleshooting

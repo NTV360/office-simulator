@@ -80,7 +80,7 @@ try {
 
   // ---- 3. she walks to the lounge and sits; the watcher sees both
   const start = await personOf(page, 'ana');
-  const sat = await sitDownSomewhere(page);
+  const sat = await sitDownSomewhere(page, 'lounge', 5); // (a real walk, not the seat next door)
   const seated = await personOf(page, 'ana');
   check('she walks across the office with the keyboard and sits down', sat && Math.hypot(seated.x - start.x, seated.z - start.z) > 2 && seated.task === 'playerSit', `${Math.hypot(seated.x - start.x, seated.z - start.z).toFixed(1)} m`);
   await watcher.page.waitForFunction(() => { const p = window.__sim.people.find(x => x.name === 'ana'); return p && p.task && p.task.kind === 'playerSit'; }, null, { timeout: 8000 }).then(() => check('the watcher sees her seated', true), () => check('the watcher sees her seated', false));

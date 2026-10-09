@@ -36,6 +36,7 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
   }
 
   private async start(): Promise<void> {
+    if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 16) this.log.warn('ADMIN_TOKEN (the admin password) is shorter than 16 characters: anyone who can reach /admin can keep guessing it (10 tries a minute per address). Use a longer one if this network is shared.');
     if (process.env.ADMIN_TOKEN && !process.env.TRUST_PROXY) this.log.warn('ADMIN_TOKEN is set but TRUST_PROXY is not: behind a proxy, every client looks like one address and ten wrong admin passwords from anyone lock the admin out');
     const pool = this.db.pool;
     if (!pool) { this.log.warn('no DATABASE_URL: accounts are switched off'); return; }

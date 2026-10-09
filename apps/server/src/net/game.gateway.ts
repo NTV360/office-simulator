@@ -182,6 +182,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const person = await this.players.manager().attach(account);
       attachedId = account.id;
       if (!socket.connected || socket.data.ended) { this.players.manager().detach(account.id); if (socket.connected) this.kick(socket, 'you have been logged out'); return; }
+      // the check above ran before the wait: two connections admitted at the same moment both found nobody here. Whoever finishes
+      // last wins; the one that was already in is dropped, so an account never has two live connections.
+      const prior = this.byAccount.get(account.id);
+      if (prior && prior !== socket) { this.byAccount.delete(account.id); this.kick(prior, 'you logged in from somewhere else'); }
       this.byAccount.set(account.id, socket);
       clearTimeout(socket.data.timer);
       socket.data.joined = true;

@@ -407,6 +407,19 @@ try {
     await c.page.close(); await watcher.page.close();
     await adminJson(site.url, 'POST', `/api/admin/users/${cid}/release-slot`); // (leave the desk free for the next run)
 
+    // a link must not be able to point the login screen at somebody else's server
+    {
+      const hctx = await browser.newContext(); const hp = await hctx.newPage();
+      const hosts = new Set(); hp.on('request', r => hosts.add(new URL(r.url()).hostname));
+      await hp.route('**/*', route => (new URL(route.request().url()).hostname === 'evil.example' ? route.abort() : route.continue()));
+      await hp.goto(site.url + '/?online=https://evil.example&trace', { waitUntil: 'load' });
+      await hp.waitForSelector('#loginScreen', { timeout: 15000 }).catch(() => {});
+      await hp.fill('#loginName', 'someone'); await hp.fill('#loginPass', 'not-a-real-password'); await hp.keyboard.press('Enter');
+      await sleep(1500);
+      if (!hosts.has('evil.example')) pass('a link cannot point the login screen at another server'); else fail('the page contacted evil.example');
+      await hctx.close();
+    }
+
     {
     // driving in the browser: log in, arrive as your person, walk and sit with the keyboard, others see it, log out, come back
     console.log('\ndriving in the browser');

@@ -123,15 +123,15 @@ export async function walkTo(page, getTarget) {
 
 /**
  * Walk to the nearest free seat of a kind (default the lounge) and sit with E. People come and go, so a seat can be taken on the
- * way: it then tries another, up to four times. Resolves true once seated.
+ * way: it then tries another, up to four times. `minDistance` makes sure it is a real walk. Resolves true once seated.
  */
-export async function sitDownSomewhere(page, kind = 'lounge') {
+export async function sitDownSomewhere(page, kind = 'lounge', minDistance = 0) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const id = await page.evaluate(k => {
+    const id = await page.evaluate(([k, far]) => {
       const p = window.__sim.player.person;
-      const free = window.__sim.interactables.of(k).filter(s => !s.occupant).sort((a, b) => Math.hypot(a.approach.x - p.pos.x, a.approach.z - p.pos.z) - Math.hypot(b.approach.x - p.pos.x, b.approach.z - p.pos.z));
+      const free = window.__sim.interactables.of(k).filter(s => !s.occupant && Math.hypot(s.approach.x - p.pos.x, s.approach.z - p.pos.z) >= far).sort((a, b) => Math.hypot(a.approach.x - p.pos.x, a.approach.z - p.pos.z) - Math.hypot(b.approach.x - p.pos.x, b.approach.z - p.pos.z));
       return free.length ? free[0].id : null;
-    }, kind);
+    }, [kind, minDistance]);
     if (!id) { await sleep(1000); continue; }
     await walkTo(page, `interactables.all().find(s => s.id === '${id}').approach`);
     await page.keyboard.press('e');
