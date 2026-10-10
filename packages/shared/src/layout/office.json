@@ -5705,6 +5705,2406 @@
    "variant": 0,
    "station": null,
    "spot": "dining:17"
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -16.4985,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:0",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9465999999999988,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:0",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.2365999999999984,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:0",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -16.4985,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:1",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.484099999999999,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:1",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.774099999999999,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:1",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -16.4985,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:2",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.021600000000001,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:2",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.311600000000001,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:2",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -16.4985,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:3",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.559100000000001,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:3",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.849100000000001,
+   "z": -17.116349999999997,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:3",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -16.178499999999996,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:4",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 3.0065999999999984,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:4",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.716599999999999,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:4",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -16.178499999999996,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:5",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.544099999999999,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:5",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.254099999999999,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:5",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -16.178499999999996,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:6",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.081600000000002,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:6",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.791600000000002,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:6",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -16.178499999999996,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:7",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.619100000000001,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:7",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.329100000000001,
+   "z": -15.560649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:7",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -12.117649999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:8",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9465999999999988,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:8",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.2365999999999984,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:8",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -12.117649999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:9",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.484099999999999,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:9",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.774099999999999,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:9",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -12.117649999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:10",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.021600000000001,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:10",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.311600000000001,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:10",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -12.117649999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:11",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.559100000000001,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:11",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.849100000000001,
+   "z": -12.737549999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:11",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -11.797649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:12",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 3.0065999999999984,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:12",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.716599999999999,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:12",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -11.797649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:13",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.544099999999999,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:13",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.254099999999999,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:13",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -11.797649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:14",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.081600000000002,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:14",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.791600000000002,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:14",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -11.797649999999997,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:15",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.619100000000001,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:15",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.329100000000001,
+   "z": -11.177749999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:15",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -7.699899999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:16",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9465999999999988,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:16",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.2365999999999984,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:16",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -7.699899999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:17",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.484099999999999,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:17",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.774099999999999,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:17",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -7.699899999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:18",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.021600000000001,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:18",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.311600000000001,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:18",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -7.699899999999999,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:19",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.559100000000001,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:19",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.849100000000001,
+   "z": -8.317749999999998,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:19",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -7.3798999999999975,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:20",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 3.0065999999999984,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:20",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.716599999999999,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:20",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -7.3798999999999975,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:21",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.544099999999999,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:21",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.254099999999999,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:21",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -7.3798999999999975,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:22",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.081600000000002,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:22",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.791600000000002,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:22",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -7.3798999999999975,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:23",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.619100000000001,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:23",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.329100000000001,
+   "z": -6.762049999999998,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:23",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -5.224630000000003,
+   "z": -13.24105,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:24",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -5.254630000000003,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:24",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -4.964630000000003,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:24",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -4.01759,
+   "z": -13.24105,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:25",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -4.0475900000000005,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:25",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -3.7575900000000004,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:25",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -2.8105500000000028,
+   "z": -13.24105,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:26",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -2.8405500000000026,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:26",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -2.550550000000003,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:26",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -1.6035100000000007,
+   "z": -13.24105,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:27",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -1.6335100000000007,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:27",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -1.3435100000000006,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:27",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -0.396470000000003,
+   "z": -13.24105,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:28",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -0.426470000000003,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:28",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -0.13647000000000298,
+   "z": -13.61905,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:28",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -5.224630000000003,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:29",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -5.194630000000003,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:29",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -5.484630000000003,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:29",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -4.01759,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:30",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -3.9875900000000004,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:30",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -4.27759,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:30",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -2.8105500000000028,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:31",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -2.780550000000003,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:31",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -3.0705500000000026,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:31",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -1.6035100000000004,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:32",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -1.5735100000000006,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:32",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -1.8635100000000007,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:32",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -0.3964700000000029,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:33",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -0.36647000000000285,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:33",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -0.6564700000000029,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:33",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -3.0627999999999993,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:34",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9465999999999988,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:34",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.2365999999999984,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:34",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -3.0627999999999993,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:35",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.484099999999999,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:35",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.774099999999999,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:35",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -3.0627999999999993,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:36",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.021600000000001,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:36",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.311600000000001,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:36",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -3.0627999999999993,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:37",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.559100000000001,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:37",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.849100000000001,
+   "z": -3.68065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:37",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": -2.7428,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:38",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 3.0065999999999984,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:38",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.716599999999999,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:38",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": -2.7428,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:39",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.544099999999999,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:39",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.254099999999999,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:39",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": -2.7428,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:40",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.081600000000002,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:40",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.791600000000002,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:40",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": -2.7428,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:41",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.619100000000001,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:41",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.329100000000001,
+   "z": -2.1249499999999992,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:41",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": 1.2627000000000037,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:42",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9465999999999988,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:42",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.2365999999999984,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:42",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": 1.2627000000000037,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:43",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.484099999999999,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:43",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.774099999999999,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:43",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": 1.2627000000000037,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:44",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.021600000000001,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:44",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.311600000000001,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:44",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": 1.2627000000000037,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:45",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.559100000000001,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:45",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.849100000000001,
+   "z": 0.6448500000000029,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:45",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.9765999999999986,
+   "z": 1.5827000000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:46",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 3.0065999999999984,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:46",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.716599999999999,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:46",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.514099999999999,
+   "z": 1.5827000000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:47",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.544099999999999,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:47",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.254099999999999,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:47",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 6.051600000000001,
+   "z": 1.5827000000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:48",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 6.081600000000002,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:48",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.791600000000002,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:48",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.589100000000001,
+   "z": 1.5827000000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:49",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.619100000000001,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:49",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.329100000000001,
+   "z": 2.200550000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:49",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 1.4749749999999986,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:50",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 1.4449749999999986,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:50",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 1.7349749999999986,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:50",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.8792249999999986,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:51",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.849224999999999,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:51",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.139224999999999,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:51",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.283474999999998,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:52",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.253474999999998,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:52",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.543474999999998,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:52",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 5.687725000000001,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:53",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 5.657725000000001,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:53",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.947725000000001,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:53",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.0919750000000015,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:54",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.061975000000001,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:54",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.351975000000001,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:54",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 8.496225,
+   "z": 5.522600000000005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:55",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 8.466225000000001,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:55",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 8.756225,
+   "z": 4.880150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:55",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 1.4749749999999988,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:56",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 1.5049749999999986,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:56",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 1.2149749999999986,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:56",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.8792249999999986,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:57",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.9092249999999984,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:57",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.6192249999999984,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:57",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.283474999999998,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:58",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.313474999999999,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:58",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.023474999999999,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:58",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 5.687725000000001,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:59",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 5.7177250000000015,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:59",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.4277250000000015,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:59",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.0919750000000015,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:60",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.121975000000002,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:60",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.831975000000002,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:60",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 8.496225,
+   "z": 5.842600000000002,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:61",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 8.526225,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:61",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 8.236225000000001,
+   "z": 6.485050000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:61",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 1.429875,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:62",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 1.399875,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:62",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 1.689875,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:62",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.8341250000000002,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:63",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.8041250000000004,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:63",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.094125,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:63",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.2383750000000004,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:64",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.208375,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:64",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 4.498375,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:64",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 5.642625000000001,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:65",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 5.612625,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:65",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.9026250000000005,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:65",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.046875,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:66",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.016875,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:66",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 7.306875,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:66",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 8.451125000000001,
+   "z": 9.710750000000004,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:67",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 8.421125000000002,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:67",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 8.711125000000001,
+   "z": 9.070350000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:67",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 1.4298750000000002,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:68",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 1.459875,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:68",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 1.169875,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:68",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 2.8341250000000002,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:69",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 2.864125,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:69",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 2.5741250000000004,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:69",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 4.2383750000000004,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:70",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 4.268375000000001,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:70",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 3.9783750000000007,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:70",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 5.642625000000001,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:71",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 5.672625000000001,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:71",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 5.382625000000001,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:71",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 7.046875,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:72",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 7.076875,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:72",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 6.786875,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:72",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": 8.451125000000001,
+   "z": 10.030750000000001,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:73",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": 8.481125,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:73",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": 8.191125000000001,
+   "z": 10.671150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:73",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -3.697516666666667,
+   "z": -18.53005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:74",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -3.727516666666667,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:74",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -3.437516666666667,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:74",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -2.740850000000001,
+   "z": -18.53005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:75",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -2.7708500000000007,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:75",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -2.480850000000001,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:75",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -1.784183333333335,
+   "z": -18.53005,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:76",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -1.814183333333335,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:76",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -1.524183333333335,
+   "z": -18.86705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:76",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -3.697516666666667,
+   "z": -18.21005,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:77",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -3.667516666666667,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:77",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -3.957516666666667,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:77",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -2.740850000000001,
+   "z": -18.21005,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:78",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -2.710850000000001,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:78",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -3.0008500000000007,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:78",
+   "spot": null
+  },
+  {
+   "type": "monitor",
+   "x": -1.7841833333333348,
+   "z": -18.21005,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:79",
+   "spot": null
+  },
+  {
+   "type": "keyboard",
+   "x": -1.754183333333335,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:79",
+   "spot": null
+  },
+  {
+   "type": "mouse",
+   "x": -2.044183333333335,
+   "z": -17.87305,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:79",
+   "spot": null
   }
  ],
  "tops": [

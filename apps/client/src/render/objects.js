@@ -19,6 +19,10 @@ const PREFABS = {
   'chair-wood:0': woodChair,
   'stool-bar:0': barStool,
   'mug:0': g => { cyl(g, .04, .035, .1, M.white, 0, .05, 0, 10); },
+  // (the monitor's screen is not part of it: each one shows its own desk, so it is a mesh of its own, attached: see attachToObject)
+  'monitor:0': g => { box(g, .22, .012, .16, M.monitor, 0, .006, 0); box(g, .05, .14, .04, M.monitor, 0, .08, .02); box(g, .58, .34, .03, M.monitor, 0, .27, 0); },
+  'keyboard:0': g => { box(g, .4, .018, .13, M.keyboard, 0, .009, 0, false); },
+  'mouse:0': g => { box(g, .05, .02, .08, M.keyboard, 0, .01, 0, false); },
   'plant-desk:0': g => {
     cyl(g, .06, .05, .1, M.pot, 0, .05, 0, 10);
     const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(.09, 0), M.leaf); leaf.position.set(0, .16, 0); g.add(leaf); // (casts no shadow, as before)
@@ -81,6 +85,21 @@ function write(kind, slot, o) {
   if (o.q) scratch.compose(at.set(o.x, o.y, o.z), tilt.set(o.q[0], o.q[1], o.q[2], o.q[3]), one); // (knocked over, or tilted)
   else scratch.makeRotationY(o.rot).setPosition(o.x, o.y, o.z);
   for (const p of kind.parts) { p.mesh.setMatrixAt(slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; }
+  const att = attached.get(o.index ?? -1);
+  if (att) for (const a of att) a.mesh.matrix.multiplyMatrices(scratch, a.local);
+}
+
+// Meshes fixed to an object that are not part of its kind (a monitor's screen, which shows its own desk): object index -> [{ mesh, local }].
+const attached = new Map();
+/** Fix `mesh` to object `o`: its position and rotation now are where it sits on the object, in the object's own frame; it goes where the object goes. */
+export function attachToObject(o, mesh) {
+  mesh.updateMatrix();
+  mesh.matrixAutoUpdate = false;
+  mesh.userData.dynamic = true;
+  const list = attached.get(o.index) ?? [];
+  list.push({ mesh, local: mesh.matrix.clone() });
+  attached.set(o.index, list);
+  scene.add(mesh);
 }
 
 /** Start drawing an object (it must have a kind this file knows how to draw). Grows the buffers when they are full: rare, not per frame. */
@@ -119,7 +138,7 @@ export function updateCarriedObjects() {
     if (!p || !s) continue;
     p.carrying = true;
     const floor = CATALOGUE[o.type]?.rests !== 'surface';
-    write(s.kind, s.slot, { x: p.pos.x + Math.sin(p.face) * .55, y: floor ? .5 : .95, z: p.pos.z + Math.cos(p.face) * .55, rot: p.face });
+    write(s.kind, s.slot, { index: o.index, x: p.pos.x + Math.sin(p.face) * .55, y: floor ? .5 : .95, z: p.pos.z + Math.cos(p.face) * .55, rot: p.face });
   }
 }
 

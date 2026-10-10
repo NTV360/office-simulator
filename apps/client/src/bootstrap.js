@@ -1,7 +1,8 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initDay, initGrid, initState, lockLayoutCheck } from '@office/shared';
-import { OBS } from './world/helpers.js';
+import { initDay, initGrid, initState, lockLayoutCheck, objects, refreshFootprint, setFixedTops } from '@office/shared';
+import { OBS, TOPS } from './world/helpers.js';
+import { flushLaterObjects } from './world/objects.js';
 import { initLabels } from './render/labels.js';
 import { initPeopleGroup } from './people/group.js';
 import { initPeopleViews } from './people/views.js';
@@ -61,11 +62,14 @@ export function bootstrap({ simulate = true } = {}) {
   buildStorage();
   buildPlants();
   buildEntrance();
+  flushLaterObjects(); // (furniture that became items, after the first ones so their ids stay as they were)
   buildBake();
   initObjectViews(); // the chairs and desk things: drawn instanced, from the object data (not baked)
   initLabels();
   // navigation reads the obstacles registered by the world
   initGrid(OBS);
+  for (const o of objects.all()) refreshFootprint(o); // (items that block walking: tables, sofas, cabinets)
+  setFixedTops(TOPS);
   lockLayoutCheck(); // the fingerprint of the starting layout, before anything is moved
   // simulation; the player's saved look is loaded before anything could spawn them
   initPlayer();

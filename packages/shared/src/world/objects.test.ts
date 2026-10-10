@@ -27,11 +27,16 @@ describe('the catalogue', () => {
 });
 
 describe('the starting objects', () => {
-  it('the office has 162 of them: 100 office chairs, 18 dining chairs, 4 stools, and the things on the desks', () => {
+  it('the office has 402 of them: 100 office chairs, 18 dining chairs, 4 stools, the things on the desks, and every desk\'s computer', () => {
     const kinds: Record<string, number> = {};
     for (const o of objects.all()) kinds[o.type] = (kinds[o.type] || 0) + 1;
-    expect(objects.count()).toBe(162);
-    expect(kinds).toEqual({ 'chair-office': 100, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 8, 'plant-desk': 4 });
+    expect(objects.count()).toBe(402);
+    expect(kinds).toEqual({ 'chair-office': 100, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 8, 'plant-desk': 4, monitor: 80, keyboard: 80, mouse: 80 });
+  });
+  it('the first 162 are the ones there were before furniture became items, in the same order: a world saved before puts its things back on the right ones', () => {
+    const first = new Set(['chair-office', 'chair-wood', 'stool-bar', 'mug', 'notebook', 'plant-desk']);
+    expect(objects.all().slice(0, 162).every(o => first.has(o.type))).toBe(true);
+    expect(objects.all().slice(162).some(o => first.has(o.type))).toBe(false);
   });
   it('ids are obj:0, obj:1... in the order of the layout data, and each knows its place in the list', () => {
     objects.all().forEach((o, i) => { expect(o.id).toBe(`obj:${i}`); expect(o.index).toBe(i); expect(objects.byId(o.id)).toBe(o); expect(objects.at(i)).toBe(o); });
@@ -59,7 +64,7 @@ describe('the starting objects', () => {
     const first = JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]));
     loadLayout(officeLayout);
     expect(JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]))).toBe(first);
-    expect(objects.count()).toBe(162); // (loading again does not stack them)
+    expect(objects.count()).toBe(402); // (loading again does not stack them)
   });
   it('they start at home, and carry nobody', () => {
     expect(objects.all().every(isAtHome)).toBe(true);

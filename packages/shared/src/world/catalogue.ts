@@ -83,6 +83,13 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
   'stool-bar': { label: 'Bar stool', mobility: 'movable', mass: 8, material: 'metal', colliders: BAR_STOOL, top: { y: .75, hw: .12, hd: .12 }, surface: true, radius: .22, rests: 'floor' },
   mug: { label: 'Mug', mobility: 'movable', mass: .35, material: 'ceramic', colliders: [{ shape: 'cylinder', radius: .0375, height: .1, at: [0, .05, 0] }], surface: false, radius: .06, rests: 'surface' },
   notebook: { label: 'Notebook', mobility: 'movable', mass: .35, material: 'paper', colliders: [{ shape: 'box', size: [.2, .025, .27], at: [0, .0125, 0] }], surface: true, radius: .14, rests: 'surface' },
+  // the desk computer: a monitor on its foot (its screen is drawn by the page, at its face), the keyboard and the mouse
+  monitor: {
+    label: 'Monitor', mobility: 'movable', mass: 4.5, material: 'plastic', surface: false, radius: .14, rests: 'surface',
+    colliders: [{ shape: 'box', size: [.22, .012, .16], at: [0, .006, 0] }, { shape: 'box', size: [.05, .14, .04], at: [0, .08, .02] }, { shape: 'box', size: [.58, .34, .03], at: [0, .27, 0] }],
+  },
+  keyboard: { label: 'Keyboard', mobility: 'movable', mass: .5, material: 'plastic', colliders: [{ shape: 'box', size: [.4, .018, .13], at: [0, .009, 0] }], surface: false, radius: .15, rests: 'surface' }, // (a circle for crowding: .2 would be too fat for something .13 deep)
+  mouse: { label: 'Mouse', mobility: 'movable', mass: .09, material: 'plastic', colliders: [{ shape: 'box', size: [.05, .02, .08], at: [0, .01, 0] }], surface: false, radius: .04, rests: 'surface' },
   'plant-desk': {
     label: 'Desk plant', mobility: 'movable', mass: .8, material: 'ceramic', surface: false, radius: .1, rests: 'surface',
     colliders: [{ shape: 'cylinder', radius: .055, height: .1, at: [0, .05, 0] }, { shape: 'sphere', radius: .09, at: [0, .16, 0] }],

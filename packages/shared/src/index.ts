@@ -44,6 +44,7 @@ export * from './world/catalogue';
 export * from './world/materials';
 export * from './world/objects';
 export * from './world/placement';
+export * from './world/footprint';
 export * from './protocol';
 export * from './sim/persist';
 export * from './sim/takeover';

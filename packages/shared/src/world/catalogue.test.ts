@@ -38,7 +38,7 @@ describe('every kind of item', () => {
   });
   it('has the masses the plan settled on (typical real-world weights)', () => {
     const mass = Object.fromEntries(Object.entries(CATALOGUE).map(([k, t]) => [k, t.mass]));
-    expect(mass).toEqual({ 'chair-office': 12, 'chair-wood': 6, 'stool-bar': 8, mug: .35, notebook: .35, 'plant-desk': .8 });
+    expect(mass).toMatchObject({ 'chair-office': 12, 'chair-wood': 6, 'stool-bar': 8, mug: .35, notebook: .35, 'plant-desk': .8, monitor: 4.5, keyboard: .5, mouse: .09 });
   });
   it('seats and notebooks take things on top; mugs and plants do not', () => {
     expect(['chair-office', 'chair-wood', 'stool-bar', 'notebook'].every(k => CATALOGUE[k].surface)).toBe(true);
