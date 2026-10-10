@@ -32,8 +32,6 @@ export interface GatewayOptions {
   maxJoinedMessagesPerSecond: number;
   /** How long after a connection goes away "X left" is put in the activity log (and not at all if they are back by then). */
   leaveLogMs: number;
-  /** A player is told where they are every this many ticks (1: every tick they move; 2: ten times a second at 20 Hz; a bigger number saves the server work with many players). */
-  ackEveryTicks: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
@@ -43,7 +41,6 @@ export const gatewayOptions = (env: Record<string, string | undefined>): Gateway
   maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
   maxJoinedMessagesPerSecond: Number(env.MAX_JOINED_MESSAGES_PER_SECOND) || 60,
   leaveLogMs: Number(env.LEAVE_LOG_MS) || 5000,
-  ackEveryTicks: Math.max(1, Math.floor(Number(env.ACK_EVERY_TICKS)) || 1),
 });
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
@@ -264,7 +261,6 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    * changed, and once a second otherwise, so a player who stands still still hears from the server.
    */
   private sendAcks(tick: number): void {
-    if (tick % this.options.ackEveryTicks !== 0) return;
     const manager = this.players.manager();
     for (const [accountId, socket] of this.byAccount) {
       if (!socket.data.joined) continue;

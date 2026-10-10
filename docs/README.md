@@ -9,6 +9,8 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [ARCHITECTURE.md](ARCHITECTURE.md) | understand the layers, the folders, how the app starts up, and who owns which state |
 | [CODING-STANDARDS.md](CODING-STANDARDS.md) | know the rules for new code (imports, state, naming, git) and the checklist before you push |
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
+| [RUNBOOK.md](RUNBOOK.md) | running the office on a PC: start, stop, back up, restore, update, troubleshooting |
+| [LOAD-TEST.md](LOAD-TEST.md) | the load test (`npm run bots`), the budgets and what was measured |
 | [SUPABASE.md](SUPABASE.md) | the employee records the server imports from Supabase, and the permissions it needs |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
 | [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md) | the ordered, testable steps for making the simulation shareable (done) |

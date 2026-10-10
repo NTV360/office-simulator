@@ -104,6 +104,7 @@ Run what matches what you changed. Each one prints `all checks passed` (or a gre
 | The protocol, a message, the server, or online mode | the Docker stack up (see above), then `npm run smoke`, then `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` |
 | Something that must work **between players** | `npm run e2e:together` (three players walk, sit, talk, wave and see the same office, with a restart and a hard kill). It starts its own copy of the stack. Also `npm run e2e` and `npm run e2e:accounts` if you touched login, saving or takeover |
 | Something about **employees**, linking accounts to them or the import | `npm run e2e:employees` (its own stack and a fake records server) |
+| The **tick, the protocol, or what is sent** (how much the server can carry) | `npm run bots -- --bots=100 --seconds=60` against the Docker stack started with a higher login limit (see [LOAD-TEST.md](LOAD-TEST.md)); it reports against the budgets |
 | Something about **moving things** (chairs, desk items), who may, saving them | `npm run e2e:objects` (its own stack: three players move and tidy things, a restart, a kill, the admin puts them back) |
 | How things are **drawn** (furniture, meshes, materials) | `npm run perf` before and after (draw calls must not go up by more than a few), and `npm run shots before` / `npm run shots after` then `node scripts/compare-shots.mjs before after` to prove the office looks the same |
 

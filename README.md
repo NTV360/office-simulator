@@ -52,6 +52,8 @@ Start with [`docs/`](docs/README.md). It sets the standard for how this codebase
 | [docs/LOCAL-DOCKER.md](docs/LOCAL-DOCKER.md) | the local Docker stack |
 | [docs/MULTIPLAYER-PLAN.md](docs/MULTIPLAYER-PLAN.md) | the plan for accounts, a shared persistent world, voice, and hosting |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | moving work from the old single `index.html`, or from `main`'s `src/` layout |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | running the office on a PC: start, stop, back up, restore, update, what to do when something is wrong |
+| [docs/LOAD-TEST.md](docs/LOAD-TEST.md) | how many players the server carries (`npm run bots`) and the measured results |
 | [docs/SUPABASE.md](docs/SUPABASE.md) | the employee records the server imports, and the grants it needs |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | serving the current demo as a static site (Render notes, not the plan) |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | planned features and follow-ups |

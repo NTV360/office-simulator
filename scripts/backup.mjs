@@ -79,12 +79,12 @@ if (command === 'backup') {
       if (!same) bad++;
       console.log(`  ${same ? 'ok  ' : 'MISS'}  ${t.padEnd(18)} stack ${a.padStart(6)}   restored ${b.padStart(6)}`);
     }
-    const sum = r => text(r(`select coalesce(md5(string_agg(data::text, '' order by id)), 'none') from world_state`));
-    const a = sum(stackSql), b = sum(restored);
-    console.log(`  ${a === b ? 'ok  ' : 'MISS'}  ${'the saved world'.padEnd(18)} checksum ${a.slice(0, 8)} and ${b.slice(0, 8)}`);
-    if (a !== b) bad++;
-    // the stack's world is saved again every few seconds, so a difference of one save is normal: it is only a miss if the world is not there at all
-    ok = bad === 0 || (bad === 1 && a !== b && b !== 'none' && b !== '');
+    // the stack saves its world every few seconds, so a checksum of it moves between the dump and now: compare what does not (how many people, the save version)
+    const shape = r => text(r("select coalesce(jsonb_array_length(data->'people'), -1) || ' people, version ' || coalesce(data->>'version', '?') || ', ' || coalesce(jsonb_array_length(data->'deskOrder'), -1) || ' desks in order' from world_state limit 1"));
+    const a = shape(stackSql), b = shape(restored);
+    console.log(`  ${a === b && a ? 'ok  ' : 'MISS'}  ${'the saved world'.padEnd(18)} stack ${a || 'none'}  |  restored ${b || 'none'}`);
+    if (a !== b || !a) bad++;
+    ok = bad === 0;
     console.log(ok ? '\nthe backup restores: a rehearsal that passed.' : `\n${bad} difference(s): this backup would NOT restore the same data.`);
   } finally { run('docker', ['rm', '-f', name]); }
   process.exit(ok ? 0 : 1);

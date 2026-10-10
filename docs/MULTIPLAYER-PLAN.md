@@ -527,7 +527,7 @@ Sizes are relative (S, M, L), not calendar estimates.
 | 5 | **World objects** (L) — **done** | Furniture split into prefabs and placement data; objects as server entities with persistence; dynamic nav; pick up, place, edit mode, permissions and reset | You can move your chair and personalise your station, and it is all still there after a restart |
 | 6 | **Throwing and physics** (M) | Rapier for objects in motion; throw; shared flight; sleeping bodies | Everyone sees the same thrown object land in the same place, with no cost at rest |
 | 7 | **Voice** (M) | LiveKit container, HTTPS on the LAN, tokens, proximity subscription and 3D audio | People near each other hear each other; people far away do not |
-| 8 | **Harden** (S to M) | Load tests and fixes, backups and restore tested, admin page, runbook | 100 bots meet the budgets on the host PC; a restore from a backup is rehearsed |
+| 8 | **Harden** (S to M) — **done** (see [PHASE-8-BREAKDOWN.md](PHASE-8-BREAKDOWN.md): the 100-player budget is missed in Docker on Windows, met outside it) | Load tests and fixes, backups and restore tested, admin page, runbook | 100 bots meet the budgets on the host PC; a restore from a backup is rehearsed |
 | 9 | **EC2 trial** (S, optional) | The same compose file on an EC2 Linux instance with a domain, the firewall open on 80 and 443 (and the voice ports), and automatic HTTPS | The team can play on EC2 exactly as on the local stack, with the same `.env` shape |
 
 The order lets you **see progress after every phase**. Phases 5 and 6 can swap with 7 if voice matters more to the team than rearranging furniture. Docker is introduced in phase 0 so we never debug containers and gameplay at the same time.
