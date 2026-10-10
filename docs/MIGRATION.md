@@ -1,26 +1,8 @@
 # Migrating work from the old single `index.html`
 
-Until this restructure the whole app was one 2,083-line `index.html` (commit `eae3cd0`, "first commit"). It is now split into modules under `apps/client/src/`. **If you have changes you started against the old file, this page shows you where each part went and how to move your work over.** It is a one-time cost: once a change lives in its own file, merges stop colliding.
-
-The client later moved again, into `apps/client/`, when the repository became a monorepo (phase 0). History was kept with `git mv`, so `git log --follow` still works. All paths below are from the repository root.
+Until this restructure the whole app was one 2,083-line `index.html` (commit `eae3cd0`, "first commit"). It is now split into modules under `src/`. **If you have changes you started against the old file, this page shows you where each part went and how to move your work over.** It is a one-time cost: once a change lives in its own file, merges stop colliding.
 
 A worked example is at the bottom: the "angry hazel" commit (`eb60c07`) was ported exactly this way.
-
-## Work started against `main`'s `src/` layout (after phase 6)
-
-`main` kept the single-app layout (`src/` at the repository root, an Express server in `server/`). This branch is the monorepo, with everything `main` had by 2026-10-10 ported (see [PHASE-6-BREAKDOWN.md](PHASE-6-BREAKDOWN.md)). To move a change from the old layout, apply it by hand at the new path:
-
-| In `main` | Here |
-|---|---|
-| `index.html`, `src/**` (render, world and furniture, camera, ui, character rig and pack, people views and animation, styles) | `apps/client/index.html`, `apps/client/src/**` (same path under `apps/client/`) |
-| `src/sim/*.js` (tasks, day, step, meetings, schedule, live, state) | `packages/shared/src/sim/*.ts` (the same names; TypeScript) |
-| `src/people/{factory,roster,hazel,helper,data}.js` | `packages/shared/src/sim/{factory,roster,hazel,helper,data}.ts` (the page's views stay in `apps/client/src/people/`) |
-| `src/config/{plan,desks}.js`, `src/config/office.js` | `packages/shared/src/{plan,layout/desks,layout/office}.ts`, and the layout data `layout/office.json` (regenerated with `npm run layout:dump`) |
-| `src/core/util.js`, `src/nav/*.js`, `src/world/interactables.js`, `src/player/locomotion.js` | `packages/shared/src/{util,nav/*,sim/interactables,sim/locomotion}.ts` |
-| `src/character/spec.js` | `packages/shared/src/character/spec.ts` (the pack itself stays in `apps/client/src/character/pack/`; its option lists reach shared through `npm run pack:dump`) |
-| `server/**` (Express: employees, attendance, characters) | `apps/server/src/employees/` and `auth/character.controller.ts` (NestJS; see [SUPABASE.md](SUPABASE.md)) |
-
-Two things change in how you write it: anything the simulation does must be **seeded** (`random()` from shared, never `Math.random`) and must **work the same on the server and in the browser**, and anything other people must see has to travel over the protocol (see [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md)).
 
 ## Quick procedure
 
@@ -31,7 +13,7 @@ Two things change in how you write it: anything the simulation does must be **se
    ```
    (`git apply` will not work on this: the target file no longer exists as one piece.)
 3. For each hunk in `my-changes.diff`, find its new home in the [map](#where-everything-went) below and re-apply it by hand there. Translate old names with the [cheat-sheet](#rename-cheat-sheet).
-4. Work that ran at the top level of the old script now belongs inside a `build*()`/`init*()` function called from `apps/client/src/bootstrap.js` (see [CODING-STANDARDS.md](CODING-STANDARDS.md#2-no-work-at-import-time)).
+4. Work that ran at the top level of the old script now belongs inside a `build*()`/`init*()` function called from `src/bootstrap.js` (see [CODING-STANDARDS.md](CODING-STANDARDS.md#2-no-work-at-import-time)).
 5. Run the checklist in [CODING-STANDARDS.md](CODING-STANDARDS.md#before-you-push), then push.
 
 If you prefer to merge instead of porting by hand:
@@ -51,27 +33,27 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 
 | Old lines | Now |
 |---|---|
-| 1 (inline reset style) | `apps/client/src/styles/reset.css` |
-| 7 to 101 (`<style>`) | `apps/client/src/styles/*.css`: `tokens`, `base`, `hud`, `controls`, `ledger`, `person`, `ui-toggle`, `first-person`, `veil`, `responsive` (imported in that order by `main.js`) |
+| 1 (inline reset style) | `src/styles/reset.css` |
+| 7 to 101 (`<style>`) | `src/styles/*.css`: `tokens`, `base`, `hud`, `controls`, `ledger`, `person`, `ui-toggle`, `first-person`, `veil`, `responsive` (imported in that order by `main.js`) |
 | 103 to 200 (body markup) | `index.html` (still markup only) |
 | 201 to 203 (load watchdog) | stays inline in `index.html` |
 | 204 to 206 (import map for three) | removed: `three` comes from npm |
-| line 705 (base64 logo) | `apps/client/src/assets/logo.png` |
+| line 705 (base64 logo) | `src/assets/logo.png` |
 
 **JavaScript**
 
 | Old lines | Now |
 |---|---|
-| 211 to 232 plan data, `OUTER`, `WALLS` | `packages/shared/src/plan.ts` (moved there in phase 1, step 2) |
-| 217 to 221 helpers (`rnd`, `pick`, `shuffle`, `TAU`, `angDiff`) | `packages/shared/src/util.ts` (moved there in phase 1, step 1) |
-| 234 to 265 renderer, scene, sun, theme | `apps/client/src/render/renderer.js` |
-| 267 to 355 textures and `M` materials | `apps/client/src/render/materials.js` |
-| 357 to 412 monitor and TV screens | `apps/client/src/render/screens.js` |
-| 414 to 438 geometry helpers, `OBS`, wall-height state | `apps/client/src/world/helpers.js` |
-| 440 to 457 floor | `apps/client/src/world/floor.js` |
-| 459 to 531 walls, windows, blinds | `apps/client/src/world/walls.js` |
-| 532 to 544 doors | `apps/client/src/world/doors.js` |
-| 546 to 581 `SEATS`, `mkSpot`, chairs, plants | `apps/client/src/world/furniture/basics.js` (`mkSpot` and the registry moved to `packages/shared/src/sim/` in phase 1, step 8) |
+| 211 to 232 plan data, `OUTER`, `WALLS` | `src/config/plan.js` |
+| 217 to 221 helpers (`rnd`, `pick`, `shuffle`, `TAU`, `angDiff`) | `src/core/util.js` |
+| 234 to 265 renderer, scene, sun, theme | `src/render/renderer.js` |
+| 267 to 355 textures and `M` materials | `src/render/materials.js` |
+| 357 to 412 monitor and TV screens | `src/render/screens.js` |
+| 414 to 438 geometry helpers, `OBS`, wall-height state | `src/world/helpers.js` |
+| 440 to 457 floor | `src/world/floor.js` |
+| 459 to 531 walls, windows, blinds | `src/world/walls.js` |
+| 532 to 544 doors | `src/world/doors.js` |
+| 546 to 581 `SEATS`, `mkSpot`, chairs, plants | `src/world/furniture/basics.js` (+ `world/interactables.js`) |
 | 582 to 608 cabinet, TV stand | `furniture/cabinet.js`, `furniture/tv.js` |
 | 609 to 653 desk islands | `furniture/desks.js` |
 | 654 to 681 conference rooms | `furniture/conference.js` |
@@ -87,30 +69,30 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | 1009 to 1034 counter, sink | `furniture/kitchen.js` |
 | 1035 to 1049 storage, lockers | `furniture/storage.js` |
 | 1050 to 1052 plants | `furniture/plants.js` |
-| 1051 to 1054 `EXIT`, `ENTRY` | `ENTRY` in `packages/shared/src/sim/spots.ts`; the exit door in `apps/client/src/world/entrance.js` |
-| 1056 to 1080 `bake` | `apps/client/src/world/bake.js` |
-| 1080 to 1111 labels | `apps/client/src/render/labels.js` |
-| 1113 to 1133 nav grid | `packages/shared/src/nav/grid.ts` (moved in phase 1, step 4) |
-| 1134 to 1171 A* | `packages/shared/src/nav/astar.ts` (moved in phase 1, step 4) |
-| 1173 to 1195 names, roles, activity categories | `packages/shared/src/sim/data.ts` (palettes in `packages/shared/src/character/spec.ts`; both moved in phase 1, step 3) |
-| 1196 to 1274 `buildBody` | `apps/client/src/character/rig.js`, `parts.js`, `gfx.js` |
-| 1276 to 1285 people list, sim clock, log | `packages/shared/src/sim/state.ts` (moved in phase 1, step 8) |
-| 1287 to 1323 `makePerson`, `removePerson`, `scheduleDay` | `packages/shared/src/sim/factory.ts` (the body is made in `apps/client/src/people/views.js`) |
-| 1325 to 1450 activities, `chooseNext` | `packages/shared/src/sim/tasks.ts` |
-| 1451 to 1483 meetings | `packages/shared/src/sim/meetings.ts` |
-| 1484 to 1534 day cycle, initial scene | `packages/shared/src/sim/day.ts` |
-| 1535 to 1613 poses | `apps/client/src/people/animation.js` |
-| 1614 to 1660 per-frame movement | `packages/shared/src/sim/step.ts` |
-| 1662 to 1675 day/night light | `apps/client/src/render/lighting.js` |
-| 1676 to 1716 camera state and views | `apps/client/src/camera/state.js`, `controller.js`, `modes/*`, `orbit.js` |
-| 1717 to 1780 pointer and keyboard input | `apps/client/src/camera/input.js` |
-| 1781 to 1804 jump-to spots, picking | `apps/client/src/camera/spots.js` |
-| 1805 to 1819 camera update | `apps/client/src/camera/controller.js` (`updateCamera`) and `camera/state.js` (`orbitStep`) |
-| 1821 to 1867 selection, person card | `apps/client/src/ui/person.js` |
-| 1869 to 1881 ledger | `apps/client/src/ui/ledger.js` |
-| 1883 to 1906 HUD controls | `apps/client/src/ui/controls.js` |
-| 1908 to 2040 first person | `apps/client/src/fp/firstPerson.js` and `apps/client/src/player/*` |
-| 2042 to 2081 main loop, startup, debug hook | `apps/client/src/main.js` and `apps/client/src/bootstrap.js` |
+| 1051 to 1054 `EXIT`, `ENTRY` | `src/world/entrance.js` |
+| 1056 to 1080 `bake` | `src/world/bake.js` |
+| 1080 to 1111 labels | `src/render/labels.js` |
+| 1113 to 1133 nav grid | `src/nav/grid.js` |
+| 1134 to 1171 A* | `src/nav/astar.js` |
+| 1173 to 1195 names, roles, activity categories | `src/people/data.js` (palettes moved to `character/spec.js`) |
+| 1196 to 1274 `buildBody` | `src/character/rig.js`, `parts.js`, `gfx.js` |
+| 1276 to 1285 people list, sim clock, log | `src/sim/state.js` |
+| 1287 to 1323 `makePerson`, `removePerson`, `scheduleDay` | `src/people/factory.js` |
+| 1325 to 1450 activities, `chooseNext` | `src/sim/tasks.js` |
+| 1451 to 1483 meetings | `src/sim/meetings.js` |
+| 1484 to 1534 day cycle, initial scene | `src/sim/day.js` |
+| 1535 to 1613 poses | `src/people/animation.js` |
+| 1614 to 1660 per-frame movement | `src/sim/step.js` |
+| 1662 to 1675 day/night light | `src/render/lighting.js` |
+| 1676 to 1716 camera state and views | `src/camera/state.js`, `controller.js`, `modes/*`, `orbit.js` |
+| 1717 to 1780 pointer and keyboard input | `src/camera/input.js` |
+| 1781 to 1804 jump-to spots, picking | `src/camera/spots.js` |
+| 1805 to 1819 camera update | `src/camera/controller.js` (`updateCamera`) and `camera/state.js` (`orbitStep`) |
+| 1821 to 1867 selection, person card | `src/ui/person.js` |
+| 1869 to 1881 ledger | `src/ui/ledger.js` |
+| 1883 to 1906 HUD controls | `src/ui/controls.js` |
+| 1908 to 2040 first person | `src/fp/firstPerson.js` and `src/player/*` |
+| 2042 to 2081 main loop, startup, debug hook | `src/main.js` and `src/bootstrap.js` |
 
 ## Rename cheat-sheet
 
@@ -121,7 +103,7 @@ Old line numbers refer to `index.html` at `eae3cd0`.
 | `SEATS.x.push(mkSpot(...))` | `mkSpot(...)` alone; it registers itself |
 | `SEATS.x = []` | not needed |
 | `look`, `p.look.shirt`, `buildBody(look)` | `spec`, `p.spec.shirt`, `buildBody(spec)` (`character/rig.js`) |
-| the `look = {...}` block in `makePerson` | `randomSpec(role)` in `packages/shared/src/character/spec.ts` |
+| the `look = {...}` block in `makePerson` | `randomSpec(role)` in `character/spec.js` |
 | `fp.on` | `ctl.active` (first **or** third person) |
 | `fp.p` | `player.person` (the player is its own entity now) |
 | `fp.sitting`, `fp.moving` | `player.sitting`, `player.moving` |
@@ -145,20 +127,20 @@ That commit added a special character, a rage mode, a music corner and new look 
 
 | What the commit added | Where it lives now |
 |---|---|
-| Hazel's HUD row and styles | `index.html` (removed in phase 6: main dropped the Hazel buttons) |
-| `makeGuitar` (held and on a stand) | `apps/client/src/character/props.js` |
-| Music corner (piano, guitar, notes) | `apps/client/src/world/furniture/music.js` (`buildMusic`, `updateMusic`) |
+| Hazel's HUD row and styles | `index.html`, `src/styles/hazel.css` |
+| `makeGuitar` (held and on a stand) | `src/character/props.js` |
+| Music corner (piano, guitar, notes) | `src/world/furniture/music.js` (`buildMusic`, `updateMusic`) |
 | `SEATS.music` | spots with `group: 'music'`: `interactables.of('music')` |
-| New materials | `apps/client/src/render/materials.js` |
-| Cube head, skirt, bob hair, angry face, guitar on the rig | `apps/client/src/character/rig.js`, `parts.js`, and new `spec` fields (`skirt`, `cube`, `angry`) |
-| Hazel's identity, rage mode, find/rage buttons | her identity is `packages/shared/src/sim/hazel.ts` (the rage mode and the find/rage buttons were removed in phase 6) |
-| Music activity and its start-of-day placement | `packages/shared/src/sim/tasks.ts` (`musicBreak`), `packages/shared/src/sim/day.ts` |
-| Piano, guitar and rage poses | `apps/client/src/people/animation.js` |
-| Rage freezes walking | `packages/shared/src/sim/step.ts` |
-| Status text for piano/guitar | `apps/client/src/ui/person.js` |
-| "Music corner" label | `apps/client/src/render/labels.js` |
-| Camera shake, `updateRage`, `updateMusic` in the loop | `apps/client/src/main.js` |
-| Player can sit at the piano/guitar | `apps/client/src/player/seating.js` |
-| "UX/UI Designer" role verb | `packages/shared/src/sim/data.ts` |
+| New materials | `src/render/materials.js` |
+| Cube head, skirt, bob hair, angry face, guitar on the rig | `src/character/rig.js`, `parts.js`, and new `spec` fields (`skirt`, `cube`, `angry`) |
+| Hazel's identity, rage mode, find/rage buttons | `src/people/hazel.js` |
+| Music activity and its start-of-day placement | `src/sim/tasks.js` (`musicBreak`), `src/sim/day.js` |
+| Piano, guitar and rage poses | `src/people/animation.js` |
+| Rage freezes walking | `src/sim/step.js` |
+| Status text for piano/guitar | `src/ui/person.js` |
+| "Music corner" label | `src/render/labels.js` |
+| Camera shake, `updateRage`, `updateMusic` in the loop | `src/main.js` |
+| Player can sit at the piano/guitar | `src/player/seating.js` |
+| "UX/UI Designer" role verb | `src/people/data.js` |
 
 Two things changed on the way over: Hazel's rage no longer needs a special case for the player possessing her (the player is separate), and her look fields are part of `CharacterSpec`.
