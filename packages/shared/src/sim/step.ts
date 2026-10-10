@@ -16,14 +16,26 @@ import type { Person } from './types';
 // The walk grid each walker's route was last checked against. When it changes (a table or a sofa was moved), a route that now crosses a
 // blocked cell is planned again to the same place; if there is no way round, the old route stands. (Not saved: a restored walker checks again.)
 const checkedAt = new WeakMap<Person, number>();
+const REROUTE_ENDS = { start: .35, end: .6 } as const;
 function reroute(p: Person): void {
   const v = navVersion();
   if (checkedAt.get(p) === v) return;
   checkedAt.set(p, v);
   const path = p.path!;
-  let blocked = false;
-  // (the ends do not count: the start may be a seat being left, and the end is often a seat beside its table)
-  for (let i = Math.max(p.pi, 1); i < path.length - 1 && !blocked; i++) blocked = !walkPx(path[i].x / S + OX, path[i].z / S + OY);
+  // walk the rest of the route in 10 cm steps (a smoothed route is a few long straight stretches: a table can stand in the middle of one).
+  // The ends do not count: the start may be a seat being left, and the end is often a seat beside its table.
+  const pts = [{ x: p.pos.x, z: p.pos.z }, ...path.slice(p.pi)];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+  let blocked = false, run = 0;
+  for (let i = 1; i < pts.length && !blocked; i++) {
+    const a = pts[i - 1], b = pts[i], len = Math.hypot(b.x - a.x, b.z - a.z);
+    for (let t = 0; t < len && !blocked; t += .1, run += .1) {
+      if (run < REROUTE_ENDS.start || run > total - REROUTE_ENDS.end) continue;
+      const k = t / len;
+      blocked = !walkPx((a.x + (b.x - a.x) * k) / S + OX, (a.z + (b.z - a.z) * k) / S + OY);
+    }
+  }
   if (!blocked) return;
   const again = findPath(p.pos, path[path.length - 1]);
   if (again) { p.path = again; p.pi = 0; }

@@ -78,12 +78,17 @@ describe('people walking', () => {
     const path = findPath(from, to)!;
     expect(path).not.toBeNull();
     const p = { pos: new Vec3(from.x, 0, from.z), state: 'walking', path, pi: 0, speed: 1.2, task: null, animT: 0, walkPhase: 0, faceGoal: 0 } as unknown as Person;
-    // a wall of table across the middle of the route, with a way round
-    const mid = path[Math.floor(path.length / 2)], [mx, my] = [mid.x / S + OX, mid.z / S + OY];
+    // a wall of table across the middle of the route, with a way round (the middle of the way, not a corner of the route: it may have none)
+    const [mx, my] = [(from.x + to.x) / 2 / S + OX, (from.z + to.z) / 2 / S + OY];
     setBlocker(1, [mx - 4, my - 30, mx + 4, my + 30]);
     stepPerson(p, .05);
     const again = p.path!;
-    for (let i = 1; i < again.length - 1; i++) expect(walkPx(again[i].x / S + OX, again[i].z / S + OY), `point ${i}`).toBe(true);
+    expect(again).not.toBe(path);
+    // the new way does not cross the table: every 10 cm of it is open floor
+    for (let i = 1; i < again.length; i++) {
+      const a = again[i - 1], c = again[i], len = Math.hypot(c.x - a.x, c.z - a.z);
+      for (let t = 0; t <= len; t += .1) expect(walkPx((a.x + (c.x - a.x) * t / len) / S + OX, (a.z + (c.z - a.z) * t / len) / S + OY), `segment ${i}`).toBe(true);
+    }
     expect(again[again.length - 1].x).toBeCloseTo(to.x, 6);
   });
 

@@ -51,19 +51,24 @@ const MUTATIONS = [
   ['the import takes any profile picture address', 'apps/server/src/employees/supabase-source.ts', "(typeof v === 'string' && PHOTO_URL.test(v) ? v : null);", "(typeof v === 'string' ? v : null);"],
   ['the import asks for the whole metadata', 'apps/server/src/employees/supabase-source.ts', 'select=user_id,photo:metadata->>profileImage&', 'select=user_id,metadata&'],
   ['an import that could not read the pictures clears the stored ones', 'apps/server/src/employees/employee-store.ts', 'character = old.character ?? e.character, photo = e.photo === undefined ? old.photo : e.photo;', 'character = old.character ?? e.character, photo = e.photo ?? null;'],
-  ["a chair can be put in a wall", "packages/shared/src/world/placement.ts", "if (!home && !walkPx(px, py)) return 'blocked';", ""],
+  ["a chair can be put in a wall", "packages/shared/src/world/placement.ts", "if (!home && !walkPx(px, py) && !inOwnFootprint(o, px, py)) return 'blocked';", ""],
   ["a chair can be put on another chair", "packages/shared/src/world/placement.ts", "CATALOGUE[q.type].radius) return 'crowded';", "CATALOGUE[q.type].radius) return null;"],
   ["a seat can be moved where nobody could walk to it", "packages/shared/src/world/placement.ts", "if (!walkPx(ax, ay) || !findPath(ENTRY, a)) return 'unreachable';", ""],
-  ["a chair somebody sits in can be picked up", "packages/shared/src/world/placement.ts", "if (seat && seatInUse(seat)) return 'in-use';", ""],
+  ["a chair somebody sits in can be picked up", "packages/shared/src/world/placement.ts", "if (o.links.some(l => seatInUse(l.spot))) return 'in-use';", ""],
   ["a thing in somebody's hands can be picked up again", "packages/shared/src/world/placement.ts", "if (o.carriedBy !== null) return 'carried';", ""],
   ["a small thing can go off its desk", "packages/shared/src/world/placement.ts", "if (y === null) return 'off-desk';", "if (y === null) return null;"],
-  ["the things at a desk are locked to its owner again", "apps/server/src/play/object-actions.ts", "pickUp(o, person.id);", "if (o.station) return no('locked');\n  pickUp(o, person.id);"],
-  ["things can be picked up from across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, o.x, o.z)) return no('too-far');\n  pickUp(o, person.id);", "pickUp(o, person.id);"],
+  ["the things at a desk are locked to its owner again", "apps/server/src/play/object-actions.ts", "else pickUp(o, person.id, holdFor(o, person, point));", "else if (o.station) return no('locked'); else pickUp(o, person.id, holdFor(o, person, point));"],
+  ["things can be picked up from across the room", "apps/server/src/play/object-actions.ts", "if (!canReach(person, point)) return no('too-far');", ""],
+  ["a hand can take hold of a point that is not on the thing", "apps/server/src/play/object-actions.ts", "if (aimed && !onItem(o, aimed)) return no('too-far');", ""],
+  ["a mug can be taken from someone who has it", "apps/server/src/play/object-actions.ts", "carryOf(o.type) !== 'one-hand' && o.holds.length < MOST_HOLDERS", "o.holds.length < MOST_HOLDERS"],
+  ["big things stop blocking the walk grid", "packages/shared/src/world/footprint.ts", "export const refreshFootprint = (o: WorldObject): void => setBlocker(o.index, footprintOf(o));", "export const refreshFootprint = (o: WorldObject): void => setBlocker(o.index, null);"],
+  ["walkers keep a route a moved table now blocks", "packages/shared/src/sim/step.ts", "  if (again) { p.path = again; p.pi = 0; }", ""],
+  ["a knocked-over chair can still be sat on", "packages/shared/src/world/objects.ts", "return o.carriedBy !== null || (o.q !== null && 2 * Math.asin(Math.min(1, Math.hypot(o.q[0], o.q[2]))) > UNUSABLE_TILT);", "return o.carriedBy !== null;"],
   ["things can be put down across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, x, z)) return no('too-far');", ""],
   ["a person can carry two things", "apps/server/src/play/object-actions.ts", "if (isSeated(person) || carriedBy(person.id)) return no('busy');", "if (isSeated(person)) return no('busy');"],
   ["moving things is not limited", "apps/server/src/play/player-manager.ts", "if (s.objectTokens < 1) return false;", ""],
   ["what a person carried stays out when they are handed back", "packages/shared/src/sim/takeover.ts", "releaseCarried(p.id); // what they carried goes back where it started", ""],
-  ["the autopilot walks to a chair somebody carries", "packages/shared/src/sim/tasks.ts", "if (typeof spot.object === 'string' && objects.byId(spot.object)?.carriedBy != null) return false;", ""],
+  ["the autopilot walks to a chair somebody carries", "packages/shared/src/sim/tasks.ts", "  if (seatUnusable(spot)) return false; // its chair is in somebody's hands, or knocked over", ""],
   ["a person can sit while carrying", "packages/shared/src/sim/driven.ts", " || carriedBy(p.id)) return false; // (put down what you carry first)", ") return false;"],
   ["a person who changed more than their place is sent as only moved", "apps/server/src/net/broadcaster.ts", "=> same({ ...a, x: b.x, z: b.z, face: b.face, walkPhase: b.walkPhase }, b);", "=> true;"],
   ["the move records are left out of the snapshot", "packages/shared/src/protocol/codec.ts", "      writeMoves(w, msg.moves ?? []);", "      writeMoves(w, []);"],
@@ -102,7 +107,7 @@ const MUTATIONS = [
   ['a running player is pulled back by a repeated ack', sim + 'prediction.ts', 'if (!at && !idle) {', 'if (false) {'],
   ['a moved chair leaves its seat behind', 'packages/shared/src/world/objects.ts', 'spot.pos.x = x + p.x; spot.pos.z = z + p.z;', ''],
   ['moved objects are not saved', sim + 'persist.ts', 'objects: movedObjects().map(', 'objects: [].map('],
-  ['a restore forgets the moved objects', sim + 'persist.ts', 'if (o) setObjectPose(o, s.x, s.z, s.rot);', ''],
+  ['a restore forgets the moved objects', sim + 'persist.ts', 'if (o) setObjectPose(o, s.x, s.z, s.rot, s.y ?? o.home.y, s.q ?? null);', ''],
   ['the layout fingerprint follows a moved chair', 'packages/shared/src/protocol/convert.ts', 'if (locked && locked.spots ===', 'if (false && locked && locked.spots ==='],
   ['sitting goes through walls', sim + 'driven.ts', 'if (d < bestDistance && clearBetween(p.pos, spot.pos, SEAT_MARGIN)) {', 'if (d < bestDistance) {'],
 ];
@@ -118,7 +123,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', 'packages/shared/src/world/placement.test.ts', 'apps/server/src/play/object-actions.test.ts', sim + 'helper.test.ts', 'apps/server/src/world/world.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/net/mirror.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', 'packages/shared/src/world/placement.test.ts', 'apps/server/src/play/object-actions.test.ts', sim + 'helper.test.ts', 'apps/server/src/world/world.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/net/mirror.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts', 'packages/shared/src/nav/blockers.test.ts', 'packages/shared/src/world/arms.test.ts', 'apps/server/src/physics/holding.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;
