@@ -43,8 +43,9 @@ function island(def, gap = SEAT_GAP) {
       box(f, .05, .02, .08, M.keyboard, .26, .77, edge + .2, false);
       // what is on the desk: chosen once, from a fixed number per seat (it used to be different on every page load, so no two pages agreed)
       const rng = seededRandom(spot.index * 7919 + 17), r = rng(), nv = Math.floor(rng() * M.notebook.length);
+      // (the notebook sits clear of the mouse: drawn overlapping, it would rest half on the mouse and tip once things have weight)
       if (r < .3) { placeObjectLocal('mug', px, py, face, -.38, edge + .32, { station: spot.id }); }
-      else if (r < .45) { placeObjectLocal('notebook', px, py, face, .36, edge + .35, { variant: nv, station: spot.id }); }
+      else if (r < .45) { placeObjectLocal('notebook', px, py, face, .36, edge + .38,{ variant: nv, station: spot.id }); }
       else if (r < .52) { placeObjectLocal('plant-desk', px, py, face, -.4, mz - .05, { station: spot.id }); }
     }
   }

@@ -19,7 +19,8 @@ function recordShape(m) {
     if (Math.min(...size) >= .005) shape = { s: 'b', size: size.map(r3), at };
   } else if (m.geometry.type === 'CylinderGeometry') {
     const r = Math.max(p.radiusTop, p.radiusBottom) * Math.max(_s.x, _s.z), h = p.height * _s.y;
-    if (r >= .005 && h >= .005) shape = { s: 'c', r: r3(r), h: r3(h), at };
+    // (a turn about its own upright axis changes nothing, and plant pots get a random one per page: leave it out so the file is the same every time)
+    if (r >= .005 && h >= .005) { shape = { s: 'c', r: r3(r), h: r3(h), at }; if (q && Math.hypot(_q.x, _q.z) < 1e-4) return STATIC_SHAPES.push(shape); }
   } else if (m.geometry.type === 'SphereGeometry') {
     shape = { s: 's', r: r3(p.radius * Math.max(_s.x, _s.y, _s.z)), at };
   }
