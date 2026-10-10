@@ -154,7 +154,7 @@ Each preset is just two numbers. When two items touch, Rapier averages their val
 | fruit | 0.60 | 0.30 | apples, oranges, bananas |
 | rubber | 0.90 | 0.60 | rubber mats, turf |
 
-So a ceramic mug (0.45) on a fabric seat (0.7) has μ ≈ 0.58 and holds until the seat tilts about 30°. On a wood desk (0.5) it holds to about 27°. A glass item on rubber grips hard. These numbers are data: tuning them never needs code.
+So a ceramic mug (0.45) on a fabric seat (0.7) has μ ≈ 0.58 and holds until the seat tilts about 30°. On a wood desk (0.5) μ ≈ 0.48, so it holds to about 25°. A glass item on rubber grips hard. These numbers are data: tuning them never needs code.
 
 ## 5. How an item is defined (proposal)
 

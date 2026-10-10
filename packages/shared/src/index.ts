@@ -41,6 +41,7 @@ export * from './layout/layout';
 export * from './layout/office';
 export * from './layout/desks';
 export * from './world/catalogue';
+export * from './world/materials';
 export * from './world/objects';
 export * from './world/placement';
 export * from './protocol';
