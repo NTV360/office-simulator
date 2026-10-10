@@ -42,6 +42,7 @@ services:
       SIM_SPEED: "${SIM_SPEED:-1}"
       SIM_PAUSED: "${SIM_PAUSED:-false}"
       WORLD_SEED: "${WORLD_SEED:-}"
+      PHYSICS: "${PHYSICS:-on}"
       TRUST_PROXY: "1" # Caddy is one hop in front: use the client address it reports
       ADMIN_USERNAME: "${ADMIN_USERNAME:-}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"

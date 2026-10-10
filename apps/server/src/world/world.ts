@@ -2,6 +2,8 @@ import {
   DEFAULTS, clampSlotCount, ensureHelper, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
+import { ItemPhysics } from '../physics/item-physics';
+import type { StaticShape } from '../physics/physics';
 
 // The world the server runs: the shared simulation, stepped at a fixed rate. The simulation keeps its state in
 // module-level singletons (see docs/PHASE-1-BREAKDOWN.md), so there is exactly one World per process.
@@ -16,6 +18,8 @@ export interface WorldOptions {
   paused: boolean;
   /** Fixes the randomness so a run repeats (tests). Unset in normal use. */
   seed?: number;
+  /** Items fall, rest on each other and slide (docs/ITEMS-PHYSICS-PLAN.md). On unless PHYSICS=off. */
+  physics?: boolean;
 }
 
 export const SPEED_RANGE: [number, number] = [0.25, 8];
@@ -29,7 +33,7 @@ const num = (v: string | undefined, fallback: number): number => {
 };
 const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, v));
 
-/** Read the world settings from environment variables (TICK_RATE, SLOT_COUNT, SIM_SPEED, SIM_PAUSED, WORLD_SEED). */
+/** Read the world settings from environment variables (TICK_RATE, SLOT_COUNT, SIM_SPEED, SIM_PAUSED, WORLD_SEED, PHYSICS). */
 export function readWorldOptions(env: Record<string, string | undefined>): WorldOptions {
   const seed = env.WORLD_SEED !== undefined && env.WORLD_SEED.trim() !== '' ? num(env.WORLD_SEED, NaN) : NaN;
   return {
@@ -38,6 +42,7 @@ export function readWorldOptions(env: Record<string, string | undefined>): World
     speed: clamp(num(env.SIM_SPEED, 1), SPEED_RANGE),
     paused: env.SIM_PAUSED === 'true' || env.SIM_PAUSED === '1',
     seed: Number.isFinite(seed) ? seed : undefined,
+    physics: env.PHYSICS !== 'off',
   };
 }
 
@@ -87,6 +92,8 @@ export class World {
   private stopped = true;
   private readonly listeners: Array<(tick: number) => void> = [];
   private readonly beforeStep: Array<(dt: number, tick: number) => void> = [];
+  private shapes: readonly StaticShape[] | null = null;
+  private items: ItemPhysics | null = null;
 
   constructor(options: WorldOptions, now: () => number = () => performance.now()) {
     this.options = { ...options };
@@ -96,6 +103,12 @@ export class World {
   /** Call `fn` at the start of every tick, before the simulation steps (people a human drives are moved here). */
   onBeforeStep(fn: (dt: number, tick: number) => void): void { this.beforeStep.push(fn); }
 
+  /** Give the world physics, built from these fixed shapes at every `init()`. `loadPhysics()` must have finished. */
+  usePhysics(shapes: readonly StaticShape[]): void { this.shapes = shapes; }
+
+  /** The items' physics, when the world has it. */
+  get itemPhysics(): ItemPhysics | null { return this.items; }
+
   /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. */
   onTick(fn: (tick: number) => void): void { this.listeners.push(fn); }
 
@@ -104,6 +117,8 @@ export class World {
    * settings); otherwise start a live mid-morning with the configured number of staff.
    */
   init(saved: SavedWorld | null = null): void {
+    this.items?.dispose();
+    this.items = null;
     resetSim();
     loadLayout(officeLayout);
     setSeed(this.options.seed ?? null);
@@ -117,6 +132,7 @@ export class World {
       sim.speed = this.options.speed;
       sim.paused = this.options.paused;
     }
+    if (this.shapes) this.items = new ItemPhysics(this.shapes); // (after the restore: every item has its body where it was saved)
     this.tick = 0;
     this.durations.length = 0;
     this.sampleCount = 0;
@@ -133,6 +149,8 @@ export class World {
     } catch (err) {
       this.report('simulation step failed', err);
     }
+    // (things still fall in a paused office: players still move in it)
+    try { this.items?.step(1 / this.options.tickRate); } catch (err) { this.report('physics step failed', err); }
     this.tick++;
     for (const fn of this.listeners) {
       try { fn(this.tick); } catch (err) { this.report('tick listener failed', err); }

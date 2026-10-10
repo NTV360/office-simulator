@@ -7,6 +7,8 @@ import { runMigrations } from '../db/migrate';
 import { WorldStore } from '../db/world-store';
 import { PgEmployeeStore } from '../employees/employee-store';
 import { setRoster, syncRoster } from '../employees/roster-sync';
+import { loadPhysics, type StaticShape } from '../physics/physics';
+import officeShapes from '../physics/office-shapes.json';
 import { Persistence, loadForBoot, type PersistenceStatus } from './persistence';
 import { World, readWorldOptions, type WorldStatus } from './world';
 
@@ -27,6 +29,8 @@ export class WorldService implements OnApplicationBootstrap, BeforeApplicationSh
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    if (this.world.options.physics !== false) { await loadPhysics(); this.world.usePhysics(officeShapes as unknown as StaticShape[]); }
+    else this.log.warn('PHYSICS=off: items do not fall or slide');
     const boot = await this.boot();
     this.loop.enable();
     this.world.start();

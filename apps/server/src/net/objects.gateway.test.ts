@@ -5,6 +5,9 @@ import { bootTestServer, connect, enter, isWelcome, sleep, type Client, type Tes
 // World objects over the wire: what a new page is told, and what everybody is told when one moves.
 
 process.env.WORLD_SEED = '1';
+// (these put things anywhere, overlapping furniture, to test the messages alone: with physics they would be pushed out and sent again.
+// What physics moves is sent the same way, by the same event: see physics/item-physics.test.ts)
+process.env.PHYSICS = 'off';
 let server: TestServer;
 let base: string;
 const open: Array<{ close(): void }> = [];

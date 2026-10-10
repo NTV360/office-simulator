@@ -95,10 +95,10 @@ export function pickUp(o: WorldObject, personId: number): void {
   simEvents.emit('objectMoved', o);
 }
 
-/** A person puts what they carry down at a place (already checked: see placement.ts). */
+/** A person puts what they carry down at a place (already checked: see placement.ts), standing upright on the kind of surface it started on. */
 export function putDown(o: WorldObject, x: number, z: number, rot: number): void {
   o.carriedBy = null;
-  setObjectPose(o, x, z, wrapAngle(rot));
+  setObjectPose(o, x, z, wrapAngle(rot), o.home.y, null);
 }
 
 /** An angle in (-pi, pi]; one already in range is returned as it is. (A saved world refuses an angle far outside it.) */
