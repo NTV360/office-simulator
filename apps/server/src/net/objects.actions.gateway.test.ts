@@ -8,6 +8,9 @@ import { api, bootTestServer, connect, enter, isWelcome, sessionFor, sleep, type
 // what is refused tells only the player why. See docs/PHASE-5-BREAKDOWN.md, step 4.
 
 process.env.WORLD_SEED = '1';
+// (the rules and the messages, with things put down at once: these move players about by hand, and real hands would slip off. Holding with
+// physics over the wire is objects.holding.gateway.test.ts)
+process.env.PHYSICS = 'off';
 process.env.GRACE_MS = '600';
 process.env.ADMIN_TOKEN = 'admin-secret-for-tests';
 const ADMIN = { authorization: 'Bearer admin-secret-for-tests' };

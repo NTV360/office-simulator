@@ -190,6 +190,13 @@ export interface Place { type: 'place'; x: number; z: number; rot: number }
 export type ResetScope = 'object' | 'station';
 export interface Reset { type: 'reset'; scope: ResetScope; object: number }
 
-export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Grab | Place | Reset;
+/** How the player holds what they hold: turned in their hands (a quaternion, in their own frame: up, right, forward) and hands raised or lowered (m). */
+export interface HoldInput { type: 'hold'; turn: [number, number, number, number]; raise: number }
+/** Let go of your hold: it falls (or, held by others too, they carry on). */
+export interface Drop { type: 'drop' }
+/** Throw what you hold, as hard as `power` says (0 to 1). */
+export interface Throw { type: 'throw'; power: number }
+
+export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Grab | Place | Reset | HoldInput | Drop | Throw;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;
 export type Message = ClientMessage | ServerMessage;

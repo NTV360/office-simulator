@@ -1,7 +1,8 @@
 import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
-import { carriedBy, seatUnusable } from '../world/objects';
+import { CATALOGUE, carryOf } from '../world/catalogue';
+import { carriedBy, objects, seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
 import type { Person } from './types';
@@ -13,6 +14,17 @@ import type { Person } from './types';
 /** Metres per second. */
 export const WALK_SPEED = 1.5;
 export const RUN_SPEED = 3;
+
+/**
+ * How fast a person carrying something may go: their share of its weight (shared between everyone holding it) slows them, kg / 40 at a
+ * time, and only a light thing (one hand) can be run with. Nothing carried: full speed. The page predicts with the same numbers.
+ */
+export function carryPace(personId: number): { factor: number; run: boolean } {
+  const o = objects.all().find(x => x.carriedBy === personId || x.holds.some(h => h.person === personId));
+  if (!o) return { factor: 1, run: true };
+  const share = CATALOGUE[o.type].mass / Math.max(1, o.holds.length);
+  return { factor: 1 / (1 + share / 40), run: carryOf(o.type) === 'one-hand' };
+}
 /** How far from a seat a person can be and still sit in it, in metres. */
 export const SEAT_REACH = 1.15;
 /** Below this stick strength nothing happens (a resting thumb). */
@@ -154,7 +166,8 @@ export function stepDriven(p: Person, input: DrivenInput | null, dt: number, tic
   if (!live) return 0;
   const len = Math.hypot(live.mx, live.mz);
   if (len <= DEAD_ZONE) { p.face = p.faceGoal = live.heading; return 0; }
-  const speed = (live.run ? RUN_SPEED : WALK_SPEED) * Math.min(1, len) * dt;
+  const pace = carryPace(p.id);
+  const speed = (live.run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * Math.min(1, len) * dt;
   // in short steps, so a fast tick cannot jump over a thin wall
   const steps = Math.max(1, Math.ceil(speed / MAX_SUBSTEP));
   let moved = 0;

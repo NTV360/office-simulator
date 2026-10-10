@@ -105,26 +105,14 @@ export class Physics {
     b.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
-  /** Take an item out of the simulation for now (it is in somebody's hands), or put it back. Things resting on it wake and fall. */
-  setHeld(index: number, held: boolean): void {
-    const b = this.bodies.get(index);
-    if (!b) return;
-    if (held) this.wakeAround(b); // (before it leaves: its contacts go with it)
-    b.setEnabled(!held);
-    if (!held) b.wakeUp();
-  }
-
-  private wakeAround(b: RAPIER.RigidBody): void {
-    for (let i = 0; i < b.numColliders(); i++) {
-      this.world.contactPairsWith(b.collider(i), other => { other.parent()?.wakeUp(); });
-    }
-  }
-
-  /** Advance by `dt` seconds of real time, in fixed substeps (a slower or faster day clock does not change how things fall). */
-  step(dt: number): void {
+  /**
+   * Advance by `dt` seconds of real time, in fixed substeps (a slower or faster day clock does not change how things fall). `before` runs
+   * before each substep: the hands holding things push on them there.
+   */
+  step(dt: number, before?: () => void): void {
     this.carry += dt;
     let n = 0;
-    while (this.carry >= SUBSTEP && n < 8) { this.world.step(); this.carry -= SUBSTEP; n++; }
+    while (this.carry >= SUBSTEP && n < 8) { before?.(); this.world.step(); this.carry -= SUBSTEP; n++; }
     if (n === 8) this.carry = 0; // far behind: drop the rest rather than spiral
   }
 

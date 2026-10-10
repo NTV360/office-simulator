@@ -21,7 +21,7 @@ export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'pian
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'clean', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, grab: 0x07, place: 0x08, reset: 0x09,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, grab: 0x07, place: 0x08, reset: 0x09, hold: 0x0a, drop: 0x0b, throw: 0x0c,
   welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89, object: 0x8a,
 } as const;
 
@@ -180,6 +180,9 @@ export function encode(msg: Message): Uint8Array {
     case 'grab': w.u8(T.grab).u16(toU16(msg.object)).u8(msg.at ? 1 : 0); if (msg.at) w.f32(msg.at[0]).f32(msg.at[1]).f32(msg.at[2]); break;
     case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
     case 'reset': w.u8(T.reset).u8(index(RESET_SCOPES, msg.scope, 'reset scope')).u16(toU16(msg.object)); break;
+    case 'hold': w.u8(T.hold).f32(msg.turn[0]).f32(msg.turn[1]).f32(msg.turn[2]).f32(msg.turn[3]).f32(msg.raise); break;
+    case 'drop': w.u8(T.drop); break;
+    case 'throw': w.u8(T.throw).f32(msg.power); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
     case 'ack': w.u8(T.ack).u32(msg.seq).u32(msg.tick).f32(msg.x).f32(msg.z).f32(msg.face); break;
@@ -208,7 +211,7 @@ export function encode(msg: Message): Uint8Array {
 
 /** Decode a message from a client: only hello, ping, input, act, say, emote, grab, place and reset are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.grab && bytes[0] !== T.place && bytes[0] !== T.reset)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.grab && bytes[0] !== T.place && bytes[0] !== T.reset && bytes[0] !== T.hold && bytes[0] !== T.drop && bytes[0] !== T.throw)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -230,6 +233,9 @@ export function decode(bytes: Uint8Array): Message {
     case T.grab: { const object = fromU16(r.u16()); msg = r.u8() ? { type: 'grab', object, at: [r.f32(), r.f32(), r.f32()] } : { type: 'grab', object }; break; }
     case T.place: { const x = r.f32(), z = r.f32(), rot = r.f32(); msg = { type: 'place', x, z, rot }; break; }
     case T.reset: { const scope = readIndex(r, RESET_SCOPES, 'reset scope'), object = fromU16(r.u16()); msg = { type: 'reset', scope, object }; break; }
+    case T.hold: { const turn: [number, number, number, number] = [r.f32(), r.f32(), r.f32(), r.f32()]; msg = { type: 'hold', turn, raise: r.f32() }; break; }
+    case T.drop: msg = { type: 'drop' }; break;
+    case T.throw: msg = { type: 'throw', power: r.f32() }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;
     case T.ack: msg = { type: 'ack', seq: r.u32(), tick: r.u32(), x: r.f32(), z: r.f32(), face: r.f32() }; break;
@@ -265,4 +271,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'grab' || m.type === 'place' || m.type === 'reset'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'grab' || m.type === 'place' || m.type === 'reset' || m.type === 'hold' || m.type === 'drop' || m.type === 'throw'; }

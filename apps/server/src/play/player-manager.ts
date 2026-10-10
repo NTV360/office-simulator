@@ -2,7 +2,7 @@ import {
   HAZEL_NAME, handBack, sanitizeInput, sit, stand, stepAllDriven, type ActKind, type DrivenInput, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
-import { grab, place, putBack, putBackStation, type ObjectResult } from './object-actions';
+import { drop, grab, holdInput, place, putBack, putBackStation, throwIt, type ObjectResult } from './object-actions';
 
 // Who is playing which person. The simulation knows how to take a person over and hand them back (shared/sim/takeover.ts);
 // this decides *when*: a login takes over the account's own person (or makes a guest), a disconnect starts a grace period
@@ -198,6 +198,20 @@ export class PlayerManager {
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
     return place(s.person, x, z, rot);
+  }
+
+  /** How the player holds what they hold (turned, hands up or down): sent often, so it costs no move token. */
+  holdObject(accountId: number, turn: readonly number[], raise: number): ObjectResult | null {
+    const s = this.sessions.get(accountId);
+    return s ? holdInput(s.person, turn, raise) : null;
+  }
+
+  /** The player lets go of what they hold, or throws it. */
+  dropObject(accountId: number, tick: number, tickRate = 20, power: number | null = null): ObjectResult | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
+    return power === null ? drop(s.person) : throwIt(s.person, power);
   }
 
   /** The player puts one object, or everything at their own desk, back where it started. */

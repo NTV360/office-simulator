@@ -87,7 +87,7 @@ describe('gravity', () => {
     p.addItem({ ...mug, x: chair.x, z: chair.z, y: .475 } as WorldObject); // on the dining chair's seat
     run(p, 1);
     expect(p.pose(mug.index)!.y).toBeCloseTo(.475, 2);
-    p.setHeld(chair.index, true); // somebody picks the chair up
+    p.removeItem(chair.index); // the chair is not there any more
     run(p, 2);
     expect(p.pose(mug.index)!.y).toBeLessThan(.1); // on the floor (or the chair's old place under it)
     p.free();

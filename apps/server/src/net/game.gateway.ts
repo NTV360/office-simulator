@@ -183,6 +183,19 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
         return;
+      case 'hold': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        this.players.manager().holdObject(socket.data.accountId, msg.turn, msg.raise); // (nothing to tell: everybody sees how it is held)
+        return;
+      }
+      case 'drop': case 'throw': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const r = this.players.manager().dropObject(socket.data.accountId, this.worlds.world.tick, this.worlds.world.options.tickRate, msg.type === 'throw' ? msg.power : null);
+        this.objectNotice(socket, r, false);
+        return;
+      }
       case 'grab': case 'place': case 'reset': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return; // (an old connection of the same account)

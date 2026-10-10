@@ -66,7 +66,7 @@ describe('round trips', () => {
     expect(() => decode(bytes)).toThrow(DecodeError);
   });
   it('grab, place and reset (moving things about) survive the wire, and a client may send them', () => {
-    const msgs: ClientMessage[] = [{ type: 'grab', object: 0 }, { type: 'grab', object: 161 }, { type: 'grab', object: 7, at: [1.5, .75, -2.25] }, { type: 'place', x: -12.5, z: 33.25, rot: 3.5 }, { type: 'reset', scope: 'object', object: 7 }, { type: 'reset', scope: 'station', object: NONE }];
+    const msgs: ClientMessage[] = [{ type: 'grab', object: 0 }, { type: 'grab', object: 161 }, { type: 'grab', object: 7, at: [1.5, .75, -2.25] }, { type: 'place', x: -12.5, z: 33.25, rot: 3.5 }, { type: 'reset', scope: 'object', object: 7 }, { type: 'reset', scope: 'station', object: NONE }, { type: 'hold', turn: [0, .5, -.5, .75], raise: .25 }, { type: 'drop' }, { type: 'throw', power: .75 }];
     for (const m of msgs) { const got = decodeClient(encode(m)); expect(got).toMatchObject({ type: m.type }); if (m.type === 'place') { const g = got as typeof m; expect([g.x, g.z, +g.rot.toFixed(2)]).toEqual([m.x, m.z, 3.5]); } else expect(got).toEqual(m); }
   });
   it('a place with a number that is not a number cannot even be sent, and a reset with an unknown scope is refused', () => {

@@ -48,6 +48,10 @@ export interface WorldObject extends ObjectRecord {
   links: Link[];
   /** Who holds it and how, the first being `carriedBy` (the server's business: a page knows only who carries it). */
   holds: Hold[];
+  /** Being put down (the server's physics lowers it there, then lets go), or undefined. */
+  placing?: Placing;
+  /** Just let go where it is (not moved anywhere): the physics keeps it moving as it was, plus this velocity (a throw). Cleared once seen. */
+  released?: { vx: number; vy: number; vz: number };
 }
 
 /**
@@ -62,7 +66,12 @@ export interface Hold {
   /** How high their hands are, and how far in front of them, in metres (from where they took it, easing to where things are carried). */
   lift: number;
   out: number;
+  /** How much higher or lower than the usual carrying height they hold their hands (the mouse wheel), in metres. */
+  raise: number;
 }
+
+/** Where an item that is being put down is going: lowered there gently, then let go. */
+export interface Placing { x: number; y: number; z: number; rot: number; t: number }
 
 /** A spot tied to an object: where it is, and where people stand to use it, relative to the object (in its own frame). */
 export interface Link { spot: Spot; px: number; pz: number; ax: number; az: number; dface: number }
@@ -124,9 +133,29 @@ export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
   simEvents.emit('objectMoved', o);
 }
 
+/**
+ * Something that puts a held thing down gently, where there is one (the server's physics): it lowers it to the place and lets go when it is
+ * there. Without one (the page, tests of the rules alone) a thing put down is simply there.
+ */
+let placer: ((o: WorldObject, p: Placing) => void) | null = null;
+export const setPlacer = (fn: ((o: WorldObject, p: Placing) => void) | null): void => { placer = fn; };
+
+/** A person puts what they carry down at a place: lowered there by the physics when there is some, or there at once. */
+export function placeDown(o: WorldObject, x: number, z: number, rot: number, y: number): void {
+  const p = { x, y, z, rot: wrapAngle(rot), t: 0 };
+  if (placer) placer(o, p); else putDown(o, x, z, rot, y);
+}
+
+/** Everyone holding it lets go, where it is now (it falls, or stays where it was put), thrown with velocity `v` if given. Everybody is told. */
+export function letGo(o: WorldObject, v: { vx: number; vy: number; vz: number } = { vx: 0, vy: 0, vz: 0 }): void {
+  o.carriedBy = null; o.holds = []; o.placing = undefined; o.released = v;
+  refreshFootprint(o);
+  simEvents.emit('objectMoved', o);
+}
+
 /** A person puts what they carry down at a place (already checked: see placement.ts), standing upright at height `y` (what is under it there). */
 export function putDown(o: WorldObject, x: number, z: number, rot: number, y: number = o.home.y): void {
-  o.carriedBy = null; o.holds = [];
+  o.carriedBy = null; o.holds = []; o.placing = undefined;
   setObjectPose(o, x, z, wrapAngle(rot), y, null);
 }
 
@@ -153,7 +182,7 @@ export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z ===
 
 /** Put an object back where it started (and not carried). */
 export function resetObject(o: WorldObject): void {
-  o.carriedBy = null; o.holds = [];
+  o.carriedBy = null; o.holds = []; o.placing = undefined;
   setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
 }
 
