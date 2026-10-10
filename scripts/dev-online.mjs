@@ -7,6 +7,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { KEY as RECORDS_KEY, PORT as RECORDS_PORT, startRecords } from './dev-records.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DB = 'office-dev-db';
@@ -58,6 +59,14 @@ function stop(code = 0) {
 process.on('SIGINT', () => stop(0));
 process.on('SIGTERM', () => stop(0));
 
+// ---- made-up employee records (a stand-in for Supabase) unless you point the server at the real ones; and test accounts the first time
+const ownRecords = !process.env.SUPABASE_URL && process.env.DEV_RECORDS !== '0';
+let recordsServer = null;
+if (ownRecords) {
+  try { recordsServer = await startRecords({ host: '127.0.0.1', log: false }); console.log(`made-up employee records on port ${RECORDS_PORT} (set DEV_RECORDS=0 to go without, or SUPABASE_URL to use real ones)`); }
+  catch (err) { console.log(`(the made-up employee records could not start: ${err.code ?? err.message}. Is another npm run dev:records running? The office will have made-up staff only.)`); }
+}
+
 console.log('building the shared package...');
 if (spawnSync('npm', ['run', 'build', '-w', '@office/shared'], { cwd: root, shell: win, stdio: 'inherit' }).status !== 0) die('the shared package did not build');
 
@@ -65,15 +74,30 @@ start('shared', 'npm', ['run', 'build', '-w', '@office/shared', '--', '--watch']
 start('server', 'npm', ['run', 'dev', '-w', '@office/server'], {
   PORT: '3000', DATABASE_URL: `postgres://postgres:dev@127.0.0.1:${DB_PORT}/office`,
   ADMIN_USERNAME: ADMIN.user, ADMIN_PASSWORD: ADMIN.pass, ADMIN_TOKEN: ADMIN.token,
+  ...(recordsServer ? { SUPABASE_URL: `http://127.0.0.1:${RECORDS_PORT}`, SUPABASE_SECRET_KEY: RECORDS_KEY } : {}),
 });
 start('page', 'npm', ['run', 'dev']);
+
+// the test accounts (safe to repeat: see scripts/seed.mjs); DEV_SEED=0 skips it
+if (process.env.DEV_SEED !== '0') {
+  (async () => {
+    for (let i = 0; i < 90 && !stopping; i++) {
+      if (await fetch('http://127.0.0.1:3000/api/health').then(r => r.ok, () => false)) {
+        spawnSync('node', ['scripts/seed.mjs'], { cwd: root, stdio: 'inherit', env: { ...process.env, SEED_URL: 'http://localhost:3000', SEED_ADMIN_TOKEN: ADMIN.token } });
+        return;
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  })();
+}
 
 setTimeout(() => console.log(`
 ==================================================================================
   The game:   http://localhost:5173/?online      (open it in two windows to see yourself from outside)
   Admin page: http://localhost:5173/admin        password: ${ADMIN.token}
   First login: user "${ADMIN.user}", password "${ADMIN.pass}" (it asks you to choose a new one).
-  Make more accounts on the admin page, and give each a desk.
+  Test accounts (made for you the first time; npm run seed makes them again): ana, ben, cat, dan and guest1, password dev-pass-1234.
+  Ana, Ben, Cat and Dan play employees of a made-up company (see docs/GETTING-STARTED.md, "Test data").
   Ctrl+C stops the server and the page. The database keeps running: docker stop ${DB}
 ==================================================================================
 `), 6000);

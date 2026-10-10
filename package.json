@@ -21,6 +21,8 @@
     "layout:dump": "node scripts/dump-layout.mjs",
     "test:db": "node scripts/test-db.mjs",
     "dev:online": "node scripts/dev-online.mjs",
+    "dev:records": "node scripts/dev-records.mjs",
+    "seed": "node scripts/seed.mjs",
     "perf": "node scripts/perf.mjs",
     "pack:dump": "node scripts/dump-pack.mjs",
     "shots": "node scripts/shots.mjs",

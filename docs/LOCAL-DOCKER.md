@@ -81,6 +81,7 @@ npm run test:db      # database tests against a throwaway PostgreSQL (needs Dock
 npm run e2e          # its OWN copy of the stack: two browsers, an admin change, a restart, a hard kill
 npm run e2e:accounts # its OWN copy again: accounts end to end (admin makes one, first login, drive, restart, kill, log out and back, reset, disable)
 npm run e2e:together # its OWN copy again: three players walk, sit, see names, talk, wave, see the same office, restart, kill, mute
+npm run seed        # test data in the running stack: accounts ana, ben, cat, dan, guest1 (see GETTING-STARTED.md, Test data)
 npm run e2e:employees # its OWN copy again, with a fake employee-records server: import, link an account to an employee, play them, a failed import, restart, kill
 ```
 

@@ -13,7 +13,8 @@ Read [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) (set up, run the multipl
 ```
 npm install
 npm run dev        # the browser app on http://localhost:5173 (a private office, no server)
-npm run dev:online # the multiplayer game with fast reloads: database in Docker, the server, the page. Open http://localhost:5173/?online
+npm run dev:online # the multiplayer game with fast reloads: database in Docker, the server, the page, and test data (a made-up company, accounts ana/ben/cat/dan, password dev-pass-1234). Open http://localhost:5173/?online
+npm run seed       # makes the test accounts again in a running server (safe to repeat; see docs/GETTING-STARTED.md, Test data)
 npm run build      # builds shared, client and server
 npm test           # unit tests (shared and server)
 npm run typecheck
