@@ -1,4 +1,4 @@
-// Writes packages/shared/src/layout/office.json from the client's own furniture code (the source of truth until
+// Writes packages/shared/src/layout/office.json (and apps/server/src/physics/office-shapes.json) from the client's own furniture code (the source of truth until
 // phase 5). The server loads that file. A browser check fails if it goes stale.   npm run layout:dump
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -17,6 +17,14 @@ try {
   for (const s of layout.spots) kinds[s.kind] = (kinds[s.kind] || 0) + 1;
   console.log(`wrote ${path.relative(root, file)}: ${layout.spots.length} spots, ${layout.obstacles.length} obstacles`);
   console.log(Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', '));
+  // the fixed things as solid shapes, for the server's physics only (the page never loads this file)
+  const shapes = await page.evaluate(() => window.__sim.staticShapes());
+  const shapesFile = path.join(root, 'apps/server/src/physics/office-shapes.json');
+  fs.mkdirSync(path.dirname(shapesFile), { recursive: true });
+  fs.writeFileSync(shapesFile, '[\n' + shapes.map(s => JSON.stringify(s)).join(',\n') + '\n]\n');
+  const byShape = {};
+  for (const s of shapes) byShape[s.s] = (byShape[s.s] || 0) + 1;
+  console.log(`wrote ${path.relative(root, shapesFile)}: ${shapes.length} shapes (${byShape.b || 0} boxes, ${byShape.c || 0} cylinders, ${byShape.s || 0} spheres)`);
 } finally {
   await browser.close();
   site.stop();

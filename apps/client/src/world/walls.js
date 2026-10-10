@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { FULL_H, GLASS_WALLS, S, W, WALLS, WALL_T, WINDOWS, vpick, wx, wz } from '@office/shared';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
-import { SOLIDS, addObs, boxGeo, dynamic, scalers } from './helpers.js';
+import { SOLIDS, STATIC_SHAPES, addObs, boxGeo, dynamic, scalers } from './helpers.js';
+
+const r3 = v => Math.round(v * 1000) / 1000;
 
 /* ================= Walls and doors ================= */
 function wallSeg(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, thick = WALL_T, capMat = M.cap) {
@@ -22,6 +24,7 @@ function solidBlock(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, capMat = M.cap
   addObs(x1, y1, x2, y2);
   SOLIDS.push([x1, y1, x2, y2, fullH]);
   const w = (x2 - x1) * S, d = (y2 - y1) * S, cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2);
+  STATIC_SHAPES.push({ s: 'b', size: [w, fullH, d].map(r3), at: [cx, fullH / 2, cz].map(r3) }); // (at full height: the wall toggle is only a view)
   const g = new THREE.BoxGeometry(w, 1, d); g.translate(0, .5, 0);
   const body = dynamic(new THREE.Mesh(g, mat)); body.position.set(cx, 0, cz); body.castShadow = !mat.transparent; body.receiveShadow = true; scene.add(body);
   const cap = dynamic(new THREE.Mesh(boxGeo(w + .004, .035, d + .004), capMat)); cap.position.set(cx, 0, cz); cap.castShadow = false; scene.add(cap);
@@ -52,6 +55,7 @@ function buildWalls() {
     const len = (b - a) * S, T = WALL_T * S;
     if (vert) addObs(line - WALL_T / 2, a, line + WALL_T / 2, b); else addObs(a, line - WALL_T / 2, b, line + WALL_T / 2);
     const c = vert ? W(line, (a + b) / 2) : W((a + b) / 2, line);
+    STATIC_SHAPES.push({ s: 'b', size: (vert ? [T, FULL_H, len] : [len, FULL_H, T]).map(r3), at: [c.x, FULL_H / 2, c.z].map(r3) }); // (a window is a wall to things)
     const grp = new THREE.Group(); grp.position.copy(c); grp.rotation.y = vert ? 0 : Math.PI / 2; scene.add(grp);
     const sill = dynamic(new THREE.Mesh(boxGeo(T, .55, len), M.wall)); sill.position.y = .275; sill.castShadow = true; sill.receiveShadow = true; grp.add(sill);
     const ledge = dynamic(new THREE.Mesh(boxGeo(T + .08, .04, len), M.mullion)); ledge.position.y = .57; grp.add(ledge);
