@@ -9,7 +9,7 @@ import type { EmployeeRecord } from './employee-store';
 export function toEmployee(r: EmployeeRecord): Employee {
   return {
     userId: r.userId, firstName: r.firstName, lastName: r.lastName, department: r.department, intern: r.intern, shift: r.shift,
-    character: r.character ? normalizeSpec(r.character) : null, desk: r.desk,
+    character: r.character ? normalizeSpec(r.character) : null, desk: r.desk, photo: r.photo,
   };
 }
 

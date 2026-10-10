@@ -84,6 +84,24 @@ export function employeeStoreContract(label: string, make: () => Promise<Employe
       expect(await store.byId(U(2))).toMatchObject({ desk: 'A1' });
     });
 
+    it('a profile picture comes from the source every time (it is not chosen here): added, changed, removed, and back with the person', async () => {
+      await store.applyImport([imp(1, { photo: 'https://img.example.test/a.png' }), imp(2)]);
+      expect((await store.byId(U(1)))!.photo).toBe('https://img.example.test/a.png');
+      expect((await store.byId(U(2)))!.photo).toBeNull();
+      expect(await store.applyImport([imp(1, { photo: 'https://img.example.test/b.png' }), imp(2)])).toMatchObject({ updated: 1 });
+      expect((await store.byId(U(1)))!.photo).toBe('https://img.example.test/b.png');
+      expect(await store.applyImport([imp(1, { photo: null }), imp(2)])).toMatchObject({ updated: 1 }); // the picture was taken down
+      expect((await store.byId(U(1)))!.photo).toBeNull();
+      expect(await store.applyImport([imp(1, { photo: null }), imp(2, { photo: null })])).toMatchObject({ updated: 0 });
+    });
+
+    it('a source that could not read the pictures (none said) leaves the stored ones as they are', async () => {
+      await store.applyImport([imp(1, { photo: 'https://img.example.test/a.png' })]);
+      const { photo: _none, ...noPhoto } = imp(1);
+      expect(await store.applyImport([noPhoto])).toMatchObject({ updated: 0 });
+      expect((await store.byId(U(1)))!.photo).toBe('https://img.example.test/a.png');
+    });
+
     it('a desk can be chosen once; none is always allowed; an unknown person is missing', async () => {
       await store.applyImport([imp(1), imp(2)]);
       expect(await store.setDesk(U(1), 'D5')).toBe('ok');

@@ -17,6 +17,8 @@ export interface Employee {
   character: CharacterSpec | null;
   /** The desk they chose ('A3'), or null for any free desk. */
   desk: string | null;
+  /** Their profile picture: an https address, or null/absent (then their initials are shown). */
+  photo?: string | null;
 }
 
 export const roster: { list: Employee[] | null } = { list: null };

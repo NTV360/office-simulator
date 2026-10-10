@@ -45,7 +45,7 @@ function setStatus(kind, text) {
 /** Switch the controls that belong to the server (staff count, clock) off, and say why. */
 function lockServerControls() {
   document.body.classList.add('online');
-  for (const el of document.querySelectorAll('#staff, #play, [data-speed]')) {
+  for (const el of document.querySelectorAll('#staff, #play, [data-speed], [data-mode], [data-simtime]')) {
     el.disabled = true;
     el.title = 'The server controls this (admins can change it)';
   }
@@ -284,7 +284,10 @@ export function startOnline() {
     if (staffEl) staffEl.value = String(n);
     if (valEl) valEl.textContent = String(n);
     const play = document.getElementById('play');
-    if (play) play.textContent = c.live ? 'Live' : c.paused ? 'Paused' : 'Running';
+    if (play) { play.classList.toggle('paused', c.paused); const label = c.paused ? 'Paused' : 'Running'; play.setAttribute('aria-label', label); play.title = label + ' (the server controls this)'; }
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.mode === 'live') === !!c.live)));
+    document.querySelectorAll('[data-simtime]').forEach(b => b.setAttribute('aria-pressed', 'false')); // (the server does not say which start it used)
+    const simRow = document.getElementById('simRow'); if (simRow) simRow.hidden = !!c.live;
     document.querySelectorAll('[data-speed]').forEach(b => b.setAttribute('aria-pressed', String(!c.live && Number(b.dataset.speed) === c.speed)));
     document.body.classList.toggle('clock-live', !!c.live);
   }

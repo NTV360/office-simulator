@@ -135,6 +135,23 @@ describe('Mirror', () => {
     expect(mirror.clock.live).toBe(false);
   });
 
+  it('a profile picture reaches the mirror, and a changed one is applied to the same person', () => {
+    const p = people.find(hasSlot)!;
+    p.photo = 'https://img.example.test/one.png';
+    connect();
+    expect(mirror.people.get(p.id)!.photo).toBe('https://img.example.test/one.png');
+    p.photo = 'https://img.example.test/two.png';
+    const m = decode(bc.joined(p));
+    if (m.type !== 'person') throw new Error('not a person');
+    mirror.applyJoin(m.info, m.snap);
+    expect(mirror.people.get(p.id)!.photo).toBe('https://img.example.test/two.png');
+    p.photo = null;
+    const n = decode(bc.joined(p));
+    if (n.type !== 'person') throw new Error('not a person');
+    mirror.applyJoin(n.info, n.snap);
+    expect(mirror.people.get(p.id)!.photo).toBeNull();
+  });
+
   it('a record for someone it never heard of is ignored and counted', () => {
     connect();
     const fake: PersonSnap = { ...personSnap([...mirror.people.values()][0], mirror.meetings), id: 999 };

@@ -308,9 +308,15 @@ try {
     if (cleaning) pass(`she is cleaning on both pages (${cleaning[0].anim} and ${cleaning[1].anim})`); else if ((await helperView(p1))?.state === 'away') pass('the helper is at home at this time of day (so not cleaning)'); // (the server may be at night)
     else fail('the helper was never seen cleaning on both pages: ' + JSON.stringify(await helperView(p1)));
     if (cleaning) {
-      const [a] = cleaning;
-      const wants = a.anim === 'mop' ? 'mop' : a.anim === 'locker' ? null : 'rag';
-      if (wants === null || (a[wants] && a.drawn)) pass('and holds her ' + (wants ?? 'hands free') + ' while she does it'); else fail('helper props: ' + JSON.stringify(a));
+      // (the cloth or mop appears on the next drawn frame after the pose does: give it a moment, while she is still at the same job)
+      let last = cleaning[0], held = false;
+      for (let i = 0; i < 20 && !held; i++) {
+        last = await helperView(p1);
+        const wants = last?.anim === 'mop' ? 'mop' : last?.anim === 'locker' ? null : 'rag';
+        held = !!last && last.cat === 'clean' && last.state === 'doing' && (wants === null || (last[wants] && last.drawn));
+        if (!held) await sleep(100);
+      }
+      if (held) pass('and holds her ' + (last.anim === 'mop' ? 'mop' : last.anim === 'locker' ? 'hands free' : 'cloth') + ' while she does it'); else fail('helper props: ' + JSON.stringify(last));
     }
     if (v1.status === 'ok' && v2.status === 'ok') pass(`the status says "${v1.statusText}"`); else fail(`status: ${v1.status} / ${v2.status}`);
     if (v1.locked && v2.locked && v1.layoutOk && v2.layoutOk) pass('server-owned controls are locked, and both offices match the server'); else fail('controls not locked or layout mismatch');
@@ -399,16 +405,17 @@ try {
     if (creatorShown) pass('the first login after a desk is given opens character creation'); else fail('character creation did not open');
     if (await c.page.evaluate(() => document.getElementById('creatorCancel').hidden)) pass('it cannot be skipped the first time'); else fail('the first-time page can be cancelled');
     // (a section of the lab by its title: its chips are buttons, its colours are colour inputs)
-    const sect = title => `#creatorPanel section:has(h3:text-is("${title}"))`;
-    const chip = (title, name) => c.page.locator(`${sect(title)} button:text-is("${name}")`).first();
+    const foldOf = async title => { const d = c.page.locator(`#creatorPanel details.cl-fold:has(.fold-title:text-is("${title}"))`); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); return d; }; // (the lab's groups start closed; a group opens when asked)
+    const chip = async (title, name) => (await foldOf(title)).locator(`button:text-is("${name}")`).first();
     const lookNow = () => c.page.evaluate(() => { const l = window.__sim.lab; return { drawn: !!(l.stage && l.stage.hero && l.stage.hero.root.children.length), draft: JSON.parse(JSON.stringify(l.draft)), meshes: (() => { let n = 0; l.stage.hero.root.traverse(o => { if (o.isMesh) n++; }); return n; })() }; });
     const before = await lookNow();
     if (before.drawn && before.meshes > 5) pass(`the live preview builds the character (${before.meshes} meshes)`); else fail(`the preview looks empty (${before.meshes} meshes)`);
     const buildsBefore = await c.page.evaluate(() => window.__sim.lab.stage.hero.root.uuid + ':' + window.__sim.lab.stage.hero.root.children.length);
+    await foldOf('Top');
     await c.page.fill('#cl-topColor', '#c45f4b');
-    await chip('Hair', 'Bun').click();
-    await chip('Accessories', 'Glasses').click();
-    await chip('Body', 'Tall').click();
+    await (await chip('Hair', 'Bun')).click();
+    await (await chip('Accessories', 'Glasses')).click();
+    await (await chip('Body', 'Tall')).click();
     await sleep(300);
     const after = await lookNow();
     if (after.draft.top.color === '#c45f4b' && after.draft.hair.style === 'bun' && after.draft.accessories.some(a => a.type === 'glasses') && after.draft.height === 'tall') pass('the preview takes each choice at once (red top, bun, glasses, tall)'); else fail(`the lab draft: ${JSON.stringify(after.draft)}`);
@@ -429,15 +436,15 @@ try {
     await c.page.waitForSelector('#creator:not([hidden])', { timeout: 8000 });
     if (!(await c.page.evaluate(() => document.getElementById('creatorCancel').hidden))) pass('later it can be cancelled'); else fail('cancel is missing when changing');
     if (await c.page.evaluate(() => { const l = window.__sim.lab; return l.draft.hair.style === 'bun' && l.draft.accessories.some(a => a.type === 'glasses') && l.draft.height === 'tall'; })) pass('it starts from the saved look'); else fail('the editor did not start from the saved look');
-    await chip('Hair', 'Curly').click();
+    await (await chip('Hair', 'Curly')).click();
     await c.page.keyboard.press('Escape');
     await c.page.waitForFunction(() => document.getElementById('creator').hidden, null, { timeout: 5000 });
     await sleep(500);
     if ((await c.page.evaluate(n => window.__sim.people.find(x => x.name === n).spec.hair.style, cname)) === 'bun') pass('closing without saving changes nothing'); else fail('an unsaved change was applied');
     await c.page.click('#characterBtn');
     await c.page.waitForSelector('#creator:not([hidden])');
-    await chip('Hair', 'Curly').click();
-    await chip('Top', 'Jacket').click();
+    await (await chip('Hair', 'Curly')).click();
+    await (await chip('Top', 'Jacket')).click();
     await c.page.click('#creatorSave');
     await watcher.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.spec.hair.style === 'curly' && p.spec.top.style === 'jacket'; }, cname, { timeout: 10000 }).then(() => pass('a later change reaches the other browser too'), () => fail('the later change was not seen'));
 
@@ -731,7 +738,9 @@ try {
       await A.page.keyboard.press('3');
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'clap'; }, ea, { timeout: 8000 });
       await A.page.keyboard.down('w'); await sleep(500); await A.page.keyboard.up('w');
-      if ((await state(A.page, ea)).kind === null) pass('walking stops an emote'); else fail('still emoting after walking');
+      let stopped = false; // (the server hears the key and says so a moment later: wait for it rather than look once)
+      for (let i = 0; i < 30 && !stopped; i++) { stopped = (await state(A.page, ea)).kind === null; if (!stopped) await sleep(100); }
+      if (stopped) pass('walking stops an emote'); else fail('still emoting after walking');
 
       [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
       await A.page.close(); await B.page.close();

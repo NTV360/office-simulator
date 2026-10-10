@@ -2,7 +2,7 @@ import { PROP_KEYS } from '../sim/props';
 import { interactables } from '../sim/interactables';
 import { movedObjects, objects, resetAllObjects, setObjectPose, type WorldObject } from '../world/objects';
 import type { Meeting, Person } from '../sim/types';
-import { NONE, ONE_OFF_SPOT, type LayoutCheck, type MeetingSnap, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
+import { NONE, ONE_OFF_SPOT, PHOTO_URL, type LayoutCheck, type MeetingSnap, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
 
 // Turning simulation objects into protocol records (server side).
 
@@ -53,7 +53,7 @@ export function applyObjectPoses(poses: readonly ObjectPose[]): void {
 
 export function personInfo(p: Person): PersonInfo {
   return {
-    id: p.id, name: p.name, role: p.role, title: p.title ?? p.role, department: p.department ?? '', controller: p.controller, spec: p.spec,
+    id: p.id, name: p.name, role: p.role, title: p.title ?? p.role, department: p.department ?? '', photo: p.photo && PHOTO_URL.test(p.photo) ? p.photo : '', controller: p.controller, spec: p.spec,
     slot: p.slot ? interactables.indexOf(p.slot) : NONE,
     screenKind: p.screenKind, screenVariant: p.screenVariant, arriveAt: p.arriveAt,
   };

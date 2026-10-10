@@ -69,7 +69,9 @@ try {
   await page.click('.login-form button[type=submit]');
   await page.waitForSelector('#creator:not([hidden])', { timeout: 15000 });
   check('then character creation opens, because she has a desk and no look yet', true);
-  await page.fill('#cl-topColor', SHIRT); await page.locator('#creatorPanel section:has(h3:text-is("Hair")) button:text-is("Bun")').first().click();
+  const openFold = async title => { const d = page.locator(`#creatorPanel details.cl-fold:has(.fold-title:text-is("${title}"))`); if (!(await d.evaluate(e => e.open))) await d.locator('summary').click(); return d; };
+  await openFold('Top'); await page.fill('#cl-topColor', SHIRT);
+  await (await openFold('Hair')).locator('button:text-is("Bun")').first().click();
   await page.click('#creatorSave');
   await joined(page);
   const arrived = await page.evaluate(() => ({ view: window.__sim.viewId(), me: window.__sim.player.person.name, ctl: window.__sim.player.controlling, controller: window.__sim.player.person.controller }));

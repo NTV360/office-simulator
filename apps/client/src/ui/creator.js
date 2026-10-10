@@ -11,11 +11,13 @@ import { $ } from './dom.js';
 // hands it back: online the server makes it valid and tells everybody (PUT /api/character, see net/creator.js); offline it is kept in this
 // browser. Shown the first time an account with a desk logs in (it cannot be skipped then) and again from the "Character lab" button.
 // The preview has its own small renderer, made the first time the lab opens.
-const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, finish: null, onSave: null, onLogout: null, required: false, saving: false, inert: [], returnTo: null };
+const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, finish: null, onSave: null, onLogout: null, required: false, saving: false, inert: [], returnTo: null, folds: new Set() };
 const STYLE_LABEL = { chibi: 'Chibi', blocky: 'Blocky' };
 const SLOT_LABELS = { head: 'Head', face: 'Face', body: 'Body', back: 'Back', hand: 'Hands' };
 
-const words = s => s.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+// Option names as people read them: 'longsleeve' → 'Long sleeve', 'widePants' → 'Wide pants'.
+const NICE = { tshirt: 'T-shirt', longsleeve: 'Long sleeve', tanktop: 'Tank top', hightops: 'High-tops', fullBeard: 'Full beard', santaHat: 'Santa hat' };
+const words = s => NICE[s] ?? s.replace(/([A-Z])/g, ' $1').toLowerCase().replace(/^./, c => c.toUpperCase());
 const clone = o => JSON.parse(JSON.stringify(o));
 
 // ----- preview stage -----
@@ -137,7 +139,15 @@ function el(tag, attrs = {}, ...kids) {
 }
 const chip = (label, pressed, onclick, title) => el('button', { type: 'button', class: 'btn sm', 'aria-pressed': String(!!pressed), title, on: { click: onclick } }, label);
 const row = (label, ...content) => el('div', { class: 'cl-row' }, el('div', { class: 'cl-lbl' }, label), el('div', {}, ...content));
-const section = (title, ...content) => el('section', {}, el('h3', {}, title), ...content);
+// A collapsible group: the header shows the title and a one-line summary of the current choice.
+// Which groups are open is remembered while the lab is in use.
+function fold(key, title, summary, ...content) {
+  return el('details', { class: 'cl-fold', open: creator.folds.has(key), on: { toggle: ev => { if (ev.target.open) creator.folds.add(key); else creator.folds.delete(key); } } },
+    el('summary', {}, el('span', { class: 'fold-title' }, title), el('span', { class: 'fold-sum' }, summary)),
+    el('div', { class: 'fold-body' }, ...content));
+}
+const dot = c => el('i', { class: 'fold-dot', style: `background:${hexOf(c)}` });
+const sum = (...parts) => el('span', {}, ...parts.filter(Boolean).flatMap((x, i) => i ? [' · ', x] : [x]));
 const segmented = (values, current, onPick) => el('div', { class: 'chips' }, values.map(v => chip(words(v), v === current, () => onPick(v))));
 const hexOf = c => (typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : c || '#888888');
 function colorInput(id, value, onInput, onChange) {
@@ -156,14 +166,14 @@ function swatches(id, palette, current, onPick) {
 // ----- panel -----
 function renderPanel() {
   const panel = $('creatorPanel'), scroll = panel.scrollTop;
+  const focusables = () => [...panel.querySelectorAll('summary, button, input, textarea')];
+  const focused = focusables().indexOf(document.activeElement); // (the panel is redrawn after every choice: put the focus back where it was)
   const d = creator.draft, view = creator.view, o = specOptions(d.type), notes = creator.stage.hero.notes ?? [];
   const presets = presetList();
   panel.replaceChildren(
-    section('Style',
-      row('Type', segmented(TYPES, d.type, v => { d.type = v; rebuild(); })),
-      notes.length ? el('div', { class: 'cl-note' }, `In this style: ${notes.join(' · ')}. Switch back to restore.`) : null),
-
-    section('Presets',
+    fold('look', 'Style & presets', sum(STYLE_LABEL[d.type], presets.some(p => p.spec.name === d.name) ? d.name : 'Custom'),
+      row('Style', segmented(TYPES, d.type, v => { d.type = v; rebuild(); })),
+      notes.length ? el('div', { class: 'cl-note' }, `In this style: ${notes.join(' · ')}. Switch back to restore.`) : null,
       ...TYPES.map(type => el('div', { class: 'cl-stack' },
         el('div', { class: 'cl-lbl' }, `${STYLE_LABEL[type]} designs`),
         el('div', { class: 'cl-presets' }, presets.filter(p => p.type === type).map(p => chip(p.spec.name, d.name === p.spec.name && d.type === type, () => load(p.spec)))))),
@@ -173,7 +183,7 @@ function renderPanel() {
         el('button', { type: 'button', class: 'btn sm', on: { click: () => load(presets.find(p => p.type === d.type && p.key === 'defaultMale').spec) } }, 'Default male'),
         el('button', { type: 'button', class: 'btn sm', on: { click: () => load(presets.find(p => p.type === d.type && p.key === 'defaultFemale').spec) } }, 'Default female'))),
 
-    section('Body',
+    fold('body', 'Body', sum(dot(view.skin), words(view.body), `${view.build} build`, `${view.height} height`),
       row('Body', segmented(o.body, view.body, v => { d.body = v; if (v === 'male' && view.top.style === 'dress') setPart('top', 'style', 'tshirt'); edited(); rebuild(); })),
       row('Build', segmented(o.build, view.build, v => { d.build = v; edited(); rebuild(); })),
       row('Height', segmented(o.height, view.height, v => { d.height = v; edited(); rebuild(); })),
@@ -187,7 +197,7 @@ function renderPanel() {
           : el('label', { class: 'cl-toggle' }, el('input', { type: 'checkbox', checked: !!view.freckles, on: { change: e => { d.freckles = e.target.checked; edited(); rebuild(); } } }), 'Freckles'),
         view.body === 'female' ? el('div', { class: 'cl-colorline' }, 'Lips', colorInput('lips', d.lips ?? '#c4566a', live(v => { d.lips = v; }))) : null)),
 
-    section('Hair',
+    fold('hair', 'Hair', sum(view.hair.style === 'none' ? null : dot(view.hair.color), view.hair.style === 'none' ? 'Bald' : words(view.hair.style), view.facialHair.style !== 'none' ? words(view.facialHair.style) : null),
       row('Style', segmented(o.hair, view.hair.style, v => { setPart('hair', 'style', v); edited(); rebuild(); })),
       row('Color', swatches('hairColor', o.palettes.hair, view.hair.color, live(v => setPart('hair', 'color', v)))),
       row('Facial', segmented(o.facialHair, view.facialHair.style, v => { setPart('facialHair', 'style', v); edited(); rebuild(); })),
@@ -199,13 +209,13 @@ function renderPanel() {
     view.top.style === 'dress' ? null : clothing('Bottom', 'bottom', o.bottom),
     clothing('Shoes', 'shoes', o.shoes),
 
-    section('Accessories',
+    fold('acc', 'Accessories', accs().length ? accs().map(a => words(a.type)).join(', ') : 'None',
       ...Object.entries(groupBySlot(o.accessories)).map(([slot, items]) => row(SLOT_LABELS[slot] ?? words(slot),
         el('div', { class: 'chips' }, items.map(a => chip(words(a.name), hasAcc(a.name), () => toggleAcc(a.name, o.accessories)))))),
       activeAccessories(o.accessories),
       (creator.stage.hero.inner.warnings ?? []).length ? el('div', { class: 'cl-note' }, creator.stage.hero.inner.warnings.join(' · ')) : null),
 
-    section('Share',
+    fold('share', 'Share', 'Copy or paste a character',
       el('textarea', { id: 'creatorJson', readonly: true, 'aria-label': 'Character config', spellcheck: 'false' }),
       el('div', { class: 'cl-actions' },
         el('button', { type: 'button', class: 'btn sm', id: 'creatorCopy', on: { click: copyJson } }, 'Copy config'),
@@ -213,11 +223,12 @@ function renderPanel() {
   );
   updateJson();
   panel.scrollTop = scroll;
+  if (focused >= 0) focusables()[focused]?.focus({ preventScroll: true });
 }
 
 function clothing(title, key, styles) {
   const d = creator.draft, part = creator.view[key], accent = d[key]?.accent;
-  return section(title,
+  return fold(key, title, sum(part.style === 'bare' ? null : dot(part.color), words(part.style)),
     row('Style', segmented(styles, part.style, v => { setPart(key, 'style', v); edited(); rebuild(); })),
     part.style === 'bare' ? null : row('Color', el('div', { class: 'cl-colorline' },
       colorInput(key + 'Color', part.color, live(v => setPart(key, 'color', v))),

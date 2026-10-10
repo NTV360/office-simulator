@@ -85,7 +85,7 @@ export class Mirror {
   applyJoin(info: PersonInfo, snap: PersonSnap): void {
     const old = this.people.get(info.id);
     if (old && JSON.stringify(old.spec) === JSON.stringify(info.spec)) {
-      old.name = info.name; old.role = info.role; old.title = info.title; old.department = info.department || null; old.controller = info.controller;
+      old.name = info.name; old.role = info.role; old.title = info.title; old.department = info.department || null; old.photo = info.photo || null; old.controller = info.controller;
       old.slot = info.slot >= 0 ? this.spots[info.slot] : undefined;
       old.screenKind = info.screenKind; old.screenVariant = info.screenVariant; old.arriveAt = info.arriveAt;
       this.update(old, snap);
@@ -106,7 +106,7 @@ export class Mirror {
 
   private create(info: PersonInfo, snap: PersonSnap): Person {
     const p: Person = {
-      id: info.id, name: info.name, role: info.role, title: info.title, department: info.department || null, controller: info.controller, spec: info.spec,
+      id: info.id, name: info.name, role: info.role, title: info.title, department: info.department || null, photo: info.photo || null, controller: info.controller, spec: info.spec,
       slot: info.slot >= 0 ? this.spots[info.slot] : undefined,
       pos: new Vec3(snap.x, 0, snap.z), face: snap.face, faceGoal: snap.face, speed: 1.3,
       state: snap.state, shown: snap.shown, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],

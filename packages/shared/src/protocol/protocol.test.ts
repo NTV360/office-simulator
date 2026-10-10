@@ -17,7 +17,7 @@ import {
 
 const TAU = Math.PI * 2;
 const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
-  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
+  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', photo: 'https://img.example.test/ana.png', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
 });
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
   id: 7, state: 'doing', shown: true, absent: false, toilet: false, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
@@ -93,6 +93,24 @@ describe('round trips', () => {
       expect([w.live, w.paused]).toEqual([live, paused]);
     }
     expect((decode(encode(welcome())) as Welcome).live).toBe(false); // (a message that does not say is Simulate)
+  });
+  it('a profile picture is carried, and only an https address is taken (the page puts it in an image)', () => {
+    const ok = decode(encode({ type: 'person', info: info(), snap: snap() })) as { info: PersonInfo };
+    expect(ok.info.photo).toBe('https://img.example.test/ana.png');
+    for (const bad of ['http://img.example.test/a.png', 'javascript:alert(1)', 'https://x.test/a b.png', 'https://x.test/"onerror="x', "https://x.test/'", 'https://x.test/<', 'data:image/png;base64,AAAA', 'https://' + 'a'.repeat(2100)]) {
+      const got = decode(encode({ type: 'person', info: info({ photo: bad }), snap: snap() })) as { info: PersonInfo };
+      expect(got.info.photo, bad.slice(0, 40)).toBe('');
+    }
+    expect((decode(encode({ type: 'person', info: info({ photo: '' }), snap: snap() })) as { info: PersonInfo }).info.photo).toBe('');
+    const long = 'https://img.example.test/sign?token=' + 'a'.repeat(900); // (a signed link: long, and fine)
+    expect((decode(encode({ type: 'person', info: info({ photo: long }), snap: snap() })) as { info: PersonInfo }).info.photo).toBe(long);
+  });
+  it('a bad picture address in a stored record never reaches the wire (it would only break the welcome for everyone)', () => {
+    resetSim(); loadLayout(officeLayout); setSeed(1); initState(); initDay(5); setSeed(null);
+    const p = people[0];
+    for (const bad of ['x'.repeat(70000), 'http://a.test/x', 'https://a b']) { p.photo = bad; expect(personInfo(p).photo, bad.slice(0, 20)).toBe(''); }
+    p.photo = 'https://img.example.test/ok.png'; expect(personInfo(p).photo).toBe('https://img.example.test/ok.png');
+    p.photo = null;
   });
   it('angles wrap into one turn', () => {
     for (const a of [-0.5, 7, 1000, -1000, 0]) {

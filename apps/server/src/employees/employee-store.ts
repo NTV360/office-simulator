@@ -16,6 +16,8 @@ export interface EmployeeRecord {
   character: unknown | null;
   /** The seat id chosen here ('A3'), or null: any free desk. */
   desk: string | null;
+  /** Their profile picture (an https address) from the records, or null. */
+  photo: string | null;
   /** No longer in the company's records. */
   removed: boolean;
 }
@@ -32,6 +34,8 @@ export interface ImportedEmployee {
   character: unknown | null;
   /** Their desk in the source: used only for an employee who has none here yet, and only if it is free. */
   desk: string | null;
+  /** Their profile picture (an https address), or null for none. The source's word is final (it is not something chosen here), except that absent means the source could not say: the stored one stays. */
+  photo?: string | null;
 }
 
 export interface ImportResult { added: number; updated: number; removed: number; restored: number }
@@ -56,10 +60,10 @@ export interface EmployeeStore {
 const sameShift = (a: Shift | null, b: Shift | null): boolean => (a === null || b === null ? a === b : a.code === b.code && a.start === b.start && a.end === b.end);
 
 interface Row {
-  user_id: string; first_name: string; last_name: string; department: string | null; intern: boolean; shift: Shift | null; character: unknown | null; desk: string | null; removed: boolean;
+  user_id: string; first_name: string; last_name: string; department: string | null; intern: boolean; shift: Shift | null; character: unknown | null; desk: string | null; photo: string | null; removed: boolean;
 }
 const toRecord = (r: Row): EmployeeRecord => ({
-  userId: r.user_id, firstName: r.first_name, lastName: r.last_name, department: r.department, intern: r.intern, shift: r.shift, character: r.character, desk: r.desk, removed: r.removed,
+  userId: r.user_id, firstName: r.first_name, lastName: r.last_name, department: r.department, intern: r.intern, shift: r.shift, character: r.character, desk: r.desk, photo: r.photo, removed: r.removed,
 });
 
 export class PgEmployeeStore implements EmployeeStore {
@@ -87,8 +91,8 @@ export class PgEmployeeStore implements EmployeeStore {
         // a desk from the source only if nobody here has it
         const seedDesk = e.desk && !taken.has(e.desk) ? e.desk : null;
         if (!old) {
-          await client.query('INSERT INTO employees (user_id, first_name, last_name, department, intern, shift, character, desk) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-            [e.userId, e.firstName, e.lastName, e.department, e.intern, e.shift === null ? null : JSON.stringify(e.shift), e.character === null ? null : JSON.stringify(e.character), seedDesk]);
+          await client.query('INSERT INTO employees (user_id, first_name, last_name, department, intern, shift, character, desk, photo) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [e.userId, e.firstName, e.lastName, e.department, e.intern, e.shift === null ? null : JSON.stringify(e.shift), e.character === null ? null : JSON.stringify(e.character), seedDesk, e.photo ?? null]);
           if (seedDesk) taken.add(seedDesk);
           out.added++;
           continue;
@@ -97,12 +101,13 @@ export class PgEmployeeStore implements EmployeeStore {
         const oldDesk = old.removed && old.desk && taken.has(old.desk) ? null : old.desk;
         const desk = oldDesk ?? seedDesk;
         const character = old.character ?? e.character;
+        const photo = e.photo === undefined ? old.photo : e.photo;
         if (desk && (desk !== old.desk || old.removed)) taken.add(desk);
         const changed = old.removed || old.first_name !== e.firstName || old.last_name !== e.lastName || old.department !== e.department || old.intern !== e.intern
-          || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null);
+          || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null) || old.photo !== photo;
         if (!changed) continue;
-        await client.query('UPDATE employees SET first_name = $2, last_name = $3, department = $4, intern = $5, shift = $6, character = $7, desk = $8, removed = false, updated_at = now() WHERE user_id = $1',
-          [e.userId, e.firstName, e.lastName, e.department, e.intern, e.shift === null ? null : JSON.stringify(e.shift), character === null ? null : JSON.stringify(character), desk]);
+        await client.query('UPDATE employees SET first_name = $2, last_name = $3, department = $4, intern = $5, shift = $6, character = $7, desk = $8, photo = $9, removed = false, updated_at = now() WHERE user_id = $1',
+          [e.userId, e.firstName, e.lastName, e.department, e.intern, e.shift === null ? null : JSON.stringify(e.shift), character === null ? null : JSON.stringify(character), desk, photo]);
         if (old.removed) out.restored++; else out.updated++;
       }
       const inList = new Set(list.map(e => e.userId));
@@ -151,18 +156,18 @@ export class MemoryEmployeeStore implements EmployeeStore {
       const old = this.rows.get(e.userId);
       const seedDesk = e.desk && !taken.has(e.desk) ? e.desk : null;
       if (!old) {
-        this.rows.set(e.userId, { userId: e.userId, firstName: e.firstName, lastName: e.lastName, department: e.department, intern: e.intern, shift: e.shift, character: e.character, desk: seedDesk, removed: false });
+        this.rows.set(e.userId, { userId: e.userId, firstName: e.firstName, lastName: e.lastName, department: e.department, intern: e.intern, shift: e.shift, character: e.character, desk: seedDesk, photo: e.photo ?? null, removed: false });
         if (seedDesk) taken.add(seedDesk);
         out.added++;
         continue;
       }
       const oldDesk = old.removed && old.desk && taken.has(old.desk) ? null : old.desk;
-      const desk = oldDesk ?? seedDesk, character = old.character ?? e.character;
+      const desk = oldDesk ?? seedDesk, character = old.character ?? e.character, photo = e.photo === undefined ? old.photo : e.photo;
       if (desk && (desk !== old.desk || old.removed)) taken.add(desk);
       const changed = old.removed || old.firstName !== e.firstName || old.lastName !== e.lastName || old.department !== e.department || old.intern !== e.intern
-        || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null);
+        || !sameShift(old.shift, e.shift) || desk !== old.desk || (old.character === null && character !== null) || old.photo !== photo;
       if (!changed) continue;
-      this.rows.set(e.userId, { ...old, firstName: e.firstName, lastName: e.lastName, department: e.department, intern: e.intern, shift: e.shift, character, desk, removed: false });
+      this.rows.set(e.userId, { ...old, firstName: e.firstName, lastName: e.lastName, department: e.department, intern: e.intern, shift: e.shift, character, desk, photo, removed: false });
       if (old.removed) out.restored++; else out.updated++;
     }
     const inList = new Set(list.map(e => e.userId));

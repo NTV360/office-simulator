@@ -20,7 +20,7 @@ import type { Person } from './types';
 type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'>;
 
 /** Who is about to be created: made up, or a real employee. */
-interface Who { name: string; role: string; title: string; userId: string | null; department: string | null; desk: string | null; shift: Shift | null; spec: CharacterSpec }
+interface Who { name: string; role: string; title: string; userId: string | null; department: string | null; desk: string | null; shift: Shift | null; photo?: string | null; spec: CharacterSpec }
 
 /** Create the next staff member at a free desk. Returns null when no desk is free. The new person is away until their arrival time. */
 export function makeStaff(): Person | null {
@@ -35,12 +35,12 @@ export function makeStaff(): Person | null {
 export function makeHelper(): Person { return createPerson(helperIdentity(), null); }
 
 function createPerson(who: Who, slot: Spot | null): Person {
-  const { name, role, title, userId, department, shift, spec } = who;
+  const { name, role, title, userId, department, shift, photo, spec } = who;
   const at = slot ?? { pos: ENTRY, face: Math.PI };
   const screenKind: ScreenKind = role.includes('Designer') ? 'design' : role === 'DevOps' || role === 'CTO' ? 'dash' : 'code';
   // the order of the random draws below is part of the recorded simulation; do not reorder
   const p: Person = {
-    id: allocatePersonId(), controller: 'ai', name, role, title, userId, department, shift, toiletUntil: null, spec, ...(slot ? { slot } : {}),
+    id: allocatePersonId(), controller: 'ai', name, role, title, userId, department, shift, photo: photo ?? null, toiletUntil: null, spec, ...(slot ? { slot } : {}),
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null, meeting: null,
@@ -63,7 +63,7 @@ function employee(e: (typeof roster.list & object)[number]): Who {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ? normalizeSpec(e.character) : randomSpec(role, seededRandom(e.userId)); // (the same look on every load)
   if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
-  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, spec };
+  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
 }
 
 /** The next employee not yet in the office who has a desk to go to (one without a free desk is skipped). */
@@ -150,7 +150,7 @@ export function applyEmployee(p: Person, e: Employee): boolean {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase();
   let changed = false;
   const set = <K extends keyof Person>(key: K, value: Person[K]): void => { if (p[key] !== value) { p[key] = value; changed = true; } };
-  set('name', hazel ? HAZEL_NAME : fullName(e)); set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department));
+  set('name', hazel ? HAZEL_NAME : fullName(e)); set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department)); set('photo', e.photo ?? null);
   const a = p.shift ?? null, b = e.shift;
   if (a === null || b === null ? a !== b : a.code !== b.code || a.start !== b.start || a.end !== b.end) { p.shift = b; changed = true; }
   if (e.character) {

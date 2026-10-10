@@ -4,7 +4,7 @@ import { DecodeError, Reader, Writer } from './binary';
 import { decode, decodeClient, encode } from './codec';
 import { NONE, type MeetingSnap, type PersonInfo, type PersonSnap } from './messages';
 
-const info: PersonInfo = { id: 1, name: 'A', role: 'R', title: 'R', department: '', controller: 'ai', spec: DEFAULT_SPEC, slot: 0, screenKind: 'code', screenVariant: 0, arriveAt: 500 };
+const info: PersonInfo = { id: 1, name: 'A', role: 'R', title: 'R', department: '', photo: '', controller: 'ai', spec: DEFAULT_SPEC, slot: 0, screenKind: 'code', screenVariant: 0, arriveAt: 500 };
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
   id: 1, state: 'doing', shown: true, absent: false, toilet: false, x: 0, z: 0, face: 0, walkPhase: 0, kind: 'work', anim: 'type', cat: 'work', spot: 1, partner: NONE, chatWith: NONE, meeting: NONE, props: 0, arrivedAt: 500, arriveAt: 500, leaveAt: 1000, coffees: 0, ...over,
 });

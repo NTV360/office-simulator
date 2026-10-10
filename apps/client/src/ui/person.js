@@ -3,6 +3,7 @@ import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB, isHelper } from '@office/shared';
 import { isLocalPlayer } from '../player/player.js';
 import { scene } from '../render/renderer.js';
+import { fillAvatar } from './avatar.js';
 import { $ } from './dom.js';
 
 /* ================= Selection + UI ================= */
@@ -11,7 +12,7 @@ const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.Me
 
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
-  if (p) { $('pAvatar').style.background = p.spec?.top?.color ?? '#3e6e9c'; $('pAvatar').style.borderColor = p.spec?.hair?.color ?? '#5b3a22'; }
+  if (p) $('pAvatar').dataset.key = ''; // (renderPerson fills it)
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }
@@ -58,6 +59,10 @@ function statusText(p) {
 function renderPerson() {
   const p = selected; if (!p) return;
   $('pName').textContent = p.name; $('pRole').textContent = `${p.title ?? p.role}${p.slot ? ' · ' + (p.slot.label ?? p.slot.place) : isHelper(p) ? '' : ' · visiting'}`;
+  { // the avatar follows the person's picture, name and shirt (a changed picture shows without closing the card)
+    const a = $('pAvatar'), color = p.spec?.top?.color ?? '#3e6e9c', key = `${p.photo ?? ''}|${p.name}|${color}`;
+    if (a.dataset.key !== key) { a.dataset.key = key; fillAvatar(a, { name: p.name, photo: p.photo, color }); }
+  }
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';

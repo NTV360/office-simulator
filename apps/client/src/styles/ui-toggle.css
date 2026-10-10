@@ -1,7 +1,6 @@
-/* The buttons at the top centre: hide controls, fullscreen. They move to the bottom right on phones. */
-#topButtons{position:fixed;z-index:3;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:6px}
-#topButtons .btn{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow);border-radius:999px;padding:8px 14px}
-body.ui-hidden #hud,body.ui-hidden #ledger,body.ui-hidden #person{display:none}
-body.ui-hidden #topButtons .btn{opacity:.55}
-body.ui-hidden #topButtons .btn:hover,body.ui-hidden #topButtons .btn:focus-visible{opacity:1}
-@media (max-width:760px){#topButtons{top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:auto;right:12px;transform:none}#person{bottom:calc(60px + env(safe-area-inset-bottom,0px))!important}}
+/* Top centre: employee search, then the hide-controls and fullscreen buttons. */
+#topBar{position:fixed;z-index:3;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:6px;align-items:flex-start}
+#topBar .icon-btn{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow);width:38px;height:38px;border-radius:11px}
+body.ui-hidden #hud,body.ui-hidden #ledger,body.ui-hidden #person,body.ui-hidden #dock,body.ui-hidden #officeSearch{display:none}
+body.ui-hidden #topBar .icon-btn{opacity:.55}
+body.ui-hidden #topBar .icon-btn:hover,body.ui-hidden #topBar .icon-btn:focus-visible{opacity:1}

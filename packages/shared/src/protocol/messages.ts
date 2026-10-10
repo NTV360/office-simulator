@@ -5,7 +5,10 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 12;
+export const WIRE_VERSION = 13;
+
+/** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
+export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
 
 /** The longest chat line, in characters. */
 export const MAX_CHAT = 200;
@@ -31,6 +34,8 @@ export interface PersonInfo {
   title: string;
   /** '' when they have none. */
   department: string;
+  /** Their profile picture (an https address), '' when they have none. */
+  photo: string;
   controller: 'ai' | 'account';
   spec: CharacterSpec;
   /** Index in the layout's spot list of the desk they own, or NONE. */

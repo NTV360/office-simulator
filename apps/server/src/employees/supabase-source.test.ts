@@ -116,7 +116,7 @@ describe('employees', () => {
     const f = fake({ ...TABLES, employees: many });
     const list = await source(f).employees();
     expect(list).toHaveLength(2500);
-    expect(f.calls.filter(c => c.url.pathname.endsWith('/employees')).map(c => c.headers.range)).toEqual(['0-999', '1000-1999', '2000-2999']);
+    expect(f.calls.filter(c => c.url.pathname.endsWith('/employees') && !c.url.searchParams.get('select')!.startsWith('user_id,photo')).map(c => c.headers.range)).toEqual(['0-999', '1000-1999', '2000-2999']);
   });
   it('unreadable looks only cost the looks and desks', async () => {
     const warn: string[] = [];
@@ -154,6 +154,30 @@ describe('employees', () => {
       { user_id: id(2), first_name: 'Ben', last_name: 'Lim', department: { name: 'UI/UX' } },
     ], character_information: [{ user_id: id(1), character_data: { desk: 'A3' } }, { user_id: id(2), character_data: { desk: 'HR1' } }] })).employees();
     expect(list.map(e => e.desk)).toEqual(['A3', null]);
+  });
+  it('takes the profile picture (one field of the metadata, asked for by name), only if it is an https address', async () => {
+    const f = fake({ ...TABLES, employees: [
+      { user_id: id(1), first_name: 'Ana', last_name: 'Cruz', photo: 'https://img.example.test/ana.png' },
+      { user_id: id(2), first_name: 'Ben', last_name: 'Lim', photo: 'http://img.example.test/ben.png' },
+      { user_id: id(3), first_name: 'Cat', last_name: 'Dee', photo: 'javascript:alert(1)' },
+      { user_id: id(4), first_name: 'Dan', last_name: 'Fox', photo: '"><script>' },
+      { user_id: id(5), first_name: 'Eve', last_name: 'Gil', photo: 42 },
+      { user_id: id(6), first_name: 'Fay', last_name: 'Ho' },
+    ] });
+    const list = await source(f).employees();
+    expect(list.map(e => e.photo)).toEqual(['https://img.example.test/ana.png', null, null, null, null, null]);
+    const asked = f.calls.filter(c => c.url.pathname.endsWith('/employees')).map(c => c.url.searchParams.get('select')!);
+    expect(asked.some(s => s.includes('photo:metadata->>profileImage'))).toBe(true); // (one field of the metadata)
+    for (const s of asked) expect(s).not.toMatch(/(^|,)metadata(,|$)/); // (never the whole metadata)
+  });
+  it('when the pictures cannot be read the employees still come in, and nothing is said about their pictures (the stored ones stay)', async () => {
+    const warn: string[] = [];
+    const base = fake({ ...TABLES, employees: [{ user_id: id(1), first_name: 'Ana', last_name: 'Cruz', photo: 'https://img.example.test/ana.png' }] });
+    const f = ((url: URL | string, init?: RequestInit) => (String(url).includes('photo%3Ametadata') || String(url).includes('photo:metadata') ? Promise.resolve(new Response('{}', { status: 500 })) : base.fetch(url as never, init))) as unknown as typeof fetch;
+    const list = await new SupabaseSource({ url: URL_, secretKey: KEY, fetch: f, log: { warn: m => warn.push(m) } }).employees();
+    expect(list).toHaveLength(1);
+    expect('photo' in list[0]).toBe(false);
+    expect(warn.join(' ')).toMatch(/pictures/);
   });
   it('never follows a redirect (the key is in the headers), and a plain http address is for this machine only', async () => {
     let redirect: unknown;

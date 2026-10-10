@@ -85,6 +85,8 @@ export interface Person {
   /** What the card says they are: "UI/UX Department", "Intern HR". Falls back to the role. */
   title?: string;
   department?: string | null;
+  /** Their profile picture (an https address), or null: the page shows their initials. */
+  photo?: string | null;
   shift?: Shift | null;
   /** When their shift starts on the sim clock (06:00 to 30:00); their breaks are counted from it. */
   shiftStart?: number;

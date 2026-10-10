@@ -1,4 +1,4 @@
-import { deskSeat, fromDbUtc, normalizeSpec, type AttendanceRecord, type Shift } from '@office/shared';
+import { PHOTO_URL, deskSeat, fromDbUtc, normalizeSpec, type AttendanceRecord, type Shift } from '@office/shared';
 import type { ImportedEmployee } from './employee-store';
 
 // Reads the company's employee records (Supabase, through its REST interface) for the server to import. Read only, with the server-only secret
@@ -37,6 +37,8 @@ const text = (v: unknown, max: number): string | null => {
 };
 /** Where a plain http address is fine: this machine (the key never crosses a network). */
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', 'host.docker.internal']);
+/** The profile picture: an https address (no spaces, quote marks or angle brackets, not long), else none. The page puts it in an image. */
+const photoUrl = (v: unknown): string | null => (typeof v === 'string' && PHOTO_URL.test(v) ? v : null);
 const minutes = (t: unknown): number | null => {
   if (typeof t !== 'string') return null;
   const m = /^(\d{1,2}):(\d{2})(?::\d{2})?/.exec(t);
@@ -105,6 +107,10 @@ export class SupabaseSource {
     // (required: if they could not be read, every stored shift and intern flag would be reset to the defaults)
     const types = await this.rows('employment_types', 'select=employment_type_id,code,description');
     const shiftRows = await this.rows('shifts', 'select=shift_id,code,start_time,end_time');
+    // (the pictures: one field of the metadata, and only that. If it cannot be read the employees still come in and their stored pictures stay)
+    const photoRows = await this.optional('employees', 'select=user_id,photo:metadata->>profileImage&deleted_at=is.null', 'stored pictures kept');
+    const photoOf = new Map<string, string | null>(), photosRead = photoRows.length > 0;
+    for (const r of photoRows) if (typeof r.user_id === 'string' && UUID.test(r.user_id)) photoOf.set(r.user_id.toLowerCase(), photoUrl(r.photo));
     const looks = await this.optional('character_information', 'select=user_id,character_data', 'made-up looks used');
     const interns = new Set(types.filter(t => INTERN.test(`${String(t.code ?? '')} ${String(t.description ?? '')}`)).map(t => String(t.employment_type_id)));
     const shifts = new Map<string, Shift>();
@@ -131,7 +137,7 @@ export class SupabaseSource {
         userId: id, firstName: first, lastName: last, department: dept,
         intern: e.employment_type_id !== null && e.employment_type_id !== undefined && interns.has(String(e.employment_type_id)),
         shift: e.shift_id !== null && e.shift_id !== undefined ? shifts.get(String(e.shift_id)) ?? null : null,
-        character: raw ? normalizeSpec(raw) : null,
+        character: raw ? normalizeSpec(raw) : null, ...(photosRead ? { photo: photoOf.get(id) ?? null } : {}),
         desk,
       });
     }

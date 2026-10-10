@@ -32,8 +32,8 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const employee = (n, first, last, dept, extra = {}) => ({ user_id: id(n), first_name: first, last_name: last, employment_type_id: 1, shift_id: 10, department: dept ? { name: dept } : null, ...extra });
 const records = {
   employees: [
-    employee(1, 'Hazel', 'Sellote', 'UI/UX'), employee(2, 'Ana', 'Lopez', 'UI/UX'), employee(3, 'Ben', 'Reyes', 'Quality Assurance'),
-    employee(4, 'Cat', 'Dizon', 'Human Resources'), employee(5, 'Dan', 'Cruz', 'DevOps', { shift_id: 11 }), employee(6, 'Eve', 'Santos', 'UI/UX', { employment_type_id: 2 }),
+    employee(1, 'Hazel', 'Sellote', 'UI/UX'), employee(2, 'Ana', 'Lopez', 'UI/UX', { photo: 'https://img.example.test/ana.png' }), employee(3, 'Ben', 'Reyes', 'Quality Assurance'),
+    employee(4, 'Cat', 'Dizon', 'Human Resources', { photo: 'http://img.example.test/not-https.png' }), employee(5, 'Dan', 'Cruz', 'DevOps', { shift_id: 11 }), employee(6, 'Eve', 'Santos', 'UI/UX', { employment_type_id: 2 }),
   ],
   employment_types: [{ employment_type_id: 1, code: 'REG', description: 'Regular' }, { employment_type_id: 2, code: 'OJT', description: 'On the job training' }],
   shifts: [{ shift_id: 10, code: 'DAY', start_time: '09:00:00', end_time: '18:00:00' }, { shift_id: 11, code: 'NIGHT', start_time: '21:00:00', end_time: '06:00:00' }],
@@ -87,6 +87,14 @@ try {
   const names = await staffNames(watcher.page);
   check('a watcher sees the same six names, and the title of each (their department)', names.filter(n => n !== 'e2e_watcher').join() === 'Ana Lopez,Ben Reyes,Cat Dizon,Dan Cruz,Eve Santos,Hazel Sellote', names.join());
   check('and the office helper, who is not an employee, is there too', await watcher.page.evaluate(() => window.__sim.people.some(p => p.name === 'Office Helper' && !p.slot && p.controller === 'ai')));
+  const faces = await watcher.page.evaluate(() => { const by = n => window.__sim.people.find(p => p.name === n); return { ana: by('Ana Lopez').photo, cat: by('Cat Dizon').photo }; });
+  check('The profile picture of Ana reaches the watcher, and a picture that is not an https address does not', faces.ana === 'https://img.example.test/ana.png' && !faces.cat, JSON.stringify(faces));
+  const cards = await watcher.page.evaluate(() => {
+    const out = {};
+    for (const n of ['Ana Lopez', 'Cat Dizon']) { window.__sim.select(window.__sim.people.find(p => p.name === n)); const a = document.getElementById('pAvatar'); out[n] = { img: a.querySelector('img')?.getAttribute('src') ?? null, text: a.textContent }; }
+    return out;
+  });
+  check('the person card shows the picture, or the initials when there is none', cards['Ana Lopez'].img === 'https://img.example.test/ana.png' && cards['Cat Dizon'].img === null && cards['Cat Dizon'].text === 'CD', JSON.stringify(cards));
   const titles = await watcher.page.evaluate(() => Object.fromEntries(window.__sim.people.map(p => [p.name, p.title])));
   check('Eve is an intern, Ben is QA', titles['Eve Santos'] === 'Intern UI/UX' && titles['Ben Reyes'] === 'Quality Assurance Department', JSON.stringify(titles));
   const hazel = await watcher.page.evaluate(() => { const h = window.__sim.people.find(p => p.name === 'Hazel Sellote'); return h && h.spec.angry; });
@@ -203,7 +211,7 @@ try {
   check('and not in the server\'s log', !logs.includes(KEY));
   const page = await (await fetch(base + '/')).text();
   check('and not in the web page', !page.includes(KEY));
-  check('the server asked the records for names, shifts and looks only, with the key as a header', asked.length > 5 && asked.every(a => a.key === KEY) && asked.filter(a => a.table === 'employees').every(a => a.select === 'user_id,first_name,last_name,employment_type_id,shift_id,department:departments(name)'), asked.filter(a => a.table === 'employees')[0]?.select);
+  check('the server asked the records for names, shifts and looks only, with the key as a header', asked.length > 5 && asked.every(a => a.key === KEY) && asked.filter(a => a.table === 'employees').every(a => a.select === 'user_id,first_name,last_name,employment_type_id,shift_id,department:departments(name)' || a.select === 'user_id,photo:metadata->>profileImage'), asked.filter(a => a.table === 'employees').map(a => a.select).join(' | '));
 
   const errors = [...watcher.errors, ...me.errors].filter(e => !/401|403|Failed to load resource|WebSocket connection|502/.test(e)); // (the hard kill makes the connections fail for a moment)
   check('no unexpected console errors in the browsers', errors.length === 0, errors.slice(0, 2).join(' | '));

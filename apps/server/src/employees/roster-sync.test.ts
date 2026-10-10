@@ -8,7 +8,7 @@ import { setRoster, syncRoster } from './roster-sync';
 
 const U = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const rec = (n: number, over: Partial<EmployeeRecord> = {}): EmployeeRecord => ({
-  userId: U(n), firstName: `First${n}`, lastName: `Last${n}`, department: 'UI/UX', intern: false, shift: null, character: null, desk: null, removed: false, ...over,
+  userId: U(n), firstName: `First${n}`, lastName: `Last${n}`, department: 'UI/UX', intern: false, shift: null, character: null, desk: null, photo: null, removed: false, ...over,
 });
 const options = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 7 };
 const staff = () => people.filter(hasSlot);

@@ -2,7 +2,7 @@ import { normalizeSpec, type CharacterSpec } from '../character/spec';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
-  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, WIRE_VERSION, type ObjectPose,
+  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, PHOTO_URL, WIRE_VERSION, type ObjectPose,
   type ActKind, type ClientMessage, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
 } from './messages';
 
@@ -100,17 +100,18 @@ function readSnap(r: Reader): PersonSnap {
 }
 
 function writeInfo(w: Writer, p: PersonInfo): void {
-  w.u16(p.id).str(p.name).str(p.role).str(p.title).str(p.department).u8(index(CONTROLLERS, p.controller, 'controller')).str(JSON.stringify(p.spec));
+  w.u16(p.id).str(p.name).str(p.role).str(p.title).str(p.department).str(p.photo).u8(index(CONTROLLERS, p.controller, 'controller')).str(JSON.stringify(p.spec));
   w.u16(toU16(p.slot)).u8(index(SCREEN_KINDS, p.screenKind, 'screen kind')).u8(p.screenVariant).f32(p.arriveAt);
 }
 function readInfo(r: Reader): PersonInfo {
-  const id = r.u16(), name = r.str(), role = r.str(), title = r.str(), department = r.str(), controller = readIndex(r, CONTROLLERS, 'controller');
+  const id = r.u16(), name = r.str(), role = r.str(), title = r.str(), department = r.str(), rawPhoto = r.str(), controller = readIndex(r, CONTROLLERS, 'controller');
+  const photo = PHOTO_URL.test(rawPhoto) ? rawPhoto : ''; // (the page puts it in an image: only an https address is taken)
   let raw: unknown;
   try { raw = JSON.parse(r.str()); } catch { throw new DecodeError('invalid character spec'); }
   const slot = fromU16(r.u16()), screenKind = readIndex(r, SCREEN_KINDS, 'screen kind'), screenVariant = r.u8(), arriveAt = r.f32();
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new DecodeError('invalid character spec');
   // made valid here too: the page draws and shows what it reads (Hazel's furious face is allowed: the server says so)
-  return { id, name, role, title, department, controller, spec: normalizeSpec(raw) as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
+  return { id, name, role, title, department, photo, controller, spec: normalizeSpec(raw) as CharacterSpec, slot, screenKind, screenVariant, arriveAt };
 }
 
 function writeMeetings(w: Writer, list: readonly MeetingSnap[]): void {
