@@ -1,0 +1,157 @@
+import { keys } from '../camera/input.js';
+import { setView } from '../camera/controller.js';
+import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, people, stepPlayer } from '@office/shared';
+import { renderer } from '../render/renderer.js';
+import { $ } from '../ui/dom.js';
+import { wall } from '../world/helpers.js';
+import { player } from './player.js';
+import { updatePrompts } from './prompts.js';
+import { standUp, toggleSit } from './seating.js';
+
+// Shared by first and third person: the user is steering the player's character.
+// Holds the look angles, the touch stick, and turns input into movement.
+const el = renderer.domElement;
+const ctl = {
+  active: false, mode: null, yaw: 0, pitch: 0, pitchMin: -1.2, pitchMax: 1.2, savedWall: LOW_H, coarse: false,
+  stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
+  keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
+};
+
+// Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
+function beginControl(mode, p, hud) {
+  Object.assign(ctl, { active: true, mode, yaw: p.face, pitch: -.08, savedWall: wall.goal });
+  player.moving = false; player.controlling = true;
+  wall.goal = FULL_H;
+  document.body.classList.add(mode);
+  $('fpBar').hidden = false; $('stick').hidden = !ctl.coarse; $('fpPrompt').hidden = false;
+  $('fpMode').textContent = hud.title; $('fpKeys').textContent = hud.keys; $('fpWho').textContent = 'Walking as you';
+}
+const PLAY_VIEWS = new Set(['fp', 'third']);
+// Stop steering. Stand up unless we are just swapping between first and third person.
+function endControl(nextId) {
+  lastDriveAt = null;
+  const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId) && !player.online) standUp(p); // (online you stay in your seat until you stand up)
+  player.controlling = false;
+  document.body.classList.remove(ctl.mode);
+  Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
+  wall.goal = ctl.savedWall; ctl.stick.x = ctl.stick.y = 0;
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  $('fpBar').hidden = true; $('stick').hidden = true; $('fpPrompt').hidden = true;
+}
+
+// Let go of the touch stick and the look finger (the window lost focus, a cancelled touch, the chat box opened): online that would be a
+// stream of walking orders.
+function releaseSticks() { ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0; }
+
+function look(dx, dy) { ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035)); }
+function pointerDown(e) {
+  try { el.setPointerCapture(e.pointerId); } catch (_) {}
+  if (e.pointerType === 'touch' && e.clientX < innerWidth * .45 && e.clientY > innerHeight * .45 && ctl.stickId === null) {
+    ctl.stickId = e.pointerId; ctl.stickO = { x: e.clientX, y: e.clientY };
+    const st = $('stick'); st.style.left = (e.clientX - 60) + 'px'; st.style.bottom = (innerHeight - e.clientY - 60) + 'px';
+  } else {
+    ctl.lookId = e.pointerId; ctl.lx = e.clientX; ctl.ly = e.clientY;
+    if (e.pointerType === 'mouse' && !document.pointerLockElement && el.requestPointerLock) { try { const r = el.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (_) {} }
+  }
+  e.preventDefault();
+}
+function pointerMove(e) {
+  if (document.pointerLockElement === el && e.pointerType === 'mouse') { look(e.movementX, e.movementY); return; }
+  if (e.pointerId === ctl.stickId) {
+    let dx = (e.clientX - ctl.stickO.x) / 50, dy = (e.clientY - ctl.stickO.y) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
+    ctl.stick.x = dx; ctl.stick.y = dy; $('knob').style.transform = `translate(${dx * 34}px, ${dy * 34}px)`;
+  } else if (e.pointerId === ctl.lookId) { look(e.clientX - ctl.lx, e.clientY - ctl.ly); ctl.lx = e.clientX; ctl.ly = e.clientY; }
+}
+function pointerUp(e) {
+  if (e.pointerId === ctl.stickId) { ctl.stickId = null; ctl.stick.x = ctl.stick.y = 0; $('knob').style.transform = ''; const st = $('stick'); st.style.left = ''; st.style.bottom = ''; }
+  if (e.pointerId === ctl.lookId) ctl.lookId = null;
+}
+
+// Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
+function driveLocomotion(dt, p) {
+  if (player.online) return driveOnline(dt, p);
+  let f = 0, r = 0, turn = 0;
+  if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
+  if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
+  if (keys.has('arrowleft')) turn += 1; if (keys.has('arrowright')) turn -= 1;
+  f -= ctl.stick.y; r += ctl.stick.x;
+  ctl.yaw += turn * 2.2 * dt;
+  const len = Math.hypot(f, r); let moved = 0, dx = 0, dz = 0;
+  if (len > .08 && player.sitting) standUp(p);
+  if (len > .08) {
+    const sp = 1.5 * (keys.has('shift') ? 2 : 1) * Math.min(1, len) * dt;
+    const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw);
+    dx = (fx * f + rx * r) / len * sp; dz = (fz * f + rz * r) / len * sp;
+    moved = stepPlayer(p, dx, dz, people);
+  }
+  player.moving = moved > 1e-4; p.walkPhase += moved * 4.6; p.animT += dt;
+  return { moved, dx, dz };
+}
+
+// Online: the same keys and stick. What is wanted (which way, how fast, which way to face) goes to the server, which does the walking
+// by the same rules. So that the keys answer at once, your person is also moved here, right now, with the same shared collision and
+// speed (prediction); the server's `ack` messages are compared with that and pull it back if the two ever disagree (net/online.js).
+// Whether you are seated is read from what the server says (it decides), and it stands you up when you walk.
+let lastDriveAt = null; // when driveOnline last ran (null while you are not steering)
+function driveOnline(dt, p) {
+  let f = 0, r = 0, turn = 0;
+  if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
+  if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
+  if (keys.has('arrowleft')) turn += 1; if (keys.has('arrowright')) turn -= 1;
+  f -= ctl.stick.y; r += ctl.stick.x;
+  ctl.yaw += turn * 2.2 * dt;
+  const len = Math.hypot(f, r);
+  let mx = 0, mz = 0;
+  if (len > .08) {
+    const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw), k = Math.min(1, len) / len;
+    mx = (fx * f + rx * r) * k; mz = (fz * f + rz * r) * k;
+  }
+  // first person faces where you look; third person faces where you walk
+  const heading = ctl.mode === 'fp' ? ctl.yaw : (len > .08 ? Math.atan2(mx, mz) : p.face);
+  const run = keys.has('shift');
+  const seat = p.task && p.task.kind === 'playerSit' ? p.task.spot : null;
+  if (seat && !player.sitting) { ctl.yaw = seat.face; ctl.pitch = -.12; } // just sat down: look the way the seat faces
+  player.sitting = seat;
+  // predict: move now, exactly as the server will (the direction, the speed, in steps no longer than a quarter of a metre)
+  let moved = 0;
+  const stick = Math.hypot(mx, mz);
+  // The server walks you in real time; the page limits one frame to 0.05 s (dt). When frames are slow (a busy computer) that would make
+  // the prediction slower than the server, so use the time that really passed, up to a quarter of a second.
+  const nowMs = performance.now(), elapsed = lastDriveAt === null ? dt : Math.min(.25, Math.max(dt, (nowMs - lastDriveAt) / 1000));
+  lastDriveAt = nowMs;
+  if (!seat && stick > .08 && player.online.predicting) {
+    const speed = (run ? RUN_SPEED : WALK_SPEED) * Math.min(1, stick) * elapsed;
+    const steps = Math.max(1, Math.ceil(speed / .25));
+    for (let i = 0; i < steps; i++) moved += stepPlayer(p, mx / stick * speed / steps, mz / stick * speed / steps, people);
+    if (moved > 0) player.online.movedNow();
+  }
+  player.moving = moved > 1e-4 || (seat === null && performance.now() - player.online.lastMovedAt < 150);
+  p.walkPhase += moved * 4.6;
+  player.online.input(mx, mz, heading, run); // after moving: the position recorded with the input is where the prediction is
+  return { moved, dx: mx, dz: mz };
+}
+
+// Refresh the sit/stand button and the "who am I looking at" label a few times a second.
+let promptAcc = 0;
+function tickPrompts(dt) { promptAcc += dt; if (promptAcc > .2) { promptAcc = 0; updatePrompts(); } }
+
+function initControl() {
+  ctl.coarse = matchMedia('(pointer: coarse)').matches;
+  $('fpAct').onclick = toggleSit;
+  // losing the window (or a cancelled touch) must not leave the stick held: online that is a stream of walking orders
+  addEventListener('blur', releaseSticks);
+  el.addEventListener('pointercancel', releaseSticks);
+  $('fpExit').onclick = exitPlay;
+  addEventListener('keydown', e => {
+    if (!ctl.active || e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if (k === 'e' && !e.repeat) toggleSit();
+    if (k === 'escape' && !document.pointerLockElement) exitPlay();
+    if (k === 'v' && !e.repeat) setView(ctl.mode === 'fp' ? 'third' : 'fp');
+    if (ctl.keyHook && !e.repeat) ctl.keyHook(k);
+  });
+}
+// Stop steering the player; the camera stays free-orbiting around them.
+function exitPlay() { if (ctl.active) setView('free'); }
+
+export { beginControl, ctl, driveLocomotion, el, endControl, exitPlay, initControl, pointerDown, pointerMove, pointerUp, releaseSticks, tickPrompts };

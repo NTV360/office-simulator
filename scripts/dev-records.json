@@ -1,0 +1,434 @@
+{
+ "employees": [
+  {
+   "user_id": "00000000-0000-4000-8000-000000000001",
+   "first_name": "Hazel",
+   "last_name": "Sellote",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "UI/UX"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000002",
+   "first_name": "Ana",
+   "last_name": "Lopez",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "UI/UX"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000003",
+   "first_name": "Ben",
+   "last_name": "Reyes",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Quality Assurance"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000004",
+   "first_name": "Cat",
+   "last_name": "Dizon",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Human Resources"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000005",
+   "first_name": "Dan",
+   "last_name": "Cruz",
+   "employment_type_id": 1,
+   "shift_id": 11,
+   "department": {
+    "name": "DevOps"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000006",
+   "first_name": "Eve",
+   "last_name": "Santos",
+   "employment_type_id": 2,
+   "shift_id": 10,
+   "department": {
+    "name": "UI/UX"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000007",
+   "first_name": "Gus",
+   "last_name": "Tan",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Frontend (FE)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000008",
+   "first_name": "Ivy",
+   "last_name": "Ramos",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Frontend (FE)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000009",
+   "first_name": "Joel",
+   "last_name": "Garcia",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000010",
+   "first_name": "Kim",
+   "last_name": "Flores",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000011",
+   "first_name": "Leo",
+   "last_name": "Mendoza",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000012",
+   "first_name": "Mia",
+   "last_name": "Bautista",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Quality Assurance"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000013",
+   "first_name": "Noel",
+   "last_name": "Aquino",
+   "employment_type_id": 1,
+   "shift_id": 11,
+   "department": {
+    "name": "DevOps"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000014",
+   "first_name": "Olive",
+   "last_name": "Castro",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Human Resources"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000015",
+   "first_name": "Paolo",
+   "last_name": "Rivera",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Human Resources"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000016",
+   "first_name": "Quinn",
+   "last_name": "Villanueva",
+   "employment_type_id": 2,
+   "shift_id": 10,
+   "department": {
+    "name": "Product"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000017",
+   "first_name": "Rina",
+   "last_name": "Navarro",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Product"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000018",
+   "first_name": "Sam",
+   "last_name": "Dela Cruz",
+   "employment_type_id": 1,
+   "shift_id": 12,
+   "department": {
+    "name": "Customer Support"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000019",
+   "first_name": "Tina",
+   "last_name": "Pascual",
+   "employment_type_id": 1,
+   "shift_id": 12,
+   "department": {
+    "name": "Customer Support"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000020",
+   "first_name": "Uno",
+   "last_name": "Salazar",
+   "employment_type_id": 1,
+   "shift_id": 12,
+   "department": {
+    "name": "Customer Support"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000021",
+   "first_name": "Vera",
+   "last_name": "Torres",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Graphics Design"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000022",
+   "first_name": "Wes",
+   "last_name": "Domingo",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Graphics Design"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000023",
+   "first_name": "Xia",
+   "last_name": "Ocampo",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Internet of Things (IoT)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000024",
+   "first_name": "Yan",
+   "last_name": "Soriano",
+   "employment_type_id": 2,
+   "shift_id": 10,
+   "department": {
+    "name": "Internet of Things (IoT)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000025",
+   "first_name": "Zed",
+   "last_name": "Fernandez",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000026",
+   "first_name": "Abby",
+   "last_name": "Lim",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Frontend (FE)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000027",
+   "first_name": "Bong",
+   "last_name": "Sy",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Quality Assurance"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000028",
+   "first_name": "Cleo",
+   "last_name": "Uy",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "UI/UX"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000029",
+   "first_name": "Dino",
+   "last_name": "Go",
+   "employment_type_id": 1,
+   "shift_id": 11,
+   "department": {
+    "name": "DevOps"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000030",
+   "first_name": "Elsa",
+   "last_name": "Chua",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Product"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000031",
+   "first_name": "Finn",
+   "last_name": "Tolentino",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000032",
+   "first_name": "Gia",
+   "last_name": "Magno",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Frontend (FE)"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000033",
+   "first_name": "Hugo",
+   "last_name": "Pineda",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Customer Support"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000034",
+   "first_name": "Iris",
+   "last_name": "Valdez",
+   "employment_type_id": 2,
+   "shift_id": 10,
+   "department": {
+    "name": "Graphics Design"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000035",
+   "first_name": "Jun",
+   "last_name": "Padilla",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "Backend"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000036",
+   "first_name": "Kara",
+   "last_name": "Lacson",
+   "employment_type_id": 1,
+   "shift_id": 10,
+   "department": {
+    "name": "UI/UX"
+   }
+  }
+ ],
+ "employment_types": [
+  {
+   "employment_type_id": 1,
+   "code": "REG",
+   "description": "Regular"
+  },
+  {
+   "employment_type_id": 2,
+   "code": "OJT",
+   "description": "On the job training (intern)"
+  }
+ ],
+ "shifts": [
+  {
+   "shift_id": 10,
+   "code": "DAY",
+   "start_time": "09:00:00",
+   "end_time": "18:00:00"
+  },
+  {
+   "shift_id": 11,
+   "code": "NIGHT",
+   "start_time": "21:00:00",
+   "end_time": "06:00:00"
+  },
+  {
+   "shift_id": 12,
+   "code": "MID",
+   "start_time": "13:00:00",
+   "end_time": "22:00:00"
+  }
+ ],
+ "character_information": [
+  {
+   "user_id": "00000000-0000-4000-8000-000000000004",
+   "character_data": {
+    "type": "blocky",
+    "body": "female",
+    "hair": {
+     "style": "bun",
+     "color": "#222222"
+    },
+    "desk": "HR1"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000002",
+   "character_data": {
+    "type": "chibi",
+    "body": "female",
+    "hair": {
+     "style": "long",
+     "color": "#5a3a22"
+    },
+    "desk": "A1"
+   }
+  },
+  {
+   "user_id": "00000000-0000-4000-8000-000000000009",
+   "character_data": {
+    "type": "blocky",
+    "body": "male",
+    "hair": {
+     "style": "short",
+     "color": "#1c1715"
+    },
+    "desk": "B3"
+   }
+  }
+ ]
+}

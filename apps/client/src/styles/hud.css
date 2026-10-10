@@ -1,0 +1,24 @@
+/* Top left: the clock card. Brand line, the time, how time runs (Simulate | Live), and in Simulate the
+   day/night, play/pause and speed controls. */
+#hud{top:calc(16px + env(safe-area-inset-top,0px));left:16px;width:272px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:8px}
+.eyebrow{font:500 10.5px/1.2 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font:800 15px/1.1 var(--f-display);letter-spacing:.16em;text-transform:uppercase}
+.clock{display:flex;align-items:baseline;gap:12px}
+#clock{font:500 38px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+#phase{font-size:12px;color:var(--muted);line-height:1.35}
+
+/* Online mode: connection status, bottom left */
+#netStatus { position: fixed; left: 12px; bottom: 12px; z-index: 30; padding: 4px 10px 4px 22px; border-radius: 999px; font: 12px/1.6 system-ui, sans-serif; color: #e9eef2; background: rgba(20, 24, 28, .78); pointer-events: none; }
+#netStatus::before { content: ''; position: absolute; left: 8px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #8796a2; }
+#netStatus.ok::before { background: #55a274; }
+#netStatus.wait::before { background: #c9a246; }
+#netStatus.bad::before { background: #d66f5a; }
+#netStatus.bad { color: #ffd9d2; }
+body.online #staff, body.online #play, body.online [data-speed], body.online [data-mode], body.online [data-simtime] { opacity: .55; cursor: not-allowed; }
+body.clock-live [data-speed] { display: none; } /* Live follows the real time: there is no speed */
+#phase .live{font:600 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:#d64545}
+#phase .live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#d64545;margin-right:5px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.timebar{display:flex;align-items:center;gap:6px}
+.timebar[hidden]{display:none}

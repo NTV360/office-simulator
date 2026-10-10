@@ -4,18 +4,17 @@ These rules exist because of real failures during the restructure (a white scree
 
 ## 1. Modules
 
-- Plain ES modules, one concern per file, files named `camelCase.js` inside the folder that matches what the code is (see the folder map in [ARCHITECTURE.md](ARCHITECTURE.md#folder-map-src)).
+- Plain ES modules, one concern per file, files named `camelCase.js` inside the folder that matches what the code is (see the folder map in [ARCHITECTURE.md](ARCHITECTURE.md#folder-map-appsclientsrc)).
 - **Export with one `export { ... }` line at the bottom of the file**, names sorted. Do not scatter `export` keywords through the file. This matches every existing module.
 - Import by relative path with the `.js` extension. Import only what you use.
 - Respect the layer direction in [ARCHITECTURE.md](ARCHITECTURE.md#layers-and-dependency-rules). Do not add to the known exceptions.
 - Do not create a new top-level folder without agreeing it first.
-- **Vendored code:** `src/character/pack/` is the character pack, kept exactly as delivered so it can be replaced in one drop. It does not follow these rules (it uses `export` keywords inline and sets a flag on one of its own registries at import). Do not edit it; extend it through its `register*` functions from an `init*()`, and keep our code out of that folder.
 
 ## 2. No work at import time
 
 **A module may only declare things when it is imported.** Allowed at the top level: imports, `function` declarations, constants made from literals, `Math.*`, and `new Something()` with no side effects. Not allowed: calling functions that create or change anything, adding to the scene, touching the DOM, registering event listeners, pushing into shared arrays.
 
-Anything that does work goes in an exported function named `build*()` (creates world geometry) or `init*()` (wires things up), and is called from [`src/bootstrap.js`](../src/bootstrap.js). Add the call where its dependencies already exist.
+Anything that does work goes in an exported function named `build*()` (creates world geometry) or `init*()` (wires things up), and is called from [`apps/client/src/bootstrap.js`](../apps/client/src/bootstrap.js). Add the call where its dependencies already exist.
 
 Why: ES modules run in import order, which is easy to break by accident. The first version of this split crashed because a module ran before the module that fills the data it needed.
 
@@ -52,9 +51,9 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 ## 5. Data versus code
 
-- **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `config/plan.js`, `character/spec.js`, `people/data.js`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
+- **Data** (palettes, option lists, names, floor plan, specs) lives in data modules: `packages/shared/src/plan.ts`, `packages/shared/src/character/spec.ts`, `packages/shared/src/sim/data.ts`. Keep them free of Three.js and the DOM so they can be validated and saved anywhere.
 - Do not hard-code magic numbers deep inside logic when they describe the world. Put them in a data module or at the top of the file with a name.
-- A character's look is a `CharacterSpec`: the character pack's config, plus our own flags (`angry`). Looks are built in the pack; see [HOW-TO.md](HOW-TO.md#add-a-hairstyle-or-another-look-option).
+- A character's look is a `CharacterSpec`, made from the character pack's options. New hair, clothes or accessories are added to the pack (see [HOW-TO.md](HOW-TO.md#update-the-character-pack)); `normalizeSpec` makes any input valid, so use it on anything that comes from outside (a save, the network, a pasted config).
 
 ## 6. Coordinates and angles
 
@@ -64,13 +63,14 @@ function makeCells() { return new Float32Array(GC * GR); }
 ## 7. Per-frame code
 
 - `update*` functions run every frame: no allocating vectors, arrays or closures in them. Reuse a scratch object created at module level.
-- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`).
+- Time comes in as `dt` (seconds, capped) or `now` (ms from the frame loop). Avoid `performance.now()` in sim logic so the sim stays steppable (`__sim.advance`). Real-time timers are for things only one page sees (an emote lasting a couple of seconds).
+- **Randomness has two streams.** Code that decides what people do or look like uses the simulation stream (`random`, `rnd`, `pick`, `shuffle` from `@office/shared`); code that is only about how things are drawn uses the visual stream (`vrandom`, `vrnd`, `vpick`). Never call `Math.random` in simulation code, and never use the simulation stream in visual code: it would make seeded runs (`?seed=N`) irreproducible. The order of simulation draws is part of the behaviour.
 - Easing uses `1 - Math.exp(-dt * rate)`, not a fixed fraction, so it behaves the same at any frame rate.
 
 ## 8. UI and CSS
 
 - Markup lives in `index.html`; behaviour is bound in an `init*` function; **never** use inline `onclick` in HTML.
-- CSS is split by UI area in `src/styles/` and imported in order in `main.js`. Add a new file for a new area, and use the colour/spacing tokens in `tokens.css`.
+- CSS is split by UI area in `apps/client/src/styles/` and imported in order in `main.js`. Add a new file for a new area, and use the colour/spacing tokens in `tokens.css`.
 - Anything shown while the user is steering the player must also be hidden in the `body.fp`/`body.tp` rules in `first-person.css`.
 
 ## 9. Comments
@@ -90,18 +90,31 @@ function makeCells() { return new Float32Array(GC * GR); }
 - Make small commits that each leave the app working. Do not mix a restructure with a feature in one commit.
 - Update from `main` before pushing. If someone changed the same area, resolve it by reading both changes, not by picking a side.
 
+## 12. Server and shared code (TypeScript)
+
+- `packages/shared` runs in the browser **and** on the server, so it must stay free of the DOM, Three.js and Node-only APIs. Import it as `@office/shared`. It builds to both ESM (for Vite) and CommonJS (for NestJS).
+- `apps/server` is a NestJS app. Keep real logic in **plain functions** (see `health.ts`) and keep controllers and providers thin: plain functions are trivial to unit-test, whereas Nest's dependency injection needs decorator metadata that the test runner does not produce.
+- The game loop, when it arrives, is a plain TypeScript class, not a Nest provider on the hot path.
+- Strict types, no `any`. Read environment variables in one place and pass values in.
+- Sections 2 and 3 (no work at import time, state objects) apply here too.
+- Unit tests live next to the code as `*.test.ts` and run with `npm test` (Vitest).
+
 ## Before you push
 
-There are no automated tests yet, so every change is checked by hand in a real browser. Do all of these:
+Which checks to run for which kind of change is in [GETTING-STARTED.md](GETTING-STARTED.md#test-before-you-ask-for-a-review); how to write something other players see is in [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md). The list below is the full manual checklist.
 
-1. `npm run build` succeeds.
+Automated tests cover only the shared and server code so far (`npm test`). The browser app has none yet, so changes to it are checked by hand in a real browser. Do all of these:
+
+1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (`npm run check:mutations` after changing the simulation, `npm run test:db` after changing anything that touches the database, and `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` against the Docker stack after changing the protocol, the server or online mode).
 2. `npm run dev`, open the page, **hard-reload**, and confirm the browser console has no errors. If you added or removed files, **restart the dev server** first; a stale server serves old modules and gives confusing failures.
 3. The floor renders and people move. Press **Pause/Play**, change the speed, and move the **People** slider.
 4. Try every view: Angle, Plan, Follow, First person, Third person (and `V` between the two). Drag, wheel and a jump-to button should drop you into free camera. `Esc` exits first/third person.
-5. Select a person, press **Follow** and **Edit character**; search a name in the box at the bottom left.
-6. If you touched the sim, step it far from the console: `__sim.advance(3000)` a dozen times should not throw and the day should roll over.
+5. Select a person, press **Follow**; type a name in the search box (bottom left) and pick the match.
+6. If you touched the sim, step it far from the console: `__sim.advance(3000)` a dozen times should not throw and the day should roll over. If you touched the simulation or anything it depends on, also run `npm run verify:browser` (and `npm run verify:browser:thorough` at the end of a phase 1 step): the recorded behaviour must not change unless you meant it to. See [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor).
 7. If you touched build order, nav, or furniture: compare `__sim.GC`, `__sim.GR` and the count of `__sim.NAV` walkable cells before and after. They should only change when you meant them to.
-8. `npm run build && npm run preview` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.
+8. `npm run build && npm start` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.
+
+If you changed the server, `docker/`, `docker-compose.yml` or anything the containers build: run `docker compose up --build -d` and then `npm run smoke`. It must print "all checks passed". Then also run `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser`, which replays the simulation recordings against the containerised site. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md).
 
 Tips for the browser checks:
 
