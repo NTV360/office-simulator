@@ -76,8 +76,10 @@ function allocate(kind, capacity) {
   kind.capacity = capacity;
 }
 
+const tilt = new THREE.Quaternion(), at = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
 function write(kind, slot, o) {
-  scratch.makeRotationY(o.rot).setPosition(o.x, o.y, o.z);
+  if (o.q) scratch.compose(at.set(o.x, o.y, o.z), tilt.set(o.q[0], o.q[1], o.q[2], o.q[3]), one); // (knocked over, or tilted)
+  else scratch.makeRotationY(o.rot).setPosition(o.x, o.y, o.z);
   for (const p of kind.parts) { p.mesh.setMatrixAt(slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; }
 }
 

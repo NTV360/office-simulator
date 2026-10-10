@@ -167,11 +167,27 @@ describe('what a new page is told', () => {
   });
   it('a carried object is recorded as carried, and one that does not exist or has rubbish for a pose is ignored', () => {
     const a = objects.all()[7];
-    expect(applyObjectPose({ index: a.index, x: 1, z: 2, rot: 3, carriedBy: 12 })?.carriedBy).toBe(12);
-    expect(applyObjectPose({ index: a.index, x: 1, z: 2, rot: 3, carriedBy: -1 })?.carriedBy).toBeNull();
-    expect(applyObjectPose({ index: 99999, x: 1, z: 2, rot: 3, carriedBy: -1 })).toBeNull();
-    expect(applyObjectPose({ index: a.index, x: NaN, z: 2, rot: 3, carriedBy: -1 })).toBeNull();
+    const at = { x: 1, z: 2, rot: 3, y: a.y, q: null };
+    expect(applyObjectPose({ index: a.index, ...at, carriedBy: 12 })?.carriedBy).toBe(12);
+    expect(applyObjectPose({ index: a.index, ...at, carriedBy: -1 })?.carriedBy).toBeNull();
+    expect(applyObjectPose({ index: 99999, ...at, carriedBy: -1 })).toBeNull();
+    expect(applyObjectPose({ index: a.index, ...at, x: NaN, carriedBy: -1 })).toBeNull();
+    expect(applyObjectPose({ index: a.index, ...at, y: Infinity, carriedBy: -1 })).toBeNull();
+    expect(applyObjectPose({ index: a.index, ...at, q: [0, NaN, 0, 1], carriedBy: -1 })).toBeNull();
     expect(a.x).toBe(1);
+  });
+  it('a thing that has fallen over keeps its height and tilt, and is not at home until it is upright where it started again', () => {
+    const a = objects.all().find(o => o.type === 'mug')!;
+    const fallen: [number, number, number, number] = [Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // on its side
+    applyObjectPose({ index: a.index, x: a.home.x, z: a.home.z, rot: a.home.rot, y: .8, q: fallen, carriedBy: -1 });
+    expect(a.y).toBe(.8);
+    expect(a.q).toEqual(fallen);
+    expect(isAtHome(a)).toBe(false);
+    expect(movedObjects()).toContain(a);
+    resetObject(a);
+    expect(a.q).toBeNull();
+    expect(a.y).toBe(a.home.y);
+    expect(isAtHome(a)).toBe(true);
   });
 });
 
@@ -184,7 +200,7 @@ describe('saving objects', () => {
     const o = objects.all().find(x => x.spot === 'desk:5')!, mug = objects.all().find(x => x.type === 'mug')!;
     setObjectPose(o, o.x + 3, o.z + 1, 2); setObjectPose(mug, 4, 5, 6);
     const saved = JSON.parse(JSON.stringify(serializeWorld()));
-    expect(saved.objects).toEqual([{ id: o.id, x: o.x, z: o.z, rot: 2 }, { id: mug.id, x: 4, z: 5, rot: 6 }].sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4))));
+    expect(saved.objects).toEqual([{ id: o.id, x: o.x, z: o.z, rot: 2, y: o.y, q: null }, { id: mug.id, x: 4, z: 5, rot: 6, y: mug.y, q: null }].sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4))));
     const seat = interactables.all().find(s => s.id === 'desk:5')!;
     const want = [seat.pos.x, seat.pos.z, seat.face];
     resetSim(); loadLayout(officeLayout);
@@ -192,6 +208,29 @@ describe('saving objects', () => {
     restoreWorld(parseSavedWorld(saved));
     expect(movedObjects().map(x => x.id).sort()).toEqual([o.id, mug.id].sort());
     expect([seat.pos.x, seat.pos.z, seat.face]).toEqual(want);
+  });
+
+  it('a thing that has fallen over is saved and restored lying as it was', () => {
+    ready();
+    const mug = objects.all().find(x => x.type === 'mug')!, side: [number, number, number, number] = [Math.SQRT1_2, 0, 0, Math.SQRT1_2];
+    setObjectPose(mug, mug.x + .3, mug.z, mug.rot, .7975, side);
+    const saved = JSON.parse(JSON.stringify(serializeWorld()));
+    resetSim(); loadLayout(officeLayout);
+    restoreWorld(parseSavedWorld(saved));
+    const back = objects.byId(mug.id)!;
+    expect(back.y).toBe(.7975);
+    expect(back.q).toEqual(side);
+  });
+
+  it('a save from before heights and tilts (version 4) still reads: its things stand upright at the height they started at', () => {
+    ready();
+    const mug = objects.all().find(x => x.type === 'mug')!;
+    const old = JSON.parse(JSON.stringify(serializeWorld()));
+    old.version = 4; old.objects = [{ id: mug.id, x: mug.x + .2, z: mug.z, rot: 1 }];
+    restoreWorld(parseSavedWorld(old));
+    expect(mug.x).toBeCloseTo(mug.home.x + .2);
+    expect(mug.y).toBe(mug.home.y);
+    expect(mug.q).toBeNull();
   });
 
   it('a restore starts from home: something moved before the restore, and not in the save, goes back', () => {
@@ -233,6 +272,9 @@ describe('saving objects', () => {
     bad([{ id: 'obj:1', x: 0, z: 1e9, rot: 0 }], /\.z/);
     bad([{ id: 'obj:1', x: 0, z: 0, rot: Infinity }], /\.rot/);
     bad([{ id: 'obj:1', x: 0, z: 0, rot: 0 }, { id: 'obj:1', x: 1, z: 1, rot: 1 }], /repeats/);
+    bad([{ id: 'obj:1', x: 0, z: 0, rot: 0, y: 1e6 }], /\.y/);
+    bad([{ id: 'obj:1', x: 0, z: 0, rot: 0, q: [0, 0, 1] }], /not an orientation/);
+    bad([{ id: 'obj:1', x: 0, z: 0, rot: 0, q: [0, 0, 5, 1] }], /\.q\[2\]/);
     bad(Array.from({ length: 6000 }, (_, i) => ({ id: `obj:${i}`, x: 0, z: 0, rot: 0 })), /not a list/);
     expect(() => parseSavedWorld({ ...good(), version: 99 })).toThrow(SaveError);
   });

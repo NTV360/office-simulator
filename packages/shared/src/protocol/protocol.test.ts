@@ -41,12 +41,12 @@ const welcome = (): Welcome => ({
   type: 'welcome', tick: 123456, tickRate: 20, simTime: 601.25, day: 3, speed: 3, paused: false, you: NONE, layout: { spots: 145, hash: 0xdeadbeef },
   people: [{ info: info(), snap: snap() }, { info: info({ id: 8, name: 'Marco C.', slot: NONE }), snap: snap({ id: 8, state: 'away', shown: false, kind: '', anim: '', cat: '', spot: 0, arrivedAt: NONE }) }],
   meetings: [{ room: 1, topic: 'sprint review', start: 580, end: 610.5, speaker: 7, members: [7, 8] }],
-  objects: [{ index: 3, x: 1.5, z: -2.25, rot: 0.5, carriedBy: NONE }, { index: 140, x: -30.5, z: 12, rot: -3, carriedBy: 7 }],
+  objects: [{ index: 3, x: 1.5, z: -2.25, rot: 0.5, y: 0, q: null, carriedBy: NONE }, { index: 140, x: -30.5, z: 12, rot: -3, y: .75, q: [.5, -.5, .5, .5], carriedBy: 7 }],
 });
 
 describe('round trips', () => {
   it('hello, ping, pong, kick, leave', () => {
-    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, carriedBy: 300 } }] as Message[]) {
+    for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, y: .75, q: null, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, y: .125, q: [0, .5, -.5, .75], carriedBy: 300 } }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
   });

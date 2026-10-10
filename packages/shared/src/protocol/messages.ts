@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 15;
+export const WIRE_VERSION = 16;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -99,8 +99,8 @@ export interface LayoutCheck {
   hash: number;
 }
 
-/** Where a world object is now: its place in the layout's object list, its pose, and who carries it (NONE if nobody). */
-export interface ObjectPose { index: number; x: number; z: number; rot: number; carriedBy: number }
+/** Where a world object is now: its place in the layout's object list, its pose (with its height, and its whole orientation when it is not upright), and who carries it (NONE if nobody). */
+export interface ObjectPose { index: number; x: number; z: number; rot: number; y: number; q: [number, number, number, number] | null; carriedBy: number }
 
 export interface Welcome {
   type: 'welcome';

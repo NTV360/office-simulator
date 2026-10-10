@@ -6,7 +6,10 @@ import { CATALOGUE } from './catalogue';
 // seat: when the chair moves, the seat (and where people stand to use it, and the way it faces) moves with it, and spot ids never change.
 // The starting poses are made once from the furniture code (see layout/layout.ts) and are every object's "home".
 
-export interface Pose { x: number; z: number; rot: number }
+/** An orientation as a quaternion [x, y, z, w]. */
+export type Quat = [number, number, number, number];
+
+export interface Pose { x: number; z: number; rot: number; y: number }
 
 /** What the layout data holds for one object: where it starts. */
 export interface ObjectRecord {
@@ -15,7 +18,7 @@ export interface ObjectRecord {
   z: number;
   /** Radians, the way it faces (the same convention as a seat's `face`). */
   rot: number;
-  /** Height of what it rests on (0 for the floor). */
+  /** Height of its origin (the point it stands on): what it rests on when it is upright (0 for the floor). */
   y: number;
   /** Which colour or version of its kind (an index; the page decides what each means). */
   variant: number;
@@ -32,6 +35,8 @@ export interface WorldObject extends ObjectRecord {
   home: Pose;
   /** The person carrying it right now, or null. */
   carriedBy: number | null;
+  /** Its whole orientation when it is not standing upright (knocked over, tilted), or null: upright, facing `rot`. `rot` stays the way it faces. */
+  q: Quat | null;
   /** Where its seat is, relative to it (in its own frame), so the seat can follow it. */
   link: { spot: Spot; px: number; pz: number; ax: number; az: number; dface: number } | null;
 }
@@ -55,7 +60,7 @@ export const objects = {
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
   if (!CATALOGUE[rec.type]) throw new Error(`unknown object type "${rec.type}"`);
-  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot }, carriedBy: null, link: null };
+  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null };
   if (rec.spot) {
     const spot = interactables.all().find(s => s.id === rec.spot);
     if (!spot) throw new Error(`object ${o.id} carries ${rec.spot}, which does not exist`);
@@ -68,9 +73,9 @@ export function addObject(rec: ObjectRecord): WorldObject {
   return o;
 }
 
-/** Put an object at a pose. Its seat goes with it. Announces `objectMoved` so viewers can redraw it. */
-export function setObjectPose(o: WorldObject, x: number, z: number, rot: number): void {
-  o.x = x; o.z = z; o.rot = rot;
+/** Put an object at a pose (at the height it has, upright, unless told otherwise). Its seat goes with it. Announces `objectMoved` so viewers can redraw it. */
+export function setObjectPose(o: WorldObject, x: number, z: number, rot: number, y: number = o.y, q: Quat | null = null): void {
+  o.x = x; o.z = z; o.rot = rot; o.y = y; o.q = q;
   if (o.link) {
     const { spot, px, pz, ax, az, dface } = o.link;
     const p = toWorld(rot, px, pz), a = toWorld(rot, ax, az);
@@ -108,12 +113,12 @@ export function releaseCarried(personId: number): void {
   if (o) resetObject(o);
 }
 
-export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z === o.home.z && o.rot === o.home.rot && o.carriedBy === null;
+export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z === o.home.z && o.rot === o.home.rot && o.y === o.home.y && o.q === null && o.carriedBy === null;
 
 /** Put an object back where it started (and not carried). */
 export function resetObject(o: WorldObject): void {
   o.carriedBy = null;
-  setObjectPose(o, o.home.x, o.home.z, o.home.rot);
+  setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
 }
 
 /** Put every object back where it started. */

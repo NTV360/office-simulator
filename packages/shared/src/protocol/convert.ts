@@ -31,7 +31,7 @@ export function layoutCheck(): LayoutCheck {
 }
 
 /** Where an object is now, as the protocol says it. */
-export const objectPose = (o: WorldObject): ObjectPose => ({ index: o.index, x: o.x, z: o.z, rot: o.rot, carriedBy: o.carriedBy ?? NONE });
+export const objectPose = (o: WorldObject): ObjectPose => ({ index: o.index, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] : null, carriedBy: o.carriedBy ?? NONE });
 
 /** The objects that are not at home: what a new page is told. */
 export const movedObjectPoses = (): ObjectPose[] => movedObjects().map(objectPose);
@@ -39,9 +39,9 @@ export const movedObjectPoses = (): ObjectPose[] => movedObjects().map(objectPos
 /** Put one object where the server says (an object we do not know is ignored). Returns the object, or null. */
 export function applyObjectPose(p: ObjectPose): WorldObject | null {
   const o = objects.at(p.index);
-  if (!o || !Number.isFinite(p.x) || !Number.isFinite(p.z) || !Number.isFinite(p.rot)) return null;
+  if (!o || ![p.x, p.z, p.rot, p.y].every(Number.isFinite) || (p.q && !p.q.every(Number.isFinite))) return null;
   o.carriedBy = p.carriedBy === NONE ? null : p.carriedBy;
-  setObjectPose(o, p.x, p.z, p.rot);
+  setObjectPose(o, p.x, p.z, p.rot, p.y, p.q ? [...p.q] : null);
   return o;
 }
 

@@ -6,7 +6,7 @@ import { initDay } from './day';
 import { live, resetLive } from './live';
 import { simEvents } from './events';
 import { hasSlot } from './person';
-import { SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
+import { SAVE_VERSION, SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
 import { removeHelper } from './testing';
@@ -175,7 +175,7 @@ describe('what version 4 adds: who the employee is, their shift, the toilet run,
     old.version = 3; delete old.clock.mode;
     for (const p of old.people) for (const k of ['userId', 'title', 'department', 'shift', 'shiftStart', 'absent', 'toiletUntil']) delete p[k];
     const parsed = parseSavedWorld(old);
-    expect(parsed.version).toBe(4);
+    expect(parsed.version).toBe(SAVE_VERSION);
     expect(parsed.clock.mode).toBe('sim');
     for (const p of parsed.people) expect(p).toMatchObject({ userId: null, title: p.role, department: null, shift: null, shiftStart: 540, absent: false, toiletUntil: null });
     restoreWorld(parsed);

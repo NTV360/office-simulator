@@ -8,7 +8,7 @@ import { hasSlot } from './person';
 import { newProps } from './props';
 import type { Shift } from './schedule';
 import { counters, deskPool, meetings, people, resetSim, sim } from './state';
-import { movedObjects, objects, resetAllObjects, setObjectPose } from '../world/objects';
+import { movedObjects, objects, resetAllObjects, setObjectPose, type Quat } from '../world/objects';
 import type { Person } from './types';
 
 // Saving and restoring the world. Only what cannot be recomputed is kept: who is in the office, where they sit and
@@ -16,9 +16,9 @@ import type { Person } from './types';
 // resume as idle where they stood and choose what to do next. Meetings end. Props in hand are dropped.
 // The random stream is not saved either; a restored world continues with fresh randomness.
 
-export const SAVE_VERSION = 4;
-/** Saves written by earlier versions that can still be read (version 1 has no owners, versions 1 and 2 no moved objects, versions 1 to 3 no employee details and no clock mode). */
-const READABLE_VERSIONS = [1, 2, 3, SAVE_VERSION];
+export const SAVE_VERSION = 5;
+/** Saves written by earlier versions that can still be read (version 1 has no owners, versions 1 and 2 no moved objects, versions 1 to 3 no employee details and no clock mode, versions 1 to 4 no object heights or tilts). */
+const READABLE_VERSIONS = [1, 2, 3, 4, SAVE_VERSION];
 
 export interface SavedPerson {
   id: number;
@@ -56,7 +56,11 @@ export interface SavedPerson {
 }
 
 /** A world object that is not where it started. (Only these are saved: everything else is at home, which the layout data says.) */
-export interface SavedObject { id: string; x: number; z: number; rot: number }
+export interface SavedObject {
+  id: string; x: number; z: number; rot: number;
+  /** Height and whole orientation (null: upright). Absent in saves before version 5: the height it started at, upright. */
+  y?: number; q?: Quat | null;
+}
 
 export interface SavedWorld {
   version: typeof SAVE_VERSION;
@@ -85,7 +89,7 @@ export function serializeWorld(): SavedWorld {
       userId: p.userId ?? null, title: p.title ?? p.role, department: p.department ?? null, shift: p.shift ?? null, shiftStart: p.shiftStart ?? 9 * 60,
       absent: !!p.absent, toiletUntil: p.toiletUntil ?? null,
     })),
-    objects: movedObjects().map(o => ({ id: o.id, x: o.x, z: o.z, rot: o.rot })), // (one being carried is saved where it was picked up)
+    objects: movedObjects().map(o => ({ id: o.id, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] as Quat : null })), // (one being carried is saved where it was picked up)
   };
 }
 
@@ -167,7 +171,13 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
     if (!/^obj:[0-9]{1,5}$/.test(id)) throw new SaveError(`${w}.id is not an object id`);
     if (seenObjects.has(id)) throw new SaveError(`${w} repeats ${id}`);
     seenObjects.add(id);
-    return { id, x: num(o.x, w + '.x', -500, 500), z: num(o.z, w + '.z', -500, 500), rot: num(o.rot, w + '.rot', -1000, 1000) };
+    const saved: SavedObject = { id, x: num(o.x, w + '.x', -500, 500), z: num(o.z, w + '.z', -500, 500), rot: num(o.rot, w + '.rot', -1000, 1000) };
+    if (o.y !== undefined) saved.y = num(o.y, w + '.y', -50, 50);
+    if (o.q !== undefined && o.q !== null) {
+      if (!Array.isArray(o.q) || o.q.length !== 4) throw new SaveError(w + '.q is not an orientation');
+      saved.q = o.q.map((v: unknown, k: number) => num(v, w + '.q[' + k + ']', -1.001, 1.001)) as Quat;
+    }
+    return saved;
   });
   return { version: SAVE_VERSION, clock, nameIdx: num(raw.nameIdx, 'nameIdx', 0, 1e9), deskOrder, people: list, objects: moved };
 }
@@ -215,7 +225,7 @@ export function restoreWorld(saved: SavedWorld): void {
   resetAllObjects();
   for (const s of saved.objects) {
     const o = objects.byId(s.id);
-    if (o) setObjectPose(o, s.x, s.z, s.rot);
+    if (o) setObjectPose(o, s.x, s.z, s.rot, s.y ?? o.home.y, s.q ?? null);
   }
   meetings.length = 0;
 }
