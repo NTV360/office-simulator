@@ -21,7 +21,7 @@ export default defineConfig({
   server: {
     fs: { allow: ['../..'] }, // the dev server may read the shared package outside apps/client
     // with `npm run dev -w @office/server` running, the page finds it and goes online
-    proxy: { '/api': 'http://localhost:3000', '/socket.io': { target: 'http://localhost:3000', ws: true } },
+    proxy: { '/api': { target: 'http://localhost:3000' }, '/socket.io': { target: 'http://localhost:3000', ws: true } },
   },
   preview: {
     proxy: {}, // do not inherit the dev proxy: a preview has no server behind it
