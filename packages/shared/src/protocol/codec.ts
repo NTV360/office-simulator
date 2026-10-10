@@ -38,11 +38,17 @@ const fromU16 = (v: number) => (v === NO_U16 ? NONE : v);
 function writeObjectPose(w: Writer, p: ObjectPose): void {
   w.u16(p.index).f32(p.x).f32(p.z).f32(p.rot).f32(p.y).u16(toU16(p.carriedBy)).u8(p.q ? 1 : 0);
   if (p.q) w.f32(p.q[0]).f32(p.q[1]).f32(p.q[2]).f32(p.q[3]);
+  w.u8(Math.min(8, p.helpers.length));
+  for (const h of p.helpers.slice(0, 8)) w.u16(toU16(h));
 }
 function readObjectPose(r: Reader): ObjectPose {
   const index = r.u16(), x = r.f32(), z = r.f32(), rot = r.f32(), y = r.f32(), carriedBy = fromU16(r.u16());
   const q: ObjectPose['q'] = r.u8() ? [r.f32(), r.f32(), r.f32(), r.f32()] : null;
-  return { index, x, z, rot, y, q, carriedBy };
+  const n = r.u8();
+  if (n > 8) throw new DecodeError('too many helpers');
+  const helpers: number[] = [];
+  for (let i = 0; i < n; i++) helpers.push(fromU16(r.u16()));
+  return { index, x, z, rot, y, q, carriedBy, helpers };
 }
 
 function writeName(w: Writer, table: readonly string[], value: string): void {

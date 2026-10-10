@@ -46,8 +46,10 @@ export interface WorldObject extends ObjectRecord {
   link: Link | null;
   /** Every spot that moves with it: its seat first, then `spots`. */
   links: Link[];
-  /** Who holds it and how, the first being `carriedBy` (the server's business: a page knows only who carries it). */
+  /** Who holds it and how, the first being `carriedBy` (the server's business: a page knows only who carries it, and `helpers`). */
   holds: Hold[];
+  /** Everyone else holding it with `carriedBy` (several people carrying a sofa), as every page knows it. */
+  helpers: number[];
   /** Being put down (the server's physics lowers it there, then lets go), or undefined. */
   placing?: Placing;
   /** Just let go where it is (not moved anywhere): the physics keeps it moving as it was, plus this velocity (a throw). Cleared once seen. */
@@ -97,7 +99,7 @@ export const objects = {
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
   if (!CATALOGUE[rec.type]) throw new Error(`unknown object type "${rec.type}"`);
-  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [], holds: [] };
+  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [] };
   for (const id of [...(rec.spot ? [rec.spot] : []), ...(rec.spots ?? [])]) {
     const spot = interactables.all().find(s => s.id === id);
     if (!spot) throw new Error(`object ${o.id} carries ${id}, which does not exist`);
@@ -124,13 +126,20 @@ export function setObjectPose(o: WorldObject, x: number, z: number, rot: number,
   simEvents.emit('objectMoved', o);
 }
 
-/** The object this person carries, if any (a person carries at most one thing). */
-export const carriedBy = (personId: number): WorldObject | undefined => list.find(o => o.carriedBy === personId);
+/** The object this person carries, alone or helping, if any (a person holds at most one thing). */
+export const carriedBy = (personId: number): WorldObject | undefined => list.find(o => o.carriedBy === personId || o.helpers.includes(personId));
+/** How many people hold it: the one carrying it and their helpers. */
+export const holderCount = (o: WorldObject): number => o.carriedBy === null ? 0 : 1 + o.helpers.length;
+/** The holds changed: who carries it is the first, the rest help (what every page is told). */
+export function syncHolders(o: WorldObject): void {
+  o.carriedBy = o.holds.length ? o.holds[0].person : o.carriedBy;
+  o.helpers = o.holds.slice(1).map(h => h.person);
+}
 
 /** A person picks an object up (taking it the way `hold` says, when the server knows). Everybody is told (it is drawn in their hands from now on). */
 export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
   o.carriedBy = personId;
-  o.holds = hold ? [hold] : [];
+  o.holds = hold ? [hold] : []; o.helpers = [];
   refreshFootprint(o); // (it no longer blocks the floor it stood on)
   simEvents.emit('objectMoved', o);
 }
@@ -150,14 +159,14 @@ export function placeDown(o: WorldObject, x: number, z: number, rot: number, y: 
 
 /** Everyone holding it lets go, where it is now (it falls, or stays where it was put), thrown with velocity `v` if given. Everybody is told. */
 export function letGo(o: WorldObject, v: { vx: number; vy: number; vz: number } = { vx: 0, vy: 0, vz: 0 }): void {
-  o.carriedBy = null; o.holds = []; o.placing = undefined; o.released = v;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = v;
   refreshFootprint(o);
   simEvents.emit('objectMoved', o);
 }
 
 /** A person puts what they carry down at a place (already checked: see placement.ts), standing upright at height `y` (what is under it there). */
 export function putDown(o: WorldObject, x: number, z: number, rot: number, y: number = o.home.y): void {
-  o.carriedBy = null; o.holds = []; o.placing = undefined;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined;
   setObjectPose(o, x, z, wrapAngle(rot), y, null);
 }
 
@@ -174,17 +183,26 @@ export function seatUnusable(spot: object): boolean {
   return o.carriedBy !== null || (o.q !== null && 2 * Math.asin(Math.min(1, Math.hypot(o.q[0], o.q[2]))) > UNUSABLE_TILT);
 }
 
-/** Whatever this person carries goes back where it started (they left, or lost control). */
+/**
+ * This person lets go of what they hold, because they left or lost control: something they carried alone goes back where it started; one
+ * others are holding too stays in their hands.
+ */
 export function releaseCarried(personId: number): void {
   const o = carriedBy(personId);
-  if (o) resetObject(o);
+  if (!o) return;
+  const rest = o.holds.filter(h => h.person !== personId);
+  if (holderCount(o) <= 1 || (o.holds.length && !rest.length)) { resetObject(o); return; }
+  if (o.holds.length) { o.holds = rest; syncHolders(o); }
+  else if (o.carriedBy === personId) { o.carriedBy = o.helpers[0]; o.helpers = o.helpers.slice(1); }
+  else o.helpers = o.helpers.filter(id => id !== personId);
+  simEvents.emit('objectMoved', o);
 }
 
 export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z === o.home.z && o.rot === o.home.rot && o.y === o.home.y && o.q === null && o.carriedBy === null;
 
 /** Put an object back where it started (and not carried). */
 export function resetObject(o: WorldObject): void {
-  o.carriedBy = null; o.holds = []; o.placing = undefined;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined;
   setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
 }
 

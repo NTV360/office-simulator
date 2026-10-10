@@ -180,7 +180,7 @@ describe('what a new page is told', () => {
   });
   it('a carried object is recorded as carried, and one that does not exist or has rubbish for a pose is ignored', () => {
     const a = objects.all()[7];
-    const at = { x: 1, z: 2, rot: 3, y: a.y, q: null };
+    const at = { x: 1, z: 2, rot: 3, y: a.y, q: null, helpers: [] };
     expect(applyObjectPose({ index: a.index, ...at, carriedBy: 12 })?.carriedBy).toBe(12);
     expect(applyObjectPose({ index: a.index, ...at, carriedBy: -1 })?.carriedBy).toBeNull();
     expect(applyObjectPose({ index: 99999, ...at, carriedBy: -1 })).toBeNull();
@@ -192,7 +192,7 @@ describe('what a new page is told', () => {
   it('a thing that has fallen over keeps its height and tilt, and is not at home until it is upright where it started again', () => {
     const a = objects.all().find(o => o.type === 'mug')!;
     const fallen: [number, number, number, number] = [Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // on its side
-    applyObjectPose({ index: a.index, x: a.home.x, z: a.home.z, rot: a.home.rot, y: .8, q: fallen, carriedBy: -1 });
+    applyObjectPose({ index: a.index, x: a.home.x, z: a.home.z, rot: a.home.rot, y: .8, q: fallen, carriedBy: -1, helpers: [] });
     expect(a.y).toBe(.8);
     expect(a.q).toEqual(fallen);
     expect(isAtHome(a)).toBe(false);

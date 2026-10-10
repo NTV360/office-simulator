@@ -1,5 +1,5 @@
 import {
-  CATALOGUE, canReach, carriedBy, holdFor, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
+  CATALOGUE, canReach, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
@@ -17,15 +17,20 @@ export function grab(person: Person, index: number, at?: readonly number[]): Obj
   if (isSeated(person) || carriedBy(person.id)) return no('busy');
   const o = Number.isInteger(index) ? objects.at(index) : undefined;
   if (!o) return no('not-movable');
-  const refusal = movability(o);
+  // somebody carrying it already: anything bigger than a one-hand thing can be carried by several people (up to four), each holding it where they take it
+  const joining = o.carriedBy !== null && !o.placing && carryOf(o.type) !== 'one-hand' && o.holds.length < MOST_HOLDERS;
+  const refusal = joining ? null : movability(o);
   if (refusal) return no(refusal);
   const aimed = at && at.length === 3 && at.every(Number.isFinite) ? { x: at[0], y: at[1], z: at[2] } : null;
   if (aimed && !onItem(o, aimed)) return no('too-far'); // (a point that is not on it at all)
   const point = aimed ?? nearestGrip(o, person);
   if (!canReach(person, point)) return no('too-far');
-  pickUp(o, person.id, holdFor(o, person, point));
+  if (joining) { o.holds.push(holdFor(o, person, point)); syncHolders(o); simEvents.emit('objectMoved', o); }
+  else pickUp(o, person.id, holdFor(o, person, point));
   return yes();
 }
+/** The most people who can hold one thing at once. */
+const MOST_HOLDERS = 4;
 
 /** The thing this person holds (alone or with others), if any. */
 const heldBy = (person: Person): WorldObject | undefined => objects.all().find(o => o.carriedBy === person.id || o.holds.some(h => h.person === person.id));
@@ -47,7 +52,7 @@ export function drop(person: Person): ObjectResult {
   if (!o) return no('nothing-carried');
   const rest = o.holds.filter(h => h.person !== person.id);
   if (!rest.length) { letGo(o); return yes(); }
-  o.holds = rest; o.carriedBy = rest[0].person;
+  o.holds = rest; syncHolders(o);
   simEvents.emit('objectMoved', o);
   return yes();
 }

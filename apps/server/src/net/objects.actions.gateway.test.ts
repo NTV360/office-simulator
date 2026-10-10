@@ -85,8 +85,10 @@ describe('picking up and putting down', () => {
     expect(notices(a)).toEqual([REFUSAL_TEXT['too-far'], REFUSAL_TEXT['not-movable']]);
     expect(notices(b)).toEqual([]);
     expect(objectMessages(a)).toEqual([]);
-    stand('obj_other', chair); send(b, { type: 'grab', object: chair.index }); await sleep(250);
-    stand('obj_far', chair); send(a, { type: 'grab', object: chair.index }); await sleep(250);
+    // (a mug: one hand, one person. A chair somebody carries can be helped with)
+    const mug = objects.all().find(o => o.type === 'mug')!;
+    stand('obj_other', mug, .4); send(b, { type: 'grab', object: mug.index }); await sleep(250);
+    stand('obj_far', mug, -.4); send(a, { type: 'grab', object: mug.index }); await sleep(250);
     expect(notices(a).at(-1)).toBe(REFUSAL_TEXT.carried);
     a.socket.close(); b.socket.close();
     resetAllObjects();

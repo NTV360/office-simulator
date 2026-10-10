@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  ARMS, CATALOGUE, STRENGTH, carryOf, holdFor, letGo, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
+  ARMS, CATALOGUE, STRENGTH, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
   type Hold, type Placing, type Quat, type WorldObject,
 } from '@office/shared';
 import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics';
@@ -23,7 +23,8 @@ const LIFT = .002;
 /** How a hand holds: its spring's stiffness and the turn's (rad/s: about 2 and 1.6 a second), how far a hand goes before it slips off (m). */
 const HAND = { stiff: 12, turn: 10, slip: .6 } as const;
 /** Where things are carried: hands this high, this far in front (m), reached from where they were taken in about a second (gently: a mug on a chair stays on). */
-const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, ease: 1.2, clear: .25, highest: 1.5 } as const;
+/** (`hug`: the closest anything is held, against the chest, where two hands bear the most, about 38 kg: the plan's "over 35 kg, not alone") */
+const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, hug: .16, ease: 1.2, clear: .25, highest: 1.5 } as const;
 /** The most a person pulls or pushes something along, sideways to their reach (N): one hand, both. */
 const PULL = { oneHand: 120, twoHands: 450 } as const;
 /** A thing being put down: it is let go when within this of its place, or after this long whatever happens (s). */
@@ -115,7 +116,7 @@ export class ItemPhysics {
     const one = carryOf(o.type) === 'one-hand', k = Math.min(1, dt * CARRY.ease);
     // (a heavy thing is held close, as far out as the arms comfortably bear its share: a TV hugged, a chair at arm's length)
     const share = CATALOGUE[o.type].mass / Math.max(1, o.holds.length) * GRAVITY;
-    const out = Math.max(.2, Math.min(one ? CARRY.out.oneHand : CARRY.out.twoHands, .9 * (one ? STRENGTH.oneHand : STRENGTH.twoHands) / share));
+    const out = Math.max(CARRY.hug, Math.min(one ? CARRY.out.oneHand : CARRY.out.twoHands, .9 * (one ? STRENGTH.oneHand : STRENGTH.twoHands) / share));
     for (const h of o.holds) {
       // (hands high enough for it to clear the floor: a chair held by the top of its back is carried higher than a mug)
       const lift = Math.max(ARMS.lowest + .1, Math.min(ARMS.highest - .2, Math.min(CARRY.highest, Math.max(CARRY.y, h.at.y + CARRY.clear)) + h.raise));
@@ -149,8 +150,9 @@ export class ItemPhysics {
       const gv = { x: v.x + w.y * g0.z - w.z * g0.y, y: v.y + w.z * g0.x - w.x * g0.z, z: v.z + w.x * g0.y - w.y * g0.x };
       const share = m / n, k = HAND.stiff * HAND.stiff, c = 2 * HAND.stiff;
       const f = { x: share * (k * (hand.x - g.x) - c * gv.x), y: share * (k * (hand.y - g.y) - c * gv.y), z: share * (k * (hand.z - g.z) - c * gv.z) };
-      // the arms hold up what they can at that distance from the shoulders (m·g·d against their strength), and pull what they can along
-      const d = Math.max(.2, Math.hypot(g.x - p.pos.x, g.z - p.pos.z));
+      // the arms hold up what they can at the distance they are out from the shoulders (m·g·d against their strength: where the hands are, not
+      // where the thing has got to: a sofa dragged in short of the hands is still held as close as the arms are), and pull what they can along
+      const d = Math.max(CARRY.hug, h.out);
       const up = (one ? STRENGTH.oneHand : STRENGTH.twoHands) / d, total = Math.max(-up, Math.min(up, f.y + share * GRAVITY));
       // (its weight is borne through its middle: lifted by a corner it does not hang off that corner, the wrists keep it level; the rest of
       // the spring acts at the grip)
@@ -243,7 +245,7 @@ export class ItemPhysics {
     });
     if (kept.length === o.holds.length) return;
     if (!kept.length) { letGo(o); return; }
-    o.holds = kept; o.carriedBy = kept[0].person;
+    o.holds = kept; syncHolders(o);
     simEvents.emit('objectMoved', o);
   }
 

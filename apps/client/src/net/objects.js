@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REFUSAL_TEXT, canReach, carriedBy, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt } from '@office/shared';
+import { CATALOGUE, NONE, REFUSAL_TEXT, canReach, carriedBy, carryOf, holderCount, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt } from '@office/shared';
 import { camera } from '../render/renderer.js';
 import { ghostOf, itemAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
@@ -26,6 +26,8 @@ const WIND_UP = 1000;
 const UP = new THREE.Vector3(0, 1, 0), RIGHT = new THREE.Vector3(-1, 0, 0), FORWARD = new THREE.Vector3(0, 0, 1), turnBy = new THREE.Quaternion();
 
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
+/** Somebody is carrying it, and it is not a one-hand thing: you can take hold of it too and help (up to four people). */
+const joinable = o => o.carriedBy !== null && carryOf(o.type) !== 'one-hand' && holderCount(o) < 4;
 /** The way a thing faces now, seen from above. */
 const yawOf = o => { if (!o.q) return o.rot; const [x, y, z, w] = o.q; return Math.atan2(2 * (x * z + w * y), 1 - 2 * (x * x + y * y)); };
 
@@ -39,14 +41,14 @@ function pickable(p) {
   let far = null;
   if (hit) {
     const o = objects.at(hit.index);
-    if (o && movability(o) === null) {
+    if (o && (movability(o) === null || joinable(o))) {
       if (canReach(p, hit.point)) return { o, at: hit.point, far: null };
       far = o;
     }
   }
   let best = null, bd = Infinity;
   for (const o of objects.all()) {
-    if (Math.abs(o.x - p.pos.x) > 1.5 || Math.abs(o.z - p.pos.z) > 1.5 || movability(o) !== null) continue;
+    if (Math.abs(o.x - p.pos.x) > 1.5 || Math.abs(o.z - p.pos.z) > 1.5 || (movability(o) !== null && !joinable(o))) continue;
     const at = nearestGrip(o, p), d = Math.hypot(at.x - p.pos.x, at.z - p.pos.z);
     if (d < bd && canReach(p, at)) { bd = d; best = { o, at, far }; }
   }
@@ -89,7 +91,7 @@ function refresh() {
   }
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
   state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
-  if (state.candidate) setPrompt(`Pick up the ${labelOf(state.candidate)}  (G)`, true);
+  if (state.candidate) setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (G)` : `Pick up the ${labelOf(state.candidate)}  (G)`, true);
   else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }
 

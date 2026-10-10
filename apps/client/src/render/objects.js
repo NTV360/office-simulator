@@ -100,7 +100,7 @@ function makeKind(k, o) {
 const kinds = new Map(); // key -> kind
 const slotOf = new Map(); // object index -> { kind, slot }
 const carried = new Map(); // object index -> the object, for those in somebody's hands (the only ones that are redrawn every frame)
-const carrierOf = new Map(); // object index -> the person id carrying it
+const carrierOf = new Map(); // object index -> the ids of the people holding it
 const scratch = new THREE.Matrix4();
 
 function allocate(kind, capacity) {
@@ -185,9 +185,10 @@ export function initObjectViews() {
   for (const o of objects.all()) { const c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; poseOf(o, c.pos, c.q); shown.set(o.index, c); }
   simEvents.on('objectMoved', o => {
     if (!slotOf.has(o.index)) return;
-    const before = carrierOf.get(o.index);
-    if (before !== undefined && before !== o.carriedBy) { const q = people.find(x => x.id === before); if (q) { q.carrying = false; q.carryAt = null; } }
-    if (o.carriedBy !== null) { carried.set(o.index, o); carrierOf.set(o.index, o.carriedBy); } else { carried.delete(o.index); carrierOf.delete(o.index); }
+    // (everyone holding it holds their arms out to it; whoever has let go puts them down)
+    const now = o.carriedBy === null ? [] : [o.carriedBy, ...o.helpers];
+    for (const id of carrierOf.get(o.index) ?? []) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; } }
+    if (now.length) { carried.set(o.index, o); carrierOf.set(o.index, now); } else { carried.delete(o.index); carrierOf.delete(o.index); }
     glideTo(o);
   });
 }
@@ -207,8 +208,8 @@ export function updateCarriedObjects(dt = 1 / 60) {
     if (c.pos.distanceToSquared(want) < 1e-8 && c.q.angleTo(wantQ) < 1e-4) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(index); }
     writeShown(index);
   }
-  for (const o of carried.values()) {
-    const p = people.find(x => x.id === o.carriedBy);
+  for (const o of carried.values()) for (const id of carrierOf.get(o.index) ?? []) {
+    const p = people.find(x => x.id === id);
     if (!p) continue;
     p.carrying = true;
     p.carryAt = closestPointOnItem(o, { x: p.pos.x, y: 1.1, z: p.pos.z });

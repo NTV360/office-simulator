@@ -86,7 +86,14 @@ describe('picking up', () => {
     expect(manager.grabObject(id, 1.5, T())).toEqual({ ok: false, reason: 'not-movable' });
     stand(person, chair); stand(other.person, chair, -.4);
     manager.grabObject(id, chair.index, T());
-    expect(manager.grabObject(other.id, chair.index, T())).toEqual({ ok: false, reason: 'carried' });
+    expect(manager.grabObject(other.id, chair.index, T())).toEqual({ ok: true, changed: 1 }); // (a chair: they help carry it)
+    expect(chair.helpers).toEqual([other.person.id]);
+    // a one-hand thing somebody has is theirs alone
+    const mug = objects.all().find(o => o.type === 'mug')!, third = await guest('cat');
+    chair.carriedBy = null; chair.holds = []; chair.helpers = [];
+    stand(person, mug, .4); stand(third.person, mug, -.4);
+    manager.grabObject(id, mug.index, T());
+    expect(manager.grabObject(third.id, mug.index, T())).toEqual({ ok: false, reason: 'carried' });
   });
 
   it('is refused while sitting, while carrying something, and for a chair somebody sits in', async () => {

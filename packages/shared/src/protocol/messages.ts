@@ -100,7 +100,7 @@ export interface LayoutCheck {
 }
 
 /** Where a world object is now: its place in the layout's object list, its pose (with its height, and its whole orientation when it is not upright), and who carries it (NONE if nobody). */
-export interface ObjectPose { index: number; x: number; z: number; rot: number; y: number; q: [number, number, number, number] | null; carriedBy: number }
+export interface ObjectPose { index: number; x: number; z: number; rot: number; y: number; q: [number, number, number, number] | null; carriedBy: number; helpers: number[] }
 
 export interface Welcome {
   type: 'welcome';

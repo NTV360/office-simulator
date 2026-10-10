@@ -283,3 +283,31 @@ describe('small bumps', () => {
     expect(isAtHome(chair)).toBe(true);
   });
 });
+
+describe('carrying together', () => {
+  it('a sofa one person cannot lift, two can: each holds their end, and they share its weight', () => {
+    const w = make();
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    // one at each end, facing it from the front
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(w, 1.5);
+    expect(sofa.y).toBeLessThan(.05); // (one person: it stays on the floor)
+    expect(grab(b, sofa.index).ok).toBe(true);
+    expect(sofa.helpers).toEqual([b.id]);
+    expect(carryPace(b.id).factor).toBeCloseTo(1 / (1 + 35 / 40), 6); // (half of 70 kg each)
+    tick(w, 3);
+    expect(sofa.y).toBeGreaterThan(.1); // lifted between them
+    // one lets go: the other is left with all of it, and it comes down
+    expect(drop(a).ok).toBe(true);
+    expect(sofa.carriedBy).toBe(b.id);
+    expect(sofa.helpers).toEqual([]);
+    tick(w, 3);
+    expect(sofa.y).toBeLessThan(.05);
+  });
+});

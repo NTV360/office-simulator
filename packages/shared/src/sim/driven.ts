@@ -2,7 +2,7 @@ import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
 import { CATALOGUE, carryOf } from '../world/catalogue';
-import { carriedBy, objects, seatUnusable } from '../world/objects';
+import { carriedBy, holderCount, seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
 import type { Person } from './types';
@@ -20,9 +20,9 @@ export const RUN_SPEED = 3;
  * time, and only a light thing (one hand) can be run with. Nothing carried: full speed. The page predicts with the same numbers.
  */
 export function carryPace(personId: number): { factor: number; run: boolean } {
-  const o = objects.all().find(x => x.carriedBy === personId || x.holds.some(h => h.person === personId));
+  const o = carriedBy(personId);
   if (!o) return { factor: 1, run: true };
-  const share = CATALOGUE[o.type].mass / Math.max(1, o.holds.length);
+  const share = CATALOGUE[o.type].mass / Math.max(1, holderCount(o));
   return { factor: 1 / (1 + share / 40), run: carryOf(o.type) === 'one-hand' };
 }
 /** How far from a seat a person can be and still sit in it, in metres. */
