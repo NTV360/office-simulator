@@ -1,48 +1,21 @@
 {
   "name": "office-simulator",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "type": "module",
   "scripts": {
-    "dev": "npm run dev -w @office/client",
-    "build": "npm run build -w @office/shared && npm run build -w @office/client && npm run build -w @office/server",
-    "start": "npm run start -w @office/client",
-    "test": "vitest run",
-    "typecheck": "npm run build -w @office/shared && npm run typecheck --workspaces --if-present",
-    "smoke": "node scripts/smoke.mjs",
-    "verify:browser": "node tests/browser/verify.mjs",
-    "verify:browser:record": "node tests/browser/verify.mjs --record",
-    "verify:browser:thorough": "node tests/browser/verify.mjs --thorough",
-    "check:docs": "node scripts/check-docs.mjs",
-    "check:mutations": "node scripts/mutation-check.mjs",
-    "layout:dump": "node scripts/dump-layout.mjs",
-    "test:db": "node scripts/test-db.mjs",
-    "dev:online": "node scripts/dev-online.mjs",
-    "dev:records": "node scripts/dev-records.mjs",
-    "seed": "node scripts/seed.mjs",
-    "prebots": "npm run build -w @office/shared",
-    "bots": "node scripts/bots.mjs",
-    "backup": "node scripts/backup.mjs backup",
-    "backup:rehearse": "node scripts/backup.mjs rehearse",
-    "restore": "node scripts/backup.mjs restore",
-    "perf": "node scripts/perf.mjs",
-    "pack:dump": "node scripts/dump-pack.mjs",
-    "shots": "node scripts/shots.mjs",
-    "e2e": "node scripts/e2e.mjs",
-    "e2e:accounts": "node scripts/e2e-accounts.mjs",
-    "e2e:together": "node scripts/e2e-together.mjs",
-    "e2e:employees": "node scripts/e2e-employees.mjs",
-    "e2e:objects": "node scripts/e2e-objects.mjs"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "express": "^5.3.0",
+    "three": "^0.160.0",
+    "vite": "^8.3.3"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
-  },
-  "devDependencies": {
-    "playwright": "^1.64.0",
-    "typescript": "^5.6.0",
-    "vitest": "^3.0.0"
   }
 }

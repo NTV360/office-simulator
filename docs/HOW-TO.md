@@ -1,57 +1,57 @@
 # How to add things
 
-Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.md](CODING-STANDARDS.md) and names the files to touch. The music corner, the whiteboards and the toilet bucket were added with these same steps; read them as worked examples.
+Recipes for the common changes. Each one follows the rules in [CODING-STANDARDS.md](CODING-STANDARDS.md) and names the files to touch. The music corner and Hazel were added with these same steps; read them as worked examples.
 
 - [Add furniture or an area](#add-furniture-or-an-area)
 - [Add an interactable and an activity](#add-an-interactable-and-an-activity)
 - [Add a camera view](#add-a-camera-view)
 - [Add a hairstyle or another look option](#add-a-hairstyle-or-another-look-option)
+- [Update the character pack](#update-the-character-pack)
 - [Add a HUD control](#add-a-hud-control)
 - [Add a special character](#add-a-special-character)
 - [Change the floor plan](#change-the-floor-plan)
 
 ## Add furniture or an area
 
-1. Create `apps/client/src/world/furniture/<area>.js`. Export a `build<Area>()` function that does all the work (meshes, obstacles, spots). Nothing runs at import time.
+1. Create `src/world/furniture/<area>.js`. Export a `build<Area>()` function that does all the work (meshes, obstacles, spots). Nothing runs at import time.
 2. Use the helpers: `box`, `cyl`, `frame(px, py, facing)` from `world/helpers.js`, materials from `render/materials.js` (`M.*`; add new materials to the `M` palette there), and `W(px, py)` for positions.
 3. Register obstacles with `addObs(x1, y1, x2, y2)` (plan pixels) so people path around the furniture. The nav grid is built after all furniture, so this must happen in your `build` function.
 4. If people can use it, create spots with `mkSpot` (next section).
 5. If it animates, export an `update<Area>(now)` and call it from the loop in `main.js`.
-6. Add `build<Area>()` to [`apps/client/src/bootstrap.js`](../apps/client/src/bootstrap.js), **before `buildBake()`** (static meshes are merged there) and **before `initGrid()`**.
+6. Add `build<Area>()` to [`src/bootstrap.js`](../src/bootstrap.js), **before `buildBake()`** (static meshes are merged there) and **before `initGrid()`**.
 7. If the area needs a name on the map, add a `label(...)` line in `render/labels.js`.
 8. Check: the nav cell count (`__sim.NAV`) changes by about the size of your furniture, and people walk around it.
-9. **Regenerate the layout data** with `npm run layout:dump`. The server does not run furniture code; it loads `packages/shared/src/layout/office.json` (every spot and obstacle). `npm run verify:browser` fails with "the layout data is stale" until you do, and a test requires the server-side simulation to match the browser recordings. Commit the changed file. If the change alters behaviour on purpose, re-record with `npm run verify:browser:record` and say why in the commit.
 
 Meshes you will move or animate later must be marked so `bake` leaves them alone: set `mesh.userData.dynamic = true`.
 
 ## Add an interactable and an activity
 
-Example: the music corner (`world/furniture/music.js`, `musicBreak` in `packages/shared/src/sim/tasks.ts`).
+Example: the music corner (`world/furniture/music.js`, `musicBreak` in `sim/tasks.js`).
 
 1. **Create the spot** in your `build` function:
    ```js
    mkSpot('piano', 652, 525, E, { sit: true, hipY: .6, place: 'the keyboard', group: 'music' });
    ```
-   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height. Every spot gets a stable `id` (`kind:n`, its place in creation order) when it is registered. If a spot has a screen, register its mesh under that id (`registerScreen(spot.id, mesh)` in `render/screens.js`); the simulation says what a screen shows (`screenState` in `packages/shared/src/sim/step.ts`) and `people/screens.js` applies it. The simulation never holds a mesh.
-2. **Write the activity** in `packages/shared/src/sim/tasks.ts` (TypeScript; the example is shown in plain form):
+   `kind` is the lookup key (`interactables.of('piano')`). The optional `group` also lists it under a second key (`interactables.of('music')` returns every spot in the group). `sit: true` makes people sit; `hipY` is the seat height.
+2. **Write the activity** in `sim/tasks.js`:
    ```js
    function musicBreak(p) {
      const s = free(interactables.of('music'))[0]; if (!s) return false;
      return goDo(p, { kind: s.kind, cat: 'break', anim: s.kind, spot: s, dur: rnd(6, 14), onStart: ..., onEnd: ... });
    }
    ```
-   `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `packages/shared/src/sim/data.ts`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
-3. **Offer it** by adding a line to `chooseNext` in `packages/shared/src/sim/tasks.ts` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
-4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`).
+   `cat` is the ledger category (`work`, `meeting`, `phone`, `pantry`, `lunch`, `break`, `chat`, `walk`; defined in `people/data.js`). `anim` selects a pose. `onStart`/`onEnd` toggle props.
+3. **Offer it** by adding a line to `chooseNext` in `sim/tasks.js` with a probability, for example `if (r < .61 && musicBreak(p)) return;`.
+4. **Add the pose** for `anim` as a `case` in `targetPose` in `people/animation.js`. Joint names are listed at the top of that file (`JOINTS`). Poses are written for a human with elbows and knees (`hipY` for a .88 m hip); `applyPose` maps them onto the pack's skeleton, which has neither: half of each elbow bend goes into the shoulder and knees are ignored. Call `sit()` for seated poses so the hips go on the seat.
 5. **Word it for the HUD**: add `case 'piano': return going ? '...' : '...';` in `statusText` in `ui/person.js`.
 6. **Let the player use it**: add the kind to the list in `nearestSeat` (`player/seating.js`) and map it to an `anim` in `sitDown`.
-7. **Props** a person holds are state, not meshes. Add the name to `PROP_KEYS` in `packages/shared/src/sim/props.ts`, create the mesh in `character/rig.js` (hidden by default), and set the flag in `onStart`/`onEnd` (`q.props.mug = true`) and in `sitDown`/`standUp`. `people/sync.js` shows or hides the mesh from the flag every frame. The simulation never touches a mesh.
-8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `packages/shared/src/sim/day.ts`.
+7. **Props** a person holds (a guitar, a mug) belong on the rig: create them in `makeHeldProps` in `character/props.js` (positions are offsets from the hand, in metres; `buildBody` attaches them), hidden by default, and toggle `visible` in `onStart`/`onEnd` and in `sitDown`/`standUp`. The pack's own hand accessories (coffee, phone, book...) are separate: they are shown only in the `walk` and `stand` poses.
+8. If people should already be doing it when the page loads, add a `placeNow(...)` line in `initDay` in `sim/day.js`.
 9. Check: `__sim.advance(3000)` a dozen times shows your `kind` among `people[i].task.kind`, and the player can sit and play.
 
 ## Add a camera view
 
-1. Create `apps/client/src/camera/modes/<name>.js` exporting a mode object: `{ id, enter(ctrl, opts), update(dt, ctrl), exit(ctrl) }`. `ctrl.setView(id)` switches mode; `ctrl.nextId` tells `exit` where we are going.
+1. Create `src/camera/modes/<name>.js` exporting a mode object: `{ id, enter(ctrl, opts), update(dt, ctrl), exit(ctrl) }`. `ctrl.setView(id)` switches mode; `ctrl.nextId` tells `exit` where we are going.
 2. For orbit-style views, set `camGoal` in `enter` and call `orbitStep(dt, rate)` in `update` (see `angle.js`).
 3. Register it in `initCamera()` in `camera/controller.js`.
 4. Add a button with `data-view="<id>"` in `index.html`. The controller keeps its pressed state in sync and `ui/controls.js` already binds every `[data-view]` button.
@@ -59,52 +59,40 @@ Example: the music corner (`world/furniture/music.js`, `musicBreak` in `packages
 
 ## Add a hairstyle or another look option
 
-Looks come from the character pack (`apps/client/src/character/pack/`), which the upstream team delivers whole; it is not edited here. To offer a new hair style, clothes or an accessory:
+Characters are drawn by the character pack in `character/pack/` (see its `README.md`). A look option is a part of the pack's config, and it applies to NPCs, the player and the character lab at once, because they all share `CharacterSpec`.
 
-1. **Get it into the pack** (a new pack version, or the pack's own `register*` calls: see `pack/README.md`, "Adding your own parts"). Our own additions that the pack lacks (like the furious face) go in `character/parts.js` and are attached in `buildBody` (`character/rig.js`).
-2. **Regenerate the plain data:** `npm run pack:dump` writes `packages/shared/src/character/pack-data.json` (the option lists, palettes, accessories and presets the shared code and the server validate against). Commit it with the pack.
-3. **Check:** `npm test` (the pack data test, the spec tests), and the browser check "all 50 designs build" (`npm run verify:browser`). The lab offers the new option by itself (it reads `specOptions`).
+1. **Build it in the pack.** Each style has registries: `ChibiCharacter.registerHair(name, fn)` and `BlockyCharacter.registerHair(...)`, plus `registerTop`, `registerBottom`, `registerShoes`, `registerFacialHair` (chibi) and `registerAccessory`. Register the same name in both styles, or add a fallback to `FALLBACKS` in `pack/characters.js`. Call the register functions from an `init*()` (never at import time), before the first character is built: add a `character/looks.js` with `initLooks()` and call it first in the simulation block of `bootstrap.js`.
+2. **Nothing else to do for most options:** `normalizeSpec` (`character/spec.js`) accepts any style either pack offers, and the lab lists the pack's options (`specOptions`). Accessories in the `ride` slot are filtered out everywhere; the office has no skateboards.
+3. **If NPCs should wear it**, add it to `generatedSpec` in `spec.js`.
+4. **A look the pack cannot draw** (like Hazel's furious face) goes in `character/parts.js` as an `add<Thing>(head, ...)` called from `buildBody` in `character/rig.js`, with a flag in the spec that `normalizeSpec` keeps.
+5. Check: `normalizeSpec(JSON.parse(JSON.stringify(spec)))` returns the same spec, the lab shows it, and `setPlayerSpec(spec)` shows it on the player.
 
 ## Update the character pack
 
-The pack (`apps/client/src/character/pack/`: `characters.js`, `blocky-character.js`, `chibi-character.js`, the two preset files, `README.md`) is delivered whole and kept exactly as delivered, so an update is a file copy and a few checks:
+The files in `character/pack/` are kept exactly as delivered (from the character lab's `characters.zip`), so a new version can be dropped in.
 
-1. Copy the new files over the old ones. Do not edit them.
-2. `npm run pack:dump` to rewrite `packages/shared/src/character/pack-data.json` from the new pack, and commit it.
-3. `npm test` (it fails if the data and the pack disagree, or if a preset no longer normalizes) and `npm run verify:browser` ("all 50 designs build": every preset builds at a sensible height and cost).
-4. If the pack changed the names of its skeleton nodes (`Hips`, `Spine`, `ArmL`...) or its sizes, `character/rig.js` (`buildBody`, `CHARACTER_SIZES`) is the one place that depends on them.
+1. Replace `characters.js`, `blocky-character.js`, `blocky-presets.js`, `chibi-character.js`, `chibi-presets.js` and `README.md`. The `.glb` files, `export-glb.js` and `character-lab.html` are not used.
+2. Check what `character/rig.js` relies on: the joint names (`Hips`, `Spine`, `Neck`, `HeadShape`/`Head`, `ArmL`/`ArmR`, `HandL`/`HandR`, `LegL`/`LegR`, `ItemL`/`ItemR`), `character.inner.config`, `STYLES[type].lib.ACCESSORIES`, and that every material is a `MeshStandardMaterial` that differs only by colour (the draw-call merge in `character/gfx.js` depends on it).
+3. Run the checklist in [CODING-STANDARDS.md](CODING-STANDARDS.md#before-you-push), plus: open the Character lab, and compare frame rates at 70 people before and after.
 
 ## Add a HUD control
 
 1. Add the markup in `index.html` (give it an `id`; no inline handlers).
-2. Style it in the CSS file for that area in `apps/client/src/styles/` (or a new file imported in `main.js`).
+2. Style it in the CSS file for that area in `src/styles/` (or a new file imported in `main.js`).
 3. Bind it in an `init*` function (`ui/controls.js` for general controls) using `$('id').onclick = ...`.
 4. If it must disappear while walking around as the player, add it to the `body.fp`/`body.tp` rules in `styles/first-person.css`.
 
 ## Add a special character
 
-Hazel (`packages/shared/src/sim/hazel.ts`) is the template.
+Hazel (`people/hazel.js`) is the template.
 
-1. Give the character a spec override (`apply<Name>(spec)`) and call it from `makeStaff` in `packages/shared/src/sim/factory.ts` for the person created at the right index. Add any new look options to the spec first (see above).
-2. Keep identity in one place: name constant, role, schedule overrides (see `packages/shared/src/sim/hazel.ts` and `scheduleDay` in `packages/shared/src/sim/factory.ts`).
-3. Put any behaviour or effect only this character has in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
+1. Give the character a fixed look (a spec, like `HAZEL_LOOK`) and an `apply<Name>()` that returns its name, role and `normalizeSpec(look)`; call it from `makePerson` in `people/factory.js` for the person created at the right index. Add any new look options first (see above).
+2. Keep identity in one place: name constant, role, schedule overrides (see `scheduleDay` in `factory.js`).
+3. Put the character's own behaviour and effects in one module with an `init<Name>()` (called from `bootstrap.js`) and `update<Name>()` (called from the loop).
 4. Poses and status texts go in `people/animation.js` and `ui/person.js` like any other activity.
-
-## Run and test the simulation without a browser
-
-The simulation is plain TypeScript in `packages/shared/src/sim/`. In a test (`*.test.ts` next to the code, run by `npm test`):
-
-```ts
-setSeed(1);                       // repeatable
-buildTestLayout({ desks: 40 });   // a small office with one of everything
-initDay();                        // 40 staff, mid-morning
-for (let i = 0; i < 2000; i++) stepSim(0.05);
-```
-
-After changing the simulation, run `npm run check:mutations`: it breaks the simulation on purpose and requires these tests to notice. See `packages/shared/src/sim/scenario.test.ts` for a full day, meetings, the roll-over and slot claiming. To test a new activity, add its spot to `buildTestLayout` and assert on `people`, `interactables` and `sim`. Waiting for a time of day: the clock jumps back at 19:10, so wait for `sim.day` to change instead.
 
 ## Change the floor plan
 
-- Walls and the outer outline are data in `packages/shared/src/plan.ts` (`OUTER`, `WALLS`) in plan pixels. Wall segments must be axis-aligned (horizontal or vertical); a gap in a wall is a doorway.
+- Walls and the outer outline are data in `config/plan.js` (`OUTER`, `WALLS`) in plan pixels. Wall segments must be axis-aligned (horizontal or vertical); a gap in a wall is a doorway.
 - Free-standing wall blocks are made with `solidBlock(...)` in `world/walls.js`. Walls and blocks register themselves for navigation (`OBS`) and for the third-person camera (`SOLIDS`).
 - After any plan change, check the nav counts, walk through every doorway in first person, and try the third-person camera against the changed walls.

@@ -1,7 +1,5 @@
 node_modules
 dist
-tests/browser/out/
 .env
 .env.*
 !.env.example
-backups/
