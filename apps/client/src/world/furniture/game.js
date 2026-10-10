@@ -3,7 +3,8 @@ import { interactables, TAU, vpick, vrnd, W } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E } from './basics.js';
 import { tv } from './tv.js';
-import { addObs, box, boxGeo, frame } from '../helpers.js';
+import { box, boxGeo } from '../helpers.js';
+import { placeLater, placeObject } from '../objects.js';
 let gameT = 0, gameAcc = 0;
 const FIGHTERS = [
   { name: 'KAI', skin: '#d9a27a', top: '#2f6fb3', pants: '#1d2733', hair: '#1b1817', belt: '#e2b65c' },
@@ -116,20 +117,24 @@ function drawGame(dt) {
 
 let loungeTV, loungeTVDefault, LOUNGE_TV_POS, gameCanvas, gameTex, gameMat;
 
+/** The game console drawn at the origin of `g` (the middle of its footprint: its own middle is 2 cm behind, as it always stood). */
+const LED = new THREE.MeshBasicMaterial({ color: 0x5ab5ff });
+function drawConsole(g) {
+  const z = -.0205;
+  box(g, .26, .02, .14, M.chairBase, 0, .01, z);
+  box(g, .1, .4, .25, M.white, -.03, .22, z);
+  box(g, .1, .4, .25, M.white, .03, .22, z);
+  box(g, .045, .39, .23, M.chairBase, 0, .22, z);
+  const led = new THREE.Mesh(boxGeo(.004, .004, .2), LED); led.position.set(0, .43, z); g.add(led);
+}
+
 function buildGame() {
   loungeTV = tv(317.9, 322.0, 329.0, 368.1, E, 'dash');
   loungeTVDefault = loungeTV.material;
   LOUNGE_TV_POS = W(323.5, 345.05);
   interactables.of('lounge').slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
-  // Game console standing beside the TV
-  {
-    const f = frame(331, 374, E); addObs(328, 370, 335, 378);
-    box(f, .26, .02, .14, M.chairBase, 0, .01, 0);
-    box(f, .1, .4, .25, M.white, -.03, .22, 0);
-    box(f, .1, .4, .25, M.white, .03, .22, 0);
-    box(f, .045, .39, .23, M.chairBase, 0, .22, 0);
-    const led = new THREE.Mesh(boxGeo(.004, .004, .2), new THREE.MeshBasicMaterial({ color: 0x5ab5ff })); led.position.set(0, .43, 0); f.add(led);
-  }
+  // Game console standing beside the TV: an item, at the middle of the floor it used to block (plan 331.5, 374)
+  placeLater(() => placeObject('console', 331.5, 374, E));
   // Animated 1v1 fighting game for the lounge TV (original fighters, not any real game)
   gameCanvas = document.createElement('canvas');
   gameCanvas.width = 320;
@@ -139,4 +144,4 @@ function buildGame() {
   gameMat = new THREE.MeshBasicMaterial({ map: gameTex, toneMapped: false });
 }
 
-export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault, buildGame };
+export { LOUNGE_TV_POS, drawConsole, drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault, buildGame };

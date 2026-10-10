@@ -306,3 +306,44 @@ describe('things that carry more than one spot', () => {
     expect(seatUnusable(seat)).toBe(true);
   });
 });
+
+describe('big things on the walk grid', () => {
+  const cellFree = (o: { x: number; z: number }) => { const [px, py] = toPx(o); return walkPx(px, py); };
+
+  it('a dining table blocks the floor it stands on; picked up, the floor is free; put down elsewhere, it blocks there instead', () => {
+    const table = ofType('table-dining')[0], at = { x: table.x, z: table.z };
+    expect(cellFree(at)).toBe(false);
+    table.carriedBy = 7; setObjectPose(table, table.x, table.z, table.rot);
+    expect(cellFree(at)).toBe(true);
+    let to = { x: 0, z: 0 }; // (somewhere clear of where it stood)
+    search: for (let r = 1.6; r < 5; r += .2) for (let a = 0; a < 6.3; a += .3) { const x = table.x + Math.cos(a) * r, z = table.z + Math.sin(a) * r; if (placementProblem(table, x, z, table.rot) === null) { to = { x, z }; break search; } }
+    expect(to.x).not.toBe(0);
+    putDown(table, to.x, to.z, table.rot, 0);
+    expect(cellFree(to)).toBe(false);
+    expect(cellFree(at)).toBe(true);
+  });
+
+  it('a table is not put where it would stand in a wall or on other furniture', () => {
+    const table = ofType('table-dining')[0], sofa = ofType('sofa')[0];
+    table.carriedBy = 7;
+    expect(placementProblem(table, sofa.x, sofa.z, 0)).toBe('blocked');
+  });
+
+  it('a sofa carries every one of its seats, and none can be sat on while it lies on its back', () => {
+    const sofa = ofType('sofa')[0];
+    expect(sofa.links).toHaveLength(3);
+    const before = sofa.links.map(l => [l.spot.pos.x, l.spot.pos.z]);
+    setObjectPose(sofa, sofa.x + .5, sofa.z, sofa.rot);
+    sofa.links.forEach((l, i) => { expect(l.spot.pos.x).toBeCloseTo(before[i][0] + .5, 6); expect(l.spot.pos.z).toBeCloseTo(before[i][1], 6); });
+    expect(sofa.links.every(l => !seatUnusable(l.spot))).toBe(true);
+    setObjectPose(sofa, sofa.x, sofa.z, sofa.rot, .4, [Math.SQRT1_2, 0, 0, Math.SQRT1_2]);
+    expect(sofa.links.every(l => seatUnusable(l.spot))).toBe(true);
+  });
+
+  it('a cup can be put on the coffee table or a dining table, at its height', () => {
+    const cup = ofType('cup')[0], coffee = ofType('table-coffee')[0], dining = ofType('table-dining')[0];
+    expect(cup.y).toBeCloseTo(.4225, 6);
+    expect(restHeightAt(cup, coffee.x + .2, coffee.z)).toBeCloseTo(.4225, 6);
+    expect(restHeightAt(cup, dining.x, dining.z)).toBeCloseTo(.7425, 6);
+  });
+});

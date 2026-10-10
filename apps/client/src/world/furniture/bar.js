@@ -1,15 +1,16 @@
-import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';
-import { addObs, box, cyl, frame, staticRoot } from '../helpers.js';
-import { placeObject } from '../objects.js';
+import { box, cyl } from '../helpers.js';
+import { placeLater, placeObject } from '../objects.js';
 
 // Bar tables with stools
+/** A bar table `w` by `d` metres drawn at the origin of `g`: the top, the pole and the foot plate (it is an item: shared/world/shapes.ts). */
+function drawBarTable(g, w, d) {
+  box(g, w, .05, d, M.barTop, 0, 1.03, 0);
+  cyl(g, .05, .05, 1.0, M.steel, 0, .5, 0, 10); box(g, w * .6, .03, d * .6, M.chairBase, 0, .015, 0);
+}
 function barTable(x1, y1, x2, y2, stools) {
-  addObs(x1, y1, x2, y2);
-  const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
-  box(staticRoot, w, .05, d, M.barTop, cx, 1.03, cz);
-  cyl(staticRoot, .05, .05, 1.0, M.steel, cx, .5, cz, 10); box(staticRoot, w * .6, .03, d * .6, M.chairBase, cx, .015, cz);
+  placeLater(() => placeObject('table-bar', (x1 + x2) / 2, (y1 + y2) / 2, 0, { dims: [x2 - x1, y2 - y1] }));
   stools.forEach(([px, py, face]) => { const spot = mkSpot('bar', px, py, face, { sit: true, hipY: .76, place: 'the bar table' }); placeObject('stool-bar', px, py, face, { spot: spot.id }); });
 }
 
@@ -19,4 +20,4 @@ function buildBar() {
   barTable(636.1, 186.9, 673.9, 228.5, [[655.05, 178.0, SO], [655.05, 238.0, N]]);
 }
 
-export { buildBar };
+export { buildBar, drawBarTable };

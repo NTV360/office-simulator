@@ -3,6 +3,7 @@
 // so the team can change it without touching code. See docs/PHASE-5-BREAKDOWN.md and docs/ITEMS-PHYSICS-PLAN.md.
 
 import type { MaterialName } from './materials';
+import { barTableShape, plantShape, sofaShape, tableShape } from './shapes';
 
 export type Mobility = 'fixed' | 'movable';
 /** Chairs and stools stand on the floor; small things stand on a table. */
@@ -90,6 +91,20 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
   },
   keyboard: { label: 'Keyboard', mobility: 'movable', mass: .5, material: 'plastic', colliders: [{ shape: 'box', size: [.4, .018, .13], at: [0, .009, 0] }], surface: false, radius: .15, rests: 'surface' }, // (a circle for crowding: .2 would be too fat for something .13 deep)
   mouse: { label: 'Mouse', mobility: 'movable', mass: .09, material: 'plastic', colliders: [{ shape: 'box', size: [.05, .02, .08], at: [0, .01, 0] }], surface: false, radius: .04, rests: 'surface' },
+  cup: { label: 'Cup', mobility: 'movable', mass: .25, material: 'ceramic', colliders: [{ shape: 'cylinder', radius: .045, height: .1, at: [0, .05, 0] }], surface: false, radius: .06, rests: 'surface' },
+  // furniture that comes in sizes (shapes.ts), sized in plan pixels: [width, depth], or for a plant [how big]. It blocks walking where it stands.
+  'table-dining': { label: 'Dining table', mobility: 'movable', mass: 20, material: 'wood', ...tableShape(30, 34, .74), sized: ([w, d]) => tableShape(w, d, .74), surface: true, radius: .05, rests: 'floor' },
+  'table-coffee': { label: 'Coffee table', mobility: 'movable', mass: 12, material: 'wood', ...tableShape(40.5, 20, .42), sized: ([w, d]) => tableShape(w, d, .42), surface: true, radius: .05, rests: 'floor' },
+  'table-bar': { label: 'Bar table', mobility: 'movable', mass: 12, material: 'wood', ...barTableShape(44, 26), sized: ([w, d]) => barTableShape(w, d), surface: true, radius: .05, rests: 'floor' },
+  sofa: { label: 'Sofa', mobility: 'movable', mass: 70, material: 'fabric', ...sofaShape(48, 16), sized: ([l, d]) => sofaShape(l, d), surface: true, radius: .05, rests: 'floor' },
+  couch: { label: 'Couch', mobility: 'movable', mass: 50, material: 'fabric', ...sofaShape(27, 17.5), sized: ([l, d]) => sofaShape(l, d), surface: true, radius: .05, rests: 'floor' },
+  armchair: { label: 'Armchair', mobility: 'movable', mass: 30, material: 'fabric', ...sofaShape(16.1, 15.5), sized: ([l, d]) => sofaShape(l, d), surface: true, radius: .05, rests: 'floor' },
+  'plant-floor': { label: 'Plant', mobility: 'movable', mass: 15, material: 'ceramic', ...plantShape(1), sized: ([big]) => plantShape(big), surface: false, radius: .05, rests: 'floor' },
+  console: {
+    label: 'Game console', mobility: 'movable', mass: 4.5, material: 'plastic', surface: false, radius: .05, rests: 'floor',
+    colliders: [{ shape: 'box', size: [.26, .02, .14], at: [0, .01, -.0205] }, { shape: 'box', size: [.16, .4, .25], at: [0, .22, -.0205] }],
+    foot: [4, 3.5], // (the obstacle it was: 7 by 8 plan pixels, turned with it to face east)
+  },
   'plant-desk': {
     label: 'Desk plant', mobility: 'movable', mass: .8, material: 'ceramic', surface: false, radius: .1, rests: 'surface',
     colliders: [{ shape: 'cylinder', radius: .055, height: .1, at: [0, .05, 0] }, { shape: 'sphere', radius: .09, at: [0, .16, 0] }],

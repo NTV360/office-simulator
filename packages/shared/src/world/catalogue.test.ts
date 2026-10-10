@@ -47,10 +47,11 @@ describe('every kind of item', () => {
 });
 
 describe('how a person carries it', () => {
-  it('follows from the mass: small things in one hand, chairs in two', () => {
-    expect(['mug', 'notebook', 'plant-desk'].map(carryOf)).toEqual(['one-hand', 'one-hand', 'one-hand']);
-    expect(['chair-office', 'chair-wood', 'stool-bar'].map(carryOf)).toEqual(['two-hands', 'two-hands', 'two-hands']);
-    expect(carryOf('sofa')).toBeUndefined(); // (not a kind yet)
+  it('follows from the mass: small things in one hand, chairs and tables in two, a sofa dragged', () => {
+    expect(['mug', 'notebook', 'plant-desk', 'keyboard', 'mouse', 'cup'].map(carryOf)).toEqual(Array(6).fill('one-hand'));
+    expect(['chair-office', 'chair-wood', 'stool-bar', 'monitor', 'table-dining', 'armchair'].map(carryOf)).toEqual(Array(6).fill('two-hands'));
+    expect(['sofa', 'couch'].map(carryOf)).toEqual(['drag', 'drag']);
+    expect(carryOf('piano-grand')).toBeUndefined(); // (not a kind)
   });
   it('agrees with the limits for every kind', () => {
     for (const [type, t] of Object.entries(CATALOGUE)) {

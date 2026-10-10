@@ -82,9 +82,15 @@ function footprintFree(o: WorldObject, x: number, z: number, rot: number): boole
   const rect = footprintOf({ ...o, x, z, rot, q: null, carriedBy: null });
   if (!rect) return true;
   for (let py = rect[1]; py <= rect[3] + 1e-9; py += Math.min(CS, rect[3] - rect[1] || CS)) for (let px = rect[0]; px <= rect[2] + 1e-9; px += Math.min(CS, rect[2] - rect[0] || CS)) {
-    if (!walkPx(px, py)) return false;
+    if (!walkPx(px, py) && !inOwnFootprint(o, px, py)) return false;
   }
   return true;
+}
+
+/** Is this point (plan pixels) on the floor the thing itself blocks where it stands now? (Moving a table a little is not blocked by the table.) */
+function inOwnFootprint(o: WorldObject, px: number, py: number): boolean {
+  const r = footprintOf(o), m = 7; // (the walk grid's margin round an obstacle, and a little)
+  return !!r && px > r[0] - m && px < r[2] + m && py > r[1] - m && py < r[3] + m;
 }
 
 /** The desk top under a point: one column of an island (the width of one seat, between the screens) and the island's depth, in metres: x from, x to, z from, z to; or null. Any desk will do: anyone may put things on anyone's desk. */
@@ -148,11 +154,12 @@ export function placementProblem(o: WorldObject, x: number, z: number, rot: numb
     return null;
   }
   const [px, py] = toPx({ x, z });
-  if (!home && !walkPx(px, py)) return 'blocked';
-  for (const q of others) if (Math.hypot(q.x - x, q.z - z) < me.radius + CATALOGUE[q.type].radius) return 'crowded';
+  const big = shapeOf(o).foot !== undefined;
+  if (!home && !walkPx(px, py) && !inOwnFootprint(o, px, py)) return 'blocked';
+  // (big things keep each other apart on the walk grid, and a chair stands close to its table: the crowding circles are for chairs and stools)
+  if (!big) for (const q of others) if (shapeOf(q).foot === undefined && Math.hypot(q.x - x, q.z - z) < me.radius + CATALOGUE[q.type].radius) return 'crowded';
   if (home) return null;
   if (!footprintFree(o, x, z, rot)) return 'blocked'; // (a table or a sofa: all of it on open floor)
-  const big = shapeOf(o).foot !== undefined;
   for (const l of o.links) {
     // (the seat itself on open floor: not against or inside a wall or a table. A sofa's seats are on the sofa, which is not down yet)
     if (!big) { const [sx, sy] = toPx(seatAt(l, x, z, rot)); if (!walkPx(sx, sy)) return 'blocked'; }

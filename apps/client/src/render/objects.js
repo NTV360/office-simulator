@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { CATALOGUE, objects, people, simEvents } from '@office/shared';
+import { CATALOGUE, S, objects, people, simEvents } from '@office/shared';
 import { M } from './materials.js';
 import { scene } from './renderer.js';
-import { barStool, officeChair, woodChair } from '../world/furniture/basics.js';
+import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
+import { drawBarTable } from '../world/furniture/bar.js';
+import { drawTable } from '../world/furniture/conference.js';
+import { drawConsole } from '../world/furniture/game.js';
+import { drawSofa } from '../world/furniture/lounge.js';
 import { box, cyl } from '../world/helpers.js';
 
 // Drawing the movable objects (chairs, stools and the small things on desks), fast. Every kind of object is built once, from the same
@@ -22,6 +26,16 @@ const PREFABS = {
   // (the monitor's screen is not part of it: each one shows its own desk, so it is a mesh of its own, attached: see attachToObject)
   'monitor:0': g => { box(g, .22, .012, .16, M.monitor, 0, .006, 0); box(g, .05, .14, .04, M.monitor, 0, .08, .02); box(g, .58, .34, .03, M.monitor, 0, .27, 0); },
   'keyboard:0': g => { box(g, .4, .018, .13, M.keyboard, 0, .009, 0, false); },
+  'cup:0': g => { cyl(g, .05, .04, .1, M.white, 0, .05, 0, 10, false); },
+  // furniture that comes in sizes: `dims` is its size in plan pixels (shared/world/shapes.ts), one kind per size
+  'table-dining:0': (g, [w, d]) => drawTable(g, w * S, d * S, M.diningWood, M.diningWood2, .74),
+  'table-coffee:0': (g, [w, d]) => drawTable(g, w * S, d * S, M.diningWood, M.diningWood2, .42),
+  'table-bar:0': (g, [w, d]) => drawBarTable(g, w * S, d * S),
+  'sofa:0': (g, [l, d]) => drawSofa(g, l * S, d * S, false),
+  'couch:0': (g, [l, d]) => drawSofa(g, l * S, d * S, false),
+  'armchair:0': (g, [l, d]) => drawSofa(g, l * S, d * S, true),
+  'plant-floor:0': (g, [big]) => drawPlant(g, big),
+  'console:0': drawConsole,
   'mouse:0': g => { box(g, .05, .02, .08, M.keyboard, 0, .01, 0, false); },
   'plant-desk:0': g => {
     cyl(g, .06, .05, .1, M.pot, 0, .05, 0, 10);
@@ -30,14 +44,14 @@ const PREFABS = {
 };
 M.notebook.forEach((mat, i) => { PREFABS[`notebook:${i}`] = g => { box(g, .2, .025, .27, mat, 0, .015, 0, false); }; });
 
-const key = o => `${o.type}:${o.variant}`;
+const key = o => `${o.type}:${o.variant}` + (o.dims ? ':' + o.dims.join(',') : '');
 const keep = ['position', 'normal', 'uv'];
 
 /** One kind of object: a list of parts (a merged geometry in a material, drawn instanced) and which instance is which object. */
-function makeKind(k) {
-  const build = PREFABS[k];
+function makeKind(k, o) {
+  const build = PREFABS[`${o.type}:${o.variant}`];
   if (!build) throw new Error(`no drawing for object kind "${k}"`);
-  const g = new THREE.Group(); build(g); g.updateMatrixWorld(true);
+  const g = new THREE.Group(); build(g, o.dims ?? []); g.updateMatrixWorld(true);
   const byMat = new Map();
   g.traverse(m => {
     if (!m.isMesh) return;
@@ -106,7 +120,7 @@ export function attachToObject(o, mesh) {
 function add(o) {
   const k = key(o);
   let kind = kinds.get(k);
-  if (!kind) { kind = makeKind(k); kinds.set(k, kind); }
+  if (!kind) { kind = makeKind(k, o); kinds.set(k, kind); }
   if (kind.count === kind.capacity) allocate(kind, Math.max(8, kind.capacity * 2));
   const slot = kind.count++;
   for (const p of kind.parts) p.mesh.count = kind.count;

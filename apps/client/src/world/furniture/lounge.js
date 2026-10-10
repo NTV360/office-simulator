@@ -1,23 +1,27 @@
 import logoUrl from '../../assets/logo.png';
 import * as THREE from 'three';
-import { S, WALL_T, vpick, wx, wz } from '@office/shared';
+import { S, WALL_T, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { scene } from '../../render/renderer.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';
-import { table } from './conference.js';
-import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
+import { addObs, box, dynamic, staticRoot } from '../helpers.js';
+import { placeLater, placeObject } from '../objects.js';
 
 // Lounge seating
+/** A sofa (or an armchair) `len` long and `dep` deep, drawn at the origin of `g`, facing +z. */
+function drawSofa(g, len, dep, single) {
+  box(g, len, .22, dep, M.sofaDark, 0, .2, 0);
+  box(g, len - .12, .12, dep - .14, single ? M.armchair : M.sofa, 0, .37, .04);
+  box(g, len, .42, .16, single ? M.armchair : M.sofa, 0, .55, -dep / 2 + .08);
+  [-1, 1].forEach(s => box(g, .13, .3, dep, M.sofaDark, s * (len / 2 - .065), .42, 0));
+}
+// A sofa is an item that carries its seats: move it and they go with it (shared/world/shapes.ts has its shape).
 function sofa(x1, y1, x2, y2, face, seats, place, aps, single = false) {
-  addObs(x1, y1, x2, y2);
   const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, horiz = face === SO || face === N;
-  const len = (horiz ? x2 - x1 : y2 - y1) * S, dep = (horiz ? y2 - y1 : x2 - x1) * S;
-  const f = frame(cx, cy, face);
-  box(f, len, .22, dep, M.sofaDark, 0, .2, 0);
-  box(f, len - .12, .12, dep - .14, single ? M.armchair : M.sofa, 0, .37, .04);
-  box(f, len, .42, .16, single ? M.armchair : M.sofa, 0, .55, -dep / 2 + .08);
-  [-1, 1].forEach(s => box(f, .13, .3, dep, M.sofaDark, s * (len / 2 - .065), .42, 0));
-  seats.forEach(([px, py], i) => mkSpot('lounge', px, py, face, { sit: true, hipY: .5, place, ap: aps[i] }));
+  const len = horiz ? x2 - x1 : y2 - y1, dep = horiz ? y2 - y1 : x2 - x1;
+  const ids = seats.map(([px, py], i) => mkSpot('lounge', px, py, face, { sit: true, hipY: .5, place, ap: aps[i] }).id);
+  const type = single ? 'armchair' : seats.length >= 3 ? 'sofa' : 'couch';
+  placeLater(() => placeObject(type, cx, cy, face, { dims: [len, dep], spot: ids[0], spots: ids.slice(1) }));
 }
 
 
@@ -48,9 +52,10 @@ function buildLounge() {
   sofa(363.2, 310.2, 379.3, 325.7, SO, [[371.25, 317]], 'an armchair', [[371.25, 298]], true);
   sofa(387.9, 320.0, 403.4, 336.1, WST, [[396, 328]], 'an armchair', [[412, 328]], true);
   sofa(387.9, 344.5, 403.4, 360.6, WST, [[396, 352.5]], 'an armchair', [[412, 352.5]], true);
-  table(340.1, 333.1, 380.6, 353.1, M.diningWood, M.diningWood2, .42);
-  box(staticRoot, .22, .03, .3, vpick(M.notebook), wx(352), .425, wz(342), false);
-  cyl(staticRoot, .05, .04, .1, M.white, wx(368), .47, wz(340), 10, false);
+  placeLater(() => placeObject('table-coffee', (340.1 + 380.6) / 2, (333.1 + 353.1) / 2, 0, { dims: [380.6 - 340.1, 353.1 - 333.1] }));
+  // a notebook and a cup on it (after the table, so they stand on it)
+  placeLater(() => placeObject('notebook', 352, 342, 0, { y: .4225, variant: 2 }));
+  placeLater(() => placeObject('cup', 368, 340, 0, { y: .4225 }));
 }
 
-export { buildLounge };
+export { buildLounge, drawSofa };

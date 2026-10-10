@@ -1,16 +1,20 @@
-import { S, wx, wz } from '@office/shared';
+import { S } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';
 import { cabinet } from './cabinet.js';
 import { tv } from './tv.js';
-import { addObs, addTop, box, frame, staticRoot } from '../helpers.js';
+import { addObs, addTop, box, frame } from '../helpers.js';
 import { placeObject } from '../objects.js';
 
-function table(x1, y1, x2, y2, top = M.confTable, legs = M.dark, h = .74) {
-  addObs(x1, y1, x2, y2); addTop(x1, y1, x2, y2, h + .0025);
-  const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
-  box(staticRoot, w, .045, d, top, cx, h - .02, cz);
-  [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(staticRoot, .05, h - .04, .05, legs, cx + a * (w / 2 - .07), (h - .04) / 2, cz + b * (d / 2 - .07)));
+/** A table `w` by `d` metres with its top `h` high, drawn at the origin of `g` (a conference table, or a dining or coffee table item). */
+function drawTable(g, w, d, top = M.confTable, legs = M.dark, h = .74) {
+  box(g, w, .045, d, top, 0, h - .02, 0);
+  [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(g, .05, h - .04, .05, legs, a * (w / 2 - .07), (h - .04) / 2, b * (d / 2 - .07)));
+}
+/** A fixed conference table on a plan rectangle. (Dining and coffee tables are items: shared/world/shapes.ts.) */
+function table(x1, y1, x2, y2) {
+  addObs(x1, y1, x2, y2); addTop(x1, y1, x2, y2, .74 + .0025);
+  drawTable(frame((x1 + x2) / 2, (y1 + y2) / 2, 0), (x2 - x1) * S, (y2 - y1) * S);
 }
 function confSeat(n, px, py, face) {
   const spot = mkSpot('conf', px, py, face, { sit: true, place: `Conference ${n}`, room: n });
@@ -38,4 +42,4 @@ function buildConference() {
   tv(116, 234, 126, 282, E, 'dash');
 }
 
-export { table, buildConference };
+export { drawTable, buildConference };

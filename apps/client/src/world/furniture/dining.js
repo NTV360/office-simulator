@@ -1,13 +1,12 @@
 import { W } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { E, WST, mkSpot } from './basics.js';
-import { table } from './conference.js';
 import { cyl, frame, staticRoot } from '../helpers.js';
-import { placeObject } from '../objects.js';
+import { placeLater, placeObject } from '../objects.js';
 
 // Dining area: 6 compact tables, 18 seats (shifted west to make room for the mini golf green)
 function diningTable(x1, y1, x2, y2, ys) {
-  table(x1, y1, x2, y2, M.diningWood, M.diningWood2);
+  placeLater(() => placeObject('table-dining', (x1 + x2) / 2, (y1 + y2) / 2, 0, { dims: [x2 - x1, y2 - y1] }));
   for (const y of ys) for (const [px, face] of [[x1 - 8, E], [x2 + 8, WST]]) {
     const spot = mkSpot('dining', px, y, face, { sit: true, hipY: .52, place: 'the dining area' });
     placeObject('chair-wood', px, y, face, { spot: spot.id });
