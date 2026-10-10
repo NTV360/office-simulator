@@ -1858,6 +1858,7 @@
    "hipY": 0.53,
    "id": "whiteboard:0",
    "kind": "whiteboard",
+   "object": "obj:402",
    "place": "the whiteboard",
    "pos": {
     "x": 10.70715,
@@ -1878,6 +1879,7 @@
    "hipY": 0.53,
    "id": "whiteboard:1",
    "kind": "whiteboard",
+   "object": "obj:402",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1898,6 +1900,7 @@
    "hipY": 0.53,
    "id": "whiteboard:2",
    "kind": "whiteboard",
+   "object": "obj:402",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1918,6 +1921,7 @@
    "hipY": 0.53,
    "id": "whiteboard:3",
    "kind": "whiteboard",
+   "object": "obj:403",
    "place": "the whiteboard",
    "pos": {
     "x": 10.70715,
@@ -1938,6 +1942,7 @@
    "hipY": 0.53,
    "id": "whiteboard:4",
    "kind": "whiteboard",
+   "object": "obj:403",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1958,6 +1963,7 @@
    "hipY": 0.53,
    "id": "whiteboard:5",
    "kind": "whiteboard",
+   "object": "obj:403",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -2313,7 +2319,7 @@
    "hipY": 0.5,
    "id": "lounge:0",
    "kind": "lounge",
-   "object": "obj:405",
+   "object": "obj:410",
    "place": "the lounge sofa",
    "pos": {
     "x": -9.567350000000001,
@@ -2333,7 +2339,7 @@
    "hipY": 0.5,
    "id": "lounge:1",
    "kind": "lounge",
-   "object": "obj:405",
+   "object": "obj:410",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.93185,
@@ -2353,7 +2359,7 @@
    "hipY": 0.5,
    "id": "lounge:2",
    "kind": "lounge",
-   "object": "obj:405",
+   "object": "obj:410",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.296350000000002,
@@ -2373,7 +2379,7 @@
    "hipY": 0.5,
    "id": "lounge:3",
    "kind": "lounge",
-   "object": "obj:406",
+   "object": "obj:411",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2393,7 +2399,7 @@
    "hipY": 0.5,
    "id": "lounge:4",
    "kind": "lounge",
-   "object": "obj:406",
+   "object": "obj:411",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2414,7 +2420,7 @@
    "hipY": 0.5,
    "id": "lounge:5",
    "kind": "lounge",
-   "object": "obj:407",
+   "object": "obj:412",
    "place": "the TV lounge",
    "pos": {
     "x": -1.961850000000001,
@@ -2435,7 +2441,7 @@
    "hipY": 0.5,
    "id": "lounge:6",
    "kind": "lounge",
-   "object": "obj:407",
+   "object": "obj:412",
    "place": "the TV lounge",
    "pos": {
     "x": -1.469850000000001,
@@ -2456,7 +2462,7 @@
    "hipY": 0.5,
    "id": "lounge:7",
    "kind": "lounge",
-   "object": "obj:407",
+   "object": "obj:412",
    "place": "the TV lounge",
    "pos": {
     "x": -0.977850000000001,
@@ -2477,7 +2483,7 @@
    "hipY": 0.5,
    "id": "lounge:8",
    "kind": "lounge",
-   "object": "obj:408",
+   "object": "obj:413",
    "place": "the TV lounge",
    "pos": {
     "x": -2.0705,
@@ -2498,7 +2504,7 @@
    "hipY": 0.5,
    "id": "lounge:9",
    "kind": "lounge",
-   "object": "obj:409",
+   "object": "obj:414",
    "place": "the TV lounge",
    "pos": {
     "x": -1.090600000000001,
@@ -2519,7 +2525,7 @@
    "hipY": 0.5,
    "id": "lounge:10",
    "kind": "lounge",
-   "object": "obj:410",
+   "object": "obj:415",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -2540,7 +2546,7 @@
    "hipY": 0.5,
    "id": "lounge:11",
    "kind": "lounge",
-   "object": "obj:411",
+   "object": "obj:416",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -3140,6 +3146,7 @@
    "hipY": 0.6,
    "id": "piano:0",
    "kind": "piano",
+   "object": "obj:439",
    "place": "the keyboard",
    "pos": {
     "x": 10.42015,
@@ -3160,6 +3167,7 @@
    "hipY": 0.6,
    "id": "guitar:0",
    "kind": "guitar",
+   "object": "obj:441",
    "place": "the guitar",
    "pos": {
     "x": 10.25615,
@@ -3689,18 +3697,6 @@
    146
   ],
   [
-   670,
-   436,
-   674,
-   470
-  ],
-  [
-   670,
-   660,
-   674,
-   694
-  ],
-  [
    158,
    96,
    174,
@@ -3713,58 +3709,16 @@
    168
   ],
   [
-   116.5,
-   108,
-   127,
-   156
-  ],
-  [
-   267,
-   108,
-   277,
-   156
-  ],
-  [
    150,
    228,
    186,
    288
   ],
   [
-   116,
-   234,
-   126,
-   282
-  ],
-  [
    150,
    329,
    210,
    332.8
-  ],
-  [
-   317.9,
-   322,
-   329,
-   368.1
-  ],
-  [
-   661.7,
-   367.9,
-   675,
-   432.4
-  ],
-  [
-   661.7,
-   700.1,
-   675,
-   769.5
-  ],
-  [
-   360.1,
-   797.3,
-   373.4,
-   840.6
   ],
   [
    481.40000000000003,
@@ -3897,18 +3851,6 @@
    852,
    368.2,
    880
-  ],
-  [
-   663,
-   507,
-   674,
-   543
-  ],
-  [
-   667,
-   550,
-   677,
-   562
   ],
   [
    351.8,
@@ -7957,6 +7899,34 @@
    "spot": null
   },
   {
+   "type": "whiteboard",
+   "x": 11.24015,
+   "z": -5.086049999999998,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": "whiteboard:0",
+   "spots": [
+    "whiteboard:1",
+    "whiteboard:2"
+   ]
+  },
+  {
+   "type": "whiteboard",
+   "x": 11.24015,
+   "z": 4.097950000000002,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 1,
+   "station": null,
+   "spot": "whiteboard:3",
+   "spots": [
+    "whiteboard:4",
+    "whiteboard:5"
+   ]
+  },
+  {
    "type": "credenza",
    "x": -10.633350000000002,
    "z": -16.049449999999997,
@@ -7968,6 +7938,20 @@
    "dims": [
     39,
     11.199999999999989
+   ]
+  },
+  {
+   "type": "tv-stand",
+   "x": -11.320100000000002,
+   "z": -18.247049999999998,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    48,
+    10.5
    ]
   },
   {
@@ -7985,6 +7969,20 @@
    ]
   },
   {
+   "type": "tv-stand",
+   "x": -5.159850000000001,
+   "z": -18.247049999999998,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    48,
+    10
+   ]
+  },
+  {
    "type": "credenza",
    "x": -9.833850000000002,
    "z": -10.428349999999998,
@@ -7996,6 +7994,20 @@
    "dims": [
     60,
     7.399999999999977
+   ]
+  },
+  {
+   "type": "tv-stand",
+   "x": -11.350850000000001,
+   "z": -13.08105,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    48,
+    10
    ]
   },
   {
@@ -8142,6 +8154,20 @@
    "spot": null
   },
   {
+   "type": "tv-stand",
+   "x": -3.0504000000000016,
+   "z": -9.511999999999999,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    46.10000000000002,
+    11.100000000000023
+   ]
+  },
+  {
    "type": "console",
    "x": -2.720350000000001,
    "z": -8.32505,
@@ -8177,6 +8203,48 @@
    "dims": [
     37.799999999999955,
     41.599999999999994
+   ]
+  },
+  {
+   "type": "tv-stand",
+   "x": 11.0905,
+   "z": -7.2528999999999995,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    64.5,
+    13.299999999999955
+   ]
+  },
+  {
+   "type": "tv-stand",
+   "x": 11.0905,
+   "z": 6.4677500000000006,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    69.39999999999998,
+    13.299999999999955
+   ]
+  },
+  {
+   "type": "tv-stand",
+   "x": -1.275100000000001,
+   "z": 9.917900000000005,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    43.30000000000007,
+    13.299999999999955
    ]
   },
   {
@@ -8302,6 +8370,56 @@
     24,
     24
    ]
+  },
+  {
+   "type": "piano-stand",
+   "x": 11.09665,
+   "z": -2.134049999999998,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "piano",
+   "x": 11.09665,
+   "z": -2.134049999999998,
+   "rot": -1.5707963267948966,
+   "y": 0.795,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "stool-low",
+   "x": 10.42015,
+   "z": -2.134049999999998,
+   "rot": 1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": "piano:0"
+  },
+  {
+   "type": "guitar-stand",
+   "x": 11.24015,
+   "z": -0.8630499999999982,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "stool-low",
+   "x": 10.25615,
+   "z": -0.8630499999999982,
+   "rot": -1.5707963267948966,
+   "y": 0,
+   "variant": 1,
+   "station": null,
+   "spot": "guitar:0"
   },
   {
    "type": "coffee-machine",

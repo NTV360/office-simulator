@@ -3,7 +3,7 @@
 // so the team can change it without touching code. See docs/PHASE-5-BREAKDOWN.md and docs/ITEMS-PHYSICS-PLAN.md.
 
 import type { MaterialName } from './materials';
-import { barTableShape, cabinetShape, plantShape, sofaShape, tableShape } from './shapes';
+import { barTableShape, cabinetShape, plantShape, sofaShape, tableShape, tvShape } from './shapes';
 
 export type Mobility = 'fixed' | 'movable';
 /** Chairs and stools stand on the floor; small things stand on a table. */
@@ -124,6 +124,37 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
   orange: { label: 'Orange', mobility: 'movable', mass: .2, material: 'fruit', colliders: [{ shape: 'sphere', radius: .046, at: [0, .046, 0] }], surface: false, radius: .05, rests: 'surface' },
   // the small round speaker on each phone booth's shelf
   puck: { label: 'Speaker', mobility: 'movable', mass: .2, material: 'plastic', colliders: [{ shape: 'cylinder', radius: .06, height: .05, at: [0, .025, 0] }], surface: false, radius: .08, rests: 'surface' },
+  'tv-stand': { label: 'TV', mobility: 'movable', mass: 25, material: 'plastic', ...tvShape(48, 10.5), sized: ([a, c]) => tvShape(a, c), surface: false, radius: .05, rests: 'floor' },
+  whiteboard: {
+    label: 'Whiteboard', mobility: 'movable', mass: 14, material: 'metal', surface: false, radius: .05, rests: 'floor',
+    colliders: [
+      { shape: 'box', size: [1.46, .98, .05], at: [0, 1.45, 0] }, { shape: 'box', size: [1.2, .03, .08], at: [0, 1.0, .05] },
+      { shape: 'box', size: [.04, 1.9, .04], at: [.7, .95, 0] }, { shape: 'box', size: [.04, 1.9, .04], at: [-.7, .95, 0] },
+      { shape: 'box', size: [.06, .03, .5], at: [.7, .015, 0] }, { shape: 'box', size: [.06, .03, .5], at: [-.7, .015, 0] },
+    ],
+    foot: [17, 2], // (it faces west: the board is the long side)
+  },
+  // the music corner: the keyboard piano on its X stand (the stand's middle is 2 cm from where it used to be drawn), two low stools, the guitar stand
+  'piano-stand': {
+    label: 'Keyboard stand', mobility: 'movable', mass: 3.3, material: 'metal', surface: true, radius: .05, rests: 'floor',
+    colliders: [
+      // (the legs are drawn .9 long and poke up through the top: to the physics they stop under it, so the keyboard lies on the board)
+      ...[[-.405, .4], [.405, -.4]].flatMap(([x, r]) => [-1, 1].map((sd): Collider => ({ shape: 'box', size: [.03, .8, .03], at: [x, .3743, .0205], rot: [r * sd, 0, 0] }))),
+      { shape: 'box', size: [1.3, .03, .3], at: [0, .78, .0205] },
+    ],
+    top: { y: .795, hw: .65, hd: .15 },
+    foot: [18, 5.5],
+  },
+  piano: { label: 'Keyboard piano', mobility: 'movable', mass: 4.5, material: 'plastic', colliders: [{ shape: 'box', size: [1.28, .09, .34], at: [0, .045, .0205] }], surface: false, radius: .3, rests: 'surface' },
+  'stool-low': {
+    label: 'Stool', mobility: 'movable', mass: 6, material: 'metal', surface: true, radius: .2, rests: 'floor', top: { y: .55, hw: .12, hd: .12 },
+    colliders: [{ shape: 'cylinder', radius: .2, height: .02, at: [0, .01, 0] }, { shape: 'cylinder', radius: .03, height: .5, at: [0, .25, 0] }, { shape: 'cylinder', radius: .19, height: .06, at: [0, .52, 0], material: 'fabric' }],
+  },
+  'guitar-stand': {
+    label: 'Guitar stand', mobility: 'movable', mass: .9, material: 'metal', surface: false, radius: .05, rests: 'floor',
+    colliders: [{ shape: 'box', size: [.3, .02, .25], at: [0, .01, 0] }, { shape: 'box', size: [.03, .55, .03], at: [0, .3, -.06] }],
+    foot: [6, 5], // (the guitar on it is drawn, not solid: it is the guitar the player picks up, see music.js)
+  },
   'plant-desk': {
     label: 'Desk plant', mobility: 'movable', mass: .8, material: 'ceramic', surface: false, radius: .1, rests: 'surface',
     colliders: [{ shape: 'cylinder', radius: .055, height: .1, at: [0, .05, 0] }, { shape: 'sphere', radius: .09, at: [0, .16, 0] }],

@@ -19,7 +19,7 @@ describe('the office layout data', () => {
     const kinds: Record<string, number> = {};
     for (const s of officeLayout.spots) kinds[s.kind] = (kinds[s.kind] || 0) + 1;
     expect(kinds).toEqual({ desk: 80, whiteboard: 6, conf: 16, lounge: 12, bar: 4, booth: 4, dining: 18, golf: 1, darts: 2, piano: 1, guitar: 1, counter: 2, sink: 2, snack: 1, bucket: 1, storage: 2, locker: 4, exit: 1 });
-    expect(officeLayout.obstacles).toHaveLength(86); // (113 before 27 pieces of furniture became items: they block where they stand instead)
+    expect(officeLayout.obstacles).toHaveLength(75); // (113 before 38 pieces of furniture became items: they block where they stand instead)
   });
   it('rebuilds the same spots with the same ids, in the same order', () => {
     expect(interactables.all().map(s => s.id)).toEqual(officeLayout.spots.map(s => s.id));

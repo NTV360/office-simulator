@@ -6,6 +6,9 @@ import { scene } from './renderer.js';
 import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
 import { drawBarTable } from '../world/furniture/bar.js';
 import { drawCabinet } from '../world/furniture/cabinet.js';
+import { drawGuitarStand, drawPiano, drawPianoStand, drawStoolLow } from '../world/furniture/music.js';
+import { drawTvStand } from '../world/furniture/tv.js';
+import { drawWhiteboard } from '../world/furniture/whiteboard.js';
 import { drawApple, drawBananas, drawCoffeeMachine, drawFruitBowl, drawOrange } from '../world/furniture/kitchen.js';
 import { drawTable } from '../world/furniture/conference.js';
 import { drawConsole } from '../world/furniture/game.js';
@@ -49,6 +52,14 @@ const PREFABS = {
   'apple:0': drawApple,
   'orange:0': drawOrange,
   'puck:0': g => { cyl(g, .07, .05, .05, M.dark, 0, .025, 0, 10); },
+  'tv-stand:0': (g, [along]) => drawTvStand(g, Math.min(along * S, 2.1)),
+  'whiteboard:0': g => drawWhiteboard(g, 0),
+  'whiteboard:1': g => drawWhiteboard(g, 1),
+  'piano-stand:0': drawPianoStand,
+  'piano:0': drawPiano,
+  'stool-low:0': g => drawStoolLow(g, false),
+  'stool-low:1': g => drawStoolLow(g, true),
+  'guitar-stand:0': drawGuitarStand,
   'mouse:0': g => { box(g, .05, .02, .08, M.keyboard, 0, .01, 0, false); },
   'plant-desk:0': g => {
     cyl(g, .06, .05, .1, M.pot, 0, .05, 0, 10);

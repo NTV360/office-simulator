@@ -30,11 +30,12 @@ describe('the starting objects', () => {
   it('the office has 446 of them: the chairs, the things on the desks, every desk\'s computer, the furniture, and the kitchen counter\'s things', () => {
     const kinds: Record<string, number> = {};
     for (const o of objects.all()) kinds[o.type] = (kinds[o.type] || 0) + 1;
-    expect(objects.count()).toBe(446);
+    expect(objects.count()).toBe(460);
     expect(kinds).toEqual({
       'chair-office': 100, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 9, 'plant-desk': 4, monitor: 80, keyboard: 80, mouse: 80,
       sofa: 2, couch: 1, armchair: 4, 'table-coffee': 1, cup: 1, console: 1, 'table-bar': 2, 'table-dining': 6, 'plant-floor': 5,
       credenza: 3, 'cabinet-tall': 2, puck: 4, 'coffee-machine': 1, 'water-jug': 1, toaster: 1, 'cup-small': 4, 'fruit-bowl': 1, bananas: 1, apple: 1, orange: 1,
+      'tv-stand': 7, whiteboard: 2, 'piano-stand': 1, piano: 1, 'stool-low': 2, 'guitar-stand': 1,
     });
   });
   it('the first 162 are the ones there were before furniture became items, in the same order: a world saved before puts its things back on the right ones', () => {
@@ -48,7 +49,7 @@ describe('the starting objects', () => {
   });
   it('every seat of a kind that has a chair is carried by exactly one chair, at the same place and facing the same way', () => {
     const chairs = objects.all().filter(o => o.spot && /^(chair|stool)/.test(o.type));
-    expect(chairs).toHaveLength(100 + 18 + 4);
+    expect(chairs).toHaveLength(100 + 18 + 4 + 2); // (and the music corner's two stools)
     // and every lounge seat by its sofa or armchair
     for (const s of interactables.of('lounge')) expect(objects.byId(s.object as string)?.type, s.id).toMatch(/^(sofa|couch|armchair)$/);
     for (const o of chairs) {
@@ -71,7 +72,7 @@ describe('the starting objects', () => {
     const first = JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]));
     loadLayout(officeLayout);
     expect(JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]))).toBe(first);
-    expect(objects.count()).toBe(446); // (loading again does not stack them)
+    expect(objects.count()).toBe(460); // (loading again does not stack them)
   });
   it('they start at home, and carry nobody', () => {
     expect(objects.all().every(isAtHome)).toBe(true);

@@ -67,3 +67,12 @@ export function cabinetShape(wPx: number, dPx: number, h: number, inset = 0): Sh
     top: { y: h + .03, hw: w / 2, hd: d / 2 },
   };
 }
+
+/** A TV on a floor stand whose footprint is `alongPx` by `acrossPx` (tv.js tv()): the screen is as wide as the long side, at most 2.1 m. */
+export function tvShape(alongPx: number, acrossPx: number): Shape {
+  const w = Math.min(alongPx * S, 2.1), h = w * .56, yc = .95 + h / 2;
+  return {
+    colliders: [{ shape: 'box', size: [.5, .03, .32], at: [0, .015, -.02] }, { shape: 'box', size: [.07, yc, .05], at: [0, yc / 2, -.06] }, { shape: 'box', size: [w + .04, h + .04, .05], at: [0, yc, 0] }],
+    foot: [alongPx / 2, acrossPx / 2],
+  };
+}
