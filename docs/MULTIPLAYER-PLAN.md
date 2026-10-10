@@ -238,12 +238,16 @@ object { id, type, x, y, z, rotation, owner (account or none), station (slot or 
 
 ### 8.4 Permissions
 
+> **Being replaced** by [ITEMS-PHYSICS-PLAN.md](ITEMS-PHYSICS-PLAN.md): anyone can move anything, weights are in kg, and physics covers held and stacked items too.
+
 - Whether a thing can move at all is its **mobility** (section 8.8). Fixed things never move for players.
 - **At a station, only its owner and admins can move things** (monitor, keyboard, mug, chair). Other people can look, and may sit if the seat is free. **Everything in shared areas** (lounge, kitchen and dining, conference chairs) **is free for everybody to move.** This is decided; an admin can open a station up for fun if the team wants a prank day.
 - Admins can move, lock, reset or delete anything, including fixed objects.
 - Every change is attributed (who moved what) and recent changes can be undone.
 
 ### 8.5 Physics
+
+> **Being replaced** by [ITEMS-PHYSICS-PLAN.md](ITEMS-PHYSICS-PLAN.md): anyone can move anything, weights are in kg, and physics covers held and stacked items too.
 
 - **Rapier** simulates only objects that are in motion (thrown, dropped, knocked). Objects at rest are asleep and cost almost nothing.
 - Characters keep the existing grid-based collision; they are not pushed by physics in v1. Thrown objects collide with walls, the floor and other objects. Hitting people is a later extra.
@@ -267,6 +271,8 @@ The nav grid is currently built once. With movable objects it must **update**: w
 Tables (v1): `accounts`, `refresh_tokens`, `persons` (identity, spec, slot, last position, state, owner account or none), `slots` (desk assignment), `world_objects`, `world_state` (clock, day, settings), `audit_log` (admin actions, object changes). Later: items, inventory, money.
 
 ### 8.8 What is fixed and what moves
+
+> **Being replaced** by [ITEMS-PHYSICS-PLAN.md](ITEMS-PHYSICS-PLAN.md): anyone can move anything, weights are in kg, and physics covers held and stacked items too.
 
 **The team's rules:**
 

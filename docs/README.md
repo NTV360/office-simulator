@@ -18,6 +18,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md) | the steps for accounts, login, taking over a person, character creation and admin tools (done) |
 | [PHASE-4-BREAKDOWN.md](PHASE-4-BREAKDOWN.md) | the steps for playing together: walking with prediction, sitting, names, chat, emotes and shared events (done) |
 | [PHASE-5-BREAKDOWN.md](PHASE-5-BREAKDOWN.md) | the steps for world objects: chairs and desk items the server owns, that players can move and that are kept (in progress; steps 1 and 2 done) |
+| [ITEMS-PHYSICS-PLAN.md](ITEMS-PHYSICS-PLAN.md) | the plan for items with weight, materials and Rapier physics: picking up by reaching, holding and tilting, the ghost, throwing, and the list of every item in the office (planning) |
 | [PARALLEL-WORK.md](PARALLEL-WORK.md) | split work between several people or AI instances without them breaking each other (tracks, folder ownership, rules, a brief to hand out) |
 | [LOCAL-DOCKER.md](LOCAL-DOCKER.md) | run the whole stack (web, server, database) in Docker on your PC, and troubleshoot it |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
