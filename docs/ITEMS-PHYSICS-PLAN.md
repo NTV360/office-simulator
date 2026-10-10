@@ -230,10 +230,21 @@ Each step is a commit that leaves the game working.
 1. (**done**) **The item list in data.** The item definitions (section 5) for the existing 6 objects, with mass in kg, material and colliders; the weight classes removed. No behaviour change. Unit tests for the data and the carry rule.
 2. (**done**) **Anyone moves anything.** Drop the per-station move check on the server; ownership stays as the record of whose things are whose.
 3. (**done**) **Rapier on the server.** A physics world at a fixed step, holding the building and the fixed furniture as static colliders and the items as sleeping bodies. Poses of awake items go into the existing object messages. Tests: a dropped mug comes to rest on a desk; a tilted surface makes a mug slide past its angle and not before.
-4. **Baked things become items.** Monitors, keyboards, mice, the lounge set, kitchen items and the rest of section 3, one group per commit, out of the merged mesh and into the item list.
+4. **Baked things become items, and the walk grid follows them.** Monitors, keyboards, mice, the lounge set, kitchen items and the rest of section 3, one group per commit, out of the merged mesh and into the item list. Big items (tables, sofas, cabinets, floor plants) block walking where they stand, wherever they are moved, so people path around a moved sofa (decided: moved here from "later").
 5. **Arms and reach.** Arm length, aiming at a point on an item, the server's reach check from the shoulders (replacing the flat 2.6 m), and the reach animation with arm IK.
 6. **Real holding.** Attaching at the grabbed point with the angle kept, the spring hold, the strength limit (sag and slip), turning on three axes around the grip, things on top reacting, the speed penalty.
 7. **The ghost.** A mesh preview at the held angle, replacing today's ring.
 8. **Carrying together.** More than one grip per item, the weight shared out, slipping when someone walks off, lifting and lowering your end.
 9. **Drop, drag and throw**, with air drag.
-10. **Later, not this branch:** breaking, the walk grid updating when items move (MULTIPLAYER-PLAN.md §8.6), characters bumping items, NPCs fetching their own chair back to their desk, activities using real items instead of props.
+10. **Later, not this branch:** breaking, characters bumping items, NPCs fetching their own chair back to their desk, activities using real items instead of props.
+
+## 9. Decisions made while building
+
+The owner was asked on 2026-10-11 and chose; anything marked *picked* was decided while building, under the rule "pick the simpler or safer option, write it here, keep going". Each can be overruled.
+
+| Question | Decision |
+|---|---|
+| Walk grid when big items move | Updated in this branch (step 4), not later. *Decided* |
+| Controls while holding | Mouse plus a modifier: hold R and move the mouse to turn the item freely (Shift+R rolls it), the wheel raises and lowers your hands, G lets go. *Decided*; the throw key is in the step 9 notes below |
+| Pull request | None: the commits are pushed and the owner opens the PR. *Decided* |
+| Unplanned questions | Pick the simpler or safer option, note it here, keep going. *Decided* |
