@@ -6,6 +6,22 @@ The client later moved again, into `apps/client/`, when the repository became a 
 
 A worked example is at the bottom: the "angry hazel" commit (`eb60c07`) was ported exactly this way.
 
+## Work started against `main`'s `src/` layout (after phase 6)
+
+`main` kept the single-app layout (`src/` at the repository root, an Express server in `server/`). This branch is the monorepo, with everything `main` had by 2026-10-10 ported (see [PHASE-6-BREAKDOWN.md](PHASE-6-BREAKDOWN.md)). To move a change from the old layout, apply it by hand at the new path:
+
+| In `main` | Here |
+|---|---|
+| `index.html`, `src/**` (render, world and furniture, camera, ui, character rig and pack, people views and animation, styles) | `apps/client/index.html`, `apps/client/src/**` (same path under `apps/client/`) |
+| `src/sim/*.js` (tasks, day, step, meetings, schedule, live, state) | `packages/shared/src/sim/*.ts` (the same names; TypeScript) |
+| `src/people/{factory,roster,hazel,helper,data}.js` | `packages/shared/src/sim/{factory,roster,hazel,helper,data}.ts` (the page's views stay in `apps/client/src/people/`) |
+| `src/config/{plan,desks}.js`, `src/config/office.js` | `packages/shared/src/{plan,layout/desks,layout/office}.ts`, and the layout data `layout/office.json` (regenerated with `npm run layout:dump`) |
+| `src/core/util.js`, `src/nav/*.js`, `src/world/interactables.js`, `src/player/locomotion.js` | `packages/shared/src/{util,nav/*,sim/interactables,sim/locomotion}.ts` |
+| `src/character/spec.js` | `packages/shared/src/character/spec.ts` (the pack itself stays in `apps/client/src/character/pack/`; its option lists reach shared through `npm run pack:dump`) |
+| `server/**` (Express: employees, attendance, characters) | `apps/server/src/employees/` and `auth/character.controller.ts` (NestJS; see [SUPABASE.md](SUPABASE.md)) |
+
+Two things change in how you write it: anything the simulation does must be **seeded** (`random()` from shared, never `Math.random`) and must **work the same on the server and in the browser**, and anything other people must see has to travel over the protocol (see [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md)).
+
 ## Quick procedure
 
 1. Get the new structure: `git fetch && git checkout main && git pull`, then `npm install`.

@@ -9,6 +9,7 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [ARCHITECTURE.md](ARCHITECTURE.md) | understand the layers, the folders, how the app starts up, and who owns which state |
 | [CODING-STANDARDS.md](CODING-STANDARDS.md) | know the rules for new code (imports, state, naming, git) and the checklist before you push |
 | [HOW-TO.md](HOW-TO.md) | add furniture, an activity, a camera view, a hairstyle, a HUD control, or a special character |
+| [SUPABASE.md](SUPABASE.md) | the employee records the server imports from Supabase, and the permissions it needs |
 | [MIGRATION.md](MIGRATION.md) | move work you started against the old single `index.html` into the new structure |
 | [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md) | the ordered, testable steps for making the simulation shareable (done) |
 | [PHASE-2-BREAKDOWN.md](PHASE-2-BREAKDOWN.md) | the steps for the server, the protocol, saving the world and the viewer client (done) |

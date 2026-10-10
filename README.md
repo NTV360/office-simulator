@@ -50,7 +50,8 @@ Start with [`docs/`](docs/README.md). It sets the standard for how this codebase
 | [docs/HOW-TO.md](docs/HOW-TO.md) | recipes: furniture, activities, camera views, looks, HUD controls |
 | [docs/LOCAL-DOCKER.md](docs/LOCAL-DOCKER.md) | the local Docker stack |
 | [docs/MULTIPLAYER-PLAN.md](docs/MULTIPLAYER-PLAN.md) | the plan for accounts, a shared persistent world, voice, and hosting |
-| [docs/MIGRATION.md](docs/MIGRATION.md) | moving work from the old single `index.html` |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | moving work from the old single `index.html`, or from `main`'s `src/` layout |
+| [docs/SUPABASE.md](docs/SUPABASE.md) | the employee records the server imports, and the grants it needs |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | serving the current demo as a static site (Render notes, not the plan) |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | planned features and follow-ups |
 
