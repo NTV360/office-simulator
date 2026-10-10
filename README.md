@@ -37,6 +37,7 @@ In the stack the server runs the office and every browser watches the same one; 
 - **Orbit views:** drag to move, right-drag or Shift-drag to turn and tilt, wheel or pinch to zoom, `H` hides the HUD. Click a person to see what they are doing.
 - **First / Third person:** WASD or arrows move, drag to look, Shift runs, `E` sits or stands, `V` swaps first and third person, `C` swaps shoulder (third person), wheel zooms (third person), `Esc` exits.
 - **Find someone:** type a name in the search box at the bottom left and pick the match: the camera flies to them and opens their card. `F` toggles fullscreen.
+- **Things (online):** aim at something and press `G` to take hold of it where you aim (a big thing someone carries: `G` helps carry it). Holding it, a see-through ghost shows where it would go: `G` puts it down there (green), or lets go of it where it is (red). Hold `R` and move the mouse to turn it in your hands (`Shift`+`R` rolls it), the wheel raises and lowers your hands, hold the right button and let go to throw it. `T` puts everything at your desk back. See [docs/ITEMS-PHYSICS-PLAN.md](docs/ITEMS-PHYSICS-PLAN.md).
 
 ## Documentation
 
