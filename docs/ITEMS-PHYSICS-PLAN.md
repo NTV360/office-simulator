@@ -1,6 +1,6 @@
 # Items, objects and physics: the plan
 
-Branch: `feature/lbusal/items-objects-physics` (from `feature/leigh/server-multiplayer`). Status: **in progress**: steps 1 to 3 done.
+Branch: `feature/lbusal/items-objects-physics` (from `feature/leigh/server-multiplayer`). Status: **in progress**: steps 1 to 4 done.
 
 ## 1. The goal
 
@@ -230,7 +230,7 @@ Each step is a commit that leaves the game working.
 1. (**done**) **The item list in data.** The item definitions (section 5) for the existing 6 objects, with mass in kg, material and colliders; the weight classes removed. No behaviour change. Unit tests for the data and the carry rule.
 2. (**done**) **Anyone moves anything.** Drop the per-station move check on the server; ownership stays as the record of whose things are whose.
 3. (**done**) **Rapier on the server.** A physics world at a fixed step, holding the building and the fixed furniture as static colliders and the items as sleeping bodies. Poses of awake items go into the existing object messages. Tests: a dropped mug comes to rest on a desk; a tilted surface makes a mug slide past its angle and not before.
-4. **Baked things become items, and the walk grid follows them.** Monitors, keyboards, mice, the lounge set, kitchen items and the rest of section 3, one group per commit, out of the merged mesh and into the item list. Big items (tables, sofas, cabinets, floor plants) block walking where they stand, wherever they are moved, so people path around a moved sofa (decided: moved here from "later").
+4. (**done**) **Baked things become items, and the walk grid follows them.** Monitors, keyboards, mice, the lounge set, kitchen items and the rest of section 3, one group per commit, out of the merged mesh and into the item list. Big items (tables, sofas, cabinets, floor plants) block walking where they stand, wherever they are moved, so people path around a moved sofa (decided: moved here from "later").
 5. **Arms and reach.** Arm length, aiming at a point on an item, the server's reach check from the shoulders (replacing the flat 2.6 m), and the reach animation with arm IK.
 6. **Real holding.** Attaching at the grabbed point with the angle kept, the spring hold, the strength limit (sag and slip), turning on three axes around the grip, things on top reacting, the speed penalty.
 7. **The ghost.** A mesh preview at the held angle, replacing today's ring.
@@ -253,3 +253,5 @@ The owner was asked on 2026-10-11 and chose; anything marked *picked* was decide
 | The coffee machine's drip tray | Part of the machine (it is drawn floating at its front; on its own it would drop to the counter). *Picked* |
 | A tall storage cabinet drawn into the wall | Its physics shape is 9 cm shallower front and back than it looks, so it starts clear of the wall; its footprint and its looks are unchanged. Dragged against a wall it can go 9 cm into it. *Picked* |
 | Which items keep their ids | The first 162 (the chairs and desk things there were before) keep obj:0 to obj:161, so worlds saved before still restore. Items added on this branch come after them and may be renumbered while the branch is built. *Picked* |
+| Activity props | The guitar on its stand, the bucket, the darts and the golf ball stay as they are: an activity shows and hides them (the guitar is drawn on its stand, which is an item, and goes where the stand goes). They become items with "activities use real items" (later). *Picked* |
+| What stays fixed | Desks (the islands, the conference tables, the booth shelves), the kitchen counter, the sink, the snack cabinet, the lockers, the server rack, the dartboard, the wall TV, the booths, the lamps, the rug, the putting green, the building. *Decided* (desks) and *picked* (the built-in rest) |
