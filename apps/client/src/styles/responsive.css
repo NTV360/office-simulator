@@ -1,12 +1,29 @@
+/* Narrower screens: the ledger goes, the dock spans the bottom and scrolls sideways, the search sits above it. */
+@media (max-width:1100px){
+  #officeSearch{width:200px}
+}
 @media (max-width:760px){
   #ledger{display:none}
-  #hud{left:12px;right:12px;width:auto;padding:12px;gap:9px}
-  h1{font-size:17px}
-  #clock{font-size:26px}
-  .hint{display:none}
-  #moreBtn{display:block;align-self:flex-start}
-  #more:not(.open){display:none}
-  #more{gap:9px}
-  #person{left:12px;right:12px;width:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  #hud{left:12px;right:auto;width:auto;max-width:calc(100vw - 24px);padding:10px 12px;gap:9px}
+  #clock{font-size:28px}
+  .brand{display:none}
+  #topBar{left:auto;right:12px;transform:none}
+  #officeSearch{position:fixed;left:12px;right:12px;width:auto;bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+  #officeMatches{top:auto;bottom:calc(100% + 6px)}
+  .search-i{top:10.5px}
+  #dock{left:12px;right:12px;transform:none;max-width:none;overflow-x:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .dock-lbl{display:none}
+  .dock-btn span{display:none}
+  .dock-btn{padding:0 8px}
+  #dock{gap:6px;padding:6px 8px}
+  #dock .seg button{padding:8px 8px}
+  .dock-sep{display:none}
+  .help-wrap{display:none} /* keyboard and mouse help: not for touch */
+  #dock{scrollbar-width:none}
+  #dock::-webkit-scrollbar{display:none}
+  .pop{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:none;max-width:none;width:auto}
+  .pop.pop-right{left:12px;right:12px}
+  .pop-row{min-width:0}
+  #person{left:12px;right:12px;width:auto;bottom:calc(130px + env(safe-area-inset-bottom,0px))!important}
 }
-@media (prefers-reduced-motion: reduce){#veil,#acts .bar i{transition:none}}
+@media (prefers-reduced-motion: reduce){#veil,#acts .bar i{transition:none}#phase .live::before{animation:none}}

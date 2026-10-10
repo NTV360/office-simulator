@@ -174,6 +174,8 @@ describe('from the real simulation', () => {
     for (const a of seenAnims) expect(WIRE_ANIMS, 'pose ' + a).toContain(a);
     for (const c of seenCats) expect(WIRE_CATS, 'category ' + c).toContain(c);
     expect(seenKinds.size).toBeGreaterThan(10);
+    for (const k of ['tv', 'clean']) expect(seenKinds, 'the new task kind ' + k + ' was sampled').toContain(k);
+    for (const a of ['wipe', 'windowWipe', 'mop']) expect(seenAnims, 'the new pose ' + a).toContain(a);
   }, 60000);
 
   it('props become bits in the order of PROP_KEYS', () => {

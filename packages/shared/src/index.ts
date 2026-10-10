@@ -25,6 +25,7 @@ export * from './sim/spots';
 export * from './sim/types';
 export * from './sim/events';
 export * from './sim/hazel';
+export * from './sim/helper';
 export * from './sim/state';
 export * from './sim/tasks';
 export * from './sim/meetings';

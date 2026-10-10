@@ -14,7 +14,7 @@ import type { Person, Task } from './types';
 
 const DT = .05;
 const staff = () => people.filter(hasSlot);
-const PLAY = ['game', 'golf', 'darts', 'piano', 'guitar', 'sofa'];
+const PLAY = ['game', 'golf', 'darts', 'piano', 'guitar', 'sofa', 'tv'];
 
 interface Started { p: Person; task: Task; t: number; onBreak: boolean }
 

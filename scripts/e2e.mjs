@@ -53,7 +53,7 @@ try {
 
   // 1. two browsers see the same office
   const [ka, kb] = [await keyframe(a.page), await keyframe(b.page)];
-  check('two browsers show the same 40 people', ka.names.length === 40 && JSON.stringify(ka.names) === JSON.stringify(kb.names));
+  check('two browsers show the same 40 people and the helper', ka.names.length === 41 && JSON.stringify(ka.names) === JSON.stringify(kb.names));
   const sameNow = (x, y) => x.people.length === y.people.length && x.people.every((p, i) => p[0] === y.people[i][0] && p[3] === y.people[i][3] && Math.abs(p[1] - y.people[i][1]) < 1e-4 && Math.abs(p[2] - y.people[i][2]) < 1e-4);
   const traces = [a, b].map(p => p.page.evaluate(() => [...window.__sim.net.trace.entries()]));
   const [ta, tb] = (await Promise.all(traces)).map(t => new Map(t));
@@ -65,7 +65,7 @@ try {
   await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ slots: 30, speed: 3 }) });
   await sleep(3000);
   const changed = await Promise.all([names(a.page), names(b.page)]);
-  check('both browsers follow the admin change (30 people)', changed[0].length === 30 && JSON.stringify(changed[0]) === JSON.stringify(changed[1]));
+  check('both browsers follow the admin change (30 people and the helper)', changed[0].length === 31 && JSON.stringify(changed[0]) === JSON.stringify(changed[1]));
   const before = await keyframe(a.page);
   const beforeWorld = await world();
   await sleep(2500); // let a save happen

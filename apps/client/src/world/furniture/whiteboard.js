@@ -4,9 +4,10 @@ import { canvasTex, M } from '../../render/materials.js';
 import { E, mkSpot } from './basics.js';
 import { addObs, box, frame } from '../helpers.js';
 
-// Free-standing whiteboards at the open east ends of the desk aisles. Each has three standing spots in front
-// (group 'wb<n>'): whoever starts a discussion takes the first and presents, colleagues take the others.
-const BOARDS = [[634, 446], [634, 664]]; // plan pixels: board centre (it faces west, toward the desks)
+// Whiteboards against the east wall, each beside one of the work-floor TVs (workfloor.js), with the open
+// floor in front for the discussion. Each has three standing spots (group 'wb<n>'): whoever starts a
+// discussion takes the first and presents, colleagues take the others.
+const BOARDS = [[672, 453], [672, 677]]; // plan pixels: board centre (it faces west, into the office)
 
 // (the scribbles are made from the board's number, so every browser draws the same ones)
 const boardMat = i => new THREE.MeshStandardMaterial({ roughness: .35, map: canvasTex(256, 160, (g, w, h) => {
@@ -30,9 +31,9 @@ function buildWhiteboards() {
     box(f, 1.2, .03, .08, M.steel, 0, 1.0, .05, false); // marker tray
     [-1, 1].forEach(s => { box(f, .04, 1.9, .04, M.steel, s * .7, .95, 0); box(f, .06, .03, .5, M.steel, s * .7, .02, 0); });
     const g = `wb${i}`;
-    mkSpot('whiteboard', px - 12, py + 6, E, { place: 'the whiteboard', group: g });       // presenter, by the board
-    mkSpot('whiteboard', px - 28, py - 12, E, { place: 'the whiteboard', group: g });
-    mkSpot('whiteboard', px - 28, py + 18, E, { place: 'the whiteboard', group: g });
+    mkSpot('whiteboard', px - 13, py + 8, E, { place: 'the whiteboard', group: g });       // presenter, by the board
+    mkSpot('whiteboard', px - 34, py - 14, E, { place: 'the whiteboard', group: g });
+    mkSpot('whiteboard', px - 34, py + 20, E, { place: 'the whiteboard', group: g });
   });
 }
 

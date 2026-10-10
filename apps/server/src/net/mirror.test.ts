@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Mirror, PROP_KEYS, decode, interactables, hasSlot, meetings, people, personSnap, removeStaff, setLook, setStaffCount, simEvents, takeControl,
+  Mirror, PROP_KEYS, decode, interactables, hasSlot, isHelper, meetings, people, personSnap, removeStaff, setLook, setStaffCount, simEvents, takeControl,
   type Person, type PersonSnap, type Snapshot, type Welcome,
 } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
@@ -31,7 +31,7 @@ const tick = () => { world.step(); mirror.applySnapshot(decode(bc.snapshot(world
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 /** The mirror picture of everyone must equal the server's, to the precision of the wire format. */
 function expectSame(label: string) {
-  const server = people.filter(hasSlot);
+  const server = people.filter(p => hasSlot(p) || isHelper(p)); // (the staff, and the helper)
   expect(mirror.people.size, label + ': head count').toBe(server.length);
   for (const sp of server) {
     const mp = mirror.people.get(sp.id)!;
@@ -53,7 +53,7 @@ describe('Mirror', () => {
   it('rebuilds the whole office from a welcome, with real desks, specs and people objects', () => {
     connect();
     expectSame('welcome');
-    expect(added).toHaveLength(40);
+    expect(added).toHaveLength(41); // (the helper too)
     const hazel = [...mirror.people.values()].find(p => p.name === 'Hazel Sellote')!;
     expect(hazel.spec).toMatchObject({ type: 'blocky', height: 'short', angry: true });
     expect(hazel.slot!.kind).toBe('desk');
@@ -105,7 +105,7 @@ describe('Mirror', () => {
     connect();
     setStaffCount(30);
     tick();
-    expect(mirror.people.size).toBe(30);
+    expect(mirror.people.size).toBe(31); // (30 staff and the helper)
     expect(removed).toHaveLength(10);
     const before = added.length;
     setStaffCount(36);
@@ -147,8 +147,8 @@ describe('Mirror', () => {
     connect();
     for (let i = 0; i < 100; i++) tick();
     connect();
-    expect(mirror.people.size).toBe(40);
-    expect(removed).toHaveLength(40);
+    expect(mirror.people.size).toBe(41);
+    expect(removed).toHaveLength(41);
     expectSame('reconnect');
   });
 
@@ -156,7 +156,7 @@ describe('Mirror', () => {
     const got: Array<[number, boolean]> = [];
     const m = new Mirror(interactables.all(), { added: () => {}, removed: () => {}, position: (p, _x, _z, _f, _w, isNew) => { got.push([p.id, isNew]); } });
     m.applyWelcome(decode(bc.welcome(0)) as Welcome);
-    expect(got.filter(g => g[1])).toHaveLength(40);
+    expect(got.filter(g => g[1])).toHaveLength(41);
     const p0 = [...m.people.values()][0];
     const startX = p0.pos.x;
     p0.pos.x += 0; world.step(); world.step();

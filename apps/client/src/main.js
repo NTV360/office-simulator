@@ -36,6 +36,7 @@ import { updateScreens } from './people/screens.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
 import { updateDarts } from './world/furniture/darts.js';
+import { updateDiningTv } from './world/furniture/diningTv.js';
 import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
@@ -75,6 +76,7 @@ function tick(now) {
   updateBucket(people);
   keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
+  updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
   requestAnimationFrame(tick);

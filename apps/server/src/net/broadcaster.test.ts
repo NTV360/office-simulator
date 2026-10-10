@@ -19,11 +19,12 @@ const snapshot = (tick: number) => decode(bc.snapshot(tick)) as Snapshot;
 describe('Broadcaster', () => {
   it('welcome lists everyone and does not disturb change tracking', () => {
     const w = decode(bc.welcome(0)) as Welcome;
-    expect(w.people).toHaveLength(40);
-    expect(w.people.every(p => p.info.slot >= 0 && interactables.all()[p.info.slot].kind === 'desk')).toBe(true);
+    expect(w.people).toHaveLength(41); // (40 staff and the helper)
+    expect(w.people.filter(p => p.info.slot >= 0).every(p => interactables.all()[p.info.slot].kind === 'desk')).toBe(true);
+    expect(w.people.filter(p => p.info.slot < 0).map(p => p.info.name)).toEqual(['Office Helper']); // (no desk: she cleans)
     // a welcome must not make the next snapshot think nothing changed for the other clients
     const first = snapshot(2);
-    expect(first.people).toHaveLength(40);
+    expect(first.people).toHaveLength(41);
   });
 
   it('says in every welcome and snapshot whether the clock is Live or Simulate', () => {
@@ -45,7 +46,7 @@ describe('Broadcaster', () => {
     expect(again.people).toHaveLength(0);
     const key = snapshot(20); // 20 ticks per second: a keyframe
     expect(key.full).toBe(true);
-    expect(key.people).toHaveLength(40);
+    expect(key.people).toHaveLength(41);
   });
 
   it('a person who moves shows up again', () => {

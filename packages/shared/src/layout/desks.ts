@@ -17,9 +17,10 @@ export interface DeskIsland {
 }
 
 export const DESK_ISLANDS: readonly DeskIsland[] = [
-  { id: 'A', name: 'Desk A', rect: [451.7, 164.7, 601.7, 212.4], cols: 4, sides: ['top', 'bottom'] },
-  { id: 'B', name: 'Desk B', rect: [451.7, 253.5, 601.7, 301.3], cols: 4, sides: ['top', 'bottom'] },
-  { id: 'C', name: 'Desk C', rect: [451.7, 361.3, 601.7, 409.0], cols: 4, sides: ['top', 'bottom'] },
+  // A, B and C spaced so there is about 1.4 m between facing chair rows
+  { id: 'A', name: 'Desk A', rect: [451.7, 154.7, 601.7, 202.4], cols: 4, sides: ['top', 'bottom'] },
+  { id: 'B', name: 'Desk B', rect: [451.7, 261.5, 601.7, 309.3], cols: 4, sides: ['top', 'bottom'] },
+  { id: 'C', name: 'Desk C', rect: [451.7, 369.3, 601.7, 417.0], cols: 4, sides: ['top', 'bottom'] },
   // 10 desks in facing pairs, set back from the HR office so its door has a walkway (about 1.4 m)
   { id: 'D', name: 'Desk D', rect: [255.7, 240, 402.9, 276], cols: 5, sides: ['top', 'bottom'] },
   { id: 'E', name: 'Desk E', rect: [451.7, 482.4, 601.7, 530.1], cols: 4, sides: ['top', 'bottom'] },

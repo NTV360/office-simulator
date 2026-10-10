@@ -11,6 +11,7 @@ import { fromDbUtc, officeDate, officeMinutes } from './office-time';
 import { roster, type Employee } from './roster';
 import { people, sim } from './state';
 import { stepSim } from './step';
+import { hasSlot } from './person';
 import { buildTestLayout } from './testing';
 
 // The office clock: Manila time, the 06:00-to-06:00 sim day, and who is in from attendance.
@@ -148,12 +149,12 @@ describe('people the live clock has not clocked in (their times are "never")', (
   it('a server restarted in Live stays on the same sim day (the first tick does not send everybody home)', () => {
     setup();
     const saved = JSON.parse(JSON.stringify(serializeWorld()));
-    const day = sim.day, present = people.filter(p => p.state !== 'away').length;
+    const day = sim.day, present = people.filter(p => hasSlot(p) && p.state !== 'away').length;
     resetLive();
     restoreWorld(parseSavedWorld(saved));
     expect(live.mode).toBe('live');
     stepSim(.05);
     expect(sim.day).toBe(day);
-    expect(people.filter(p => p.state !== 'away').length).toBe(present);
+    expect(people.filter(p => hasSlot(p) && p.state !== 'away').length).toBe(present);
   });
 });

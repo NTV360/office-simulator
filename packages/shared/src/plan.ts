@@ -27,4 +27,10 @@ const GLASS_WALLS: [number, number, number, number][] = [
 ];
 const WALL_T = 4.8, FULL_H = 2.7, LOW_H = 1.1;
 
-export { FRONT_Y, FULL_H, GLASS_WALLS, LOW_H, OUTER, OX, OY, S, W, WALLS, WALL_T, toPx, wx, wz };
+/** Windows on the outer walls: [wall line is vertical?, line coordinate, from, to] in plan pixels. */
+const WINDOWS: [boolean, number, number, number][] = [
+  [true, 682.2, 120, 300], [true, 682.2, 460, 670], [true, 682.2, 790, 880], [true, 682.2, 950, 1100],
+  [false, 70.8, 130, 245], [false, 70.8, 280, 375], [false, 70.8, 420, 660],
+];
+
+export { FRONT_Y, FULL_H, GLASS_WALLS, LOW_H, OUTER, OX, OY, S, W, WALLS, WALL_T, WINDOWS, toPx, wx, wz };

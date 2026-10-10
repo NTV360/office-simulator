@@ -5,7 +5,7 @@ import { arriveNow, newDay } from './day';
 import type { Spot } from './interactables';
 import { live, tickLive } from './live';
 import { tickMeetings, tryMeeting } from './meetings';
-import { isDriven } from './person';
+import { isDriven, isHelper } from './person';
 import { DAY_END, breakIndex } from './schedule';
 import { CLOCK, people, sim } from './state';
 import { arrive, chooseNext, returnFromToilet } from './tasks';
@@ -48,7 +48,7 @@ export function stepPerson(p: Person, dt: number): void {
       const wasExit = p.task?.kind === 'exit';
       if (!wasExit) chooseNext(p);
     }
-  } else if (p.state === 'idle') { chooseNext(p); }
+  } else if (p.state === 'idle') { if (!isHelper(p) || sim.t >= p.until) chooseNext(p); } // (the helper waits when nothing is free: see cleanNext)
   const k = 1 - Math.exp(-dt * 10 * Math.min(sim.speed, 3));
   p.face += angDiff(p.face, p.faceGoal) * k;
 }

@@ -25,7 +25,7 @@ describe('the gateway', () => {
     await c.ready;
     await enter(base, c, 'solo');
     const w = await c.waitFor(isWelcome);
-    expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(40);
+    expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(41); // the 40 staff and the helper
     const me = w.people.find(p => p.info.id === w.you)!;
     expect(me.info).toMatchObject({ controller: 'account', name: 'solo', role: 'Guest' }); // no desk yet: a guest at the entrance
     expect(w.layout.spots).toBe(158);

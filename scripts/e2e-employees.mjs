@@ -58,7 +58,7 @@ async function waitUp(label) {
   throw new Error(`the stack did not come up (${label})`);
 }
 async function until(fn, ms = 30000) { const t0 = Date.now(); for (;;) { const v = await fn().catch(() => null); if (v) return v; if (Date.now() - t0 > ms) return null; await sleep(500); } }
-const staffNames = async page => page.evaluate(() => window.__sim.people.filter(p => p.controller === 'ai' || p.controller === 'account').map(p => p.name).sort());
+const staffNames = async page => page.evaluate(() => window.__sim.people.filter(p => (p.controller === 'ai' || p.controller === 'account') && p.name !== 'Office Helper').map(p => p.name).sort()); // (the helper is not on the staff list)
 const joined = page => page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 45000 });
 
 let browser;
@@ -86,6 +86,7 @@ try {
   await joined(watcher.page);
   const names = await staffNames(watcher.page);
   check('a watcher sees the same six names, and the title of each (their department)', names.filter(n => n !== 'e2e_watcher').join() === 'Ana Lopez,Ben Reyes,Cat Dizon,Dan Cruz,Eve Santos,Hazel Sellote', names.join());
+  check('and the office helper, who is not an employee, is there too', await watcher.page.evaluate(() => window.__sim.people.some(p => p.name === 'Office Helper' && !p.slot && p.controller === 'ai')));
   const titles = await watcher.page.evaluate(() => Object.fromEntries(window.__sim.people.map(p => [p.name, p.title])));
   check('Eve is an intern, Ben is QA', titles['Eve Santos'] === 'Intern UI/UX' && titles['Ben Reyes'] === 'Quality Assurance Department', JSON.stringify(titles));
   const hazel = await watcher.page.evaluate(() => { const h = window.__sim.people.find(p => p.name === 'Hazel Sellote'); return h && h.spec.angry; });

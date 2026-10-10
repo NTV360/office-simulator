@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
-import { VERB } from '@office/shared';
+import { VERB, isHelper } from '@office/shared';
 import { isLocalPlayer } from '../player/player.js';
 import { scene } from '../render/renderer.js';
 import { $ } from './dom.js';
@@ -43,6 +43,8 @@ function statusText(p) {
     case 'lunch': return going ? `Bringing lunch to ${where}` : `Having lunch at ${where}`;
     case 'lunchDesk': return going ? 'Taking lunch back to the desk' : `Eating lunch at ${where}`;
     case 'chat': return going ? `Walking over to ${t.partner.name.split(' ')[0]}` : `Chatting with ${t.partner.name.split(' ')[0]}`;
+    case 'clean': return going ? 'Heading off to clean' : { wipe: `Wiping the table at ${where}`, windowWipe: 'Wiping the windows', mop: 'Mopping the floor' }[t.anim] ?? `Tidying up ${where}`;
+    case 'tv': return going ? 'Heading to the dining area to watch TV' : 'Watching a movie in the dining area';
     case 'snack': return going ? 'Getting a snack' : 'Grabbing a snack from the cabinet';
     case 'snackDesk': return going ? `Taking a snack back to ${where}` : `Having a snack at ${where}`;
     case 'whiteboard': return going ? 'Heading to the whiteboard' : t.anim === 'present' ? 'Leading a whiteboard discussion' : `Discussing at the whiteboard with ${t.partner.name.split(' ')[0]}`;
@@ -55,7 +57,7 @@ function statusText(p) {
 }
 function renderPerson() {
   const p = selected; if (!p) return;
-  $('pName').textContent = p.name; $('pRole').textContent = `${p.title ?? p.role} · ${p.slot ? p.slot.label ?? p.slot.place : 'visiting'}`;
+  $('pName').textContent = p.name; $('pRole').textContent = `${p.title ?? p.role}${p.slot ? ' · ' + (p.slot.label ?? p.slot.place) : isHelper(p) ? '' : ' · visiting'}`;
   $('pStatus').textContent = statusText(p);
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';

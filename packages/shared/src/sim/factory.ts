@@ -4,6 +4,7 @@ import { TAU, pick, random, rnd, seededRandom } from '../util';
 import { FIRST, LAST, SCREEN_VARIANTS, roleBag, type ScreenKind } from './data';
 import { simEvents } from './events';
 import { HAZEL_NAME, applyHazel } from './hazel';
+import { helperIdentity } from './helper';
 import { liveSchedule, usesAttendance } from './live';
 import { hasSlot, isAi } from './person';
 import { newProps } from './props';
@@ -11,6 +12,7 @@ import { interactables, type Spot } from './interactables';
 import { fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
 import { DAY_END, shiftWindow, type Shift } from './schedule';
 import { allocatePersonId, counters, deskPool, meetings, people, sim } from './state';
+import { ENTRY } from './spots';
 import { endTask, goWork } from './tasks';
 import type { Person } from './types';
 
@@ -26,19 +28,26 @@ export function makeStaff(): Person | null {
   // find the desk before making anyone, so a failed attempt uses up no name and no random numbers
   const placed = roster.list ? nextSeated() : ((seat: Spot | null) => (seat ? { who: madeUp(), seat } : null))(seatFor({ desk: null, department: null, userId: null }));
   if (!placed) return null;
-  const { who, seat: slot } = placed;
+  return createPerson(placed.who, placed.seat);
+}
+
+/** The office helper (sim/helper.ts): no desk, not on the staff list. She is away until her arrival time. */
+export function makeHelper(): Person { return createPerson(helperIdentity(), null); }
+
+function createPerson(who: Who, slot: Spot | null): Person {
   const { name, role, title, userId, department, shift, spec } = who;
+  const at = slot ?? { pos: ENTRY, face: Math.PI };
   const screenKind: ScreenKind = role.includes('Designer') ? 'design' : role === 'DevOps' || role === 'CTO' ? 'dash' : 'code';
   // the order of the random draws below is part of the recorded simulation; do not reorder
   const p: Person = {
-    id: allocatePersonId(), controller: 'ai', name, role, title, userId, department, shift, toiletUntil: null, spec, slot,
-    pos: slot.pos.clone(), face: slot.face, faceGoal: slot.face, speed: rnd(1.15, 1.45),
+    id: allocatePersonId(), controller: 'ai', name, role, title, userId, department, shift, toiletUntil: null, spec, ...(slot ? { slot } : {}),
+    pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null, meeting: null,
     screenKind, screenVariant: 0,
   };
   p.screenVariant = Math.floor(random() * SCREEN_VARIANTS[screenKind]); // same single draw as picking from the list
-  slot.owner = p;
+  if (slot) slot.owner = p;
   scheduleDay(p);
   people.push(p);
   simEvents.emit('personAdded', p);

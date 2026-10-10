@@ -15,9 +15,9 @@ const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
-export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit', 'bucket', 'toilet', 'bucketBack', 'snack', 'snackDesk', 'whiteboard'];
-export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit', 'present'];
-export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk'];
+export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit', 'bucket', 'toilet', 'bucketBack', 'snack', 'snackDesk', 'whiteboard', 'tv', 'clean'];
+export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit', 'present', 'wipe', 'windowWipe', 'mop'];
+export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'clean', 'walk'];
 
 const T = {
   hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06,

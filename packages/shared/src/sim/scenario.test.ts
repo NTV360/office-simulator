@@ -9,8 +9,8 @@ import { simEvents } from './events';
 import { initDay } from './day';
 import { makeStaff, removeStaff, setStaffCount } from './factory';
 import { interactables } from './interactables';
-import { hasSlot } from './person';
-import { PROP_KEYS } from './props';
+import { hasSlot, isHelper } from './person';
+import { PROP_KEYS, newProps } from './props';
 import { DAY_START } from './schedule';
 import { meetings, people, sim } from './state';
 import { screenState, stepSim } from './step';
@@ -234,20 +234,20 @@ describe('slots', () => {
     start(1);
     expect(makeStaff()).toBeNull();
     while (removeStaff());
-    expect(people).toHaveLength(0);
+    expect(people.filter(p => !isHelper(p))).toHaveLength(0); // (the helper has no desk and stays)
     expect(interactables.of('desk').every(d => !d.owner)).toBe(true);
   });
 
   it('a human-controlled person is never removed with the staff, and the simulation leaves them alone', () => {
     start(1);
-    const you = { id: -1, name: 'You', role: 'You', controller: 'account', state: 'controlled', pos: ENTRY.clone(), face: 0, faceGoal: 2, animT: 0, shown: true } as unknown as Person;
+    const you = { id: -1, name: 'You', role: 'You', controller: 'account', state: 'controlled', pos: ENTRY.clone(), face: 0, faceGoal: 2, animT: 0, shown: true, props: newProps() } as unknown as Person;
     people.push(you);
     run(60);
     expect(you.state).toBe('controlled');
     expect(you.pos.x).toBe(ENTRY.x);
     expect([you.face, you.animT]).toEqual([0, 0]); // not turned or animated by the simulation
     while (removeStaff());
-    expect(people).toEqual([you]);
+    expect(people.filter(p => !isHelper(p))).toEqual([you]);
   });
 });
 
@@ -274,9 +274,9 @@ describe('setStaffCount', () => {
   });
   it('leaves a human-controlled person alone', () => {
     start(1);
-    const you = { id: -1, name: 'You', role: 'You', controller: 'account', state: 'controlled', pos: ENTRY.clone() } as unknown as Person;
+    const you = { id: -1, name: 'You', role: 'You', controller: 'account', state: 'controlled', pos: ENTRY.clone(), props: newProps() } as unknown as Person;
     people.push(you);
     setStaffCount(0);
-    expect(people).toEqual([you]);
+    expect(people.filter(p => !isHelper(p))).toEqual([you]);
   });
 });

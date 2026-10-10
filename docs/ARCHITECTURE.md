@@ -128,7 +128,7 @@ A character is three separate things:
 
 **The player** (`player/`) is a person with `controller: 'account'` (its `state` is `'controlled'`). It sits in the same `people` list, has no desk (slot) or schedule, is never stepped or picked by the sim, and is not counted as a slot (the ledger and the slot number use `hasSlot`; meetings and the end-of-day reset use `isAi`). `controller`, `isAi`, `isDriven` and `hasSlot` live in `packages/shared/src/sim/person.ts`; on the page, `isLocalPlayer(p)` (in `player/player.js`) says whether a person is the one *this* page controls. It appears at the entrance the first time first or third person is used, then stays where you left it. `setPlayerSpec(raw)` rebuilds its look live.
 
-**Hazel** (`packages/shared/src/sim/hazel.ts`) is the one hand-written NPC: the first person created gets her look and name (or, with the real staff list, the employee with that name keeps her furious face), and she always leaves last. (Her "Make her angry" button and rage effect were removed, as on `main`.)
+**The office helper** (`packages/shared/src/sim/helper.ts`) is the one person with no desk who is not a guest: she cleans all day (see docs/PHASE-6-BREAKDOWN.md, step 6a). **Hazel** (`packages/shared/src/sim/hazel.ts`) is the one hand-written NPC: the first person created gets her look and name (or, with the real staff list, the employee with that name keeps her furious face), and she always leaves last. (Her "Make her angry" button and rage effect were removed, as on `main`.)
 
 ## Interactables and activities
 

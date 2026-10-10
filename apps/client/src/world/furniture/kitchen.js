@@ -9,6 +9,31 @@ import { addObs, box, boxGeo, cyl, dynamic, staticRoot } from '../helpers.js';
 const BUCKET = { mesh: null };
 
 
+// Fruit on the counter: apples and an orange in the bowl, a bunch of bananas and a couple more beside it.
+const FRUIT = {
+  apple: new THREE.MeshStandardMaterial({ color: 0xc8302c, roughness: .45 }),
+  apple2: new THREE.MeshStandardMaterial({ color: 0x7fb03a, roughness: .45 }),
+  orange: new THREE.MeshStandardMaterial({ color: 0xf08a1c, roughness: .7 }),
+  banana: new THREE.MeshStandardMaterial({ color: 0xf2cf4a, roughness: .6 }),
+  stem: new THREE.MeshStandardMaterial({ color: 0x5a3d22, roughness: .8 }),
+};
+function fruit(cx, cz) {
+  const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat); m.position.set(x, y, z); m.castShadow = true; staticRoot.add(m); return m; };
+  const stem = (x, y, z) => box(staticRoot, .008, .025, .008, FRUIT.stem, x, y, z, false);
+  // in the bowl (centre cx - .1, cz + .25, rim at about 1.03)
+  [[-.15, .21, FRUIT.apple], [-.05, .22, FRUIT.apple2], [-.1, .31, FRUIT.apple]].forEach(([dx, dz, mat]) => { ball(.042, mat, cx + dx, 1.05, cz + dz); stem(cx + dx, 1.095, cz + dz); });
+  ball(.046, FRUIT.orange, cx - .09, 1.1, cz + .26);
+  // a bunch of bananas: curved fingers joined at the stem
+  for (let i = 0; i < 4; i++) {
+    const b = new THREE.Mesh(new THREE.TorusGeometry(.09, .016, 6, 14, 1.6), FRUIT.banana);
+    b.rotation.set(Math.PI / 2, 0, -.8 + i * .14); b.position.set(cx - .48 + i * .012, .965 + i * .008, cz + .3); b.castShadow = true; staticRoot.add(b);
+  }
+  box(staticRoot, .02, .02, .04, FRUIT.stem, cx - .44, .975, cz + .23, false);
+  // and loose on the counter
+  ball(.046, FRUIT.orange, cx + .1, .985, cz + .38);
+  ball(.042, FRUIT.apple, cx + .2, .983, cz + .32); stem(cx + .2, 1.028, cz + .32);
+}
+
 function buildKitchen() {
   
   // Counter top with coffee machine
@@ -24,6 +49,7 @@ function buildKitchen() {
     box(staticRoot, .4, .3, .3, M.steel, cx - .6, 1.11, cz - .25);
     for (let i = 0; i < 4; i++) cyl(staticRoot, .035, .03, .08, M.white, cx + .25, .99, cz - .2 + i * .1, 10, false);
     cyl(staticRoot, .14, .1, .08, M.diningWood2, cx - .1, .99, cz + .25, 14);
+    fruit(cx, cz);
     mkSpot('counter', 442, 1004, WST, { place: 'the counter' }); mkSpot('counter', 442, 1024, WST, { place: 'the counter' });
   }
   // Sink

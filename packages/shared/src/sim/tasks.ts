@@ -1,9 +1,10 @@
 import { findPath } from '../nav/astar';
-import { toPx } from '../plan';
+import { W, WINDOWS, toPx } from '../plan';
 import { random, rnd, shuffle } from '../util';
 import { Vec3 } from '../vec3';
 import { walkPx } from '../nav/grid';
 import { interactables, type Spot } from './interactables';
+import { isHelper } from './person';
 import { onBreak } from './schedule';
 import { addLog, people, sim } from './state';
 import { ENTRY, exitSpot } from './spots';
@@ -66,6 +67,11 @@ function golfBreak(p: Person): boolean {
 function gameBreak(p: Person): boolean {
   const s = free(interactables.of('lounge').filter(x => x.game))[0]; if (!s) return false;
   return goDo(p, { kind: 'game', cat: 'break', anim: 'game', spot: s, dur: rnd(8, 18), onStart: q => { q.props.pad = true; }, onEnd: q => { q.props.pad = false; } });
+}
+/** Watch the movie on the dining TV from a dining seat (breaks only). */
+function tvBreak(p: Person): boolean {
+  const s = free(interactables.of('dining')).sort((a, b) => a.pos.z - b.pos.z)[0]; // the rows nearest the TV first
+  return !!s && goDo(p, { kind: 'tv', cat: 'break', anim: 'relax', spot: s, dur: rnd(8, 20) });
 }
 function storageTrip(p: Person): boolean { const s = free(interactables.of('storage'))[0]; return !!s && goDo(p, { kind: 'storage', cat: 'break', anim: 'locker', spot: s, dur: rnd(1.5, 3) }); }
 function barTrip(p: Person): boolean { const s = free(interactables.of('bar'))[0]; return !!s && goDo(p, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: s, dur: rnd(4, 9), onStart: q => { q.props.mug = true; }, onEnd: q => { q.props.mug = false; } }); }
@@ -178,6 +184,7 @@ function runQueued(p: Person, k: string | undefined): boolean {
  */
 export function chooseNext(p: Person): void {
   while (p.queue.length) { if (runQueued(p, p.queue.shift())) return; }
+  if (isHelper(p)) return cleanNext(p);
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
   if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) { p.hadLunch = true; if (lunch(p)) return; }
@@ -187,6 +194,51 @@ export function chooseNext(p: Person): void {
   if (p.task?.kind === 'work' && p.state === 'doing') { p.until = sim.t + rnd(10, 35); return; }
   if (!goWork(p)) { p.until = sim.t + 1; }
 }
+// ----- the helper (sim/helper.ts): she cleans all day -----
+// Jobs: wipe a table (standing at one of its chairs), wipe a window (just inside an outer-wall window), mop a patch of open floor, organise
+// the storage room or lockers. Each picks a real, walkable spot.
+const CLEAN: Record<string, { anim: string; prop: 'rag' | 'mop' | null; weight: number }> = {
+  table: { anim: 'wipe', prop: 'rag', weight: .35 },
+  window: { anim: 'windowWipe', prop: 'rag', weight: .25 },
+  floor: { anim: 'mop', prop: 'mop', weight: .25 },
+  organize: { anim: 'locker', prop: null, weight: .15 },
+};
+const cleanAt = (px: number, py: number, face: number, place: string): TaskSpot => { const v = W(px, py); return { kind: 'clean', pos: v, approach: v, face, shared: false, place }; };
+function cleanSpot(job: string): TaskSpot | null {
+  if (job === 'table') {
+    const s = shuffle(['conf', 'dining', 'bar'].flatMap(k => interactables.of(k)).filter(x => !x.occupant))[0];
+    return s ?? null; // (the real chair: it is hers while she wipes, so nobody else is sent to the same place)
+  }
+  if (job === 'organize') return shuffle([...interactables.of('storage'), ...interactables.of('locker')].filter(x => !x.occupant))[0] ?? null;
+  for (let i = 0; i < 12; i++) {
+    if (job === 'window') {
+      const [vert, line, a, b] = WINDOWS[Math.floor(random() * WINDOWS.length)], t = a + 6 + random() * (b - a - 12);
+      // just inside the glass, facing it: east wall (x 682) faces east, north wall (y 71) faces north
+      const [px, py, face] = vert ? [line - 14, t, Math.PI / 2] : [t, line + 14, Math.PI];
+      if (walkPx(px, py)) return cleanAt(px, py, face, 'the windows');
+    } else {
+      const s = shuffle(interactables.of('desk'))[0], [x0, y0] = toPx(s.approach), px = x0 + (random() - .5) * 50, py = y0 + (random() - .5) * 50;
+      if (walkPx(px, py)) return cleanAt(px, py, random() * Math.PI * 2, 'the floor');
+    }
+  }
+  return null;
+}
+/** What the helper does next: lunch when it is time, else the next cleaning job (a little later if nothing is free). */
+export function cleanNext(p: Person): void {
+  const t = sim.t;
+  if (t >= p.leaveAt) return leave(p);
+  if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) {
+    const d = free(interactables.of('dining'))[0]; // (lunch counts as had only once she has a seat: the dining tables can all be taken)
+    if (d && goDo(p, { kind: 'lunch', cat: 'lunch', anim: 'eat', spot: d, dur: rnd(20, 30) })) { p.hadLunch = true; return; }
+  }
+  let r = random(), job = 'table';
+  for (const [k, c] of Object.entries(CLEAN)) { if (r < c.weight) { job = k; break; } r -= c.weight; }
+  const spot = cleanSpot(job), c = CLEAN[job];
+  const show = (q: Person, on: boolean): void => { if (c.prop) q.props[c.prop] = on; };
+  if (spot && goDo(p, { kind: 'clean', cat: 'clean', anim: c.anim, spot, dur: rnd(4, 10), onStart: q => show(q, true), onEnd: q => show(q, false) })) return;
+  p.until = sim.t + .5; // nothing free right now: try again shortly (step.ts waits for it while she is idle)
+}
+
 /** Working hours: mostly staying at the desk, sometimes an errand that is part of work. */
 function work(p: Person): boolean {
   const r = random();
@@ -208,6 +260,6 @@ function play(p: Person): boolean {
   if (interactables.of('darts').some(x => x.occupant) && random() < .3 && dartsBreak(p)) return true;
   if (interactables.of('golf').some(x => x.occupant) && random() < .3 && golfBreak(p)) return true;
   { const gamers = people.filter(q => q.task?.kind === 'game').length; if (gamers > 0 && gamers < 4 && random() < .35 && gameBreak(p)) return true; }
-  const games = shuffle([gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak]), rest = shuffle([barTrip, coffee, snack, chat]);
+  const games = shuffle([gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak, tvBreak, tvBreak]), rest = shuffle([barTrip, coffee, snack, chat]);
   return [...games, ...rest].some(f => f(p));
 }

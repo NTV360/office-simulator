@@ -1,5 +1,5 @@
 import {
-  DEFAULTS, clampSlotCount, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
+  DEFAULTS, clampSlotCount, ensureHelper, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
 
@@ -103,6 +103,7 @@ export class World {
     setSeed(this.options.seed ?? null);
     if (saved) {
       restoreWorld(saved);
+      ensureHelper(); // (she is not saved: made again, and at work at once if it is her time)
     } else {
       initState();
       // with a staff list the office is everyone on it (as many as there are desks); without one, the configured number of made-up staff

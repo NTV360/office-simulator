@@ -42,6 +42,11 @@ const MUTATIONS = [
   ['a redirect is followed with the key', 'apps/server/src/employees/supabase-source.ts', "redirect: 'error',", "redirect: 'follow',"],
   ['the snapshot does not tell the browsers the clock is Live', 'apps/server/src/net/broadcaster.ts', "paused: sim.paused, live: live.mode === 'live', full,", 'paused: sim.paused, full,'],
   ['the codec drops the Live flag', 'packages/shared/src/protocol/codec.ts', '| (msg.live ? 4 : 0)', ''],
+  ['the helper is removed with the staff', 'packages/shared/src/sim/factory.ts', 'const removable = (p: Person): boolean => isAi(p) && hasSlot(p) && p.owner === undefined;', 'const removable = (p: Person): boolean => isAi(p) && p.owner === undefined;'],
+  ['the helper never goes home', 'packages/shared/src/sim/tasks.ts', 'export function cleanNext(p: Person): void {', 'export function cleanNext(p: Person): void { p.leaveAt = 1e9;'],
+  ['the helper keeps the cloth in her hand', 'packages/shared/src/sim/tasks.ts', 'onStart: q => show(q, true), onEnd: q => show(q, false) })', 'onStart: q => show(q, true) })'],
+  ['the server forgets the helper after a restart', 'apps/server/src/world/world.ts', 'ensureHelper(); // (she is not saved', '// (she is not saved'],
+  ['an idle helper searches every tick instead of waiting', 'packages/shared/src/sim/step.ts', 'if (!isHelper(p) || sim.t >= p.until) chooseNext(p);', 'chooseNext(p);'],
   ['an empty answer from the records is taken as everyone having left', 'apps/server/src/employees/employee.service.ts', "if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');", ''],
   ['the secret key is in the message when the records refuse', 'apps/server/src/employees/supabase-source.ts', '`${table}: the employee records answered ${res.status}`', '`${table}: the employee records answered ${res.status} (${this.key})`'],
   ['a row with no valid id or name is imported', 'apps/server/src/employees/supabase-source.ts', 'if (!id || !first || seen.has(id)) { skipped++; continue; }', 'if (!id) { skipped++; continue; }'],
@@ -91,7 +96,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'helper.test.ts', 'apps/server/src/world/world.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

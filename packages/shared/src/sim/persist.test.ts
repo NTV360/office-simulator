@@ -9,11 +9,12 @@ import { hasSlot } from './person';
 import { SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
+import { removeHelper } from './testing';
 
 beforeEach(() => { simEvents.clear(); resetSim(); loadLayout(officeLayout); });
 
 function runningWorld(seed = 1, steps = 8000) {
-  setSeed(seed); initState(); initDay(40);
+  setSeed(seed); initState(); initDay(40); removeHelper(); // (she is not saved: see the test of her own)
   for (let i = 0; i < steps; i++) stepSim(.05);
 }
 const viaJson = () => JSON.parse(JSON.stringify(serializeWorld()));

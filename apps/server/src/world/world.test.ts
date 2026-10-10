@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { people, hasSlot, sim, setSeed } from '@office/shared';
+import { people, hasSlot, isHelper, parseSavedWorld, serializeWorld, sim, setSeed } from '@office/shared';
 import { World, readWorldOptions, type WorldOptions } from './world';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 1 };
@@ -26,6 +26,16 @@ describe('World', () => {
     expect(w.status()).toMatchObject({ staff: 12, desks: 80, tick: 0 });
     const many = new World({ ...base, slotCount: 500 }); many.init();
     expect(many.status().staff).toBe(74); // (80 desks; the six in the HR office are only for the HR department, and made-up staff have none)
+  });
+
+  it('has the office helper, and has her again after a restart from a save (she is not saved)', () => {
+    const w = new World({ ...base, slotCount: 12 }); w.init();
+    expect(people.filter(isHelper)).toHaveLength(1);
+    const saved = JSON.parse(JSON.stringify(serializeWorld()));
+    expect(saved.people.some((p: { name: string }) => p.name === 'Office Helper')).toBe(false);
+    const again = new World({ ...base, slotCount: 12 }); again.init(parseSavedWorld(saved));
+    expect(people.filter(isHelper)).toHaveLength(1);
+    expect(people.filter(hasSlot)).toHaveLength(12);
   });
 
   it('steps the clock at the tick rate, and not while paused', () => {

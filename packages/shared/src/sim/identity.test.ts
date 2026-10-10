@@ -8,12 +8,12 @@ import { hasSlot, isAi, isDriven } from './person';
 import { SAVE_VERSION, SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
 import { allocatePersonId, meetings, people, sim } from './state';
 import { stepSim } from './step';
-import { buildTestLayout } from './testing';
+import { buildTestLayout, removeHelper } from './testing';
 import type { Person } from './types';
 
 // Phase 3, step 0: who a person is, how they are told apart, and what the save remembers about them.
 
-beforeEach(() => { setSeed(1); buildTestLayout({ desks: 40 }); initDay(); });
+beforeEach(() => { setSeed(1); buildTestLayout({ desks: 40 }); initDay(); removeHelper(); }); // (these tests count everyone: the helper is tested on her own)
 
 /** What step 3 will do when an account takes over a person (done by hand here). */
 const claim = (p: Person, account: number) => { p.owner = account; };
@@ -21,7 +21,7 @@ const takeOver = (p: Person) => { p.controller = 'account'; p.state = 'controlle
 const guest = (account: number): Person => {
   const g = {
     id: allocatePersonId(), name: 'Guest', role: 'Guest', controller: 'account', owner: account, state: 'controlled', shown: true,
-    pos: new Vec3(ENTRY.x, 0, ENTRY.z), face: 0, faceGoal: 0, props: { mug: false, phone: false, pad: false, guitar: false, putter: false, bucket: false },
+    pos: new Vec3(ENTRY.x, 0, ENTRY.z), face: 0, faceGoal: 0, props: { mug: false, phone: false, pad: false, guitar: false, putter: false, bucket: false, rag: false, mop: false },
     task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: 0, animT: 0, pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false,
     arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0, speed: 1.3, spec: {} as Person['spec'],
   } as Person;

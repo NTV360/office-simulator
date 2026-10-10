@@ -31,8 +31,8 @@ describe('the office layout data', () => {
     const again = spotsToLayout(interactables.all(), officeLayout.obstacles, objects.all());
     expect(JSON.parse(JSON.stringify(again))).toEqual(JSON.parse(JSON.stringify(officeLayout)));
   });
-  it('builds the same walkable grid the browser has (12,168 cells)', () => {
-    expect(NAV.reduce((a, v) => a + v, 0)).toBe(12168);
+  it('builds the same walkable grid the browser has (12,212 cells)', () => {
+    expect(NAV.reduce((a, v) => a + v, 0)).toBe(12212);
   });
   it('has a route from the door to every desk, and an exit', () => {
     for (const d of interactables.of('desk')) expect(findPath(ENTRY, d.approach), d.id).not.toBeNull();

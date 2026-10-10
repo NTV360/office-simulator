@@ -1,13 +1,13 @@
 import { random, rnd, shuffle } from '../util';
-import { makeStaff, scheduleDay } from './factory';
+import { makeHelper, makeStaff, scheduleDay } from './factory';
 import { interactables } from './interactables';
 import { live, usesAttendance } from './live';
-import { isAi } from './person';
+import { isAi, isHelper } from './person';
 import { roster } from './roster';
 import { DAY_START } from './schedule';
 import { addLog, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
-import { endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks';
+import { cleanNext, endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks';
 import type { Meeting, Person } from './types';
 
 /* ---------- Day cycle ---------- */
@@ -35,12 +35,14 @@ export function resetDay(): void {
 }
 function seatNow(p: Person): void {
   p.arrivedAt = p.arriveAt; p.shown = true;
+  if (isHelper(p)) { p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI; p.until = 0; cleanNext(p); return; } // no desk: in at the door, straight to cleaning
   placeNow(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: rnd(2, 40) });
 }
 export function arriveNow(p: Person, quiet?: boolean): void {
   p.state = 'idle'; p.pos.copy(ENTRY); p.face = p.faceGoal = Math.PI; p.arrivedAt = sim.t;
   p.shown = true; p.task = null;
   if (!quiet) addLog(`${p.name} arrived`);
+  if (isHelper(p)) { p.until = 0; cleanNext(p); return; }
   if (random() < .25 && lockerTrip(p)) return;
   if (!goWork(p)) p.state = 'away';
 }
@@ -55,9 +57,18 @@ function populate(n: number): void {
   }
 }
 
+/** Make sure the office has its helper (the server makes her again after a restart: she is not saved). In the office at once if it is her working time. */
+export function ensureHelper(): void {
+  if (people.some(isHelper)) return;
+  const h = makeHelper();
+  if (sim.t >= h.lunchAt) h.hadLunch = true; // (a restart after lunchtime does not give her a second lunch)
+  if (sim.t >= h.arriveAt && sim.t < h.leaveAt) seatNow(h);
+}
+
 /** Start the day with `staff` people (default: everyone on the staff list, else 40; never more than there are desks). */
 export function initDay(staff: number = roster.list ? roster.list.length : 40): void {
   populate(staff);
+  ensureHelper(); // our helper, cleaning
   // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion (only if the
   // day starts during office hours)
   if (sim.t > 9 * 60 + 15 && sim.t < 17 * 60) {

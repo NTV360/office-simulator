@@ -162,7 +162,7 @@ try {
       const S = window.__sim, out = [];
       for (const spec of S.presets) {
         const body = S.buildBody(spec);
-        let meshes = 0, tris = 0; body.root.traverse(o => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+        let meshes = 0, tris = 0; body.root.traverseVisible(o => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
         out.push({ name: spec.name, type: spec.type, meshes, tris: Math.round(tris), topY: body.topY, eyeY: body.eyeY, standHip: body.standHip, ok: !!(body.hips && body.spine && body.neck && body.armL && body.armR && body.legL && body.legR && body.bucket && body.mug) });
         S.disposeBody(body);
       }
@@ -234,11 +234,11 @@ try {
 
     // the staff slider adds and removes people
     const counts = await ev(() => {
-      const s = document.getElementById('staff'), n0 = window.__sim.people.filter(p => p.controller === "ai").length;
+      const s = document.getElementById('staff'), n0 = window.__sim.people.filter(p => p.controller === "ai" && p.slot).length;
       s.value = 46; s.dispatchEvent(new Event('input', { bubbles: true }));
-      const n1 = window.__sim.people.filter(p => p.controller === "ai").length;
+      const n1 = window.__sim.people.filter(p => p.controller === "ai" && p.slot).length;
       s.value = 40; s.dispatchEvent(new Event('input', { bubbles: true }));
-      return [n0, n1, window.__sim.people.filter(p => p.controller === "ai").length, window.__sim.people.includes(window.__sim.player.person)];
+      return [n0, n1, window.__sim.people.filter(p => p.controller === "ai" && p.slot).length, window.__sim.people.includes(window.__sim.player.person)];
     });
     ok(counts[0] === 40 && counts[1] === 46 && counts[2] === 40 && counts[3] === true, 'the staff slider adds and removes staff and leaves the player alone (' + counts.join(' to ') + ')');
 
@@ -292,10 +292,26 @@ try {
       trace: [...window.__sim.net.trace.entries()],
     }));
     const [v1, v2] = await Promise.all([view(p1), view(p2)]);
-    if (v1.people === 40 && v2.people === 40) pass('both pages show the 40 people the server has'); else fail(`people: ${v1.people} and ${v2.people}`);
+    if (v1.people === 41 && v2.people === 41) pass("both pages show the 40 people the server has, and the helper"); else fail(`people: ${v1.people} and ${v2.people}`);
     // (how many are in the building depends on the time of day the server is at, so compare with who is in, not a fixed number)
     // (the day is 24 hours now, so at night nobody is in: then there is nothing to draw, and the check is that nothing is drawn that should not be)
     if (v1.shown === v1.present && v2.shown === v2.present) pass(v1.present > 0 ? `bodies are drawn for everyone who is in (${v1.shown} and ${v2.shown} visible)` : 'nobody is in at this hour, and no body is drawn'); else fail(`bodies drawn: ${v1.shown} of ${v1.present} in, ${v2.shown} of ${v2.present}`);
+    // the office helper: a person with no desk who cleans, on both pages, with the cloth or mop in hand while she does it
+    const helperView = p => p.page.evaluate(() => {
+      const h = window.__sim.people.find(x => x.name === 'Office Helper');
+      return h ? { slot: h.slot ?? null, controller: h.controller, shown: h.shown, state: h.state, cat: h.task?.cat ?? null, anim: h.task?.anim ?? null, rag: !!h.body?.rag?.visible, mop: !!h.body?.mop?.visible, drawn: !!h.body?.root.visible } : null;
+    });
+    const [h1, h2] = await Promise.all([helperView(p1), helperView(p2)]);
+    if (h1 && h2 && h1.slot === null && h1.controller === 'ai' && h2.slot === null) pass('both pages have the office helper: no desk, driven by the simulation'); else fail('helper: ' + JSON.stringify([h1, h2]));
+    let cleaning = null;
+    for (let i = 0; i < 120 && !cleaning; i++) { const [a, b] = await Promise.all([helperView(p1), helperView(p2)]); if (a && b && a.cat === 'clean' && a.state === 'doing' && b.cat === 'clean' && b.state === 'doing') cleaning = [a, b]; else await sleep(500); }
+    if (cleaning) pass(`she is cleaning on both pages (${cleaning[0].anim} and ${cleaning[1].anim})`); else if ((await helperView(p1))?.state === 'away') pass('the helper is at home at this time of day (so not cleaning)'); // (the server may be at night)
+    else fail('the helper was never seen cleaning on both pages: ' + JSON.stringify(await helperView(p1)));
+    if (cleaning) {
+      const [a] = cleaning;
+      const wants = a.anim === 'mop' ? 'mop' : a.anim === 'locker' ? null : 'rag';
+      if (wants === null || (a[wants] && a.drawn)) pass('and holds her ' + (wants ?? 'hands free') + ' while she does it'); else fail('helper props: ' + JSON.stringify(a));
+    }
     if (v1.status === 'ok' && v2.status === 'ok') pass(`the status says "${v1.statusText}"`); else fail(`status: ${v1.status} / ${v2.status}`);
     if (v1.locked && v2.locked && v1.layoutOk && v2.layoutOk) pass('server-owned controls are locked, and both offices match the server'); else fail('controls not locked or layout mismatch');
     if (Math.abs(v1.clock - v2.clock) < 1) pass(`the two clocks agree (${v1.clock.toFixed(2)} and ${v2.clock.toFixed(2)})`); else fail(`clocks differ: ${v1.clock} vs ${v2.clock}`);
@@ -316,7 +332,7 @@ try {
       window.__sim.select(p);
       return { present: document.getElementById('present')?.textContent, card: document.getElementById('pName')?.textContent, status: document.getElementById('pStatus')?.textContent || document.getElementById('pRole')?.textContent };
     });
-    if (/^\d+ \/ 40 in$/.test(ui.present || '') && ui.card) pass(`ledger "${ui.present}", info card for ${ui.card}`); else fail(`ledger/card: ${JSON.stringify(ui)}`);
+    if (/^\d+ \/ 41 in$/.test(ui.present || '') && ui.card) pass(`ledger "${ui.present}", info card for ${ui.card}`); else fail(`ledger/card: ${JSON.stringify(ui)}`);
     await p1.page.screenshot({ path: path.join(outDir, 'online-1.png') });
     [...p1.errors, ...p2.errors].forEach(e => fail(e));
     if (!p1.errors.length && !p2.errors.length) pass('no errors in either browser console');

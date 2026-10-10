@@ -197,6 +197,7 @@ export function restoreWorld(saved: SavedWorld): void {
   deskPool.push(...order);
   saved.people.forEach((s, i) => {
     const slot = wanted[i] ?? undefined;
+    if (!slot) return; // an entry without a desk is nobody now: the helper is made again by ensureHelper, and guests are not saved
     const p: Person = {
       id: s.id, controller: 'ai', ...(s.owner !== null ? { owner: s.owner } : {}), name: s.name, role: s.role, spec: s.spec, slot,
       pos: new Vec3(s.x, 0, s.z), face: s.face, faceGoal: s.face, speed: s.speed,

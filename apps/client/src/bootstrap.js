@@ -19,6 +19,7 @@ import { buildEntrance } from './world/entrance.js';
 import { buildFloor } from './world/floor.js';
 import { buildBar } from './world/furniture/bar.js';
 import { buildBooths } from './world/furniture/booths.js';
+import { buildDiningTv } from './world/furniture/diningTv.js';
 import { buildConference } from './world/furniture/conference.js';
 import { buildDarts } from './world/furniture/darts.js';
 import { buildDesks } from './world/furniture/desks.js';
@@ -50,6 +51,7 @@ export function bootstrap({ simulate = true } = {}) {
   buildBar();
   buildWorkfloor();
   buildBooths();
+  buildDiningTv();
   buildDining();
   buildGolf();
   buildDarts();

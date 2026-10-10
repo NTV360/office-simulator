@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FULL_H, GLASS_WALLS, S, W, WALLS, WALL_T, vpick, wx, wz } from '@office/shared';
+import { FULL_H, GLASS_WALLS, S, W, WALLS, WALL_T, WINDOWS, vpick, wx, wz } from '@office/shared';
 import { M } from '../render/materials.js';
 import { scene } from '../render/renderer.js';
 import { SOLIDS, addObs, boxGeo, dynamic, scalers } from './helpers.js';
@@ -27,11 +27,6 @@ function solidBlock(x1, y1, x2, y2, mat = M.wall, fullH = FULL_H, capMat = M.cap
   const cap = dynamic(new THREE.Mesh(boxGeo(w + .004, .035, d + .004), capMat)); cap.position.set(cx, 0, cz); cap.castShadow = false; scene.add(cap);
   scalers.push(H => { const hh = Math.min(fullH, H); body.scale.y = hh; cap.position.y = hh + .017; });
 }
-// Windows on the outer walls: [wall line is vertical?, line coord, from, to]
-const WINDOWS = [
-  [true, 682.2, 120, 300], [true, 682.2, 460, 670], [true, 682.2, 790, 880], [true, 682.2, 950, 1100],
-  [false, 70.8, 130, 245], [false, 70.8, 280, 375], [false, 70.8, 420, 660],
-];
 function splitForWindows(walls) {
   let out = walls.map(w => w.slice());
   for (const [vert, line, a, b] of WINDOWS) {
@@ -92,4 +87,4 @@ function buildWalls() {
   solidBlock(266.3, 322.55, 312.3, 368.55, M.featureWall, FULL_H, M.deskEdge);
 }
 
-export { wallSeg, buildWalls };
+export { buildWalls, wallSeg };

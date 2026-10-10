@@ -16,7 +16,7 @@ describe('people data', () => {
     for (const r of roleBag) expect(VERB[r]).toBeTruthy();
   });
   it('every category has a name and a hex colour', () => {
-    expect(Object.keys(CATS)).toEqual(['work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'walk']);
+    expect(Object.keys(CATS)).toEqual(['work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'clean', 'walk']);
     for (const c of Object.values(CATS)) { expect(c.name).toBeTruthy(); expect(c.color).toMatch(/^#[0-9a-f]{6}$/i); }
   });
   it('has the recorded number of screen pictures for each kind of work', () => {

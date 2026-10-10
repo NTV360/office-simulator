@@ -8,6 +8,8 @@ export type Controller = 'ai' | 'account';
 export const isAi = (p: { controller: Controller }): boolean => p.controller === 'ai';
 /** A human drives this person. (Not the same as "is the player on this page": see isLocalPlayer in the client.) */
 export const isDriven = (p: { controller: Controller }): boolean => p.controller === 'account';
+/** The office helper: the only simulation-driven person without a desk (a guest is a human, and never has this). She cleans all day. */
+export const isHelper = (p: { controller: Controller; slot?: unknown }): boolean => p.controller === 'ai' && p.slot == null;
 /**
  * This person has a desk (a slot): they count in the ledger, in the staff number an admin sets, and in the saved world.
  * A guest (a human with no desk yet) has none.

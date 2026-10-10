@@ -1,12 +1,21 @@
 import { initGrid } from '../nav/grid';
 import { interactables } from './interactables';
-import { initState, resetSim } from './state';
+import { isHelper } from './person';
+import { initState, people, resetSim } from './state';
+import { endTask } from './tasks';
 import { mkSpot, type SpotOptions } from './spots';
 
 // A small, fully equipped office for tests and for a server with no client: open floor, no furniture, but one of
 // everything the simulation looks for. Spots sit on a loose grid in the open top part of the floor plan.
 //
 //   buildTestLayout({ desks: 40 })   then   initDay()  (or makeStaff() by hand)
+
+/** Take the office helper out, for tests about staff, ids and desks that count everyone (she has no desk and is not saved). */
+export function removeHelper(): void {
+  const i = people.findIndex(isHelper);
+  if (i < 0) return;
+  endTask(people[i]); people.splice(i, 1);
+}
 
 export interface TestLayoutOptions {
   /** How many desks (staff slots). The default simulation start needs 40. */
