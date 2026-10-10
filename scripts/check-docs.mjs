@@ -29,6 +29,7 @@ for (const f of files) {
   if (PATHS_EXEMPT.has(f)) continue;
   for (const m of txt.matchAll(/`((?:apps|packages|docker|scripts|tests)\/[\w\/.\-*]+)`/g)) {
     if (m[1].includes('*')) continue;
+    if (/(^|/)(dist|out)(/|$)/.test(m[1])) continue; // build output: it exists only after a build or a test run (never in a fresh clone)
     total++;
     if (!fs.existsSync(path.join(root, m[1]))) problem(`missing path    ${f}: ${m[1]}`);
   }
