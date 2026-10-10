@@ -1,5 +1,6 @@
 import {
-  CATALOGUE, carriedBy, inReach, isSeated, movability, objects, pickUp, placementProblem, putDown, resetObject, restHeightAt,
+  CATALOGUE, canReach, carriedBy, inReach, isSeated, movability, mulQuat, nearestGrip, objects, onItem, orientationOf, pickUp, placementProblem, putDown, resetObject, restHeightAt, toItemFrame,
+  type Hold, type Quat,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -11,16 +12,25 @@ export type ObjectResult = { ok: true; changed: number } | { ok: false; reason: 
 const no = (reason: Refusal): ObjectResult => ({ ok: false, reason });
 const yes = (changed = 1): ObjectResult => ({ ok: true, changed });
 
-/** Pick up the object with this index. */
-export function grab(person: Person, index: number): ObjectResult {
+/** Take hold of the object with this index, at the point of it the player aimed at (or, if they did not say, the point nearest them). */
+export function grab(person: Person, index: number, at?: readonly number[]): ObjectResult {
   if (isSeated(person) || carriedBy(person.id)) return no('busy');
   const o = Number.isInteger(index) ? objects.at(index) : undefined;
   if (!o) return no('not-movable');
   const refusal = movability(o);
   if (refusal) return no(refusal);
-  if (!inReach(person, o.x, o.z)) return no('too-far');
-  pickUp(o, person.id);
+  const aimed = at && at.length === 3 && at.every(Number.isFinite) ? { x: at[0], y: at[1], z: at[2] } : null;
+  if (aimed && !onItem(o, aimed)) return no('too-far'); // (a point that is not on it at all)
+  const point = aimed ?? nearestGrip(o, person);
+  if (!canReach(person, point)) return no('too-far');
+  pickUp(o, person.id, holdFor(o, person, point));
   return yes();
+}
+
+/** A hold that keeps the item as it is to this person now: their hands where they took it, its angle to them as it is. */
+function holdFor(o: WorldObject, person: Person, point: { x: number; y: number; z: number }): Hold {
+  const half = person.face / 2, facing: Quat = [0, -Math.sin(half), 0, Math.cos(half)]; // (the inverse of the way they face)
+  return { person: person.id, at: toItemFrame(o, point), rel: mulQuat(facing, orientationOf(o)), turn: [0, 0, 0, 1], lift: point.y, out: Math.hypot(point.x - person.pos.x, point.z - person.pos.z) };
 }
 
 /** Put down what the person carries at (x, z), facing `rot`. */

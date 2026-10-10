@@ -122,7 +122,7 @@ const tilt = new THREE.Quaternion(), at = new THREE.Vector3(), one = new THREE.V
 function write(kind, slot, o) {
   if (o.q) scratch.compose(at.set(o.x, o.y, o.z), tilt.set(o.q[0], o.q[1], o.q[2], o.q[3]), one); // (knocked over, or tilted)
   else scratch.makeRotationY(o.rot).setPosition(o.x, o.y, o.z);
-  for (const p of kind.parts) { p.mesh.setMatrixAt(slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; }
+  for (const p of kind.parts) { p.mesh.setMatrixAt(slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; p.mesh.boundingSphere = null; } // (re-measured when next aimed at)
   const att = attached.get(o.index ?? -1);
   if (att) for (const a of att) a.mesh.matrix.multiplyMatrices(scratch, a.local);
 }
@@ -149,6 +149,7 @@ function add(o) {
   const slot = kind.count++;
   for (const p of kind.parts) p.mesh.count = kind.count;
   slotOf.set(o.index, { kind, slot });
+  kind.slots[slot] = o.index;
   write(kind, slot, o);
 }
 
@@ -178,6 +179,24 @@ export function updateCarriedObjects() {
     const floor = CATALOGUE[o.type]?.rests !== 'surface';
     write(s.kind, s.slot, { index: o.index, x: p.pos.x + Math.sin(p.face) * .55, y: floor ? .5 : .95, z: p.pos.z + Math.cos(p.face) * .55, rot: p.face });
   }
+}
+
+/**
+ * The item a ray hits first, and where: { index, point, distance }, or null. `skip` is an item to look through (the one in your hands).
+ * Every kind's parts are tested; an instanced mesh tests each instance, so this is for a few times a second, not every frame.
+ */
+export function itemAt(raycaster, skip = -1) {
+  let best = null;
+  for (const kind of kinds.values()) for (const p of kind.parts) {
+    if (!p.mesh) continue;
+    for (const h of raycaster.intersectObject(p.mesh, false)) {
+      const index = kind.slots[h.instanceId];
+      if (index === undefined || index === skip) continue;
+      if (!best || h.distance < best.distance) best = { index, point: h.point.clone(), distance: h.distance };
+      break;
+    }
+  }
+  return best;
 }
 
 /** Draw objects made after the start (the stress check adds many). */

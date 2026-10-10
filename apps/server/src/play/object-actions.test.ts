@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  REFUSAL_TEXT, carriedBy, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
+  ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
   resetSim, setSeed, simEvents, takeControl, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
@@ -30,6 +30,43 @@ async function guest(name: string): Promise<{ id: number; person: Person }> {
 const stand = (p: Person, o: { x: number; z: number }, dx = .5) => { p.pos.x = o.x + dx; p.pos.z = o.z; };
 const diningChair = (n = 0): WorldObject => objects.all().filter(o => o.type === 'chair-wood')[n];
 const free = (o: WorldObject, from = .5) => { for (let r = from; r < 3; r += .15) for (let a = 0; a < 6.3; a += .4) { const x = o.x + Math.cos(a) * r, z = o.z + Math.sin(a) * r; if (placementProblem(o, x, z, o.rot) === null) return { x, z }; } throw new Error('no place'); };
+
+describe('taking hold where you aim', () => {
+  it('takes a chair by the point aimed at, and keeps the angle it has to the person: hands there, chair as it stands', async () => {
+    const { id, person } = await guest('ana');
+    const chair = diningChair(); stand(person, chair, .5);
+    person.face = 1.2;
+    const at = closestPointOnItem(chair, { x: person.pos.x, y: .6, z: person.pos.z });
+    expect(manager.grabObject(id, chair.index, T(), 20, [at.x, at.y, at.z])).toEqual({ ok: true, changed: 1 });
+    const h = chair.holds[0];
+    expect(h.person).toBe(person.id);
+    const back = fromItemFrame(chair, h.at);
+    expect(Math.hypot(back.x - at.x, back.y - at.y, back.z - at.z)).toBeLessThan(1e-6);
+    // its orientation is the person's facing then `rel`: turn the person back by their facing and the chair's own turn is left
+    const expected = mulQuat([0, Math.sin(-1.2 / 2), 0, Math.cos(-1.2 / 2)], orientationOf(chair));
+    h.rel.forEach((v, i) => expect(Math.abs(v)).toBeCloseTo(Math.abs(expected[i]), 6));
+  });
+
+  it('a point that is not on the thing is refused, and so is one the arm does not reach', async () => {
+    const { id, person } = await guest('ana');
+    const mug = objects.all().find(o => o.type === 'mug')!;
+    stand(person, mug, .5);
+    expect(manager.grabObject(id, mug.index, T(), 20, [mug.x + .4, mug.y + .05, mug.z])).toEqual({ ok: false, reason: 'too-far' });
+    stand(person, mug, ARMS.reach + .2);
+    expect(manager.grabObject(id, mug.index, T(), 20, [mug.x + .0375, mug.y + .05, mug.z])).toEqual({ ok: false, reason: 'too-far' });
+    stand(person, mug, .5);
+    expect(manager.grabObject(id, mug.index, T(), 20, [mug.x + .0375, mug.y + .05, mug.z])).toEqual({ ok: true, changed: 1 });
+  });
+
+  it('with no point given, the hands take the point nearest the person, and only from within arm\'s reach', async () => {
+    const { id, person } = await guest('ana');
+    const chair = diningChair();
+    stand(person, chair, 1.6);
+    expect(manager.grabObject(id, chair.index, T())).toEqual({ ok: false, reason: 'too-far' });
+    stand(person, chair, .6);
+    expect(manager.grabObject(id, chair.index, T())).toEqual({ ok: true, changed: 1 });
+  });
+});
 
 describe('picking up', () => {
   it('works on a free thing in reach in a shared area, and the thing is then in their hands', async () => {

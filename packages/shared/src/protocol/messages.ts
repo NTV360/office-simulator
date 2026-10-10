@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 16;
+export const WIRE_VERSION = 17;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -182,7 +182,8 @@ export interface Emoted { type: 'emoted'; from: number; kind: EmoteKind }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
 /** Pick up the object with this index (see world/objects.ts). The server decides whether it is allowed, in reach and free. */
-export interface Grab { type: 'grab'; object: number }
+/** Take hold of an object, at the point of it the player aims at (absent: the point nearest them). */
+export interface Grab { type: 'grab'; object: number; at?: [number, number, number] }
 /** Put down what you carry at this place, facing this way (metres, radians). The server checks the place (world/placement.ts). */
 export interface Place { type: 'place'; x: number; z: number; rot: number }
 /** Put something back where it started: one object ('object'), or everything at your own desk ('station'; `object` is then ignored). */

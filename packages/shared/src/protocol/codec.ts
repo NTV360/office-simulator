@@ -177,7 +177,7 @@ export function encode(msg: Message): Uint8Array {
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
     case 'input': w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(msg.run ? 1 : 0); break;
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
-    case 'grab': w.u8(T.grab).u16(toU16(msg.object)); break;
+    case 'grab': w.u8(T.grab).u16(toU16(msg.object)).u8(msg.at ? 1 : 0); if (msg.at) w.f32(msg.at[0]).f32(msg.at[1]).f32(msg.at[2]); break;
     case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
     case 'reset': w.u8(T.reset).u8(index(RESET_SCOPES, msg.scope, 'reset scope')).u16(toU16(msg.object)); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
@@ -227,7 +227,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
     case T.input: { const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(); msg = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) }; break; }
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
-    case T.grab: msg = { type: 'grab', object: fromU16(r.u16()) }; break;
+    case T.grab: { const object = fromU16(r.u16()); msg = r.u8() ? { type: 'grab', object, at: [r.f32(), r.f32(), r.f32()] } : { type: 'grab', object }; break; }
     case T.place: { const x = r.f32(), z = r.f32(), rot = r.f32(); msg = { type: 'place', x, z, rot }; break; }
     case T.reset: { const scope = readIndex(r, RESET_SCOPES, 'reset scope'), object = fromU16(r.u16()); msg = { type: 'reset', scope, object }; break; }
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;

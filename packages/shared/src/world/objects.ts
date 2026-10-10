@@ -46,6 +46,22 @@ export interface WorldObject extends ObjectRecord {
   link: Link | null;
   /** Every spot that moves with it: its seat first, then `spots`. */
   links: Link[];
+  /** Who holds it and how, the first being `carriedBy` (the server's business: a page knows only who carries it). */
+  holds: Hold[];
+}
+
+/**
+ * One person's hold on an item. Where their hands took it stays where they hold it (`at`, in the item's frame), and the item keeps the angle
+ * it had to their body then (`rel`: its orientation relative to the way they faced), turned further by `turn` when they turn it in their hands.
+ */
+export interface Hold {
+  person: number;
+  at: { x: number; y: number; z: number };
+  rel: Quat;
+  turn: Quat;
+  /** How high their hands are, and how far in front of them, in metres (from where they took it, easing to where things are carried). */
+  lift: number;
+  out: number;
 }
 
 /** A spot tied to an object: where it is, and where people stand to use it, relative to the object (in its own frame). */
@@ -70,7 +86,7 @@ export const objects = {
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
   if (!CATALOGUE[rec.type]) throw new Error(`unknown object type "${rec.type}"`);
-  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [] };
+  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [], holds: [] };
   for (const id of [...(rec.spot ? [rec.spot] : []), ...(rec.spots ?? [])]) {
     const spot = interactables.all().find(s => s.id === id);
     if (!spot) throw new Error(`object ${o.id} carries ${id}, which does not exist`);
@@ -100,16 +116,17 @@ export function setObjectPose(o: WorldObject, x: number, z: number, rot: number,
 /** The object this person carries, if any (a person carries at most one thing). */
 export const carriedBy = (personId: number): WorldObject | undefined => list.find(o => o.carriedBy === personId);
 
-/** A person picks an object up. Everybody is told (it is drawn in their hands from now on). */
-export function pickUp(o: WorldObject, personId: number): void {
+/** A person picks an object up (taking it the way `hold` says, when the server knows). Everybody is told (it is drawn in their hands from now on). */
+export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
   o.carriedBy = personId;
+  o.holds = hold ? [hold] : [];
   refreshFootprint(o); // (it no longer blocks the floor it stood on)
   simEvents.emit('objectMoved', o);
 }
 
 /** A person puts what they carry down at a place (already checked: see placement.ts), standing upright at height `y` (what is under it there). */
 export function putDown(o: WorldObject, x: number, z: number, rot: number, y: number = o.home.y): void {
-  o.carriedBy = null;
+  o.carriedBy = null; o.holds = [];
   setObjectPose(o, x, z, wrapAngle(rot), y, null);
 }
 
@@ -136,7 +153,7 @@ export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z ===
 
 /** Put an object back where it started (and not carried). */
 export function resetObject(o: WorldObject): void {
-  o.carriedBy = null;
+  o.carriedBy = null; o.holds = [];
   setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
 }
 

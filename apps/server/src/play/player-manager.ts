@@ -185,11 +185,11 @@ export class PlayerManager {
   }
 
   /** The player picks up an object (by its index in the layout). Null when they are not playing. */
-  grabObject(accountId: number, index: number, tick: number, tickRate = 20): ObjectResult | null {
+  grabObject(accountId: number, index: number, tick: number, tickRate = 20, at?: readonly number[]): ObjectResult | null {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
-    return grab(s.person, index);
+    return grab(s.person, index, at);
   }
 
   /** The player puts down what they carry. */

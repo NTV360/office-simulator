@@ -102,6 +102,8 @@ function targetPose(p, k, T) {
   }
   o.lean += breathe;
   if (p.carrying) { o.lShX = -1.15; o.rShX = -1.15; o.lEl = -.45; o.rEl = -.45; o.lShZ = .12; o.rShZ = -.12; } // holding something out in front
+  const reach = p.reachTo && performance.now() - p.reachTo.t < REACH_MS ? p.reachTo : null;
+  if (reach) armsAt(p, o, reach); // reaching out to take hold of something
   emoteOverlay(p, o);
   // look at someone
   let look = null;
@@ -114,6 +116,18 @@ function targetPose(p, k, T) {
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;
 }
+// Arms that point at a place: both hands go to it (the rig's arms are one piece, so the shoulder takes the aim and the elbow only bends
+// in when the place is close). Seen from the body: forward, sideways and up from the shoulders.
+const REACH_MS = 450, SHOULDER_Y = 1.35, ARM = .6;
+function armsAt(p, o, at) {
+  const dx = at.x - p.pos.x, dz = at.z - p.pos.z, s = Math.sin(p.face), c = Math.cos(p.face);
+  const fwd = dx * s + dz * c, side = -dx * c + dz * s, up = at.y - SHOULDER_Y;
+  const pitch = Math.atan2(Math.max(.05, fwd), -up), dist = Math.hypot(fwd, side, up);
+  const bend = -Math.min(1.2, Math.max(0, (ARM - dist) / ARM * 1.6));
+  o.lShX = o.rShX = -pitch; o.lEl = o.rEl = bend;
+  o.lShZ = .5 * Math.atan2(side + .2, Math.max(.2, fwd)); o.rShZ = .5 * Math.atan2(side - .2, Math.max(.2, fwd));
+}
+
 function applyPose(p, dt) {
   const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;

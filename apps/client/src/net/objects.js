@@ -1,30 +1,46 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REACH, REFUSAL_TEXT, carriedBy, inReach, movability, objects, placementProblem, restHeightAt, wrapAngle } from '@office/shared';
-import { scene } from '../render/renderer.js';
+import { CATALOGUE, NONE, REFUSAL_TEXT, canReach, carriedBy, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt, wrapAngle } from '@office/shared';
+import { camera, scene } from '../render/renderer.js';
+import { itemAt } from '../render/objects.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
 import { $ } from '../ui/dom.js';
 
-// Moving things about, online: pick up the nearest chair or small thing in reach (G), turn it (R), put it down where the ring shows
-// (G again), put everything at your desk back (T). The page only asks; the server decides (apps/server/src/play/object-actions.ts) with
-// the same rules (shared/world/placement.ts), which is why the ring can say at once whether a place is allowed. What was done reaches
-// everybody as an `object` message. See docs/PHASE-5-BREAKDOWN.md, step 4.
+// Moving things about, online: take hold of the thing you aim at, where you aim at it (G), turn it (R), put it down where the ring shows
+// (G again), put everything at your desk back (T). With nothing under the aim, the nearest thing in reach. The page only asks; the server
+// decides (apps/server/src/play/object-actions.ts) with the same rules (shared/world/arms.ts, placement.ts), which is why the prompt can say
+// at once whether a hand gets there. What was done reaches everybody as an `object` message. See docs/ITEMS-PHYSICS-PLAN.md, section 6.
 
-const state = { send: null, rot: null, target: null, problem: null, candidate: null, acc: 0 };
+const state = { send: null, rot: null, target: null, problem: null, candidate: null, grip: null, far: null, acc: 0 };
+const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
+aim.far = 6;
 const ring = new THREE.Mesh(new THREE.RingGeometry(.2, .3, 28), new THREE.MeshBasicMaterial({ color: 0x55a274, transparent: true, opacity: .85, depthWrite: false, side: THREE.DoubleSide }));
 ring.rotation.x = -Math.PI / 2; ring.visible = false; ring.renderOrder = 3;
 
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
 
-/** The thing G would pick up: the nearest one in reach that is free (anyone's: anyone may move anything). */
-function nearestPickable(p) {
-  let best = null, bd = REACH;
-  for (const o of objects.all()) {
-    if (movability(o) !== null) continue;
-    const d = Math.hypot(o.x - p.pos.x, o.z - p.pos.z);
-    if (d < bd) { bd = d; best = o; }
+/**
+ * The thing G would take hold of, and where: the one under the middle of the screen, at the point aimed at, if a hand gets there; else the
+ * nearest one a hand gets to (anyone's: anyone may move anything). `far` is a thing aimed at that is out of reach (to say "step closer").
+ */
+function pickable(p) {
+  aim.setFromCamera(MIDDLE, camera);
+  const hit = itemAt(aim);
+  let far = null;
+  if (hit) {
+    const o = objects.at(hit.index);
+    if (o && movability(o) === null) {
+      if (canReach(p, hit.point)) return { o, at: hit.point, far: null };
+      far = o;
+    }
   }
-  return best;
+  let best = null, bd = Infinity;
+  for (const o of objects.all()) {
+    if (Math.abs(o.x - p.pos.x) > 1.5 || Math.abs(o.z - p.pos.z) > 1.5 || movability(o) !== null) continue;
+    const at = nearestGrip(o, p), d = Math.hypot(at.x - p.pos.x, at.z - p.pos.z);
+    if (d < bd && canReach(p, at)) { bd = d; best = { o, at, far }; }
+  }
+  return best ?? { o: null, at: null, far };
 }
 
 /** Where what is carried would go: a step in front of the person (closer for a small thing, which has to land on a desk). */
@@ -49,8 +65,10 @@ function refresh() {
     return;
   }
   state.rot = null; ring.visible = false;
-  state.candidate = player.sitting ? null : nearestPickable(p);
-  setPrompt(state.candidate ? `Pick up the ${labelOf(state.candidate)}  (G)` : '', !!state.candidate);
+  const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
+  state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
+  if (state.candidate) setPrompt(`Pick up the ${labelOf(state.candidate)}  (G)`, true);
+  else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }
 
 function setPrompt(text, ok) {
@@ -63,7 +81,11 @@ function act() {
   const p = player.person; if (!p || !ctl.active || !state.send) return;
   const holding = carriedBy(p.id);
   if (holding) { const at = aimAt(p, holding); if (!placementProblem(holding, at.x, at.z, at.rot)) state.send({ type: 'place', x: at.x, z: at.z, rot: at.rot }); } // (aimed again now: you may have moved since the last look)
-  else if (state.candidate) state.send({ type: 'grab', object: state.candidate.index });
+  else if (state.candidate) {
+    const at = state.grip;
+    state.send(at ? { type: 'grab', object: state.candidate.index, at: [at.x, at.y, at.z] } : { type: 'grab', object: state.candidate.index });
+    if (at) p.reachTo = { x: at.x, y: at.y, z: at.z, t: performance.now() }; // (the arms go out to it: people/animation.js)
+  }
 }
 
 /** Wire the keys and buttons. `send` puts a message on the wire. */
