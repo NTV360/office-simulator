@@ -54,3 +54,16 @@ export function plantShape(big: number): Shape {
     foot: [6 * big, 6 * big],
   };
 }
+
+/**
+ * A cabinet `wPx` by `dPx`, `h` high (cabinet.js cabinet()): the body, and the top board a little wider. `inset` makes it that much shallower
+ * front and back, to the physics only: one storage cabinet is drawn 7 cm into the wall behind it, and would be pushed out of it.
+ */
+export function cabinetShape(wPx: number, dPx: number, h: number, inset = 0): Shape {
+  const w = wPx * S, d = dPx * S, along = w >= d, iw = along ? 0 : 2 * inset, id = along ? 2 * inset : 0;
+  return {
+    colliders: [{ shape: 'box', size: [w - .02 - iw, h, d - .02 - id], at: [0, h / 2, 0] }, { shape: 'box', size: [w - .005 - iw, .03, d - .005 - id], at: [0, h + .015, 0] }],
+    foot: [wPx / 2, dPx / 2],
+    top: { y: h + .03, hw: w / 2, hd: d / 2 },
+  };
+}

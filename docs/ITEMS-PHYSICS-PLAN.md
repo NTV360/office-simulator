@@ -248,3 +248,8 @@ The owner was asked on 2026-10-11 and chose; anything marked *picked* was decide
 | Controls while holding | Mouse plus a modifier: hold R and move the mouse to turn the item freely (Shift+R rolls it), the wheel raises and lowers your hands, G lets go. *Decided*; the throw key is in the step 9 notes below |
 | Pull request | None: the commits are pushed and the owner opens the PR. *Decided* |
 | Unplanned questions | Pick the simpler or safer option, note it here, keep going. *Decided* |
+| A seat is a top | A mug can be put on a chair, a stool or a sofa's cushion (it falls when somebody picks the chair up). *Picked* |
+| The fruit bowl | One item, fruit and all: loose fruit in a bowl would need a hollow bowl shape, and would settle and roll the moment the server starts. The loose apple and orange on the counter, and the bananas, are items of their own (they roll). *Picked* |
+| The coffee machine's drip tray | Part of the machine (it is drawn floating at its front; on its own it would drop to the counter). *Picked* |
+| A tall storage cabinet drawn into the wall | Its physics shape is 9 cm shallower front and back than it looks, so it starts clear of the wall; its footprint and its looks are unchanged. Dragged against a wall it can go 9 cm into it. *Picked* |
+| Which items keep their ids | The first 162 (the chairs and desk things there were before) keep obj:0 to obj:161, so worlds saved before still restore. Items added on this branch come after them and may be renumbered while the branch is built. *Picked* |

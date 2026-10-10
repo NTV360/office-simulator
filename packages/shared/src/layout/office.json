@@ -2313,7 +2313,7 @@
    "hipY": 0.5,
    "id": "lounge:0",
    "kind": "lounge",
-   "object": "obj:402",
+   "object": "obj:405",
    "place": "the lounge sofa",
    "pos": {
     "x": -9.567350000000001,
@@ -2333,7 +2333,7 @@
    "hipY": 0.5,
    "id": "lounge:1",
    "kind": "lounge",
-   "object": "obj:402",
+   "object": "obj:405",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.93185,
@@ -2353,7 +2353,7 @@
    "hipY": 0.5,
    "id": "lounge:2",
    "kind": "lounge",
-   "object": "obj:402",
+   "object": "obj:405",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.296350000000002,
@@ -2373,7 +2373,7 @@
    "hipY": 0.5,
    "id": "lounge:3",
    "kind": "lounge",
-   "object": "obj:403",
+   "object": "obj:406",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2393,7 +2393,7 @@
    "hipY": 0.5,
    "id": "lounge:4",
    "kind": "lounge",
-   "object": "obj:403",
+   "object": "obj:406",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2414,7 +2414,7 @@
    "hipY": 0.5,
    "id": "lounge:5",
    "kind": "lounge",
-   "object": "obj:404",
+   "object": "obj:407",
    "place": "the TV lounge",
    "pos": {
     "x": -1.961850000000001,
@@ -2435,7 +2435,7 @@
    "hipY": 0.5,
    "id": "lounge:6",
    "kind": "lounge",
-   "object": "obj:404",
+   "object": "obj:407",
    "place": "the TV lounge",
    "pos": {
     "x": -1.469850000000001,
@@ -2456,7 +2456,7 @@
    "hipY": 0.5,
    "id": "lounge:7",
    "kind": "lounge",
-   "object": "obj:404",
+   "object": "obj:407",
    "place": "the TV lounge",
    "pos": {
     "x": -0.977850000000001,
@@ -2477,7 +2477,7 @@
    "hipY": 0.5,
    "id": "lounge:8",
    "kind": "lounge",
-   "object": "obj:405",
+   "object": "obj:408",
    "place": "the TV lounge",
    "pos": {
     "x": -2.0705,
@@ -2498,7 +2498,7 @@
    "hipY": 0.5,
    "id": "lounge:9",
    "kind": "lounge",
-   "object": "obj:406",
+   "object": "obj:409",
    "place": "the TV lounge",
    "pos": {
     "x": -1.090600000000001,
@@ -2519,7 +2519,7 @@
    "hipY": 0.5,
    "id": "lounge:10",
    "kind": "lounge",
-   "object": "obj:407",
+   "object": "obj:410",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -2540,7 +2540,7 @@
    "hipY": 0.5,
    "id": "lounge:11",
    "kind": "lounge",
-   "object": "obj:408",
+   "object": "obj:411",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -3713,22 +3713,10 @@
    168
   ],
   [
-   119,
-   180,
-   158,
-   191.2
-  ],
-  [
    116.5,
    108,
    127,
    156
-  ],
-  [
-   384.5,
-   115,
-   397.6,
-   172
   ],
   [
    267,
@@ -3741,12 +3729,6 @@
    228,
    186,
    288
-  ],
-  [
-   128,
-   319,
-   188,
-   326.4
   ],
   [
    116,
@@ -3939,18 +3921,6 @@
    1061.1,
    437.3,
    1083.3
-  ],
-  [
-   276.8,
-   1041.6,
-   326.2,
-   1051.1
-  ],
-  [
-   281.8,
-   1072.7,
-   338.4,
-   1082.7
   ],
   [
    455,
@@ -7987,6 +7957,48 @@
    "spot": null
   },
   {
+   "type": "credenza",
+   "x": -10.633350000000002,
+   "z": -16.049449999999997,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    39,
+    11.199999999999989
+   ]
+  },
+  {
+   "type": "credenza",
+   "x": -0.2788000000000005,
+   "z": -17.77555,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    13.100000000000023,
+    57
+   ]
+  },
+  {
+   "type": "credenza",
+   "x": -9.833850000000002,
+   "z": -10.428349999999998,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    60,
+    7.399999999999977
+   ]
+  },
+  {
    "type": "sofa",
    "x": -8.93185,
    "z": -9.678049999999999,
@@ -8168,6 +8180,46 @@
    ]
   },
   {
+   "type": "puck",
+   "x": 4.937449999999998,
+   "z": 14.593950000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "puck",
+   "x": 6.987449999999998,
+   "z": 14.593950000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "puck",
+   "x": 9.037449999999998,
+   "z": 14.593950000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "puck",
+   "x": 11.087449999999999,
+   "z": 14.593950000000003,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
    "type": "table-dining",
    "x": 3.327149999999999,
    "z": 16.848950000000002,
@@ -8249,6 +8301,144 @@
    "dims": [
     24,
     24
+   ]
+  },
+  {
+   "type": "coffee-machine",
+   "x": 0.25479999999999897,
+   "z": 17.63135,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "water-jug",
+   "x": 0.4047999999999978,
+   "z": 18.28135,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "toaster",
+   "x": -0.8952000000000016,
+   "z": 17.681350000000002,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "cup-small",
+   "x": -0.045200000000000844,
+   "z": 17.731350000000003,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "cup-small",
+   "x": -0.045200000000000844,
+   "z": 17.83135,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "cup-small",
+   "x": -0.045200000000000844,
+   "z": 17.931350000000002,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "cup-small",
+   "x": -0.045200000000000844,
+   "z": 18.031350000000003,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "fruit-bowl",
+   "x": -0.3952000000000018,
+   "z": 18.181350000000002,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "bananas",
+   "x": -0.755200000000003,
+   "z": 18.211350000000003,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "orange",
+   "x": -0.19520000000000193,
+   "z": 18.31135,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "apple",
+   "x": -0.09520000000000198,
+   "z": 18.25135,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
+  },
+  {
+   "type": "cabinet-tall",
+   "x": -3.950350000000001,
+   "z": 19.2413,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    49.39999999999998,
+    9.5
+   ]
+  },
+  {
+   "type": "cabinet-tall",
+   "x": -3.59775,
+   "z": 20.526650000000004,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": null,
+   "spot": null,
+   "dims": [
+    56.599999999999966,
+    10
    ]
   },
   {

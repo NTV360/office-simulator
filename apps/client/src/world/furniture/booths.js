@@ -2,8 +2,8 @@ import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { doorLeaf } from '../doors.js';
 import { SO, mkSpot } from './basics.js';
-import { placeObject } from '../objects.js';
-import { addObs, addTop, box, cyl, frame, staticRoot } from '../helpers.js';
+import { placeLater, placeObject } from '../objects.js';
+import { addObs, addTop, box, staticRoot } from '../helpers.js';
 import { wallSeg } from '../walls.js';
 
 
@@ -22,7 +22,7 @@ function buildBooths() {
     addObs(x0, 927, x1, y1);
     box(staticRoot, (x1 - x0 - 4) * S, .04, .34, M.diningWood, wx(cx), .74, wz(932.5)); addTop(x0 + 2, 932.5 - .17 / S, x1 - 2, 932.5 + .17 / S, .76);
     box(staticRoot, (x1 - x0 - 4) * S, .7, .04, M.diningWood2, wx(cx), .37, wz(936.5));
-    cyl(staticRoot, .07, .05, .05, M.dark, wx(cx) + .45, .785, wz(933), 10);
+    placeLater(() => placeObject('puck', cx + .45 / S, 933, 0, { y: .76 })); // (the little speaker on the shelf: an item)
     const spot = mkSpot('booth', cx, 914, SO, { sit: true, place: `Booth B${i + 1}`, ap: [x0 + 17.5, 906] });
     placeObject('chair-office', cx, 914, SO, { variant: 0, spot: spot.id });
   }

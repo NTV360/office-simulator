@@ -4,6 +4,7 @@ import { M } from '../../render/materials.js';
 import { makeBucket } from '../../character/props.js';
 import { SO, WST, mkSpot } from './basics.js';
 import { addObs, addTop, box, boxGeo, cyl, dynamic, staticRoot } from '../helpers.js';
+import { placeLater, placeObject } from '../objects.js';
 
 // The toilet bucket by the counter. `mesh` is the one on the floor: it is hidden while somebody has it out (see updateBucket).
 const BUCKET = { mesh: null };
@@ -17,21 +18,30 @@ const FRUIT = {
   banana: new THREE.MeshStandardMaterial({ color: 0xf2cf4a, roughness: .6 }),
   stem: new THREE.MeshStandardMaterial({ color: 0x5a3d22, roughness: .8 }),
 };
-function fruit(cx, cz) {
-  const ball = (r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat); m.position.set(x, y, z); m.castShadow = true; staticRoot.add(m); return m; };
-  const stem = (x, y, z) => box(staticRoot, .008, .025, .008, FRUIT.stem, x, y, z, false);
-  // in the bowl (centre cx - .1, cz + .25, rim at about 1.03)
-  [[-.15, .21, FRUIT.apple], [-.05, .22, FRUIT.apple2], [-.1, .31, FRUIT.apple]].forEach(([dx, dz, mat]) => { ball(.042, mat, cx + dx, 1.05, cz + dz); stem(cx + dx, 1.095, cz + dz); });
-  ball(.046, FRUIT.orange, cx - .09, 1.1, cz + .26);
-  // a bunch of bananas: curved fingers joined at the stem
+const ball = (g, r, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+const stem = (g, x, y, z) => box(g, .008, .025, .008, FRUIT.stem, x, y, z, false);
+// The counter's things are items now (shared/world/catalogue.ts); these draw each one at its origin, on the counter top.
+/** The bowl with its apples and orange (one item: the fruit stays in the bowl). */
+function drawFruitBowl(g) {
+  cyl(g, .14, .1, .08, M.diningWood2, 0, .04, 0, 14);
+  [[-.05, -.04, FRUIT.apple], [.05, -.03, FRUIT.apple2], [0, .06, FRUIT.apple]].forEach(([dx, dz, mat]) => { ball(g, .042, mat, dx, .1, dz); stem(g, dx, .145, dz); });
+  ball(g, .046, FRUIT.orange, .01, .15, .01);
+}
+/** A bunch of bananas: curved fingers joined at the stem. */
+function drawBananas(g) {
   for (let i = 0; i < 4; i++) {
     const b = new THREE.Mesh(new THREE.TorusGeometry(.09, .016, 6, 14, 1.6), FRUIT.banana);
-    b.rotation.set(Math.PI / 2, 0, -.8 + i * .14); b.position.set(cx - .48 + i * .012, .965 + i * .008, cz + .3); b.castShadow = true; staticRoot.add(b);
+    b.rotation.set(Math.PI / 2, 0, -.8 + i * .14); b.position.set(-.02 + i * .012, .005 + i * .008, .02); b.castShadow = true; g.add(b);
   }
-  box(staticRoot, .02, .02, .04, FRUIT.stem, cx - .44, .975, cz + .23, false);
-  // and loose on the counter
-  ball(.046, FRUIT.orange, cx + .1, .985, cz + .38);
-  ball(.042, FRUIT.apple, cx + .2, .983, cz + .32); stem(cx + .2, 1.028, cz + .32);
+  box(g, .02, .02, .04, FRUIT.stem, .02, .015, -.05, false);
+}
+const drawApple = g => { ball(g, .042, FRUIT.apple, 0, .042, 0); stem(g, 0, .087, 0); };
+const drawOrange = g => { ball(g, .046, FRUIT.orange, 0, .046, 0); };
+/** The coffee machine, its drip tray and its red light. */
+function drawCoffeeMachine(g) {
+  box(g, .32, .4, .3, M.monitor, 0, .2, 0);
+  box(g, .16, .02, .12, M.steel, .18, .07, 0, false);
+  const led = new THREE.Mesh(boxGeo(.01, .03, .03), M.red); led.position.set(.17, .32, .04); g.add(led);
 }
 
 function buildKitchen() {
@@ -42,14 +52,16 @@ function buildKitchen() {
     const cx = wx(390.65), cz = wz(1014.4), w = 77.7 * S, d = 40 * S;
     box(staticRoot, w, .92, d, M.counter, cx, .46, cz);
     box(staticRoot, w + .04, .04, d + .04, M.deskTop, cx, .94, cz);
-    box(staticRoot, .32, .4, .3, M.monitor, cx + .55, 1.16, cz - .3);
-    box(staticRoot, .16, .02, .12, M.steel, cx + .73, 1.03, cz - .3, false);
-    const led = new THREE.Mesh(boxGeo(.01, .03, .03), M.red); led.position.set(cx + .72, 1.28, cz - .26); staticRoot.add(led);
-    cyl(staticRoot, .13, .13, .4, M.waterBottle, cx + .7, 1.17, cz + .35, 16);
-    box(staticRoot, .4, .3, .3, M.steel, cx - .6, 1.11, cz - .25);
-    for (let i = 0; i < 4; i++) cyl(staticRoot, .035, .03, .08, M.white, cx + .25, .99, cz - .2 + i * .1, 10, false);
-    cyl(staticRoot, .14, .1, .08, M.diningWood2, cx - .1, .99, cz + .25, 14);
-    fruit(cx, cz);
+    // what stands on it: items, put on the counter top (.96) at these places, in metres from its middle
+    const on = (type, dx, dz) => placeLater(() => placeObject(type, 390.65 + dx / S, 1014.4 + dz / S, 0, { y: .96 }));
+    on('coffee-machine', .55, -.3);
+    on('water-jug', .7, .35);
+    on('toaster', -.6, -.25);
+    for (let i = 0; i < 4; i++) on('cup-small', .25, -.2 + i * .1);
+    on('fruit-bowl', -.1, .25);
+    on('bananas', -.46, .28);
+    on('orange', .1, .38);
+    on('apple', .2, .32);
     mkSpot('counter', 442, 1004, WST, { place: 'the counter' }); mkSpot('counter', 442, 1024, WST, { place: 'the counter' });
   }
   // Sink
@@ -86,4 +98,4 @@ function updateBucket(people) {
   if (BUCKET.mesh.visible === taken) BUCKET.mesh.visible = !taken;
 }
 
-export { buildKitchen, updateBucket };
+export { buildKitchen, drawApple, drawBananas, drawCoffeeMachine, drawFruitBowl, drawOrange, updateBucket };

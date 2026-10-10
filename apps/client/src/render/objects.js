@@ -5,6 +5,8 @@ import { M } from './materials.js';
 import { scene } from './renderer.js';
 import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
 import { drawBarTable } from '../world/furniture/bar.js';
+import { drawCabinet } from '../world/furniture/cabinet.js';
+import { drawApple, drawBananas, drawCoffeeMachine, drawFruitBowl, drawOrange } from '../world/furniture/kitchen.js';
 import { drawTable } from '../world/furniture/conference.js';
 import { drawConsole } from '../world/furniture/game.js';
 import { drawSofa } from '../world/furniture/lounge.js';
@@ -36,6 +38,17 @@ const PREFABS = {
   'armchair:0': (g, [l, d]) => drawSofa(g, l * S, d * S, true),
   'plant-floor:0': (g, [big]) => drawPlant(g, big),
   'console:0': drawConsole,
+  'credenza:0': (g, [w, d]) => drawCabinet(g, w, d, .85),
+  'cabinet-tall:0': (g, [w, d]) => drawCabinet(g, w, d, 1.85),
+  'coffee-machine:0': drawCoffeeMachine,
+  'water-jug:0': g => { cyl(g, .13, .13, .4, M.waterBottle, 0, .2, 0, 16); },
+  'toaster:0': g => { box(g, .4, .3, .3, M.steel, 0, .15, 0); },
+  'cup-small:0': g => { cyl(g, .035, .03, .08, M.white, 0, .04, 0, 10, false); },
+  'fruit-bowl:0': drawFruitBowl,
+  'bananas:0': drawBananas,
+  'apple:0': drawApple,
+  'orange:0': drawOrange,
+  'puck:0': g => { cyl(g, .07, .05, .05, M.dark, 0, .025, 0, 10); },
   'mouse:0': g => { box(g, .05, .02, .08, M.keyboard, 0, .01, 0, false); },
   'plant-desk:0': g => {
     cyl(g, .06, .05, .1, M.pot, 0, .05, 0, 10);

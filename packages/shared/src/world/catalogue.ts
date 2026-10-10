@@ -3,7 +3,7 @@
 // so the team can change it without touching code. See docs/PHASE-5-BREAKDOWN.md and docs/ITEMS-PHYSICS-PLAN.md.
 
 import type { MaterialName } from './materials';
-import { barTableShape, plantShape, sofaShape, tableShape } from './shapes';
+import { barTableShape, cabinetShape, plantShape, sofaShape, tableShape } from './shapes';
 
 export type Mobility = 'fixed' | 'movable';
 /** Chairs and stools stand on the floor; small things stand on a table. */
@@ -105,6 +105,25 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
     colliders: [{ shape: 'box', size: [.26, .02, .14], at: [0, .01, -.0205] }, { shape: 'box', size: [.16, .4, .25], at: [0, .22, -.0205] }],
     foot: [4, 3.5], // (the obstacle it was: 7 by 8 plan pixels, turned with it to face east)
   },
+  credenza: { label: 'Cabinet', mobility: 'movable', mass: 60, material: 'wood', ...cabinetShape(39, 11.2, .85), sized: ([w, d]) => cabinetShape(w, d, .85), surface: true, radius: .05, rests: 'floor' },
+  'cabinet-tall': { label: 'Storage cabinet', mobility: 'movable', mass: 85, material: 'wood', ...cabinetShape(49.4, 9.5, 1.85, .09), sized: ([w, d]) => cabinetShape(w, d, 1.85, .09), surface: true, radius: .05, rests: 'floor' },
+  // the kitchen counter's things (the fruit in the bowl is part of the bowl; the loose fruit rolls)
+  'coffee-machine': {
+    label: 'Coffee machine', mobility: 'movable', mass: 12, material: 'metal', surface: false, radius: .2, rests: 'surface',
+    colliders: [{ shape: 'box', size: [.32, .4, .3], at: [0, .2, 0] }, { shape: 'box', size: [.16, .02, .12], at: [.18, .07, 0] }],
+  },
+  'water-jug': { label: 'Water jug', mobility: 'movable', mass: 20, material: 'plastic', colliders: [{ shape: 'cylinder', radius: .13, height: .4, at: [0, .2, 0] }], surface: false, radius: .14, rests: 'surface' },
+  toaster: { label: 'Toaster', mobility: 'movable', mass: 3, material: 'metal', colliders: [{ shape: 'box', size: [.4, .3, .3], at: [0, .15, 0] }], surface: false, radius: .2, rests: 'surface' },
+  'cup-small': { label: 'Cup', mobility: 'movable', mass: .2, material: 'ceramic', colliders: [{ shape: 'cylinder', radius: .033, height: .08, at: [0, .04, 0] }], surface: false, radius: .045, rests: 'surface' },
+  'fruit-bowl': {
+    label: 'Fruit bowl', mobility: 'movable', mass: 1.5, material: 'wood', surface: false, radius: .15, rests: 'surface',
+    colliders: [{ shape: 'cylinder', radius: .14, height: .08, at: [0, .04, 0] }, { shape: 'sphere', radius: .09, at: [0, .11, 0], material: 'fruit' }],
+  },
+  bananas: { label: 'Bananas', mobility: 'movable', mass: .5, material: 'fruit', colliders: [{ shape: 'box', size: [.16, .04, .14], at: [0, .02, 0] }], surface: false, radius: .1, rests: 'surface' },
+  apple: { label: 'Apple', mobility: 'movable', mass: .17, material: 'fruit', colliders: [{ shape: 'sphere', radius: .042, at: [0, .042, 0] }], surface: false, radius: .05, rests: 'surface' },
+  orange: { label: 'Orange', mobility: 'movable', mass: .2, material: 'fruit', colliders: [{ shape: 'sphere', radius: .046, at: [0, .046, 0] }], surface: false, radius: .05, rests: 'surface' },
+  // the small round speaker on each phone booth's shelf
+  puck: { label: 'Speaker', mobility: 'movable', mass: .2, material: 'plastic', colliders: [{ shape: 'cylinder', radius: .06, height: .05, at: [0, .025, 0] }], surface: false, radius: .08, rests: 'surface' },
   'plant-desk': {
     label: 'Desk plant', mobility: 'movable', mass: .8, material: 'ceramic', surface: false, radius: .1, rests: 'surface',
     colliders: [{ shape: 'cylinder', radius: .055, height: .1, at: [0, .05, 0] }, { shape: 'sphere', radius: .09, at: [0, .16, 0] }],

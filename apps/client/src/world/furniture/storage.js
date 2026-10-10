@@ -8,8 +8,8 @@ import { addObs, box, frame } from '../helpers.js';
 function buildStorage() {
   
   // Storage room
-  cabinet(276.8, 1041.6, 326.2, 1051.1, 1.85, M.cabinet);
-  cabinet(281.8, 1072.7, 338.4, 1082.7, 1.85, M.cabinet);
+  cabinet(276.8, 1041.6, 326.2, 1051.1, 1.85);
+  cabinet(281.8, 1072.7, 338.4, 1082.7, 1.85);
   mkSpot('storage', 309, 1062, SO, { place: 'the storage room' }); mkSpot('storage', 322, 1061, N, { place: 'the storage room' });
   // Lockers along the wall below the dining tables (as in Draft 06: Locker 2 left, Locker 1 right)
   [[455, 562, 'Locker 2'], [562, 669, 'Locker 1']].forEach(([x1, x2, name]) => {
