@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { people } from '@office/shared';
+import { carriedBy, people } from '@office/shared';
 import { ray } from '../camera/spots.js';
 import { camera } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
@@ -16,7 +16,7 @@ function updatePrompts() {
   const p = player.person; if (!p) return;
   let act = '';
   if (player.sitting) act = 'Stand up';
-  else { const sp = nearestSeat(p); if (sp) act = `Sit${sp.place ? ' at ' + (sp.kind === 'desk' && sp.owner === p ? 'your desk' : sp.place) : ''}`; }
+  else if (!carriedBy(p.id)) { const sp = nearestSeat(p); if (sp) act = `Sit${sp.place ? ' at ' + (sp.kind === 'desk' && sp.owner === p ? 'your desk' : sp.place) : ''}`; }
   const b = $('fpAct'); b.hidden = !act; if (act) b.textContent = ctl.coarse ? act : `${act}  (E)`;
   ray.setFromCamera(centerNdc, camera);
   const hits = ray.intersectObjects(people.filter(q => q !== player.person && q.state !== 'away').map(q => q.body.root), true);

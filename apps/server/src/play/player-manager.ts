@@ -2,6 +2,7 @@ import {
   HAZEL_NAME, handBack, sanitizeInput, sit, stand, stepAllDriven, type ActKind, type DrivenInput, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
+import { grab, place, putBack, putBackStation, type ObjectResult } from './object-actions';
 
 // Who is playing which person. The simulation knows how to take a person over and hand them back (shared/sim/takeover.ts);
 // this decides *when*: a login takes over the account's own person (or makes a guest), a disconnect starts a grace period
@@ -34,7 +35,13 @@ interface Session {
   graceTimer: unknown | null;
   /** The tick of the last sit or stand that was taken (they are limited to about one a second). */
   lastActTick: number;
+  /** How many things they may still move right now (a small bucket that refills: see OBJECT_BUCKET). */
+  objectTokens: number;
+  objectTick: number;
 }
+
+/** Moving things tells everybody, so it is limited: a burst of this many, then about three a second. */
+export const OBJECT_BUCKET = { burst: 8, perSecond: 3 };
 
 /** Sitting and standing move a person to the seat, so they are limited to one a second: no hopping between seats to get around quickly. */
 export const ACT_COOLDOWN_SECONDS = 1;
@@ -110,7 +117,7 @@ export class PlayerManager {
     }
     person ??= makeGuest(account.id, account.username, account.spec ?? undefined);
     this.inputs.delete(person.id); // a new session starts with no movement and its own message numbers
-    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity });
+    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0 });
     return person;
   }
 
@@ -166,6 +173,39 @@ export class PlayerManager {
     const done = kind === 'sit' ? sit(s.person) : stand(s.person);
     if (done) s.lastActTick = tick;
     return done;
+  }
+
+  /** Spend one move from the account's bucket; false when they are moving things too fast. */
+  private takeObjectToken(s: Session, tick: number, tickRate: number): boolean {
+    s.objectTokens = Math.min(OBJECT_BUCKET.burst, s.objectTokens + Math.max(0, tick - s.objectTick) / tickRate * OBJECT_BUCKET.perSecond);
+    s.objectTick = tick;
+    if (s.objectTokens < 1) return false;
+    s.objectTokens -= 1;
+    return true;
+  }
+
+  /** The player picks up an object (by its index in the layout). Null when they are not playing. */
+  grabObject(accountId: number, index: number, tick: number, tickRate = 20): ObjectResult | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
+    return grab(s.person, accountId, index);
+  }
+
+  /** The player puts down what they carry. */
+  placeObject(accountId: number, x: number, z: number, rot: number, tick: number, tickRate = 20): ObjectResult | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
+    return place(s.person, accountId, x, z, rot);
+  }
+
+  /** The player puts one object, or everything at their own desk, back where it started. */
+  resetObjects(accountId: number, scope: 'object' | 'station', index: number, tick: number, tickRate = 20): ObjectResult | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
+    return scope === 'station' ? putBackStation(s.person, accountId) : putBack(s.person, accountId, index);
   }
 
   /** One tick of movement for everyone a human is driving (called by the world before the simulation steps). */

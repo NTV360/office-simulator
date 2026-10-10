@@ -77,6 +77,16 @@ describe('World', () => {
     expect(run(5)).not.toBe(run(6));
   });
 
+  it('reports the median and the 99th percentile of the recent ticks, in order, and zero before any tick', () => {
+    const w = new World(base); w.init();
+    expect(w.status().tickMs).toMatchObject({ p50Ms: 0, p99Ms: 0 });
+    for (let i = 0; i < 300; i++) w.step();
+    const t = w.status().tickMs;
+    expect(t.p50Ms).toBeGreaterThan(0);
+    expect(t.p99Ms).toBeGreaterThanOrEqual(t.p50Ms);
+    expect(t.maxMs).toBeGreaterThanOrEqual(t.avgMs);
+  });
+
   it('reports tick timings', () => {
     const w = new World(base); w.init();
     for (let i = 0; i < 50; i++) w.step();

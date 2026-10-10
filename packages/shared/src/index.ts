@@ -42,6 +42,7 @@ export * from './layout/office';
 export * from './layout/desks';
 export * from './world/catalogue';
 export * from './world/objects';
+export * from './world/placement';
 export * from './protocol';
 export * from './sim/persist';
 export * from './sim/takeover';

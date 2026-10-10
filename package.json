@@ -23,13 +23,18 @@
     "dev:online": "node scripts/dev-online.mjs",
     "dev:records": "node scripts/dev-records.mjs",
     "seed": "node scripts/seed.mjs",
+    "bots": "node scripts/bots.mjs",
+    "backup": "node scripts/backup.mjs backup",
+    "backup:rehearse": "node scripts/backup.mjs rehearse",
+    "restore": "node scripts/backup.mjs restore",
     "perf": "node scripts/perf.mjs",
     "pack:dump": "node scripts/dump-pack.mjs",
     "shots": "node scripts/shots.mjs",
     "e2e": "node scripts/e2e.mjs",
     "e2e:accounts": "node scripts/e2e-accounts.mjs",
     "e2e:together": "node scripts/e2e-together.mjs",
-    "e2e:employees": "node scripts/e2e-employees.mjs"
+    "e2e:employees": "node scripts/e2e-employees.mjs",
+    "e2e:objects": "node scripts/e2e-objects.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

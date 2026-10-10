@@ -50,6 +50,9 @@ export interface TickStats {
   maxMs: number;
   /** Ticks that started more than one interval late. */
   lateTicks: number;
+  /** The median and the 99th percentile of the last 2000 ticks (a hundred seconds at 20 Hz), for the budgets in the plan (section 14). */
+  p50Ms: number;
+  p99Ms: number;
 }
 
 export interface WorldStatus {
@@ -67,12 +70,15 @@ export interface WorldStatus {
 }
 
 const WINDOW = 100;
+const SAMPLES = 2000;
 const MAX_CATCH_UP = 3;
 
 export class World {
   tick = 0;
   readonly options: WorldOptions;
   private readonly durations: number[] = [];
+  private readonly samples = new Float64Array(SAMPLES);
+  private sampleCount = 0;
   private lateTicks = 0;
   private timer: NodeJS.Timeout | null = null;
   private nextAt = 0;
@@ -130,8 +136,10 @@ export class World {
     for (const fn of this.listeners) {
       try { fn(this.tick); } catch (err) { this.report('tick listener failed', err); }
     }
-    this.durations.push(this.now() - t0); // includes building and sending the snapshot
+    const took = this.now() - t0; // includes building and sending the snapshot
+    this.durations.push(took);
     if (this.durations.length > WINDOW) this.durations.shift();
+    this.samples[this.sampleCount++ % SAMPLES] = took;
   }
 
   /** Log an error at most once a second, so a fault that repeats every tick does not flood the log. */
@@ -172,6 +180,14 @@ export class World {
 
   get running(): boolean { return this.timer !== null; }
 
+  /** The median and the 99th percentile of the recent ticks. */
+  private percentiles(): { p50Ms: number; p99Ms: number } {
+    const n = Math.min(this.sampleCount, SAMPLES);
+    if (n === 0) return { p50Ms: 0, p99Ms: 0 };
+    const s = Array.from(this.samples.subarray(0, n)).sort((a, b) => a - b);
+    return { p50Ms: s[Math.floor(n * .5)], p99Ms: s[Math.min(n - 1, Math.floor(n * .99))] };
+  }
+
   status(): WorldStatus {
     const d = this.durations;
     const staff = people.filter(hasSlot);
@@ -191,6 +207,7 @@ export class World {
         avgMs: d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0,
         maxMs: d.length ? Math.max(...d) : 0,
         lateTicks: this.lateTicks,
+        ...this.percentiles(),
       },
     };
   }

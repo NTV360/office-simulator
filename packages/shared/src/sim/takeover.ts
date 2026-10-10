@@ -6,6 +6,7 @@ import { newProps } from './props';
 import { allocatePersonId, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
 import { endTask, putBucketBack } from './tasks';
+import { releaseCarried } from '../world/objects';
 import type { Person } from './types';
 
 // A human taking over a person, handing them back, and a guest (a human with no desk). See docs/PHASE-3-BREAKDOWN.md, step 3.
@@ -44,6 +45,7 @@ export function takeControl(p: Person): void {
  */
 export function handBack(p: Person): void {
   if (p.controller === 'ai') return;
+  releaseCarried(p.id); // what they carried goes back where it started
   if (!p.slot) { removeGuest(p); return; } // a guest has no desk to go back to: they are simply gone
   endTask(p); // a seat the human was in is freed
   putBucketBack(p); p.toiletUntil = null;
@@ -79,6 +81,7 @@ export function makeGuest(accountId: number, name: string, spec?: unknown): Pers
 
 /** A guest disconnects and is gone. */
 export function removeGuest(p: Person): void {
+  releaseCarried(p.id);
   endTask(p);
   leaveMeeting(p);
   clearChatsWith(p);

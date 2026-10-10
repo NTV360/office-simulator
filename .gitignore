@@ -4,3 +4,4 @@ tests/browser/out/
 .env
 .env.*
 !.env.example
+backups/

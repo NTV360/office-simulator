@@ -747,6 +747,46 @@ try {
       for (const n of [ea, eb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
     }
 
+    // moving things: two players; one walks to a dining chair, picks it up, sets it down somewhere else; the other sees every step
+    {
+      console.log('\nmoving things');
+      const tag = String(Date.now() % 1e6);
+      const [oa, ob] = [`mov_a${tag}`, `mov_b${tag}`];
+      const [A, B] = [await openPage(browser, site.url, '?trace', { login: oa }), await openPage(browser, site.url, '?trace', { login: ob })];
+      await Promise.all([A, B].map(x => x.page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 30000 })));
+      await walkTo(A.page, "interactables.of('dining')[0].approach");
+      const idx = await A.page.evaluate(() => window.__sim.objects.all().find(o => o.spot === 'dining:0').index);
+      const prompt = await A.page.waitForFunction(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up the dining chair/.test(b.textContent) ? b.textContent : null; }, null, { timeout: 8000 }).then(h => h.jsonValue(), () => null);
+      if (prompt) pass(`standing by a chair, the page offers it: "${prompt}"`); else fail('no pick-up prompt by the chair');
+      await A.page.keyboard.press('g');
+      const heldByB = await B.page.waitForFunction(i => { const o = window.__sim.objects.at(i); return o.carriedBy !== null ? { id: o.carriedBy } : null; }, idx, { timeout: 8000 }).then(h => h.jsonValue().then(v => v.id), () => null);
+      const carrierName = await B.page.evaluate(id => window.__sim.people.find(p => p.id === id)?.name ?? null, heldByB);
+      if (carrierName === oa) pass('the other player sees who picked it up'); else fail(`the chair is held by ${heldByB} (${carrierName})`);
+      const arms = await B.page.waitForFunction(n => window.__sim.people.find(p => p.name === n)?.carrying === true, oa, { timeout: 5000 }).then(() => true, () => false);
+      if (arms) pass('and sees them carry it'); else fail('the carrier is not shown carrying');
+      // face somewhere the chair may go, and look at the ring
+      const aim = await A.page.evaluate(() => {
+        const s = window.__sim, p = s.player.person, o = s.objects.all().find(x => x.carriedBy === p.id); if (!o) return null;
+        let best = null; // the valid place that is furthest from where the chair started (so that moving it is something you can see)
+        for (let a = 0; a < Math.PI * 2; a += .2) { const x = p.pos.x + Math.sin(a), z = p.pos.z + Math.cos(a); if (!s.placementProblem(o, x, z, o.rot)) { const d = Math.hypot(x - o.home.x, z - o.home.z); if (!best || d > best.d) best = { a, x, z, d }; } }
+        if (best) p.face = p.faceGoal = best.a;
+        return best && { x: best.x, z: best.z };
+      });
+      if (aim) pass('there is somewhere to put it down'); else fail('nowhere to put the chair down near the dining chairs');
+      await sleep(500);
+      await screenshotOf(A.page, 'carrying-a-chair.png');
+      await A.page.keyboard.press('g');
+      const placed = await B.page.waitForFunction(i => { const o = window.__sim.objects.at(i); return o.carriedBy === null && Math.hypot(o.x - o.home.x, o.z - o.home.z) > .3 ? { x: o.x, z: o.z } : null; }, idx, { timeout: 8000 }).then(h => h.jsonValue(), () => null);
+      if (placed && aim && Math.hypot(placed.x - aim.x, placed.z - aim.z) < .05) pass('put down, it is where the ring showed, on the other page too'); else fail(`placed ${JSON.stringify(placed)}, wanted ${JSON.stringify(aim)}`);
+      const seatFollows = await B.page.evaluate(i => { const o = window.__sim.objects.at(i); return Math.hypot(o.link.spot.pos.x - (o.x + o.link.px * Math.cos(o.rot) + o.link.pz * Math.sin(o.rot)), o.link.spot.pos.z - (o.z - o.link.px * Math.sin(o.rot) + o.link.pz * Math.cos(o.rot))) < .01; }, idx);
+      if (seatFollows) pass('its seat moved with it'); else fail('the seat did not follow the chair');
+      const stillThere = await A.page.evaluate(i => window.__sim.objects.at(i).carriedBy === null, idx);
+      if (stillThere) pass('and nobody holds it any more'); else fail('still held');
+      [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
+      await A.page.close(); await B.page.close();
+      for (const n of [oa, ob]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
+    }
+
     // two players see the same office: the same people, doing the same things, and the one toilet bucket is on the floor or in somebody's hand
     {
       console.log('\nshared events');

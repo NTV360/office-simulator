@@ -1,7 +1,7 @@
 import {
   NONE, encode, live, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectPose, people, personInfo, personSnap, sim,
   type WorldObject,
-  type GameEvent, type Person, type PersonSnap,
+  type GameEvent, type MoveSnap, type Person, type PersonSnap,
 } from '@office/shared';
 
 // Builds the messages the server sends. It knows the simulation and the protocol, not Socket.IO, so it can be tested alone.
@@ -12,6 +12,9 @@ const same = (a: PersonSnap, b: PersonSnap): boolean => {
   if (a.partner !== b.partner || a.chatWith !== b.chatWith || a.meeting !== b.meeting || a.props !== b.props || a.arrivedAt !== b.arrivedAt || a.arriveAt !== b.arriveAt || a.leaveAt !== b.leaveAt || a.coffees !== b.coffees) return false;
   return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z && a.oneOff?.face === b.oneOff?.face;
 };
+
+/** Did nothing about this person change except where they are and which way they face (and their stride)? */
+const onlyMoved = (a: PersonSnap, b: PersonSnap): boolean => same({ ...a, x: b.x, z: b.z, face: b.face, walkPhase: b.walkPhase }, b);
 
 export interface BroadcasterOptions {
   tickRate: number;
@@ -45,7 +48,7 @@ export class Broadcaster {
   /** The snapshot for this tick: the people who changed (staff at the reduced rate), or everyone on a keyframe. */
   snapshot(tick: number): Uint8Array {
     const full = tick % this.keyframeEvery === 0;
-    const out: PersonSnap[] = [];
+    const out: PersonSnap[] = [], moves: MoveSnap[] = [];
     const seen = new Set<number>();
     for (const p of people) {
       seen.add(p.id);
@@ -53,10 +56,15 @@ export class Broadcaster {
       if (!full && !due) continue;
       const snap = personSnap(p, meetings);
       const prev = this.last.get(p.id);
-      if (full || !prev || !same(prev, snap)) { out.push(snap); this.last.set(p.id, snap); }
+      if (full || !prev) { out.push(snap); this.last.set(p.id, snap); }
+      else if (!same(prev, snap)) {
+        // most changes are somebody walking: those go as the short record (a whole person is about 46 bytes, a move 12)
+        if (!onlyMoved(prev, snap)) out.push(snap); else moves.push({ id: snap.id, x: snap.x, z: snap.z, face: snap.face, walkPhase: snap.walkPhase });
+        this.last.set(p.id, snap);
+      }
     }
     for (const id of this.last.keys()) if (!seen.has(id)) this.last.delete(id);
-    return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', full, people: out, meetings: meetings.map(meetingSnap) });
+    return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', full, people: out, ...(moves.length ? { moves } : {}), meetings: meetings.map(meetingSnap) });
   }
 
   /** New lines in the simulation's log since the last call, oldest first, as event messages. */

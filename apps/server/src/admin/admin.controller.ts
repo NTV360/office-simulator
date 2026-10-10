@@ -1,7 +1,7 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { HAZEL_NAME, deskSeat, interactables, live, people, type Person } from '@office/shared';
+import { HAZEL_NAME, deskSeat, interactables, isAtHome, live, movedObjects, objects, people, resetObject, seatInUse, seatOf, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { clientAddress, type Req as HttpReq } from '../auth/http';
@@ -102,6 +102,39 @@ export class AdminController {
     this.worlds.announce(text.trim());
     await this.note(req, 'announce', null, { length: text.trim().length });
     return { ok: true };
+  }
+
+  // ---- the things in the office that players can move
+
+  /** Every object that is not where it started (or is being carried): what, whose desk, where, and who has it. */
+  @Get('objects')
+  movedObjects(): Array<{ id: string; type: string; station: string | null; x: number; z: number; homeX: number; homeZ: number; carriedBy: string | null }> {
+    return movedObjects().map(o => ({
+      id: o.id, type: o.type, station: o.station, x: Math.round(o.x * 100) / 100, z: Math.round(o.z * 100) / 100, homeX: Math.round(o.home.x * 100) / 100, homeZ: Math.round(o.home.z * 100) / 100,
+      carriedBy: o.carriedBy === null ? null : people.find(p => p.id === o.carriedBy)?.name ?? 'somebody',
+    }));
+  }
+
+  /** Put things back where they started: one object ({ "object": "obj:12" }) or every one ({ "all": true }). Everybody sees it at once. */
+  @Post('objects/reset')
+  async resetObjects(@Body() body: unknown, @Req() req: HttpReq): Promise<{ ok: true; reset: number; skipped?: number }> {
+    const b = (body ?? {}) as { object?: unknown; all?: unknown };
+    if (b.all === true) {
+      // (a chair somebody sits in stays: the chair would jump away from under them. They are told it is skipped.)
+      const out = movedObjects(), todo = out.filter(o => { const seat = seatOf(o); return !(o.carriedBy === null && seat && seatInUse(seat)); });
+      for (const o of todo) resetObject(o);
+      await this.note(req, 'objects.reset', 'everything', { count: todo.length, skipped: out.length - todo.length });
+      return { ok: true, reset: todo.length, skipped: out.length - todo.length };
+    }
+    if (typeof b.object !== 'string' || !/^obj:[0-9]{1,5}$/.test(b.object)) throw new BadRequestException('send { "all": true } or { "object": "obj:12" }');
+    const o = objects.byId(b.object);
+    if (!o) throw new NotFoundException('there is no such object');
+    const seat = seatOf(o);
+    if (o.carriedBy === null && seat && seatInUse(seat)) throw new ConflictException('somebody is sitting in that chair; try again when they have stood up');
+    const was = !isAtHome(o);
+    resetObject(o); // (a carried one is put back too: the carrier is no longer holding it)
+    await this.note(req, 'objects.reset', o.id, { type: o.type });
+    return { ok: true, reset: was ? 1 : 0 };
   }
 
   /** Every account: who they are, whether they have a desk, whether they are playing right now. */

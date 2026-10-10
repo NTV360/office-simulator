@@ -8,11 +8,11 @@ import { initState, meetings, people, resetSim } from '../sim/state';
 import { stepSim } from '../sim/step';
 import { setSeed } from '../util';
 import { DecodeError } from './binary';
-import { WIRE_ANIMS, WIRE_CATS, WIRE_KINDS, decode, encode } from './codec';
+import { WIRE_ANIMS, WIRE_CATS, WIRE_KINDS, decode, decodeClient, encode } from './codec';
 import { layoutCheck, meetingSnap, personInfo, personSnap } from './convert';
 import {
   NONE, ONE_OFF_SPOT, WIRE_VERSION,
-  type Message, type PersonInfo, type PersonSnap, type Snapshot, type Welcome,
+  type ClientMessage, type Message, type PersonInfo, type PersonSnap, type Snapshot, type Welcome,
 } from './messages';
 
 const TAU = Math.PI * 2;
@@ -49,6 +49,32 @@ describe('round trips', () => {
     for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, carriedBy: NONE } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, carriedBy: 300 } }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);
     }
+  });
+  it('a snapshot carries the short move records next to the whole ones, and none when there are none', () => {
+    const moves = [{ id: 3, x: 1.5, z: -2.25, face: 1, walkPhase: 2 }, { id: 40, x: -30, z: 44.5, face: 6, walkPhase: 0 }];
+    const s: Snapshot = { type: 'snapshot', tick: 9, simTime: 600, day: 1, speed: 1, paused: false, full: false, people: [snap()], moves, meetings: [] };
+    const got = decode(encode(s)) as Snapshot;
+    expect(got.moves).toHaveLength(2);
+    got.moves!.forEach((m, i) => { expect([m.id, m.x, m.z]).toEqual([moves[i].id, moves[i].x, moves[i].z]); expect(Math.abs(m.face - moves[i].face)).toBeLessThan(1e-3); expect(Math.abs(m.walkPhase - moves[i].walkPhase)).toBeLessThan(1e-3); });
+    expect(encode(s).length - encode({ ...s, moves: [] }).length).toBe(2 * 14);
+    expect((decode(encode({ ...s, moves: undefined })) as Snapshot).moves).toBeUndefined();
+  });
+  it('a snapshot that claims more moves than it has bytes for is refused', () => {
+    const bytes = encode({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, full: false, people: [], moves: [{ id: 1, x: 0, z: 0, face: 0, walkPhase: 0 }], meetings: [] });
+    const at = 1 + 4 + 8 + 2 + 4 + 1 + 2; // the move count follows the header and the empty people list
+    bytes[at] = 0xff; bytes[at + 1] = 0xff;
+    expect(() => decode(bytes)).toThrow(DecodeError);
+  });
+  it('grab, place and reset (moving things about) survive the wire, and a client may send them', () => {
+    const msgs: ClientMessage[] = [{ type: 'grab', object: 0 }, { type: 'grab', object: 161 }, { type: 'place', x: -12.5, z: 33.25, rot: 3.5 }, { type: 'reset', scope: 'object', object: 7 }, { type: 'reset', scope: 'station', object: NONE }];
+    for (const m of msgs) { const got = decodeClient(encode(m)); expect(got).toMatchObject({ type: m.type }); if (m.type === 'place') { const g = got as typeof m; expect([g.x, g.z, +g.rot.toFixed(2)]).toEqual([m.x, m.z, 3.5]); } else expect(got).toEqual(m); }
+  });
+  it('a place with a number that is not a number cannot even be sent, and a reset with an unknown scope is refused', () => {
+    expect(() => encode({ type: 'place', x: NaN, z: 0, rot: 0 })).toThrow();
+    expect(() => encode({ type: 'place', x: 0, z: Infinity, rot: 0 })).toThrow();
+    const bytes = encode({ type: 'reset', scope: 'station', object: NONE }); bytes[1] = 9;
+    expect(() => decodeClient(bytes)).toThrow(DecodeError);
+    expect(() => decodeClient(encode({ type: 'grab', object: 3 }).slice(0, 2))).toThrow(DecodeError); // truncated
   });
   it('event', () => {
     const m: Message = { type: 'event', kind: 'log', simTime: 600.5, text: 'Ana arrived' };

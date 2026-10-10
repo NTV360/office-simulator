@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addLog, decode, live, resetLive, setMode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
+import { addLog, decode, encode, meetings, personSnap, live, resetLive, setMode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { Broadcaster } from './broadcaster';
 
@@ -54,7 +54,37 @@ describe('Broadcaster', () => {
     const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
     p.pos.x += 0.5;
     const s = snapshot(4);
-    expect(s.people.some(x => x.id === p.id && Math.abs(x.x - p.pos.x) < 1e-4)).toBe(true);
+    expect(s.people.some(x => x.id === p.id), 'not as a whole record: only where they are changed').toBe(false);
+    expect(s.moves!.some(m => m.id === p.id && Math.abs(m.x - p.pos.x) < 1e-4)).toBe(true);
+  });
+
+  it('somebody who only walked is sent as the short record; any other change is a whole record; a keyframe has only whole records', () => {
+    snapshot(2);
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    p.pos.x += .5; p.face += .3; p.walkPhase += 1;
+    const walked = snapshot(4);
+    expect(walked.people.some(x => x.id === p.id)).toBe(false);
+    expect(walked.moves).toEqual([expect.objectContaining({ id: p.id })]);
+    p.pos.x += .5; p.props.mug = true; // walked, and picked something up: the whole record
+    const both = snapshot(6);
+    expect(both.people.map(x => x.id)).toContain(p.id);
+    expect((both.moves ?? []).some(m => m.id === p.id)).toBe(false);
+    p.pos.x += .5;
+    const key = snapshot(20); // a keyframe
+    expect(key.full).toBe(true);
+    expect(key.people).toHaveLength(41);
+    expect(key.moves ?? []).toEqual([]);
+  });
+
+  it('the short record is much smaller: a walker costs 14 bytes a snapshot, not about 46', () => {
+    snapshot(2);
+    const walkers = people.filter(hasSlot).slice(0, 30);
+    for (const p of walkers) p.pos.x += .2;
+    const bytes = bc.snapshot(4);
+    const s = decode(bytes) as Snapshot;
+    expect(s.moves!.length).toBeGreaterThanOrEqual(30);
+    const asWhole = encode({ ...s, people: [...s.people, ...s.moves!.map(m => personSnap(people.find(p => p.id === m.id)!, meetings))], moves: undefined });
+    expect(asWhole.length - bytes.length, 'what sending them whole would have cost in addition').toBeGreaterThan(s.moves!.length * 25);
   });
 
   it('a change in only the clocked-in or the toilet flag still shows up (they are not position or task changes)', () => {
@@ -112,8 +142,9 @@ describe('Broadcaster', () => {
     driven.controller = 'account'; driven.state = 'controlled';
     driven.pos.x += 0.3;
     const odd = snapshot(3);
-    expect(odd.people.map(x => x.id)).toEqual([driven.id]);
+    expect(odd.people.map(x => x.id).concat((odd.moves ?? []).map(m => m.id))).toEqual([driven.id]);
     driven.pos.x += 0.3;
-    expect(snapshot(5).people.map(x => x.id)).toEqual([driven.id]);
+    const next = snapshot(5);
+    expect(next.people.map(x => x.id).concat((next.moves ?? []).map(m => m.id))).toEqual([driven.id]);
   });
 });

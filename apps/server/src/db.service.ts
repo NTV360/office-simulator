@@ -1,9 +1,9 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { Pool } from 'pg';
 
 /** The connection to Postgres. In phase 0 it only answers "is the database reachable?". */
 @Injectable()
-export class DbService implements OnModuleDestroy {
+export class DbService implements OnApplicationShutdown {
   readonly pool: Pool | null;
 
   constructor() {
@@ -23,7 +23,11 @@ export class DbService implements OnModuleDestroy {
     }
   }
 
-  async onModuleDestroy(): Promise<void> {
+  /** After everything that still needs the database has had its say (the world saves itself in beforeApplicationShutdown, which runs before this). */
+  private closed = false;
+  async onApplicationShutdown(): Promise<void> {
+    if (this.closed) return; // (a second stop signal must not close it twice)
+    this.closed = true;
     await this.pool?.end();
   }
 }

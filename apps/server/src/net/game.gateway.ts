@@ -1,7 +1,8 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, PROTOCOL_VERSION, addLog, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, PROTOCOL_VERSION, REFUSAL_TEXT, addLog, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import type { ObjectResult } from '../play/object-actions';
 import { addressKey } from '../auth/http';
 import { parseTrustProxy } from '../app.config';
 import { AuthProvider } from '../auth/auth.provider';
@@ -31,6 +32,8 @@ export interface GatewayOptions {
   maxJoinedMessagesPerSecond: number;
   /** How long after a connection goes away "X left" is put in the activity log (and not at all if they are back by then). */
   leaveLogMs: number;
+  /** A player is told where they are every this many ticks (1: every tick they move; 2: ten times a second at 20 Hz; a bigger number saves the server work with many players). */
+  ackEveryTicks: number;
 }
 export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
@@ -40,6 +43,7 @@ export const gatewayOptions = (env: Record<string, string | undefined>): Gateway
   maxMessagesPerSecond: Number(env.MAX_MESSAGES_PER_SECOND) || 20,
   maxJoinedMessagesPerSecond: Number(env.MAX_JOINED_MESSAGES_PER_SECOND) || 60,
   leaveLogMs: Number(env.LEAVE_LOG_MS) || 5000,
+  ackEveryTicks: Math.max(1, Math.floor(Number(env.ACK_EVERY_TICKS)) || 1),
 });
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
@@ -182,9 +186,25 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
         return;
+      case 'grab': case 'place': case 'reset': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return; // (an old connection of the same account)
+        const m = this.players.manager(), id = socket.data.accountId, tick = this.worlds.world.tick, rate = this.worlds.world.options.tickRate;
+        const r = msg.type === 'grab' ? m.grabObject(id, msg.object, tick, rate)
+          : msg.type === 'place' ? m.placeObject(id, msg.x, msg.z, msg.rot, tick, rate)
+          : m.resetObjects(id, msg.scope, msg.object, tick, rate);
+        this.objectNotice(socket, r, msg.type === 'reset' && msg.scope === 'station');
+        return;
+      }
       default:
         this.kick(socket, 'unexpected message');
     }
+  }
+
+  /** Tell one player why what they did with an object was refused (what worked tells everybody, through the object message). */
+  private objectNotice(socket: Socket, r: ObjectResult | null, station: boolean): void {
+    const text = r === null ? null : !r.ok ? REFUSAL_TEXT[r.reason] : station && r.changed === 0 ? 'Your desk is already as it started.' : null;
+    if (text && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text }));
   }
 
   /** Admit a client that has said hello: right version, a valid one-time ticket, a live session, an enabled account. */
@@ -244,6 +264,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    * changed, and once a second otherwise, so a player who stands still still hears from the server.
    */
   private sendAcks(tick: number): void {
+    if (tick % this.options.ackEveryTicks !== 0) return;
     const manager = this.players.manager();
     for (const [accountId, socket] of this.byAccount) {
       if (!socket.data.joined) continue;

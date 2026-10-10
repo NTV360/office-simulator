@@ -1,6 +1,7 @@
 import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
+import { carriedBy, seatCarried } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
 import type { Person } from './types';
@@ -76,6 +77,7 @@ export function clearBetween(from: { x: number; z: number }, to: { x: number; z:
  * its owner must be away. They must be in the building, driven by a human, and there must be a clear way to the seat.
  */
 export function seatOK(spot: Spot, p: Person): boolean {
+  if (seatCarried(spot)) return false; // the chair is in somebody's hands
   if (spot.occupant && spot.occupant !== p) return false;
   if (!spot.shared) {
     const owner = spot.owner as Person | null | undefined;
@@ -110,7 +112,7 @@ function putDownProps(p: Person): void {
 
 /** Sit in the nearest allowed seat. Returns false (and changes nothing) if there is none, the person is already sitting, or no human drives them. */
 export function sit(p: Person): boolean {
-  if (p.controller !== 'account' || isSeated(p)) return false;
+  if (p.controller !== 'account' || isSeated(p) || carriedBy(p.id)) return false; // (put down what you carry first)
   const spot = nearestSeat(p);
   if (!spot) return false;
   spot.occupant = p; // whether the seat is shared or a desk, nobody else sits in it now

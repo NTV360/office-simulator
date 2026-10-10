@@ -81,6 +81,33 @@ export function setObjectPose(o: WorldObject, x: number, z: number, rot: number)
   simEvents.emit('objectMoved', o);
 }
 
+/** The object this person carries, if any (a person carries at most one thing). */
+export const carriedBy = (personId: number): WorldObject | undefined => list.find(o => o.carriedBy === personId);
+
+/** A person picks an object up. Everybody is told (it is drawn in their hands from now on). */
+export function pickUp(o: WorldObject, personId: number): void {
+  o.carriedBy = personId;
+  simEvents.emit('objectMoved', o);
+}
+
+/** A person puts what they carry down at a place (already checked: see placement.ts). */
+export function putDown(o: WorldObject, x: number, z: number, rot: number): void {
+  o.carriedBy = null;
+  setObjectPose(o, x, z, wrapAngle(rot));
+}
+
+/** An angle in (-pi, pi]; one already in range is returned as it is. (A saved world refuses an angle far outside it.) */
+export const wrapAngle = (a: number): number => (a > Math.PI || a <= -Math.PI ? a - 2 * Math.PI * Math.ceil((a - Math.PI) / (2 * Math.PI)) : a);
+
+/** Is the chair this seat belongs to in somebody's hands? (Nobody may be sent or sit there then.) */
+export const seatCarried = (spot: object): boolean => (typeof (spot as { object?: unknown }).object === 'string') && (byId.get((spot as { object: string }).object)?.carriedBy ?? null) !== null;
+
+/** Whatever this person carries goes back where it started (they left, or lost control). */
+export function releaseCarried(personId: number): void {
+  const o = carriedBy(personId);
+  if (o) resetObject(o);
+}
+
 export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z === o.home.z && o.rot === o.home.rot && o.carriedBy === null;
 
 /** Put an object back where it started (and not carried). */

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { objects, simEvents } from '@office/shared';
+import { CATALOGUE, objects, people, simEvents } from '@office/shared';
 import { M } from './materials.js';
 import { scene } from './renderer.js';
 import { barStool, officeChair, woodChair } from '../world/furniture/basics.js';
@@ -57,6 +57,8 @@ function makeKind(k) {
 
 const kinds = new Map(); // key -> kind
 const slotOf = new Map(); // object index -> { kind, slot }
+const carried = new Map(); // object index -> the object, for those in somebody's hands (the only ones that are redrawn every frame)
+const carrierOf = new Map(); // object index -> the person id carrying it
 const scratch = new THREE.Matrix4();
 
 function allocate(kind, capacity) {
@@ -94,7 +96,29 @@ function add(o) {
 /** Draw every object the world has, and keep each where the simulation says it is. */
 export function initObjectViews() {
   for (const o of objects.all()) add(o);
-  simEvents.on('objectMoved', o => { const s = slotOf.get(o.index); if (s) write(s.kind, s.slot, o); });
+  simEvents.on('objectMoved', o => {
+    const s = slotOf.get(o.index);
+    if (!s) return;
+    const before = carrierOf.get(o.index);
+    if (before !== undefined && before !== o.carriedBy) { const q = people.find(x => x.id === before); if (q) q.carrying = false; }
+    if (o.carriedBy !== null) { carried.set(o.index, o); carrierOf.set(o.index, o.carriedBy); updateCarriedObjects(); } // (drawn in the hands from the next frame on)
+    else { carried.delete(o.index); carrierOf.delete(o.index); write(s.kind, s.slot, o); }
+  });
+}
+
+/**
+ * Objects somebody carries are drawn a step in front of them, at hand height, facing the way they face, and the carrier is told they carry
+ * something (the page lifts their arms). Only these are touched each frame: usually none, never more than the people playing.
+ */
+export function updateCarriedObjects() {
+  for (const o of carried.values()) {
+    const p = people.find(x => x.id === o.carriedBy);
+    const s = slotOf.get(o.index);
+    if (!p || !s) continue;
+    p.carrying = true;
+    const floor = CATALOGUE[o.type]?.rests !== 'surface';
+    write(s.kind, s.slot, { x: p.pos.x + Math.sin(p.face) * .55, y: floor ? .5 : .95, z: p.pos.z + Math.cos(p.face) * .55, rot: p.face });
+  }
 }
 
 /** Draw objects made after the start (the stress check adds many). */

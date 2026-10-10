@@ -1,5 +1,6 @@
 import { random, rnd, shuffle } from '../util';
 import { makeHelper, makeStaff, scheduleDay } from './factory';
+import { seatCarried } from '../world/objects';
 import { interactables } from './interactables';
 import { live, usesAttendance } from './live';
 import { isAi, isHelper } from './person';
@@ -44,7 +45,7 @@ export function arriveNow(p: Person, quiet?: boolean): void {
   if (!quiet) addLog(`${p.name} arrived`);
   if (isHelper(p)) { p.until = 0; cleanNext(p); return; }
   if (random() < .25 && lockerTrip(p)) return;
-  if (!goWork(p)) p.state = 'away';
+  if (!goWork(p)) p.state = p.slot && seatCarried(p.slot) ? 'idle' : 'away'; // (their chair is in somebody's hands: they wait, and try again, instead of going home for the day)
 }
 
 /* ---------- Initial state: a live mid-morning ---------- */
@@ -75,7 +76,7 @@ export function initDay(staff: number = roster.list ? roster.list.length : 40): 
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task!.kind === 'work'));
     const meet = (room: number, n: number, topic: string, mins: number) => {
       const m: Meeting = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic };
-      const seats = interactables.conf(room);
+      const seats = interactables.conf(room).filter(s => !seatCarried(s));
       n = Math.min(n, seats.length); if (n < 2) return;
       here().slice(0, n).forEach((p, i) => { placeNow(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: seats[i], until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } }); m.members.push(p); });
       meetings.push(m); addLog(`${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);

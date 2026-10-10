@@ -3,6 +3,8 @@ import { getAccount, logout, mintTicket, showLogin } from './login.js';
 import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
+import { initObjectControls, tickObjectControls } from './objects.js';
+import { updateCarriedObjects } from '../render/objects.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
@@ -111,6 +113,7 @@ export function startOnline() {
     if (me) reconciler.record(n, me.pos.x, me.pos.z); // where the prediction is when this input goes out
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
+  initObjectControls({ send });
   player.online = { input: sendInput, act: sendAct, predicting, lastMovedAt: -1e9, movedNow() { this.lastMovedAt = performance.now(); } };
 
   /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
@@ -354,6 +357,7 @@ export function startOnline() {
       p.faceGoal = p.face;
       trackMotion(p, px, pz, dt);
     }
+    updateCarriedObjects(); tickObjectControls(dt); // (after everybody has been placed for this frame)
     const el = document.getElementById('netStatus');
     if (net.connected && !net.fatal && el && el.className === 'ok') {
       const t = `Online · ${people.length} people${net.rttMs !== null ? ` · ${net.rttMs} ms` : ''}`;

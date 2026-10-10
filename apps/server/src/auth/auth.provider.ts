@@ -46,7 +46,9 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
         await new Promise(r => setTimeout(r, 2000));
       }
     }
-    const service = new AuthService(new PgAccountStore(pool));
+    // (logins allowed per minute from one address: 30 unless AUTH_LOGINS_PER_MINUTE says otherwise. Raise it only to load-test from one PC: npm run bots)
+    const logins = Number(process.env.AUTH_LOGINS_PER_MINUTE);
+    const service = new AuthService(new PgAccountStore(pool), logins > 0 ? { limits: { logins } } : {});
     const boot = await service.bootstrapAdmin(process.env.ADMIN_USERNAME, process.env.ADMIN_PASSWORD);
     if (boot === 'created') this.log.log(`created the first admin account "${process.env.ADMIN_USERNAME}"`);
     else if (boot === 'refused') this.log.error('ADMIN_USERNAME / ADMIN_PASSWORD were refused (the name is taken or invalid, or the password is too weak); no admin was created');

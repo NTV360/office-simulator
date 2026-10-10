@@ -31,7 +31,7 @@ import { updateLight } from './render/lighting.js';
 import { camera, renderer, scene } from './render/renderer.js';
 import { peopleGroup } from './people/group.js';
 import { addObjectView, objectDrawCalls } from './render/objects.js';
-import { addObject, setObjectPose } from '@office/shared';
+import { addObject, carriedBy, placementProblem, setObjectPose } from '@office/shared';
 import { updateScreens } from './people/screens.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
@@ -89,6 +89,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { net: live ? live.net : null, online, lab: creator, buildBody, disposeBody, presets: presetList().map(p => p.spec), renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all()), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { net: live ? live.net : null, online, placementProblem, carriedBy, lab: creator, buildBody, disposeBody, presets: presetList().map(p => p.spec), renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all()), fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

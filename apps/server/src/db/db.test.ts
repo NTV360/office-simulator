@@ -32,16 +32,16 @@ beforeEach(async () => { if (url) await reset(); });
 
 d('migrations', () => {
   it('create the tables, once, and are recorded', async () => {
-    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql']);
+    expect(await runMigrations(pool)).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql', '005_employee_photo.sql']);
     expect(await runMigrations(pool)).toEqual([]);
     const tables = (await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")).rows.map(r => r.table_name);
     expect(tables).toEqual(expect.arrayContaining(['world_state', 'world_state_rejected', 'schema_migrations', 'accounts', 'sessions', 'audit_log', 'employees']));
-    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(4);
+    expect((await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(5);
   });
 
   it('two servers starting together apply each migration once', async () => {
     const results = await Promise.all([runMigrations(pool), runMigrations(pool), runMigrations(pool)]);
-    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql']);
+    expect(results.flat()).toEqual(['001_world_state.sql', '002_accounts.sql', '003_muted.sql', '004_employees.sql', '005_employee_photo.sql']);
   });
 
   it('a failing migration rolls back completely and is not recorded', async () => {
@@ -125,11 +125,11 @@ d('the world store', () => {
     const store = new WorldStore(pool);
     const a = new World(options); a.init();
     for (let i = 0; i < 4000; i++) a.step();
-    const want = people.map(p => [p.name, p.state === 'away', p.pos.x, p.pos.z, p.slot!.id]);
+    const want = people.filter(hasSlot).map(p => [p.name, p.state === 'away', p.pos.x, p.pos.z, p.slot!.id]); // (the helper has no desk and is not saved: the server makes her again)
     const clock = { t: sim.t, day: sim.day };
     await store.save(serializeWorld());
     const b = new World(options); b.init(await store.load());
-    expect(people.map(p => [p.name, p.state === 'away', p.pos.x, p.pos.z, p.slot!.id])).toEqual(want);
+    expect(people.filter(hasSlot).map(p => [p.name, p.state === 'away', p.pos.x, p.pos.z, p.slot!.id])).toEqual(want);
     expect({ t: sim.t, day: sim.day }).toEqual(clock);
     expect(people.filter(hasSlot)).toHaveLength(40);
   });
@@ -241,6 +241,24 @@ d('accounts in PostgreSQL', () => {
     expect(dump).toContain('$argon2id$');
     expect(dump).toContain(sha(token).toString('hex'));
   });
+
+  it('a polite stop saves the world as it is at that moment (not the state of the last timed save)', async () => {
+    process.env.DATABASE_URL = url;
+    process.env.SAVE_INTERVAL_MS = '3600000'; // (no timed save happens while the test runs: only the one on the way out can)
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApp(app);
+    await app.listen(0, '127.0.0.1');
+    await new Promise(r => setTimeout(r, 500));
+    resetAllObjects();
+    const chair = objects.all().find(o => o.type === 'chair-wood')!;
+    setObjectPose(chair, chair.x + 1.25, chair.z - .5, 0.5);
+    await app.close(); // docker stop: the world must be saved before the database connection goes
+    delete process.env.SAVE_INTERVAL_MS;
+    const row = (await pool.query('SELECT data FROM world_state WHERE id = 1')).rows[0]?.data;
+    expect(row, 'something was saved on the way out').toBeDefined();
+    expect(row.objects.map((o: { id: string }) => o.id)).toEqual([chair.id]);
+    resetAllObjects();
+  }, 30000);
 
   it('the running server: the first admin is created from the environment, can log in, and the cookie works', async () => {
     process.env.DATABASE_URL = url;
@@ -390,7 +408,7 @@ d('the running server', () => {
     expect(after.day).toBe(saved.clock.day);
     expect(after.simTime).toBeGreaterThanOrEqual(saved.clock.t); // the clock continues from where it stopped, never back
     expect(after.simTime - saved.clock.t).toBeLessThan(5);
-    expect(people.map(p => p.name).sort()).toEqual(saved.people.map((p: { name: string }) => p.name).sort());
+    expect(people.filter(hasSlot).map(p => p.name).sort()).toEqual(saved.people.map((p: { name: string }) => p.name).sort());
     await two.app.close();
   }, 30000);
 

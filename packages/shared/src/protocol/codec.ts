@@ -3,7 +3,7 @@ import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
   EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, PHOTO_URL, WIRE_VERSION, type ObjectPose,
-  type ActKind, type ClientMessage, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
+  type ActKind, type ClientMessage, type MoveSnap, type ResetScope, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
 } from './messages';
 
 // Binary encoding of every message. One byte of message type, then a compact body. See messages.ts for the meaning.
@@ -13,6 +13,7 @@ const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
 const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
+const RESET_SCOPES: ResetScope[] = ['object', 'station'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
 export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit', 'bucket', 'toilet', 'bucketBack', 'snack', 'snackDesk', 'whiteboard', 'tv', 'clean'];
@@ -20,7 +21,7 @@ export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'pian
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'clean', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, grab: 0x07, place: 0x08, reset: 0x09,
   welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89, object: 0x8a,
 } as const;
 
@@ -99,6 +100,17 @@ function readSnap(r: Reader): PersonSnap {
   return snap;
 }
 
+/** Who only moved: id, where (two f32), which way and the stride (two u16): 14 bytes each. */
+function writeMoves(w: Writer, list: readonly MoveSnap[]): void {
+  w.u16(list.length);
+  for (const m of list) w.u16(m.id).f32(m.x).f32(m.z).u16(quantAngle(m.face)).u16(quantAngle(m.walkPhase));
+}
+function readMoves(r: Reader): MoveSnap[] {
+  const n = count(r, 14, 'move'), out: MoveSnap[] = [];
+  for (let i = 0; i < n; i++) out.push({ id: r.u16(), x: r.f32(), z: r.f32(), face: unquantAngle(r.u16()), walkPhase: unquantAngle(r.u16()) });
+  return out;
+}
+
 function writeInfo(w: Writer, p: PersonInfo): void {
   w.u16(p.id).str(p.name).str(p.role).str(p.title).str(p.department).str(p.photo).u8(index(CONTROLLERS, p.controller, 'controller')).str(JSON.stringify(p.spec));
   w.u16(toU16(p.slot)).u8(index(SCREEN_KINDS, p.screenKind, 'screen kind')).u8(p.screenVariant).f32(p.arriveAt);
@@ -156,6 +168,9 @@ export function encode(msg: Message): Uint8Array {
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
     case 'input': w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(msg.run ? 1 : 0); break;
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
+    case 'grab': w.u8(T.grab).u16(toU16(msg.object)); break;
+    case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
+    case 'reset': w.u8(T.reset).u8(index(RESET_SCOPES, msg.scope, 'reset scope')).u16(toU16(msg.object)); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
     case 'ack': w.u8(T.ack).u32(msg.seq).u32(msg.tick).f32(msg.x).f32(msg.z).f32(msg.face); break;
@@ -166,6 +181,7 @@ export function encode(msg: Message): Uint8Array {
       w.u8(T.snapshot).u32(msg.tick).f64(msg.simTime).u16(msg.day).f32(msg.speed).u8((msg.paused ? 1 : 0) | (msg.full ? 2 : 0) | (msg.live ? 4 : 0));
       w.u16(msg.people.length);
       for (const p of msg.people) writeSnap(w, p);
+      writeMoves(w, msg.moves ?? []);
       writeMeetings(w, msg.meetings);
       break;
     case 'welcome':
@@ -181,9 +197,9 @@ export function encode(msg: Message): Uint8Array {
   return w.bytes();
 }
 
-/** Decode a message from a client: only hello, ping, input, act, say and emote are accepted, and nothing else is parsed. */
+/** Decode a message from a client: only hello, ping, input, act, say, emote, grab, place and reset are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.grab && bytes[0] !== T.place && bytes[0] !== T.reset)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -202,6 +218,9 @@ export function decode(bytes: Uint8Array): Message {
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
     case T.input: { const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(); msg = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) }; break; }
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
+    case T.grab: msg = { type: 'grab', object: fromU16(r.u16()) }; break;
+    case T.place: { const x = r.f32(), z = r.f32(), rot = r.f32(); msg = { type: 'place', x, z, rot }; break; }
+    case T.reset: { const scope = readIndex(r, RESET_SCOPES, 'reset scope'), object = fromU16(r.u16()); msg = { type: 'reset', scope, object }; break; }
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;
     case T.ack: msg = { type: 'ack', seq: r.u32(), tick: r.u32(), x: r.f32(), z: r.f32(), face: r.f32() }; break;
@@ -212,7 +231,8 @@ export function decode(bytes: Uint8Array): Message {
       const tick = r.u32(), simTime = r.f64(), day = r.u16(), speed = r.f32(), flags = r.u8();
       const n = count(r, 36, 'person'), people: PersonSnap[] = [];
       for (let i = 0; i < n; i++) people.push(readSnap(r));
-      msg = { type: 'snapshot', tick, simTime, day, speed, paused: !!(flags & 1), full: !!(flags & 2), live: !!(flags & 4), people, meetings: readMeetings(r) };
+      const moves = readMoves(r);
+      msg = { type: 'snapshot', tick, simTime, day, speed, paused: !!(flags & 1), full: !!(flags & 2), live: !!(flags & 4), people, ...(moves.length ? { moves } : {}), meetings: readMeetings(r) };
       break;
     }
     case T.welcome: {

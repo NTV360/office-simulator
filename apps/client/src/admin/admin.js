@@ -47,7 +47,7 @@ const when = d => (d ? new Date(d).toLocaleString([], { dateStyle: 'short', time
 
 // ---------------------------------------------------------------- login
 function showLogin(note = '') {
-  employees = null; importInfo = null; settings = null; ui.linkPick.clear(); ui.staffFilter = ''; // (nothing from the last login stays)
+  employees = null; importInfo = null; movedObjects = null; settings = null; ui.linkPick.clear(); ui.staffFilter = ''; // (nothing from the last login stays)
   const pass = el('input', { type: 'password', id: 'adminPassword', autocomplete: 'current-password', required: true });
   const msg = el('p', { class: 'a-note', role: 'alert' }, note);
   const form = el('form', { class: 'a-card a-login' },
@@ -66,10 +66,10 @@ function showLogin(note = '') {
 // ---------------------------------------------------------------- state and data
 let accounts = [], slots = [], audit = [], settings = null;
 /** The staff list (null: the server has none, e.g. no database) and what the last import did. */
-let employees = null, importInfo = null;
+let employees = null, importInfo = null, movedObjects = null;
 const SEATS = deskSeats();
 const ui = { filter: '', panel: new Map(), picked: new Map(), armed: null, staffFilter: '', linkPick: new Map() };
-let tableHost, statsHost, bulkResult, auditHost, officeHost, staffHost;
+let tableHost, statsHost, bulkResult, auditHost, officeHost, staffHost, objectsHost;
 
 async function load() {
   const [u, s] = await Promise.all([api('GET', '/users'), api('GET', '/slots')]);
@@ -82,6 +82,8 @@ async function load() {
   const em = await api('GET', '/employees'), im = await api('GET', '/import');
   employees = em.status === 200 ? em.body : null;
   importInfo = im.status === 200 ? im.body : null;
+  const mo = await api('GET', '/objects');
+  movedObjects = mo.status === 200 ? mo.body : null;
   return null;
 }
 /** A desk by name: its island and its number, e.g. "Table B · seat 9" (every desk gets a different one). */
@@ -111,10 +113,12 @@ function showMain() {
   auditHost = el('div', { id: 'adminAudit' });
   officeHost = el('section', { class: 'a-card', id: 'adminOffice' });
   staffHost = el('section', { class: 'a-card', id: 'adminStaff' });
+  objectsHost = el('section', { class: 'a-card', id: 'adminObjects' });
   app.replaceChildren(
     el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
     officeHost,
     staffHost,
+    objectsHost,
     makeCard(),
     el('section', { class: 'a-card' },
       el('h2', {}, 'Accounts'),
@@ -134,11 +138,11 @@ async function reload() {
   if (failed) { remember(''); return showLogin(failed.status === 403 ? 'Wrong password.' : problem(failed)); }
   drawAll();
 }
-function drawAll() { drawStats(); drawOffice(); drawStaff(); drawTable(); drawAudit(); }
+function drawAll() { drawStats(); drawOffice(); drawStaff(); drawObjects(); drawTable(); drawAudit(); }
 
 const ACTIONS = {
   'account.create': 'Made an account', 'account.bulk-create': 'Made accounts', 'password.set': 'Set a password', 'account.disable': 'Disabled an account',
-  'account.enable': 'Enabled an account', 'account.mute': 'Muted an account', 'account.unmute': 'Unmuted an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', 'employees.import': 'Imported the employee records', 'employee.link': 'Linked an account to an employee', 'employee.unlink': 'Unlinked an account from an employee', 'employee.desk': 'Chose an employee\'s desk', announce: 'Sent an announcement',
+  'account.enable': 'Enabled an account', 'account.mute': 'Muted an account', 'account.unmute': 'Unmuted an account', 'desk.assign': 'Gave a desk', 'desk.release': 'Took a desk away', 'settings.update': 'Changed settings', 'employees.import': 'Imported the employee records', 'employee.link': 'Linked an account to an employee', 'employee.unlink': 'Unlinked an account from an employee', 'employee.desk': 'Chose an employee\'s desk', 'objects.reset': 'Put things back where they started', announce: 'Sent an announcement',
 };
 function drawAudit() {
   const rows = audit.map(l => {
@@ -208,6 +212,35 @@ function clockControls() {
       choose('Simulate from the night', 'clock-night', { clockMode: 'sim', simStart: 'night' }, false),
       choose('Live', 'clock-live', { clockMode: 'live' }, isLive),
       note));
+}
+
+// ---------------------------------------------------------------- the things players moved
+const KIND = { 'chair-office': 'Office chair', 'chair-wood': 'Dining chair', 'stool-bar': 'Bar stool', mug: 'Mug', notebook: 'Notebook', 'plant-desk': 'Desk plant' };
+
+/** Chairs and small things that players have moved: where each is, and putting them back. */
+function drawObjects() {
+  if (movedObjects === null) { objectsHost.replaceChildren(); return; }
+  const note = el('p', { class: 'a-note', role: 'alert', id: 'objectsNote' });
+  const back = async body => {
+    note.textContent = '';
+    const r = await api('POST', '/objects/reset', body);
+    if (r.status >= 300) { note.textContent = problem(r); return; }
+    await reload();
+  };
+  const rows = movedObjects.map(o => el('tr', { 'data-object': o.id },
+    el('td', {}, KIND[o.type] || o.type, o.carriedBy && el('span', { class: 'a-chip warn' }, 'carried by ' + o.carriedBy)),
+    el('td', { class: 'hide-s mono' }, o.station || 'shared area'),
+    el('td', { class: 'hide-s mono' }, `${o.x}, ${o.z}  (from ${o.homeX}, ${o.homeZ})`),
+    el('td', {}, el('button', { type: 'button', class: 'a-btn', 'data-do': 'put-back', onclick: () => back({ object: o.id }) }, 'Put back'))));
+  objectsHost.replaceChildren(
+    el('h2', {}, 'Things players moved'),
+    el('p', {}, movedObjects.length
+      ? `${movedObjects.length} ${movedObjects.length === 1 ? 'thing is' : 'things are'} not where they started. Putting one back is seen by everybody at once and is kept in the activity list.`
+      : 'Everything is where it started.'),
+    movedObjects.length > 0 && el('div', { class: 'a-row' }, sure('Put everything back', 'objects-reset-all', () => back({ all: true }))),
+    note,
+    movedObjects.length ? el('div', { class: 'a-scroll' }, el('table', { class: 'a-table' },
+      el('thead', {}, el('tr', {}, ['Thing', 'Whose', 'Now (from)', ''].map((h, i) => el('th', { class: i === 1 || i === 2 ? 'hide-s' : '' }, h)))), el('tbody', {}, rows))) : null);
 }
 
 // ---------------------------------------------------------------- the staff list

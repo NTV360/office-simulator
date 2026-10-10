@@ -46,6 +46,8 @@ services:
       ADMIN_USERNAME: "${ADMIN_USERNAME:-}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      ACK_EVERY_TICKS: "${ACK_EVERY_TICKS:-}" # empty: a player is told where they are every tick they move; 2 halves that work (see docs/LOAD-TEST.md)
+      AUTH_LOGINS_PER_MINUTE: "${AUTH_LOGINS_PER_MINUTE:-}" # empty: 30 per address a minute; raise only to load-test from one PC (npm run bots)
       ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
       # the company's employee records (read-only, imported into this database); empty: the staff list is not imported
       SUPABASE_URL: "${SUPABASE_URL:-}"

@@ -51,6 +51,23 @@ const MUTATIONS = [
   ['the import takes any profile picture address', 'apps/server/src/employees/supabase-source.ts', "(typeof v === 'string' && PHOTO_URL.test(v) ? v : null);", "(typeof v === 'string' ? v : null);"],
   ['the import asks for the whole metadata', 'apps/server/src/employees/supabase-source.ts', 'select=user_id,photo:metadata->>profileImage&', 'select=user_id,metadata&'],
   ['an import that could not read the pictures clears the stored ones', 'apps/server/src/employees/employee-store.ts', 'character = old.character ?? e.character, photo = e.photo === undefined ? old.photo : e.photo;', 'character = old.character ?? e.character, photo = e.photo ?? null;'],
+  ["a chair can be put in a wall", "packages/shared/src/world/placement.ts", "if (!walkPx(px, py)) return 'blocked';", ""],
+  ["a chair can be put on another chair", "packages/shared/src/world/placement.ts", "CATALOGUE[q.type].radius) return 'crowded';", "CATALOGUE[q.type].radius) return null;"],
+  ["a seat can be moved where nobody could walk to it", "packages/shared/src/world/placement.ts", "if (!walkPx(ax, ay) || !findPath(ENTRY, a)) return 'unreachable';", ""],
+  ["a chair somebody sits in can be picked up", "packages/shared/src/world/placement.ts", "if (seat && seatInUse(seat)) return 'in-use';", ""],
+  ["a thing in somebody's hands can be picked up again", "packages/shared/src/world/placement.ts", "if (o.carriedBy !== null) return 'carried';", ""],
+  ["a small thing can go off its desk", "packages/shared/src/world/placement.ts", "z > top[3] - me.radius) return 'off-desk';", "z > top[3] - me.radius) return null;"],
+  ["anybody can move a desk chair", "apps/server/src/play/object-actions.ts", "return owner.account !== undefined && owner.account === accountId;", "return true;"],
+  ["things can be picked up from across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, o.x, o.z)) return no('too-far');", ""],
+  ["things can be put down across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, x, z)) return no('too-far');", ""],
+  ["a person can carry two things", "apps/server/src/play/object-actions.ts", "if (isSeated(person) || carriedBy(person.id)) return no('busy');", "if (isSeated(person)) return no('busy');"],
+  ["moving things is not limited", "apps/server/src/play/player-manager.ts", "if (s.objectTokens < 1) return false;", ""],
+  ["what a person carried stays out when they are handed back", "packages/shared/src/sim/takeover.ts", "releaseCarried(p.id); // what they carried goes back where it started", ""],
+  ["the autopilot walks to a chair somebody carries", "packages/shared/src/sim/tasks.ts", "if (typeof spot.object === 'string' && objects.byId(spot.object)?.carriedBy != null) return false;", ""],
+  ["a person can sit while carrying", "packages/shared/src/sim/driven.ts", " || carriedBy(p.id)) return false; // (put down what you carry first)", ") return false;"],
+  ["a person who changed more than their place is sent as only moved", "apps/server/src/net/broadcaster.ts", "=> same({ ...a, x: b.x, z: b.z, face: b.face, walkPhase: b.walkPhase }, b);", "=> true;"],
+  ["the move records are left out of the snapshot", "packages/shared/src/protocol/codec.ts", "      writeMoves(w, msg.moves ?? []);", "      writeMoves(w, []);"],
+  ["the mirror ignores the move records", "packages/shared/src/protocol/mirror.ts", "    for (const m of s.moves ?? []) { // people who only moved", "    for (const m of []) { // people who only moved"],
   ['an empty answer from the records is taken as everyone having left', 'apps/server/src/employees/employee.service.ts', "if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');", ''],
   ['the secret key is in the message when the records refuse', 'apps/server/src/employees/supabase-source.ts', '`${table}: the employee records answered ${res.status}`', '`${table}: the employee records answered ${res.status} (${this.key})`'],
   ['a row with no valid id or name is imported', 'apps/server/src/employees/supabase-source.ts', 'if (!id || !first || seen.has(id)) { skipped++; continue; }', 'if (!id) { skipped++; continue; }'],
@@ -100,7 +117,7 @@ for (const [name, file, from, to] of MUTATIONS) {
   process.on('exit', restore);
   try {
     fs.writeFileSync(full, original.replace(from, () => to));
-    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', sim + 'helper.test.ts', 'apps/server/src/world/world.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
+    const r = spawnSync('npx', ['vitest', 'run', sim + 'scenario.test.ts', 'packages/shared/src/world/placement.test.ts', 'apps/server/src/play/object-actions.test.ts', sim + 'helper.test.ts', 'apps/server/src/world/world.test.ts', sim + 'takeover.test.ts', sim + 'driven.test.ts', sim + 'prediction.test.ts', 'packages/shared/src/layout/desks.test.ts', 'packages/shared/src/character/spec.test.ts', sim + 'schedule.test.ts', sim + 'live.test.ts', sim + 'roster.test.ts', sim + 'activities.test.ts', 'apps/server/src/net/broadcaster.test.ts', 'apps/server/src/net/mirror.test.ts', 'apps/server/src/employees/employee-store.test.ts', 'apps/server/src/employees/supabase-source.test.ts', 'apps/server/src/employees/roster-sync.test.ts', 'apps/server/src/play/employee-link.test.ts', 'apps/server/src/admin/admin.employees.test.ts', 'apps/server/src/play/chat.test.ts', 'apps/server/src/net/emote.gateway.test.ts', 'packages/shared/src/world/objects.test.ts'], { cwd: root, encoding: 'utf8', shell: true });
     const failed = r.status !== 0;
     console.log(`  ${failed ? 'caught' : 'MISSED'}  ${name}`);
     if (!failed) missed++;

@@ -104,6 +104,7 @@ Run what matches what you changed. Each one prints `all checks passed` (or a gre
 | The protocol, a message, the server, or online mode | the Docker stack up (see above), then `npm run smoke`, then `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` |
 | Something that must work **between players** | `npm run e2e:together` (three players walk, sit, talk, wave and see the same office, with a restart and a hard kill). It starts its own copy of the stack. Also `npm run e2e` and `npm run e2e:accounts` if you touched login, saving or takeover |
 | Something about **employees**, linking accounts to them or the import | `npm run e2e:employees` (its own stack and a fake records server) |
+| Something about **moving things** (chairs, desk items), who may, saving them | `npm run e2e:objects` (its own stack: three players move and tidy things, a restart, a kill, the admin puts them back) |
 | How things are **drawn** (furniture, meshes, materials) | `npm run perf` before and after (draw calls must not go up by more than a few), and `npm run shots before` / `npm run shots after` then `node scripts/compare-shots.mjs before after` to prove the office looks the same |
 
 You can point the browser checks at the dev loop instead of Docker: `VERIFY_URL=http://localhost:5173 VERIFY_ADMIN_TOKEN=dev-admin-token npm run verify:browser` while `npm run dev:online` is running. (This works: the recorded days and the online checks pass that way.)

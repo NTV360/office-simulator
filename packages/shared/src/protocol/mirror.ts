@@ -71,6 +71,12 @@ export class Mirror {
       this.update(p, snap);
       touched.push([p, snap]);
     }
+    for (const m of s.moves ?? []) { // people who only moved: where they are, nothing else about them changes
+      const p = this.people.get(m.id);
+      if (!p) { this.unknownRecords++; continue; }
+      if (this.hooks.position) this.hooks.position(p, m.x, m.z, m.face, m.walkPhase, false);
+      else { p.pos.x = m.x; p.pos.z = m.z; p.face = p.faceGoal = m.face; p.walkPhase = m.walkPhase; }
+    }
     if (s.full) for (const p of [...this.people.values()]) if (!listed.has(p.id)) this.drop(p); // a leave we missed
     this.applyMeetings(s.meetings);
     for (const [p, snap] of touched) this.link(p, snap);

@@ -152,6 +152,16 @@ describe('Mirror', () => {
     expect(mirror.people.get(p.id)!.photo).toBeNull();
   });
 
+  it('a short move record moves the person and changes nothing else about them; one for somebody unknown is counted', () => {
+    connect();
+    const p = [...mirror.people.values()].find(q => q.state === 'doing')!;
+    const before = { task: p.task, state: p.state, props: { ...p.props } };
+    mirror.applySnapshot({ type: 'snapshot', tick: 1, simTime: 1, day: 1, speed: 1, paused: false, full: false, people: [], moves: [{ id: p.id, x: 3.5, z: -4.25, face: 1.25, walkPhase: 2 }, { id: 999, x: 0, z: 0, face: 0, walkPhase: 0 }], meetings: [] });
+    expect([p.pos.x, p.pos.z, p.face, p.walkPhase]).toEqual([3.5, -4.25, 1.25, 2]);
+    expect(p.task).toBe(before.task); expect(p.state).toBe(before.state); expect(p.props).toEqual(before.props);
+    expect(mirror.unknownRecords).toBe(1);
+  });
+
   it('a record for someone it never heard of is ignored and counted', () => {
     connect();
     const fake: PersonSnap = { ...personSnap([...mirror.people.values()][0], mirror.meetings), id: 999 };

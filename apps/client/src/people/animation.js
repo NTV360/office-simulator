@@ -101,6 +101,7 @@ function targetPose(p, k, T) {
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
   }
   o.lean += breathe;
+  if (p.carrying) { o.lShX = -1.15; o.rShX = -1.15; o.lEl = -.45; o.rEl = -.45; o.lShZ = .12; o.rShZ = -.12; } // holding something out in front
   emoteOverlay(p, o);
   // look at someone
   let look = null;

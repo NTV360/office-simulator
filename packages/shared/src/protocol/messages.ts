@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 13;
+export const WIRE_VERSION = 15;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -121,6 +121,12 @@ export interface Welcome {
   objects: ObjectPose[];
 }
 
+/**
+ * A person whose record changed in nothing but where they are: that is most records, most of the time (everybody who is walking). Sent as
+ * these 14 bytes instead of the whole record (see PersonSnap); the receiver keeps everything else it already knows about them.
+ */
+export interface MoveSnap { id: number; x: number; z: number; face: number; walkPhase: number }
+
 export interface Snapshot {
   type: 'snapshot';
   tick: number;
@@ -133,6 +139,8 @@ export interface Snapshot {
   /** True when `people` lists everyone; otherwise only people whose record changed. */
   full: boolean;
   people: PersonSnap[];
+  /** People who only moved since they were last sent in full (never on a keyframe). Absent: none. */
+  moves?: MoveSnap[];
   /** Always the complete list; it is small. */
   meetings: MeetingSnap[];
 }
@@ -173,6 +181,14 @@ export interface Chat { type: 'chat'; from: number; name: string; text: string }
 export interface Emoted { type: 'emoted'; from: number; kind: EmoteKind }
 export interface Ack { type: 'ack'; seq: number; tick: number; x: number; z: number; face: number }
 
-export type ClientMessage = Hello | Ping | Input | Act | Say | Emote;
+/** Pick up the object with this index (see world/objects.ts). The server decides whether it is allowed, in reach and free. */
+export interface Grab { type: 'grab'; object: number }
+/** Put down what you carry at this place, facing this way (metres, radians). The server checks the place (world/placement.ts). */
+export interface Place { type: 'place'; x: number; z: number; rot: number }
+/** Put something back where it started: one object ('object'), or everything at your own desk ('station'; `object` is then ignored). */
+export type ResetScope = 'object' | 'station';
+export interface Reset { type: 'reset'; scope: ResetScope; object: number }
+
+export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Grab | Place | Reset;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;
 export type Message = ClientMessage | ServerMessage;
