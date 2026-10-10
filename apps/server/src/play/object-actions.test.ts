@@ -67,7 +67,7 @@ describe('picking up', () => {
     expect(isSeated(person)).toBe(false);
   });
 
-  it('is refused for a chair at somebody else\'s desk, the autopilot\'s included; the owner may', async () => {
+  it('anyone may take a chair from somebody else\'s desk, a player\'s or the autopilot\'s', async () => {
     const mine = await guest('ana');
     const desk = interactables.of('desk').find(d => d.owner && (d.owner as Person).owner === undefined)!;
     const owner = desk.owner as Person;
@@ -76,13 +76,13 @@ describe('picking up', () => {
     const chair = objects.all().find(o => o.station === desk.id && o.type === 'chair-office')!;
     const stranger = await guest('ben');
     stand(stranger.person, chair);
-    expect(manager.grabObject(stranger.id, chair.index, T())).toEqual({ ok: false, reason: 'locked' });
+    expect(manager.grabObject(stranger.id, chair.index, T())).toEqual({ ok: true, changed: 1 });
+    expect(chair.station).toBe(desk.id); // (still that desk's chair: the station only says whose it is)
     const npcDesk = interactables.of('desk').find(d => d !== desk && d.owner && (d.owner as Person).owner === undefined)!;
     const npcChair = objects.all().find(o => o.station === npcDesk.id && o.type === 'chair-office')!;
-    stand(stranger.person, npcChair);
-    expect(manager.grabObject(stranger.id, npcChair.index, T())).toEqual({ ok: false, reason: 'locked' });
-    stand(owner, chair);
-    expect(manager.grabObject(mine.id, chair.index, T())).toEqual({ ok: true, changed: 1 });
+    const other = await guest('cat');
+    stand(other.person, npcChair);
+    expect(manager.grabObject(other.id, npcChair.index, T())).toEqual({ ok: true, changed: 1 });
   });
 });
 
@@ -114,7 +114,7 @@ describe('putting down', () => {
 });
 
 describe('putting back', () => {
-  it('puts one thing back, only if it is theirs to move, and says nothing happened when it was home', async () => {
+  it('puts one thing back, anyone\'s, and says nothing happened when it was home', async () => {
     const { id, person } = await guest('ana');
     const chair = diningChair(); stand(person, chair);
     manager.grabObject(id, chair.index, T());
@@ -125,7 +125,7 @@ describe('putting back', () => {
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 0 });
     const npcChair = objects.all().find(o => o.station && o.type === 'chair-office')!;
     stand(person, npcChair);
-    expect(manager.resetObjects(id, 'object', npcChair.index, T())).toEqual({ ok: false, reason: 'locked' });
+    expect(manager.resetObjects(id, 'object', npcChair.index, T())).toEqual({ ok: true, changed: 0 }); // (somebody else's desk: allowed, and it was home)
   });
 
   it('a guest has no desk, so no station to put back', async () => {
@@ -159,7 +159,7 @@ describe('what a review found', () => {
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 1 });
   });
 
-  it('a carrier who has lost the desk (its owner changed) may not put its chair down', async () => {
+  it('a carrier whose desk changed owner meanwhile still puts its chair down', async () => {
     const mine = await guest('ana');
     const desk = interactables.of('desk').find(d => d.owner && (d.owner as Person).owner === undefined)!;
     const owner = desk.owner as Person;
@@ -170,7 +170,7 @@ describe('what a review found', () => {
     expect(manager.grabObject(mine.id, chair.index, T())?.ok).toBe(true);
     owner.owner = 987654; // an admin gave the desk to somebody else
     const at = free(chair); stand(owner, at, -.4);
-    expect(manager.placeObject(mine.id, at.x, at.z, 0, T())).toEqual({ ok: false, reason: 'locked' });
+    expect(manager.placeObject(mine.id, at.x, at.z, 0, T())).toEqual({ ok: true, changed: 1 });
   });
 
   it('a huge angle is put down as one in range', async () => {

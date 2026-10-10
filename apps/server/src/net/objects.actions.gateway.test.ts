@@ -153,19 +153,17 @@ describe('picking up and putting down', () => {
 });
 
 describe('whose things they are', () => {
-  it('the chair at a desk is the desk owner\'s to move: nobody else may, and not while it belongs to the autopilot either', async () => {
+  it('anyone may move the things at anyone\'s desk, and the owner their own', async () => {
     resetAllObjects();
     const { c: owner, desk } = await deskPlayer('obj_owner');
     const other = await join('obj_guest');
-    const chair = objects.all().find(o => o.station === desk && o.type === 'chair-office')!;
-    stand('obj_guest', chair); send(other, { type: 'grab', object: chair.index }); await sleep(200);
-    expect(notices(other).at(-1)).toBe(REFUSAL_TEXT.locked);
-    expect(chair.carriedBy).toBeNull();
-    // a desk nobody plays: the autopilot's, locked too
+    // a desk nobody plays: the autopilot's
     const npcChair = objects.all().find(o => o.station && o.station !== desk && (people.find(p => p.slot?.id === o.station)?.owner === undefined) && o.type === 'chair-office')!;
     stand('obj_guest', npcChair); send(other, { type: 'grab', object: npcChair.index }); await sleep(200);
-    expect(notices(other).at(-1)).toBe(REFUSAL_TEXT.locked);
-    // the owner may
+    expect(npcChair.carriedBy).toBe(personOf('obj_guest').id);
+    expect(npcChair.station).not.toBeNull(); // (still that desk's chair: the station only says whose it is)
+    // the owner, their own
+    const chair = objects.all().find(o => o.station === desk && o.type === 'chair-office')!;
     stand('obj_owner', chair); send(owner, { type: 'grab', object: chair.index }); await sleep(250);
     expect(chair.carriedBy).toBe(personOf('obj_owner').id);
     const spot = freePlaceNear(chair, .5);
@@ -182,7 +180,7 @@ describe('whose things they are', () => {
     resetAllObjects();
   });
 
-  it('"reset my station" puts everything at the desk back, and "reset" of one thing only for who may move it', async () => {
+  it('"reset my station" puts everything at the desk back, and anyone may "reset" one thing', async () => {
     resetAllObjects();
     const { c: owner, desk } = await deskPlayer('obj_tidy');
     const chair = objects.all().find(o => o.station === desk && o.type === 'chair-office')!;
@@ -194,10 +192,14 @@ describe('whose things they are', () => {
     expect(movedObjects()).toEqual([]);
     send(owner, { type: 'reset', scope: 'station', object: NONE }); await sleep(200);
     expect(notices(owner).at(-1)).toBe('Your desk is already as it started.');
-    // not somebody else's thing
+    // somebody else's thing too
     const theirs = objects.all().find(o => o.station && o.station !== desk && o.type === 'chair-office')!;
-    stand('obj_tidy', theirs); send(owner, { type: 'reset', scope: 'object', object: theirs.index }); await sleep(200);
-    expect(notices(owner).at(-1)).toBe(REFUSAL_TEXT.locked);
+    stand('obj_tidy', theirs); send(owner, { type: 'grab', object: theirs.index }); await sleep(250);
+    const there = freePlaceNear(theirs, .5); stand('obj_tidy', there, .4);
+    send(owner, { type: 'place', x: there.x, z: there.z, rot: 0 }); await sleep(250);
+    expect(movedObjects().some(o => o === theirs)).toBe(true);
+    send(owner, { type: 'reset', scope: 'object', object: theirs.index }); await sleep(250);
+    expect(movedObjects()).toEqual([]);
     owner.socket.close(); await sleep(900);
     resetAllObjects();
   });

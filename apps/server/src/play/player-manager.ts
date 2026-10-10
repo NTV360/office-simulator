@@ -189,7 +189,7 @@ export class PlayerManager {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
-    return grab(s.person, accountId, index);
+    return grab(s.person, index);
   }
 
   /** The player puts down what they carry. */
@@ -197,7 +197,7 @@ export class PlayerManager {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
-    return place(s.person, accountId, x, z, rot);
+    return place(s.person, x, z, rot);
   }
 
   /** The player puts one object, or everything at their own desk, back where it started. */
@@ -205,7 +205,7 @@ export class PlayerManager {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
-    return scope === 'station' ? putBackStation(s.person, accountId) : putBack(s.person, accountId, index);
+    return scope === 'station' ? putBackStation(s.person) : putBack(s.person, index);
   }
 
   /** One tick of movement for everyone a human is driving (called by the world before the simulation steps). */

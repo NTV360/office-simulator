@@ -71,16 +71,16 @@ describe('where things may be put', () => {
     expect(refused).toBeGreaterThan(0);
   });
 
-  it('a small thing stays on its own desk, and not on another small thing', () => {
+  it('a small thing goes on a desk, anyone\'s, and not on another small thing', () => {
     const mug = ofType('mug')[0];
     const notebook = addObject({ type: 'notebook', x: mug.x + .3, z: mug.z, rot: 0, y: mug.y, variant: 0, station: mug.station, spot: null }); // (one more thing on the same desk)
     expect(placementProblem(mug, mug.x + .05, mug.z, mug.rot)).toBeNull(); // a shuffle along the same desk
     expect(placementProblem(mug, mug.x, mug.z + 6, mug.rot)).toBe('off-desk'); // across the room
     expect(placementProblem(mug, notebook.x, notebook.z, 0)).toBe('crowded');
     const otherDesk = ofType('mug').find(m => Math.hypot(m.x - mug.x, m.z - mug.z) > 8)!;
-    expect(placementProblem(mug, otherDesk.x, otherDesk.z, 0), 'not on somebody else\'s desk').toBe('off-desk');
-    const next = ofType('mug').find(m => m.station !== mug.station && Math.hypot(m.x - mug.x, m.z - mug.z) < 3);
-    if (next) expect(placementProblem(mug, next.x, next.z, 0), 'nor on the next desk along').toBe('off-desk');
+    expect(placementProblem(mug, otherDesk.x, otherDesk.z, 0), 'not on top of the mug there').toBe('crowded');
+    expect(placementProblem(mug, otherDesk.x + .15, otherDesk.z, 0), 'beside it, on somebody else\'s desk, is fine').toBeNull();
+    expect(placementProblem(mug, mug.x, mug.z - 6, mug.rot), 'nor on the floor between desks').toBe('off-desk');
   });
 
   it('nothing can be put on a fixed or unknown thing: only what the catalogue lets move is movable at all', () => {

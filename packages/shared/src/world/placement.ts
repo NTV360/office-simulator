@@ -1,7 +1,7 @@
 import { findPath } from '../nav/astar';
 import { walkPx } from '../nav/grid';
 import { toPx, wx, wz } from '../plan';
-import { deskSeat } from '../layout/desks';
+import { DESK_ISLANDS } from '../layout/desks';
 import { interactables, type Spot } from '../sim/interactables';
 import { ENTRY } from '../sim/spots';
 import { people } from '../sim/state';
@@ -24,8 +24,8 @@ export type Refusal =
   | 'blocked' // not floor people can walk on
   | 'crowded' // too close to another thing
   | 'unreachable' // the seat could not be walked to from the door
-  | 'off-desk' // a small thing must stay on its own desk
-  | 'locked' // it belongs to somebody else's station
+  | 'off-desk' // a small thing must go on a desk
+  | 'locked' // not this person's desk (putting a whole desk back)
   | 'busy' // the person is sitting, or already carrying something
   | 'nothing-carried'
   | 'too-fast';
@@ -38,8 +38,8 @@ export const REFUSAL_TEXT: Readonly<Record<Refusal, string>> = {
   blocked: 'You cannot put it there.',
   crowded: 'There is something in the way there.',
   unreachable: 'Nobody could walk to the seat there.',
-  'off-desk': 'That has to stay on its desk.',
-  locked: 'That belongs to somebody else\'s desk.',
+  'off-desk': 'That has to go on a desk.',
+  locked: 'You do not have a desk of your own.',
   busy: 'Stand up and put down what you are carrying first.',
   'nothing-carried': 'You are not carrying anything.',
   'too-fast': 'Slow down a little.',
@@ -85,20 +85,22 @@ function approachAt(o: WorldObject, x: number, z: number, rot: number): Vec3 | n
   return new Vec3(x + ax * Math.cos(rot) + az * Math.sin(rot), 0, z - ax * Math.sin(rot) + az * Math.cos(rot));
 }
 
-/** The part of the desk top that is this station's: its column of the island (the width of one seat) and the island's depth, in metres: x from, x to, z from, z to; or null. */
-function deskTop(o: WorldObject): [number, number, number, number] | null {
-  const desk = interactables.all().find(s => s.id === o.station);
-  const seat = desk?.deskId ? deskSeat(desk.deskId) : null;
-  if (!seat) return null;
-  const [x1, y1, x2, y2] = seat.island.rect, cw = (x2 - x1) / seat.island.cols, c = (seat.number - 1) % seat.island.cols;
-  return [wx(x1 + c * cw), wx(x1 + (c + 1) * cw), wz(y1), wz(y2)];
+/** The desk top under a point: one column of an island (the width of one seat, between the screens) and the island's depth, in metres: x from, x to, z from, z to; or null. Any desk will do: anyone may put things on anyone's desk. */
+function deskTopAt(x: number, z: number): [number, number, number, number] | null {
+  for (const isl of DESK_ISLANDS) {
+    const [x1, y1, x2, y2] = isl.rect, cw = (x2 - x1) / isl.cols;
+    if (x < wx(x1) || x > wx(x2) || z < wz(y1) || z > wz(y2)) continue;
+    const c = Math.min(isl.cols - 1, Math.floor((x - wx(x1)) / (wx(x1 + cw) - wx(x1))));
+    return [wx(x1 + c * cw), wx(x1 + (c + 1) * cw), wz(y1), wz(y2)];
+  }
+  return null;
 }
 
 const atHome = (o: WorldObject, x: number, z: number, rot: number): boolean => Math.hypot(x - o.home.x, z - o.home.z) < .01 && Math.abs(rot - o.home.rot) < .01;
 
 /**
  * Whether `o` may be put at (x, z) facing `rot`: on floor people can walk on and not too close to another chair, with the seat still
- * walkable from the door; or, for a small thing, on its own desk and not on another small thing. Back where it started is always allowed.
+ * walkable from the door; or, for a small thing, on a desk (anyone's) and not on another small thing. Back where it started is always allowed.
  */
 export function placementProblem(o: WorldObject, x: number, z: number, rot: number): Refusal | null {
   if (!isMovableType(o.type)) return 'not-movable';
@@ -109,7 +111,7 @@ export function placementProblem(o: WorldObject, x: number, z: number, rot: numb
   const me = CATALOGUE[o.type];
   const others = objects.all().filter(q => q !== o && q.carriedBy === null && CATALOGUE[q.type].rests === me.rests);
   if (me.rests === 'surface') {
-    const top = deskTop(o);
+    const top = deskTopAt(x, z);
     if (!home && !top) return 'off-desk';
     if (!home && top && (x < top[0] + me.radius || x > top[1] - me.radius || z < top[2] + me.radius || z > top[3] - me.radius)) return 'off-desk';
     for (const q of others) if (Math.hypot(q.x - x, q.z - z) < me.radius + CATALOGUE[q.type].radius && Math.abs(q.y - o.y) < .01) return 'crowded';
@@ -132,7 +134,7 @@ export function placementProblem(o: WorldObject, x: number, z: number, rot: numb
 /** Is the point within a person's reach? */
 export const inReach = (person: { pos: { x: number; z: number } }, x: number, z: number): boolean => Math.hypot(person.pos.x - x, person.pos.z - z) <= REACH;
 
-/** The movable object nearest to a point within `reach` that may be picked up now (ignoring who owns it), or null. */
+/** The movable object nearest to a point within `reach` that may be picked up now, or null. */
 export function nearestMovable(x: number, z: number, reach = REACH): WorldObject | null {
   let best: WorldObject | null = null, bd = reach;
   for (const o of objects.all()) {
