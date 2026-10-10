@@ -17,13 +17,13 @@ docker compose down                # stop and remove the containers; the databas
 docker compose down -v             # stop AND DELETE the database volume (a full reset)
 ```
 
-Open **http://localhost:8080**. Change the port by putting `WEB_PORT=9000` in a `.env` file (copy `.env.example` to `.env`; `.env` is never committed).
+Open **http://localhost:16769**. Change the port by putting `WEB_PORT=9000` in a `.env` file (copy `.env.example` to `.env`; `.env` is never committed).
 
 ## What is in the stack
 
 | Service | Image | Notes |
 |---|---|---|
-| `web` | built from `docker/web.Dockerfile` (Caddy) | Serves the built client. Forwards `/api` and `/socket.io` to `server`. The only port published to your PC (8080) |
+| `web` | built from `docker/web.Dockerfile` (Caddy) | Serves the built client. Forwards `/api` and `/socket.io` to `server`. The only port published to your PC (16769) |
 | `server` | built from `docker/server.Dockerfile` (Node 22) | Runs as a non-root user. `GET /api/health` reports the server and the database |
 | `db` | `postgres:16-alpine` | Data in the named volume `office-sim_pgdata`. Not published to your PC |
 
@@ -36,8 +36,8 @@ Start order is enforced by health checks: the database must be healthy before th
 - Staff count, clock speed and pause belong to the server. An admin changes them through `/api/admin/*` with the `ADMIN_TOKEN` from `.env` (leave it empty and the admin API does not exist):
 
 ```
-curl -X PUT http://localhost:8080/api/admin/settings -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"slots": 30, "speed": 3}'
-curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
+curl -X PUT http://localhost:16769/api/admin/settings -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"slots": 30, "speed": 3}'
+curl -X POST http://localhost:16769/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
 ```
 
 - The staff list: put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` and the server imports the company's employee records into its own database (read-only, at start-up and every `EMPLOYEE_IMPORT_MS`; who is clocked in every `ATTENDANCE_MS` while the clock is Live). Leave them empty and the office has made-up staff. `GET /api/admin/employees` lists them; `POST /api/admin/users/<id>/employee` links an account to an employee; `POST /api/admin/import` imports now. See docs/PHASE-6-BREAKDOWN.md, step 4.
@@ -45,12 +45,12 @@ curl -X POST http://localhost:8080/api/admin/announce -H "Authorization: Bearer 
 - Desks: a new account is a guest until an admin gives it a desk. With `ADMIN_TOKEN` set, list desks and accounts and give one out like this (a proper admin page comes in a later step):
 
 ```
-curl -H "Authorization: Bearer <token>" http://localhost:8080/api/admin/slots
-curl -H "Authorization: Bearer <token>" http://localhost:8080/api/admin/users
-curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"spot":"desk:12"}' http://localhost:8080/api/admin/users/3/assign-slot
+curl -H "Authorization: Bearer <token>" http://localhost:16769/api/admin/slots
+curl -H "Authorization: Bearer <token>" http://localhost:16769/api/admin/users
+curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"spot":"desk:12"}' http://localhost:16769/api/admin/users/3/assign-slot
 ```
 
-- **The admin page** is at `/admin` (for example http://localhost:8080/admin). It asks for the admin password, which is the `ADMIN_TOKEN` in `.env`, and then lists every account: make accounts (one username per line, each gets a generated first password shown once, optionally a free desk too), set or reset a password (typed, or generated and shown once), disable or enable, and give or take desks. A "The office" box sets how many people the simulation has (up to 70, one per desk), the clock speed and pause. The same box has the clock: Simulate (from the morning or the night) or Live (the real time and who is clocked in), one for the whole office. A "Staff" box lists the employees (from the imported records) with their desk and the account that plays them: link or unlink an account, choose a desk, see how the last import went and import now. A "Recent activity" list at the bottom shows what admins did (kept in the database: who, from which address, never a password). An existing password can never be shown (only one-way hashes are stored); a reset shows the new one once, and the person must choose their own at their next login.
+- **The admin page** is at `/admin` (for example http://localhost:16769/admin). It asks for the admin password, which is the `ADMIN_TOKEN` in `.env`, and then lists every account: make accounts (one username per line, each gets a generated first password shown once, optionally a free desk too), set or reset a password (typed, or generated and shown once), disable or enable, and give or take desks. A "The office" box sets how many people the simulation has (up to 70, one per desk), the clock speed and pause. The same box has the clock: Simulate (from the morning or the night) or Live (the real time and who is clocked in), one for the whole office. A "Staff" box lists the employees (from the imported records) with their desk and the account that plays them: link or unlink an account, choose a desk, see how the last import went and import now. A "Recent activity" list at the bottom shows what admins did (kept in the database: who, from which address, never a password). An existing password can never be shown (only one-way hashes are stored); a reset shows the new one once, and the person must choose their own at their next login.
 - Accounts: put `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` and the first start creates that admin (change the password after the first login). There is no sign-up: admins make the accounts (`POST /api/admin/users` with the `ADMIN_TOKEN`), and each person chooses their own password at first login. Accounts, sessions and the audit log are in the same database. Passwords are stored only as argon2id hashes.
 - The saved world lives in the database (`world_state`). `docker compose restart server` brings the same office back. To start over with a fresh office, set `RESET_WORLD=true` for one start (or `docker compose down -v` to wipe the database).
 
@@ -64,14 +64,14 @@ The compose file has development defaults (database user `office`, password `off
 docker compose ps                                        # state and health of each service
 docker compose exec db psql -U office -d office          # a SQL prompt (the db port is not exposed)
 docker compose exec server sh                            # a shell in the server container
-curl http://localhost:8080/api/health                    # {"status":"ok","db":"ok",...}
+curl http://localhost:16769/api/health                    # {"status":"ok","db":"ok",...}
 ```
 
 ## What the smoke test checks
 
 `npm run smoke` (`scripts/smoke.mjs`) asks the running stack for the page, each of its script and style files, and `/api/health`, and fails (exit code 1) if the page is missing, a file 404s, or the server reports that the database is down. Point it somewhere else with `SMOKE_URL=http://host:port npm run smoke`. It logs in as a smoke account; the first time, give it `SMOKE_ADMIN_TOKEN` (the server's `ADMIN_TOKEN`) so it can make that account.
 
-For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=<the stack's ADMIN_TOKEN> npm run verify:browser` (the token is how it makes its test accounts; start the stack with `GRACE_MS=4000` so its log-out check does not wait 30 seconds). It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
+For a deeper check of the containerised site, run the simulation recordings against it: `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=<the stack's ADMIN_TOKEN> npm run verify:browser` (the token is how it makes its test accounts; start the stack with `GRACE_MS=4000` so its log-out check does not wait 30 seconds). It must pass exactly as it does against the local build (see [PHASE-1-BREAKDOWN.md](PHASE-1-BREAKDOWN.md#3-step-0-the-safety-net-before-any-refactor)).
 
 ## Checking the whole thing
 
@@ -90,7 +90,7 @@ npm run e2e:employees # its OWN copy again, with a fake employee-records server:
 | Symptom | Cause and fix |
 |---|---|
 | `error during connect` or "the docker daemon is not running" | Start Docker Desktop and wait until it says it is running |
-| `port is already allocated` on 8080 | Something else uses 8080. Set `WEB_PORT=8081` in `.env` and start again |
+| `port is already allocated` on 16769 | Something else uses 16769. Set `WEB_PORT=16770` in `.env` and start again |
 | The page loads but the smoke test says the database is unreachable | The database is still starting, or its password changed after the volume was created. Postgres only reads `POSTGRES_PASSWORD` the first time the volume is created. Either put the old password back, or reset with `docker compose down -v` (this deletes the data) |
 | A change to client code does not show up | The web container serves a **built** copy. Rebuild with `docker compose up --build`. For fast edits use `npm run dev` (http://localhost:5173) instead |
 | Build fails on `npm ci` with a lockfile error | The lockfile and `package.json` disagree. Run `npm install` at the repository root and commit `package-lock.json` |

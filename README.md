@@ -25,7 +25,7 @@ npm run typecheck
 Web (the built client), server and database, as one command. Needs Docker Desktop running.
 
 ```
-docker compose up --build    # then open http://localhost:8080
+docker compose up --build    # then open http://localhost:16769
 npm run smoke                # checks the page, its files, the server, the database and a realtime connection
 docker compose down          # stop (the database is kept)
 ```

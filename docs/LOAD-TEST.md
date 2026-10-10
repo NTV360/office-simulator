@@ -5,7 +5,7 @@
 ```
 # the stack must be up, and started with a higher login limit (the bots log in many times from one address):
 AUTH_LOGINS_PER_MINUTE=1000 ADMIN_TOKEN=local-admin-token ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass docker compose up --build -d
-npm run bots -- --bots=100 --seconds=60              # one run against http://localhost:8080
+npm run bots -- --bots=100 --seconds=60              # one run against http://localhost:16769
 npm run bots -- --bots=60 --seconds=3600 --soak      # a soak: memory and tick time every minute
 npm run bots -- --url=http://localhost:3000 ...      # a server run outside Docker (apps/server, with the dev database)
 ```
@@ -27,7 +27,7 @@ It is a client at the protocol level, sending what the page sends: it logs in (a
 | Memory | no growth over a long run | `process.rssMb`, `process.heapMb`; `--soak` prints it every minute |
 | Nobody kicked, nothing undecodable | zero | the bots |
 
-You can watch the same numbers on a live server: `curl http://localhost:8080/api/world`.
+You can watch the same numbers on a live server: `curl http://localhost:16769/api/world`.
 
 ## What was measured (2026-10-10, this development PC: 16 logical processors, Windows 11, Docker Desktop with WSL2; the bots ran on the same PC)
 

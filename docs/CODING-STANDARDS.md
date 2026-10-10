@@ -105,7 +105,7 @@ Which checks to run for which kind of change is in [GETTING-STARTED.md](GETTING-
 
 Automated tests cover only the shared and server code so far (`npm test`). The browser app has none yet, so changes to it are checked by hand in a real browser. Do all of these:
 
-1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (`npm run check:mutations` after changing the simulation, `npm run test:db` after changing anything that touches the database, and `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` against the Docker stack after changing the protocol, the server or online mode).
+1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (`npm run check:mutations` after changing the simulation, `npm run test:db` after changing anything that touches the database, and `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` against the Docker stack after changing the protocol, the server or online mode).
 2. `npm run dev`, open the page, **hard-reload**, and confirm the browser console has no errors. If you added or removed files, **restart the dev server** first; a stale server serves old modules and gives confusing failures.
 3. The floor renders and people move. Press **Pause/Play**, change the speed, and move the **People** slider.
 4. Try every view: Angle, Plan, Follow, First person, Third person (and `V` between the two). Drag, wheel and a jump-to button should drop you into free camera. `Esc` exits first/third person.
@@ -114,7 +114,7 @@ Automated tests cover only the shared and server code so far (`npm test`). The b
 7. If you touched build order, nav, or furniture: compare `__sim.GC`, `__sim.GR` and the count of `__sim.NAV` walkable cells before and after. They should only change when you meant them to.
 8. `npm run build && npm start` and repeat steps 2 to 4 on the production build. The dev server can hide bundling problems.
 
-If you changed the server, `docker/`, `docker-compose.yml` or anything the containers build: run `docker compose up --build -d` and then `npm run smoke`. It must print "all checks passed". Then also run `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser`, which replays the simulation recordings against the containerised site. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md).
+If you changed the server, `docker/`, `docker-compose.yml` or anything the containers build: run `docker compose up --build -d` and then `npm run smoke`. It must print "all checks passed". Then also run `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser`, which replays the simulation recordings against the containerised site. See [LOCAL-DOCKER.md](LOCAL-DOCKER.md).
 
 Tips for the browser checks:
 

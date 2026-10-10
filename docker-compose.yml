@@ -1,5 +1,5 @@
 # The whole stack on one machine:   docker compose up --build
-# Then open http://localhost:8080    (change the port with WEB_PORT in .env)
+# Then open http://localhost:16769    (change the port with WEB_PORT in .env)
 #
 # web     the built frontend, served by Caddy, which also forwards /api and /socket.io to the server
 # server  the NestJS server: runs the office simulation at TICK_RATE and reports it at /api/world
@@ -15,7 +15,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-16769}:80"
     depends_on:
       server:
         condition: service_healthy

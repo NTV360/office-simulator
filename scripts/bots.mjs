@@ -1,5 +1,5 @@
 // A load test: many bots play at once, so you can see what the server can carry.   npm run bots -- --bots=50 --seconds=60
-//   --url        the server (default http://localhost:8080, the Docker stack)
+//   --url        the server (default http://localhost:16769, the Docker stack)
 //   --token      the admin password of that stack (default local-admin-token)
 //   --bots       how many players (default 50)   --seconds   how long they play (default 60)   --soak   also report memory growth every minute
 // Each bot is a real client at the protocol level (the same messages as the page): it logs in, joins, walks about, sits and stands, talks, waves,
@@ -11,7 +11,7 @@ import { decode, decodeClient, encode, NONE, objects as _objects } from '../pack
 
 void decodeClient; void _objects;
 const arg = (name, dflt) => { const a = process.argv.find(x => x.startsWith(`--${name}=`)); return a ? a.slice(name.length + 3) : dflt; };
-const URL_ = arg('url', 'http://localhost:8080').replace(/\/+$/, '');
+const URL_ = arg('url', 'http://localhost:16769').replace(/\/+$/, '');
 const TOKEN = arg('token', process.env.BOTS_ADMIN_TOKEN || 'local-admin-token');
 const N = Number(arg('bots', 50)), SECONDS = Number(arg('seconds', 60));
 if (!Number.isInteger(N) || N < 1 || !(SECONDS > 0)) { console.error('--bots must be a whole number of at least 1 and --seconds more than 0'); process.exit(2); }

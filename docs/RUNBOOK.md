@@ -19,17 +19,17 @@ docker compose logs -f server         # the server's log (Ctrl+C leaves it runni
 docker compose stop                   # stop; the database is kept
 docker compose down                   # remove the containers (the data volume "pgdata" is kept)
 docker compose down -v                # remove the containers AND the data: a clean slate. Back up first.
-curl.exe http://localhost:8080/api/health # {"status":"ok","db":"ok",...}
-curl.exe http://localhost:8080/api/world  # the clock, the number of people, the tick timings, the process memory
+curl.exe http://localhost:16769/api/health # {"status":"ok","db":"ok",...}
+curl.exe http://localhost:16769/api/world  # the clock, the number of people, the tick timings, the process memory
 ```
 
-(In PowerShell `curl` alone is another command: use `curl.exe` or `Invoke-RestMethod http://localhost:8080/api/health`. On Linux and macOS `curl` is fine.)
+(In PowerShell `curl` alone is another command: use `curl.exe` or `Invoke-RestMethod http://localhost:16769/api/health`. On Linux and macOS `curl` is fine.)
 
 The server restarts by itself (`restart: unless-stopped`) and saves the world every 10 seconds and when it is stopped politely (`docker compose stop`/`restart`). A crash or a power cut loses at most the last few seconds.
 
 ## Settings (the `.env` file next to `docker-compose.yml`; never commit it)
 
-See `.env.example` for every setting. The ones you will use: `ADMIN_USERNAME` / `ADMIN_PASSWORD` (the first admin account, made once), `ADMIN_TOKEN` (the admin page and API password), `WEB_PORT` (default 8080), `GRACE_MS` (how long a dropped connection keeps its person), `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (the employee records, [SUPABASE.md](SUPABASE.md)), `POSTGRES_PASSWORD` (change it from the default on anything shared). After changing it: `docker compose up -d` (it recreates what changed).
+See `.env.example` for every setting. The ones you will use: `ADMIN_USERNAME` / `ADMIN_PASSWORD` (the first admin account, made once), `ADMIN_TOKEN` (the admin page and API password), `WEB_PORT` (default 16769), `GRACE_MS` (how long a dropped connection keeps its person), `SUPABASE_URL` / `SUPABASE_SECRET_KEY` (the employee records, [SUPABASE.md](SUPABASE.md)), `POSTGRES_PASSWORD` (change it from the default on anything shared). After changing it: `docker compose up -d` (it recreates what changed).
 
 ## Backups
 
@@ -52,7 +52,7 @@ What is in a backup: accounts (names, password hashes, desks, links to employees
 npm run backup                        # first
 git pull                              # (or switch to the branch you were told to)
 docker compose up --build -d          # rebuilds the images, runs the new database migrations by itself, restarts
-curl http://localhost:8080/api/health # check it
+curl http://localhost:16769/api/health # check it
 npm run smoke                         # the page, its files, the server, the database, a realtime connection
 ```
 
@@ -60,7 +60,7 @@ If a change says it changes the protocol (`WIRE_VERSION`), every open browser mu
 
 ## Admin tasks
 
-The admin page is `http://<the PC's address>:8080/admin` (password: `ADMIN_TOKEN`). **Accounts:** make them (one name per line), set or reset a password (shown once), disable, mute, give or take a desk. **Staff:** link an account to an employee, choose an employee's desk, import the records now, see how the last import went. **The office:** how many people, the clock mode and speed. **Things players moved:** put one thing or everything back. **Recent activity:** what admins did. Everything an admin does is in the audit log.
+The admin page is `http://<the PC's address>:16769/admin` (password: `ADMIN_TOKEN`). **Accounts:** make them (one name per line), set or reset a password (shown once), disable, mute, give or take a desk. **Staff:** link an account to an employee, choose an employee's desk, import the records now, see how the last import went. **The office:** how many people, the clock mode and speed. **Things players moved:** put one thing or everything back. **Recent activity:** what admins did. Everything an admin does is in the audit log.
 
 If an admin password is lost: change `ADMIN_TOKEN` in `.env` and `docker compose up -d`; a lost `ADMIN_PASSWORD` account can be reset from the admin page with the token.
 
@@ -72,11 +72,11 @@ If an admin password is lost: change `ADMIN_TOKEN` in `.env` and `docker compose
 | The page opens but says it cannot reach the server | `docker compose logs --tail=50 server`. A start-up error (database, migration) is at the top. `docker compose restart server` |
 | Everyone is logged out and the log says the database is unreachable | `docker compose ps db`; `docker compose logs db`. Starting it again keeps the data. If the volume is damaged: restore the latest backup |
 | The office looks wrong after a restart (everyone in odd places) | The saved world could not be restored: the log says why ("the saved world cannot be restored: ..."). The server then starts a fresh office and **stops saving** so the damaged save is not overwritten. Look at it, then `RESET_WORLD=true docker compose up -d server` once to replace it (PowerShell: `$env:RESET_WORLD='true'; docker compose up -d server; Remove-Item Env:RESET_WORLD`) |
-| Laggy for everyone | `curl.exe http://localhost:8080/api/world`: `tickMs.p99Ms` above 10 or `process.eventLoopP99Ms` above 20 means the server is struggling (the event-loop figures cover the time since the last `?fresh=1` look, or since the start; `curl.exe "http://localhost:8080/api/world?fresh=1"` empties that window) (see [LOAD-TEST.md](LOAD-TEST.md)). Close other heavy programs on the PC; fewer than about 100 players is comfortable on Docker Desktop |
+| Laggy for everyone | `curl.exe http://localhost:16769/api/world`: `tickMs.p99Ms` above 10 or `process.eventLoopP99Ms` above 20 means the server is struggling (the event-loop figures cover the time since the last `?fresh=1` look, or since the start; `curl.exe "http://localhost:16769/api/world?fresh=1"` empties that window) (see [LOAD-TEST.md](LOAD-TEST.md)). Close other heavy programs on the PC; fewer than about 100 players is comfortable on Docker Desktop |
 | Memory keeps growing | `process.rssMb` over a day. It should settle (a 25-minute soak with 60 bots was run and memory stayed flat; an hour-long soak is a command in [LOAD-TEST.md](LOAD-TEST.md) still to be run). Restart the server to clear it, and tell the developers with the log |
 | One person cannot log in | Admin page: is the account disabled, or must it choose a new password? Reset it. Too many wrong tries wait 15 minutes by themselves |
 | Too many logins from one address (many people behind one office router) | A limit of 30 logins a minute per address protects the accounts. Raise it only if it really bites: `AUTH_LOGINS_PER_MINUTE=100` in `.env` (a whole number; the server logs a warning at start while it is raised) |
 
 ## Ports and the firewall
 
-Only the `web` container's port (8080 by default) needs to be reachable by players. The database and the server are not published to the network (the compose file keeps them inside). On Windows, allow Docker Desktop through the firewall for the private network if other PCs cannot connect. Voice (not built) and HTTPS (needed for the microphone, and only when the page is not on `localhost`) are planned in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) sections 12 and 13.
+Only the `web` container's port (16769 by default) needs to be reachable by players. The database and the server are not published to the network (the compose file keeps them inside). On Windows, allow Docker Desktop through the firewall for the private network if other PCs cannot connect. Voice (not built) and HTTPS (needed for the microphone, and only when the page is not on `localhost`) are planned in [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) sections 12 and 13.

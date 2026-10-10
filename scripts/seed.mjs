@@ -1,12 +1,12 @@
 // Test data for your own copy of the game:   npm run seed
-// Against a RUNNING server (npm run dev:online does this for you the first time; the Docker stack on 8080 needs SEED_URL, see below). It is safe
+// Against a RUNNING server (npm run dev:online does this for you the first time; the Docker stack on 16769 needs SEED_URL, see below). It is safe
 // to run again: whatever is already there is left alone.
 //   1. imports the employee records (the made-up company from `npm run dev:records`, or the real Supabase if the server is set up with it),
 //   2. makes the accounts below, with a password you can type straight away (no "choose a new password" step),
 //   3. links each account to an employee, so logging in plays that person (their name, desk and shift) and a look is saved for them,
 //   4. makes one account with no employee ("guest1"), to try the guest flow.
 // Only for your own PC: the passwords are public.
-//   SEED_URL (default http://localhost:3000, the dev server; for the Docker stack: http://localhost:8080)
+//   SEED_URL (default http://localhost:3000, the dev server; for the Docker stack: http://localhost:16769)
 //   SEED_ADMIN_TOKEN (default dev-admin-token; the Docker stack in the docs uses local-admin-token)
 const base = (process.env.SEED_URL || 'http://localhost:3000').replace(/\/+$/, '');
 const TOKEN = process.env.SEED_ADMIN_TOKEN || 'dev-admin-token';

@@ -30,7 +30,7 @@ Pick by what you are changing.
 |---|---|---|
 | How something **looks** (furniture, a hairstyle, a HUD button) and it needs no server | `npm run dev` | http://localhost:5173 (a private office on your PC; the page says nothing about a server) |
 | Anything **players share** (movement, seats, chat, objects, a new message, the server) | **`npm run dev:online`** | http://localhost:5173/?online |
-| You want to see the real thing, the way it runs on the office server | `docker compose up --build` | http://localhost:8080 |
+| You want to see the real thing, the way it runs on the office server | `docker compose up --build` | http://localhost:16769 |
 
 ### `npm run dev:online` (this is the one you will use most)
 
@@ -66,14 +66,14 @@ For the **Docker stack**: run `npm run dev:records` in one terminal; in another 
 
 ```
 SUPABASE_URL=http://host.docker.internal:18090 SUPABASE_SECRET_KEY=dev-records-key ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass ADMIN_TOKEN=local-admin-token docker compose up --build -d
-SEED_URL=http://localhost:8080 SEED_ADMIN_TOKEN=local-admin-token npm run seed
+SEED_URL=http://localhost:16769 SEED_ADMIN_TOKEN=local-admin-token npm run seed
 ```
 
 **Starting again from nothing:** `docker rm -f office-dev-db && docker volume rm office-dev-pgdata` (dev loop) or `docker compose down -v` (stack), then run it again.
 
 ### The Docker stack
 
-`docker compose up --build` builds the same images the office server runs and serves the finished site on http://localhost:8080. It is slower to change (rebuild after each edit) but it is the closest to real, and some checks below need it. Details and troubleshooting: [LOCAL-DOCKER.md](LOCAL-DOCKER.md). To log in you need an admin: start it with
+`docker compose up --build` builds the same images the office server runs and serves the finished site on http://localhost:16769. It is slower to change (rebuild after each edit) but it is the closest to real, and some checks below need it. Details and troubleshooting: [LOCAL-DOCKER.md](LOCAL-DOCKER.md). To log in you need an admin: start it with
 
 ```
 ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass ADMIN_TOKEN=local-admin-token docker compose up --build -d
@@ -101,7 +101,7 @@ Run what matches what you changed. Each one prints `all checks passed` (or a gre
 | **Anything** | `npm run typecheck`, `npm test` (about 30 seconds) and `npm run check:docs` |
 | The server, the database, or what is saved | `npm run test:db` (about 10 seconds; it starts a throwaway PostgreSQL in Docker) |
 | The simulation or anything it uses (`packages/shared`) | `npm run check:mutations` (it breaks the code on purpose to prove the tests notice) and `npm run verify:browser` (the recorded days must come out the same, unless you meant to change them) |
-| The protocol, a message, the server, or online mode | the Docker stack up (see above), then `npm run smoke`, then `VERIFY_URL=http://localhost:8080 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` |
+| The protocol, a message, the server, or online mode | the Docker stack up (see above), then `npm run smoke`, then `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` |
 | Something that must work **between players** | `npm run e2e:together` (three players walk, sit, talk, wave and see the same office, with a restart and a hard kill). It starts its own copy of the stack. Also `npm run e2e` and `npm run e2e:accounts` if you touched login, saving or takeover |
 | Something about **employees**, linking accounts to them or the import | `npm run e2e:employees` (its own stack and a fake records server) |
 | The **tick, the protocol, or what is sent** (how much the server can carry) | `npm run bots -- --bots=100 --seconds=60` against the Docker stack started with a higher login limit (see [LOAD-TEST.md](LOAD-TEST.md)); it reports against the budgets |

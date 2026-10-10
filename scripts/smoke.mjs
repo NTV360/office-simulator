@@ -1,9 +1,9 @@
 // Smoke test for a running stack: node scripts/smoke.mjs   (or: npm run smoke)
 // Checks that the page and its files are served and that the server reports a healthy database.
 // SMOKE_ADMIN_TOKEN: the ADMIN_TOKEN of the server, needed to make the smoke account the first time (there is no sign-up).
-// Target: SMOKE_URL, else http://localhost:$WEB_PORT (default 8080).
+// Target: SMOKE_URL, else http://localhost:$WEB_PORT (default 16769).
 
-const base = (process.env.SMOKE_URL || `http://localhost:${process.env.WEB_PORT || 8080}`).replace(/\/$/, '');
+const base = (process.env.SMOKE_URL || `http://localhost:${process.env.WEB_PORT || 16769}`).replace(/\/$/, '');
 let failed = 0;
 
 function check(name, ok, detail = '') {
