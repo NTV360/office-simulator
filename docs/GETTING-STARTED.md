@@ -133,6 +133,6 @@ Things that look like failures but are not:
 | No employees, only made-up names ("Ana B.") | The server has no employee records: `npm run dev:online` makes them (not with `DEV_RECORDS=0`), or run `npm run dev:records` and start the server with `SUPABASE_URL=http://localhost:18090 SUPABASE_SECRET_KEY=dev-records-key`. Then `npm run seed` |
 | `npm run seed` says the admin API said no | Wrong admin password: `SEED_ADMIN_TOKEN` (dev loop `dev-admin-token`, the Docker stack above `local-admin-token`) |
 | A change to `packages/shared` does not show on the server | Wait a few seconds for the rebuild (a short burst of type errors while it rebuilds is normal and clears itself). If it does not clear, stop and start `npm run dev:online` |
-| `port is already allocated` | Something else uses the port. For the database `DEV_DB_PORT=5434`; for the Docker site `WEB_PORT=8081` in `.env` |
+| `port is already allocated` | Something else uses the port. For the database `DEV_DB_PORT=5434`; for the Docker site `WEB_PORT=16770` in `.env` |
 | A browser check says it cannot find Chromium | `npx playwright install chromium` |
 | Anything about the Docker stack | [LOCAL-DOCKER.md](LOCAL-DOCKER.md#troubleshooting) |
