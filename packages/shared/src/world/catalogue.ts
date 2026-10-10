@@ -31,8 +31,8 @@ export interface Shape {
   colliders: readonly Collider[];
   /** It blocks walking: half its width and half its depth in plan pixels, in its own frame (facing rotation 0). */
   foot?: readonly [number, number];
-  /** Height of its top surface in metres above its origin, when other things may be put on it (a table top). */
-  top?: number;
+  /** Its top, when small things may be put on it (a table): height above its origin, and half its width and depth, in metres, in its own frame. */
+  top?: { y: number; hw: number; hd: number };
 }
 
 export interface ObjectType extends Shape {
@@ -76,10 +76,11 @@ const BAR_STOOL: readonly Collider[] = [
   { shape: 'cylinder', radius: .18, height: .06, at: [0, .72, 0], material: 'fabric' },
 ];
 
+// (a seat is a top too: a mug can be put on a chair, and falls when somebody picks the chair up)
 export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
-  'chair-office': { label: 'Office chair', mobility: 'movable', mass: 12, material: 'plastic', colliders: OFFICE_CHAIR, surface: true, radius: .3, rests: 'floor' },
-  'chair-wood': { label: 'Dining chair', mobility: 'movable', mass: 6, material: 'wood', colliders: WOOD_CHAIR, surface: true, radius: .26, rests: 'floor' },
-  'stool-bar': { label: 'Bar stool', mobility: 'movable', mass: 8, material: 'metal', colliders: BAR_STOOL, surface: true, radius: .22, rests: 'floor' },
+  'chair-office': { label: 'Office chair', mobility: 'movable', mass: 12, material: 'plastic', colliders: OFFICE_CHAIR, top: { y: .49, hw: .22, hd: .2 }, surface: true, radius: .3, rests: 'floor' },
+  'chair-wood': { label: 'Dining chair', mobility: 'movable', mass: 6, material: 'wood', colliders: WOOD_CHAIR, top: { y: .475, hw: .2, hd: .2 }, surface: true, radius: .26, rests: 'floor' },
+  'stool-bar': { label: 'Bar stool', mobility: 'movable', mass: 8, material: 'metal', colliders: BAR_STOOL, top: { y: .75, hw: .12, hd: .12 }, surface: true, radius: .22, rests: 'floor' },
   mug: { label: 'Mug', mobility: 'movable', mass: .35, material: 'ceramic', colliders: [{ shape: 'cylinder', radius: .0375, height: .1, at: [0, .05, 0] }], surface: false, radius: .06, rests: 'surface' },
   notebook: { label: 'Notebook', mobility: 'movable', mass: .35, material: 'paper', colliders: [{ shape: 'box', size: [.2, .025, .27], at: [0, .0125, 0] }], surface: true, radius: .14, rests: 'surface' },
   'plant-desk': {

@@ -27,6 +27,8 @@ export interface ObjectRecord {
   station: string | null;
   /** The seat this object carries (a spot id), or null. */
   spot: string | null;
+  /** More spots that move with it (a sofa's other seats, the places people stand at a whiteboard). */
+  spots?: string[];
   /** The size of this one, for kinds that come in sizes (see `sized` in the catalogue): what the kind's shape is made from. */
   dims?: number[];
 }
@@ -40,9 +42,14 @@ export interface WorldObject extends ObjectRecord {
   carriedBy: number | null;
   /** Its whole orientation when it is not standing upright (knocked over, tilted), or null: upright, facing `rot`. `rot` stays the way it faces. */
   q: Quat | null;
-  /** Where its seat is, relative to it (in its own frame), so the seat can follow it. */
-  link: { spot: Spot; px: number; pz: number; ax: number; az: number; dface: number } | null;
+  /** Where its seat is, relative to it (in its own frame), so the seat can follow it: the first of `links`, or null. */
+  link: Link | null;
+  /** Every spot that moves with it: its seat first, then `spots`. */
+  links: Link[];
 }
+
+/** A spot tied to an object: where it is, and where people stand to use it, relative to the object (in its own frame). */
+export interface Link { spot: Spot; px: number; pz: number; ax: number; az: number; dface: number }
 
 const list: WorldObject[] = [];
 const byId = new Map<string, WorldObject>();
@@ -63,14 +70,15 @@ export const objects = {
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
   if (!CATALOGUE[rec.type]) throw new Error(`unknown object type "${rec.type}"`);
-  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null };
-  if (rec.spot) {
-    const spot = interactables.all().find(s => s.id === rec.spot);
-    if (!spot) throw new Error(`object ${o.id} carries ${rec.spot}, which does not exist`);
+  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [] };
+  for (const id of [...(rec.spot ? [rec.spot] : []), ...(rec.spots ?? [])]) {
+    const spot = interactables.all().find(s => s.id === id);
+    if (!spot) throw new Error(`object ${o.id} carries ${id}, which does not exist`);
     const p = toLocal(o.rot, spot.pos.x - o.x, spot.pos.z - o.z), a = toLocal(o.rot, spot.approach.x - o.x, spot.approach.z - o.z);
-    o.link = { spot, px: p.x, pz: p.z, ax: a.x, az: a.z, dface: spot.face - o.rot };
+    o.links.push({ spot, px: p.x, pz: p.z, ax: a.x, az: a.z, dface: spot.face - o.rot });
     spot.object = o.id;
   }
+  o.link = o.links[0] ?? null;
   list.push(o);
   byId.set(o.id, o);
   return o;
@@ -79,8 +87,7 @@ export function addObject(rec: ObjectRecord): WorldObject {
 /** Put an object at a pose (at the height it has, upright, unless told otherwise). Its seat goes with it. Announces `objectMoved` so viewers can redraw it. */
 export function setObjectPose(o: WorldObject, x: number, z: number, rot: number, y: number = o.y, q: Quat | null = null): void {
   o.x = x; o.z = z; o.rot = rot; o.y = y; o.q = q;
-  if (o.link) {
-    const { spot, px, pz, ax, az, dface } = o.link;
+  for (const { spot, px, pz, ax, az, dface } of o.links) {
     const p = toWorld(rot, px, pz), a = toWorld(rot, ax, az);
     spot.pos.x = x + p.x; spot.pos.z = z + p.z;
     spot.approach.x = x + a.x; spot.approach.z = z + a.z;
@@ -100,17 +107,24 @@ export function pickUp(o: WorldObject, personId: number): void {
   simEvents.emit('objectMoved', o);
 }
 
-/** A person puts what they carry down at a place (already checked: see placement.ts), standing upright on the kind of surface it started on. */
-export function putDown(o: WorldObject, x: number, z: number, rot: number): void {
+/** A person puts what they carry down at a place (already checked: see placement.ts), standing upright at height `y` (what is under it there). */
+export function putDown(o: WorldObject, x: number, z: number, rot: number, y: number = o.home.y): void {
   o.carriedBy = null;
-  setObjectPose(o, x, z, wrapAngle(rot), o.home.y, null);
+  setObjectPose(o, x, z, wrapAngle(rot), y, null);
 }
 
 /** An angle in (-pi, pi]; one already in range is returned as it is. (A saved world refuses an angle far outside it.) */
 export const wrapAngle = (a: number): number => (a > Math.PI || a <= -Math.PI ? a - 2 * Math.PI * Math.ceil((a - Math.PI) / (2 * Math.PI)) : a);
 
-/** Is the chair this seat belongs to in somebody's hands? (Nobody may be sent or sit there then.) */
-export const seatCarried = (spot: object): boolean => (typeof (spot as { object?: unknown }).object === 'string') && (byId.get((spot as { object: string }).object)?.carriedBy ?? null) !== null;
+/** A seat on a thing tilted further than this (knocked over) cannot be used. */
+const UNUSABLE_TILT = 15 * Math.PI / 180;
+/** Is the chair (or sofa) this spot belongs to in somebody's hands, or knocked over? (Nobody may be sent or sit there then.) */
+export function seatUnusable(spot: object): boolean {
+  const id = (spot as { object?: unknown }).object;
+  const o = typeof id === 'string' ? byId.get(id) : undefined;
+  if (!o) return false;
+  return o.carriedBy !== null || (o.q !== null && 2 * Math.asin(Math.min(1, Math.hypot(o.q[0], o.q[2]))) > UNUSABLE_TILT);
+}
 
 /** Whatever this person carries goes back where it started (they left, or lost control). */
 export function releaseCarried(personId: number): void {

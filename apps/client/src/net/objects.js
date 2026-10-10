@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REACH, REFUSAL_TEXT, carriedBy, interactables, inReach, movability, objects, people, placementProblem, wrapAngle } from '@office/shared';
+import { CATALOGUE, NONE, REACH, REFUSAL_TEXT, carriedBy, inReach, movability, objects, placementProblem, restHeightAt, wrapAngle } from '@office/shared';
 import { scene } from '../render/renderer.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
@@ -14,19 +14,13 @@ const state = { send: null, rot: null, target: null, problem: null, candidate: n
 const ring = new THREE.Mesh(new THREE.RingGeometry(.2, .3, 28), new THREE.MeshBasicMaterial({ color: 0x55a274, transparent: true, opacity: .85, depthWrite: false, side: THREE.DoubleSide }));
 ring.rotation.x = -Math.PI / 2; ring.visible = false; ring.renderOrder = 3;
 
-/** Does the desk of this object's station belong to the person this page plays? (A thing in a shared area belongs to nobody.) */
-function mine(o) {
-  if (!o.station) return true;
-  const desk = interactables.all().find(s => s.id === o.station);
-  return !!desk && desk.owner === player.person;
-}
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
 
-/** The thing G would pick up: the nearest one in reach that is free, and whose desk is yours (or nobody's). */
+/** The thing G would pick up: the nearest one in reach that is free (anyone's: anyone may move anything). */
 function nearestPickable(p) {
   let best = null, bd = REACH;
   for (const o of objects.all()) {
-    if (movability(o) !== null || !mine(o)) continue;
+    if (movability(o) !== null) continue;
     const d = Math.hypot(o.x - p.pos.x, o.z - p.pos.z);
     if (d < bd) { bd = d; best = o; }
   }
@@ -49,7 +43,7 @@ function refresh() {
     const at = aimAt(p, holding), { x, z } = at;
     state.target = at;
     state.problem = !inReach(p, x, z) ? 'too-far' : placementProblem(holding, x, z, state.rot);
-    ring.visible = true; ring.position.set(x, (holding.y || 0) + .03, z);
+    ring.visible = true; ring.position.set(x, (restHeightAt(holding, x, z) ?? holding.home.y) + .03, z);
     ring.material.color.setHex(state.problem ? 0xd66f5a : 0x55a274);
     setPrompt(state.problem ? REFUSAL_TEXT[state.problem] : `Put the ${labelOf(holding)} down here  (G)  ·  turn  (R)`, !state.problem);
     return;
@@ -90,6 +84,6 @@ export function initObjectControls({ send }) {
 /** Every frame, cheaply: the ring follows you, the prompt is refreshed a few times a second. */
 export function tickObjectControls(dt) {
   state.acc += dt;
-  if (ring.visible) { const p = player.person, holding = p && carriedBy(p.id); if (holding) { const at = aimAt(p, holding); ring.position.set(at.x, (holding.y || 0) + .03, at.z); } }
+  if (ring.visible) { const p = player.person, holding = p && carriedBy(p.id); if (holding) { const at = aimAt(p, holding); ring.position.set(at.x, (restHeightAt(holding, at.x, at.z) ?? holding.home.y) + .03, at.z); } }
   if (state.acc > .1) { state.acc = 0; refresh(); }
 }

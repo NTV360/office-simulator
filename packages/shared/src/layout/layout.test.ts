@@ -28,7 +28,7 @@ describe('the office layout data', () => {
     expect(interactables.conf(1).length + interactables.conf(2).length + interactables.conf(3).length).toBe(16);
   });
   it('saving what was loaded gives the same data (round trip)', () => {
-    const again = spotsToLayout(interactables.all(), officeLayout.obstacles, objects.all());
+    const again = spotsToLayout(interactables.all(), officeLayout.obstacles, objects.all(), officeLayout.tops);
     expect(JSON.parse(JSON.stringify(again))).toEqual(JSON.parse(JSON.stringify(officeLayout)));
   });
   it('builds the same walkable grid the browser has (12,212 cells)', () => {

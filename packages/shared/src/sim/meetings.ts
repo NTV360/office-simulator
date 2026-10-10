@@ -1,5 +1,5 @@
 import { pick, random, rnd, shuffle } from '../util';
-import { seatCarried } from '../world/objects';
+import { seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { isAi } from './person';
 import { onBreak } from './schedule';
@@ -8,7 +8,7 @@ import { goDo } from './tasks';
 import type { Meeting } from './types';
 
 /** The seats of a conference room that can be used now (not one whose chair somebody is carrying). */
-const confSeats = (room: number): Spot[] => interactables.conf(room).filter(s => !seatCarried(s));
+const confSeats = (room: number): Spot[] => interactables.conf(room).filter(s => !seatUnusable(s));
 
 /* ---------- Meetings ---------- */
 const TOPICS = ['sprint planning', 'design review', 'client sync', 'bug triage', 'release check-in', 'stand-up', 'retro', '1:1'];

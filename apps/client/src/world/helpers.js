@@ -9,6 +9,9 @@ const SOLIDS = []; // wall/block rects in plan px with their full height: [x1, y
 // Every fixed thing as simple solid shapes in metres, for the server's physics (scripts/dump-layout.mjs writes them out). Drawing never reads it.
 // Box: { s: 'b', size: [w, h, d], at: [x, y, z], q?: [x, y, z, w] }; cylinder: { s: 'c', r, h, at, q? }; sphere: { s: 's', r, at }.
 const STATIC_SHAPES = [];
+// Fixed tops small things may be put on besides the desks (a conference table, the counter): [x1, y1, x2, y2] in plan px and the height in metres.
+const TOPS = [];
+const addTop = (x1, y1, x2, y2, h) => TOPS.push([Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2), Math.round(h * 10000) / 10000]);
 const addObs = (x1, y1, x2, y2) => OBS.push([Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)]);
 const geoCache = new Map();
 function boxGeo(w, h, d) { const k = `b${w.toFixed(3)},${h.toFixed(3)},${d.toFixed(3)}`; if (!geoCache.has(k)) geoCache.set(k, new THREE.BoxGeometry(w, h, d)); return geoCache.get(k); }
@@ -33,4 +36,4 @@ const scalers = [];
 // Wall height: `goal` is where the toggle wants it, `h` eases toward it each frame.
 const wall = { h: LOW_H, goal: LOW_H };
 
-export { OBS, SOLIDS, STATIC_SHAPES, addObs, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wall };
+export { OBS, SOLIDS, STATIC_SHAPES, TOPS, addObs, addTop, box, boxGeo, cyl, dynamic, frame, rectPlane, scalers, staticRoot, wall };

@@ -3,11 +3,11 @@ import { M } from '../../render/materials.js';
 import { E, N, SO, WST, mkSpot } from './basics.js';
 import { cabinet } from './cabinet.js';
 import { tv } from './tv.js';
-import { addObs, box, frame, staticRoot } from '../helpers.js';
+import { addObs, addTop, box, frame, staticRoot } from '../helpers.js';
 import { placeObject } from '../objects.js';
 
 function table(x1, y1, x2, y2, top = M.confTable, legs = M.dark, h = .74) {
-  addObs(x1, y1, x2, y2);
+  addObs(x1, y1, x2, y2); addTop(x1, y1, x2, y2, h + .0025);
   const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
   box(staticRoot, w, .045, d, top, cx, h - .02, cz);
   [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(staticRoot, .05, h - .04, .05, legs, cx + a * (w / 2 - .07), (h - .04) / 2, cz + b * (d / 2 - .07)));

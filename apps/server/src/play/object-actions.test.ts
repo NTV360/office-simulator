@@ -86,6 +86,22 @@ describe('picking up', () => {
   });
 });
 
+describe('putting a small thing on something', () => {
+  it('a mug put on a chair stands on its seat, and one put back on a desk stands on the desk', async () => {
+    const { id, person } = await guest('ana');
+    const mug = objects.all().find(o => o.type === 'mug')!, chair = diningChair();
+    stand(person, mug, .4);
+    expect(manager.grabObject(id, mug.index, T())).toEqual({ ok: true, changed: 1 });
+    stand(person, chair, .4);
+    expect(manager.placeObject(id, chair.x, chair.z, 0, T())).toEqual({ ok: true, changed: 1 });
+    expect(mug.y).toBeCloseTo(.475, 6);
+    manager.grabObject(id, mug.index, T());
+    stand(person, mug.home, .4);
+    expect(manager.placeObject(id, mug.home.x, mug.home.z, mug.home.rot, T())).toEqual({ ok: true, changed: 1 });
+    expect(mug.y).toBe(mug.home.y);
+  });
+});
+
 describe('putting down', () => {
   it('puts the thing where it was aimed, the seat goes with it, and nobody holds it any more', async () => {
     const { id, person } = await guest('ana');

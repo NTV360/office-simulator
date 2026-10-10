@@ -1,5 +1,5 @@
 import {
-  CATALOGUE, carriedBy, inReach, isSeated, movability, objects, pickUp, placementProblem, putDown, resetObject,
+  CATALOGUE, carriedBy, inReach, isSeated, movability, objects, pickUp, placementProblem, putDown, resetObject, restHeightAt,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -31,7 +31,8 @@ export function place(person: Person, x: number, z: number, rot: number): Object
   if (!inReach(person, x, z)) return no('too-far');
   const problem = placementProblem(o, x, z, rot);
   if (problem) return no(problem);
-  putDown(o, x, z, rot);
+  const back = Math.hypot(x - o.home.x, z - o.home.z) < .01;
+  putDown(o, x, z, rot, back ? o.home.y : restHeightAt(o, x, z) ?? o.home.y);
   return yes();
 }
 

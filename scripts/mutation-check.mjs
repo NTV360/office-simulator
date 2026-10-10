@@ -56,7 +56,7 @@ const MUTATIONS = [
   ["a seat can be moved where nobody could walk to it", "packages/shared/src/world/placement.ts", "if (!walkPx(ax, ay) || !findPath(ENTRY, a)) return 'unreachable';", ""],
   ["a chair somebody sits in can be picked up", "packages/shared/src/world/placement.ts", "if (seat && seatInUse(seat)) return 'in-use';", ""],
   ["a thing in somebody's hands can be picked up again", "packages/shared/src/world/placement.ts", "if (o.carriedBy !== null) return 'carried';", ""],
-  ["a small thing can go off its desk", "packages/shared/src/world/placement.ts", "z > top[3] - me.radius)) return 'off-desk';", "z > top[3] - me.radius)) return null;"],
+  ["a small thing can go off its desk", "packages/shared/src/world/placement.ts", "if (y === null) return 'off-desk';", "if (y === null) return null;"],
   ["the things at a desk are locked to its owner again", "apps/server/src/play/object-actions.ts", "pickUp(o, person.id);", "if (o.station) return no('locked');\n  pickUp(o, person.id);"],
   ["things can be picked up from across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, o.x, o.z)) return no('too-far');\n  pickUp(o, person.id);", "pickUp(o, person.id);"],
   ["things can be put down across the room", "apps/server/src/play/object-actions.ts", "if (!inReach(person, x, z)) return no('too-far');", ""],

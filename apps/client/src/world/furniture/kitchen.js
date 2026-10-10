@@ -3,7 +3,7 @@ import { S, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { makeBucket } from '../../character/props.js';
 import { SO, WST, mkSpot } from './basics.js';
-import { addObs, box, boxGeo, cyl, dynamic, staticRoot } from '../helpers.js';
+import { addObs, addTop, box, boxGeo, cyl, dynamic, staticRoot } from '../helpers.js';
 
 // The toilet bucket by the counter. `mesh` is the one on the floor: it is hidden while somebody has it out (see updateBucket).
 const BUCKET = { mesh: null };
@@ -38,7 +38,7 @@ function buildKitchen() {
   
   // Counter top with coffee machine
   {
-    addObs(351.8, 994.4, 429.5, 1034.4);
+    addObs(351.8, 994.4, 429.5, 1034.4); addTop(351.8, 994.4, 429.5, 1034.4, .96);
     const cx = wx(390.65), cz = wz(1014.4), w = 77.7 * S, d = 40 * S;
     box(staticRoot, w, .92, d, M.counter, cx, .46, cz);
     box(staticRoot, w + .04, .04, d + .04, M.deskTop, cx, .94, cz);

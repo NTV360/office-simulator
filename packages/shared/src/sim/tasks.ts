@@ -3,7 +3,7 @@ import { W, WINDOWS, toPx } from '../plan';
 import { random, rnd, shuffle } from '../util';
 import { Vec3 } from '../vec3';
 import { walkPx } from '../nav/grid';
-import { seatCarried } from '../world/objects';
+import { seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { isHelper } from './person';
 import { onBreak } from './schedule';
@@ -21,7 +21,7 @@ export function endTask(p: Person): void {
 export function goDo(p: Person, task: Task): boolean {
   const spot = task.spot;
   if (spot.occupant && spot.occupant !== p) return false; // somebody is in it (a human at a desk counts too)
-  if (seatCarried(spot)) return false; // its chair is in somebody's hands
+  if (seatUnusable(spot)) return false; // its chair is in somebody's hands, or knocked over
   const path = findPath(p.pos, spot.approach);
   if (!path) return false;
   endTask(p);

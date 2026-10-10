@@ -3,6 +3,7 @@ import { initGrid, type ObstacleRect } from '../nav/grid';
 import { interactables, type Spot } from '../sim/interactables';
 import { Vec3 } from '../vec3';
 import { refreshFootprint } from '../world/footprint';
+import { setFixedTops, type FixedTop } from '../world/placement';
 import { addObject, objects, type ObjectRecord } from '../world/objects';
 
 // The office as data: every spot (desk, chair, counter, game...) in the order it was created, and the obstacle
@@ -31,6 +32,8 @@ export interface LayoutData {
   obstacles: ObstacleRect[];
   /** The movable objects and where they start (older data has none). */
   objects?: ObjectRecord[];
+  /** Fixed tops small things may be put on besides the desks: [x1, y1, x2, y2] in plan pixels and the height in metres (older data has none). */
+  tops?: FixedTop[];
 }
 
 const isPlain = (v: unknown): v is string | number | boolean => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
@@ -39,7 +42,7 @@ const vec = (v: Vec3) => ({ x: v.x, y: v.y, z: v.z });
 const RUNTIME = new Set(['occupant', 'owner']);
 
 /** Turn the registered spots and the obstacle list into layout data (plain JSON). */
-export function spotsToLayout(spots: readonly Spot[], obstacles: readonly ObstacleRect[], world: readonly ObjectRecord[] = []): LayoutData {
+export function spotsToLayout(spots: readonly Spot[], obstacles: readonly ObstacleRect[], world: readonly ObjectRecord[] = [], tops: readonly FixedTop[] = []): LayoutData {
   const records = spots.map(s => {
     const rec: Record<string, unknown> = {};
     for (const key of Object.keys(s).sort()) {
@@ -51,8 +54,8 @@ export function spotsToLayout(spots: readonly Spot[], obstacles: readonly Obstac
     }
     return rec as SpotRecord;
   });
-  const recs = world.map(o => ({ type: o.type, x: o.x, z: o.z, rot: o.rot, y: o.y, variant: o.variant, station: o.station, spot: o.spot, ...(o.dims ? { dims: [...o.dims] } : {}) }));
-  return { version: 1, spots: records, obstacles: obstacles.map(o => [...o] as unknown as ObstacleRect), objects: recs };
+  const recs = world.map(o => ({ type: o.type, x: o.x, z: o.z, rot: o.rot, y: o.y, variant: o.variant, station: o.station, spot: o.spot, ...(o.spots?.length ? { spots: [...o.spots] } : {}), ...(o.dims ? { dims: [...o.dims] } : {}) }));
+  return { version: 1, spots: records, obstacles: obstacles.map(o => [...o] as unknown as ObstacleRect), objects: recs, ...(tops.length ? { tops: tops.map(t => [...t] as unknown as FixedTop) } : {}) };
 }
 
 /** Rebuild the registry and the nav grid from layout data. Ids must come out exactly as saved. */
@@ -66,6 +69,7 @@ export function loadLayout(data: LayoutData): void {
   }
   objects.clear();
   for (const rec of data.objects ?? []) addObject({ ...rec });
+  setFixedTops(data.tops ?? []);
   initGrid(data.obstacles);
   for (const o of objects.all()) refreshFootprint(o); // (items that block walking: tables, sofas, cabinets)
   lockLayoutCheck(); // from now on the fingerprint is this starting layout, whatever is moved later

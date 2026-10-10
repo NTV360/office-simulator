@@ -14,9 +14,9 @@ import { walkPx } from '../nav/grid';
 import { toPx } from '../plan';
 import { parseSavedWorld, serializeWorld } from '../sim/persist';
 import { ENTRY } from '../sim/spots';
-import { CATALOGUE } from './catalogue';
-import { addObject, objects, putDown, resetAllObjects, setObjectPose, wrapAngle, type WorldObject } from './objects';
-import { REACH, inReach, movability, nearestMovable, placementProblem, seatInUse, stationOwner } from './placement';
+import { CATALOGUE, DESK_TOP } from './catalogue';
+import { addObject, objects, putDown, resetAllObjects, seatUnusable, setObjectPose, wrapAngle, type WorldObject } from './objects';
+import { REACH, inReach, movability, nearestMovable, placementProblem, restHeightAt, seatInUse, setFixedTops, stationOwner } from './placement';
 
 // The rules for moving things: where a chair or a small thing may be put, and when it may not be moved at all.
 
@@ -240,5 +240,68 @@ describe('the autopilot and the moved things', () => {
     for (let i = 0; i < 3 * 60 * 20 * 20 && sim.day === 1; i++) { stepSim(.05); started = Math.max(started, meetings.length); if (started) break; }
     expect(meetings.filter(m => m.members.some(p => p.task?.spot && conf.some(c => c.id === p.task!.spot.object)))).toEqual([]);
     expect(started).toBe(0);
+  });
+});
+
+describe('what small things stand on', () => {
+  it('a desk, anyone\'s, at desk height; nothing between the desks', () => {
+    const mug = ofType('mug')[0];
+    expect(restHeightAt(mug, mug.x, mug.z)).toBe(DESK_TOP);
+    expect(restHeightAt(mug, mug.x, mug.z - 6)).toBeNull();
+  });
+
+  it('a chair seat, at seat height: a mug can be put on a chair', () => {
+    const mug = ofType('mug')[0], chair = ofType('chair-wood')[0];
+    expect(restHeightAt(mug, chair.x, chair.z)).toBeCloseTo(.475, 6);
+    expect(placementProblem(mug, chair.x, chair.z, 0)).toBeNull();
+  });
+
+  it('not a chair somebody carries, nor one knocked over', () => {
+    const mug = ofType('mug')[0], chair = ofType('chair-wood')[0];
+    chair.carriedBy = 3;
+    expect(restHeightAt(mug, chair.x, chair.z)).toBeNull();
+    chair.carriedBy = null;
+    setObjectPose(chair, chair.x, chair.z, chair.rot, .2, [Math.SQRT1_2, 0, 0, Math.SQRT1_2]);
+    expect(restHeightAt(mug, chair.x, chair.z)).toBeNull();
+  });
+
+  it('a fixed top from the layout (a conference table, the counter), at its height; the highest top wins', () => {
+    const mug = ofType('mug')[0], [px, py] = toPx({ x: mug.x, z: mug.z - 6 });
+    setFixedTops([[px - 10, py - 10, px + 10, py + 10, .96]]);
+    expect(restHeightAt(mug, mug.x, mug.z - 6)).toBe(.96);
+    setFixedTops([]);
+  });
+
+  it('chairs stand on the floor wherever they go', () => {
+    const chair = ofType('chair-wood')[0];
+    expect(restHeightAt(chair, chair.x + 1, chair.z)).toBe(0);
+  });
+});
+
+describe('things that carry more than one spot', () => {
+  it('every spot moves with it, and it is in use while any of them is', () => {
+    const chair = ofType('chair-wood')[0], spare = interactables.all().find(s => s.kind === 'whiteboard')!;
+    const o = addObject({ type: 'chair-wood', x: chair.x + 3, z: chair.z, rot: 0, y: 0, variant: 0, station: null, spot: null, spots: [spare.id] });
+    const at = { x: spare.pos.x, z: spare.pos.z };
+    setObjectPose(o, o.x + 1, o.z, 0);
+    expect(spare.pos.x).toBeCloseTo(at.x + 1, 6);
+    expect(spare.pos.z).toBeCloseTo(at.z, 6);
+    expect(movability(o)).toBeNull();
+    spare.occupant = { id: 1 } as never;
+    expect(movability(o)).toBe('in-use');
+    spare.occupant = null;
+  });
+
+  it('a seat cannot be used while its chair is carried or lies knocked over; a slight lean is fine', () => {
+    const chair = ofType('chair-wood')[0], seat = chair.link!.spot;
+    expect(seatUnusable(seat)).toBe(false);
+    chair.carriedBy = 4;
+    expect(seatUnusable(seat)).toBe(true);
+    chair.carriedBy = null;
+    const lean = (deg: number): [number, number, number, number] => [Math.sin(deg * Math.PI / 360), 0, 0, Math.cos(deg * Math.PI / 360)];
+    setObjectPose(chair, chair.x, chair.z, chair.rot, 0, lean(5));
+    expect(seatUnusable(seat)).toBe(false);
+    setObjectPose(chair, chair.x, chair.z, chair.rot, .2, lean(80));
+    expect(seatUnusable(seat)).toBe(true);
   });
 });

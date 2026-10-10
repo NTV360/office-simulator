@@ -1,7 +1,7 @@
 import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
-import { carriedBy, seatCarried } from '../world/objects';
+import { carriedBy, seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
 import type { Person } from './types';
@@ -77,7 +77,7 @@ export function clearBetween(from: { x: number; z: number }, to: { x: number; z:
  * its owner must be away. They must be in the building, driven by a human, and there must be a clear way to the seat.
  */
 export function seatOK(spot: Spot, p: Person): boolean {
-  if (seatCarried(spot)) return false; // the chair is in somebody's hands
+  if (seatUnusable(spot)) return false; // the chair is in somebody's hands, or knocked over
   if (spot.occupant && spot.occupant !== p) return false;
   if (!spot.shared) {
     const owner = spot.owner as Person | null | undefined;
