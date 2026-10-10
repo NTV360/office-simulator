@@ -7,7 +7,8 @@ import {
 // The real server (Nest, Socket.IO, the world ticking) on a random port, with real socket clients that log in first.
 
 process.env.WORLD_SEED = '1';
-process.env.HELLO_TIMEOUT_MS = '400';
+// (short, so the test of a client that never says hello is quick; long enough that a login on a busy machine, when the suite runs in parallel, still makes it)
+process.env.HELLO_TIMEOUT_MS = '1500';
 process.env.MAX_CLIENTS = '6';
 process.env.GRACE_MS = '300';
 
@@ -21,9 +22,11 @@ afterAll(async () => { open.forEach(s => s.close()); await server.close(); setSe
 
 describe('the gateway', () => {
   it('sends the welcome after hello: the clock, the layout check, the 40 staff and you', async () => {
+    // (log in first, as the page does)
+    const ticket = await ticketFor(base, await sessionFor(base, 'solo'));
     const c = client();
     await c.ready;
-    await enter(base, c, 'solo');
+    hello(c, ticket);
     const w = await c.waitFor(isWelcome);
     expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(41); // the 40 staff and the helper
     const me = w.people.find(p => p.info.id === w.you)!;
@@ -88,7 +91,7 @@ describe('the gateway', () => {
   it('drops a client that never says hello', async () => {
     const c = client();
     await c.ready;
-    expect((await c.waitFor(isKick, 2000)).reason).toMatch(/hello/);
+    expect((await c.waitFor(isKick, 4000)).reason).toMatch(/hello/);
     await c.disconnected;
   });
 

@@ -1,5 +1,6 @@
 import { OX, OY, S } from '../plan';
-import { walkPx } from '../nav/grid';
+import { findPath } from '../nav/astar';
+import { navVersion, walkPx } from '../nav/grid';
 import { angDiff } from '../util';
 import { arriveNow, newDay } from './day';
 import type { Spot } from './interactables';
@@ -12,6 +13,22 @@ import { arrive, chooseNext, returnFromToilet } from './tasks';
 import type { Person } from './types';
 
 /* ================= Simulation step ================= */
+// The walk grid each walker's route was last checked against. When it changes (a table or a sofa was moved), a route that now crosses a
+// blocked cell is planned again to the same place; if there is no way round, the old route stands. (Not saved: a restored walker checks again.)
+const checkedAt = new WeakMap<Person, number>();
+function reroute(p: Person): void {
+  const v = navVersion();
+  if (checkedAt.get(p) === v) return;
+  checkedAt.set(p, v);
+  const path = p.path!;
+  let blocked = false;
+  // (the ends do not count: the start may be a seat being left, and the end is often a seat beside its table)
+  for (let i = Math.max(p.pi, 1); i < path.length - 1 && !blocked; i++) blocked = !walkPx(path[i].x / S + OX, path[i].z / S + OY);
+  if (!blocked) return;
+  const again = findPath(p.pos, path[path.length - 1]);
+  if (again) { p.path = again; p.pi = 0; }
+}
+
 export function stepPerson(p: Person, dt: number): void {
   if (isDriven(p)) return;
   if (p.state === 'away') {
@@ -20,6 +37,7 @@ export function stepPerson(p: Person, dt: number): void {
     return;
   }
   p.animT += dt * Math.min(sim.speed, 2.5);
+  if (p.state === 'walking' && p.path) reroute(p);
   if (p.state === 'walking' && p.path) {
     let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1), moved = 0; // running for the bucket
     while (step > 1e-6 && p.pi < p.path.length) {

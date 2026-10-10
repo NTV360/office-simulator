@@ -2,6 +2,7 @@ import { lockLayoutCheck } from '../protocol/convert';
 import { initGrid, type ObstacleRect } from '../nav/grid';
 import { interactables, type Spot } from '../sim/interactables';
 import { Vec3 } from '../vec3';
+import { refreshFootprint } from '../world/footprint';
 import { addObject, objects, type ObjectRecord } from '../world/objects';
 
 // The office as data: every spot (desk, chair, counter, game...) in the order it was created, and the obstacle
@@ -50,7 +51,7 @@ export function spotsToLayout(spots: readonly Spot[], obstacles: readonly Obstac
     }
     return rec as SpotRecord;
   });
-  const recs = world.map(o => ({ type: o.type, x: o.x, z: o.z, rot: o.rot, y: o.y, variant: o.variant, station: o.station, spot: o.spot }));
+  const recs = world.map(o => ({ type: o.type, x: o.x, z: o.z, rot: o.rot, y: o.y, variant: o.variant, station: o.station, spot: o.spot, ...(o.dims ? { dims: [...o.dims] } : {}) }));
   return { version: 1, spots: records, obstacles: obstacles.map(o => [...o] as unknown as ObstacleRect), objects: recs };
 }
 
@@ -66,5 +67,6 @@ export function loadLayout(data: LayoutData): void {
   objects.clear();
   for (const rec of data.objects ?? []) addObject({ ...rec });
   initGrid(data.obstacles);
+  for (const o of objects.all()) refreshFootprint(o); // (items that block walking: tables, sofas, cabinets)
   lockLayoutCheck(); // from now on the fingerprint is this starting layout, whatever is moved later
 }

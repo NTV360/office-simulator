@@ -1,6 +1,7 @@
 import { simEvents } from '../sim/events';
 import { interactables, type Spot } from '../sim/interactables';
 import { CATALOGUE } from './catalogue';
+import { refreshFootprint } from './footprint';
 
 // World objects: the chairs and small things that can be moved, as plain data both the page and the server hold. A chair carries its
 // seat: when the chair moves, the seat (and where people stand to use it, and the way it faces) moves with it, and spot ids never change.
@@ -26,6 +27,8 @@ export interface ObjectRecord {
   station: string | null;
   /** The seat this object carries (a spot id), or null. */
   spot: string | null;
+  /** The size of this one, for kinds that come in sizes (see `sized` in the catalogue): what the kind's shape is made from. */
+  dims?: number[];
 }
 
 export interface WorldObject extends ObjectRecord {
@@ -83,6 +86,7 @@ export function setObjectPose(o: WorldObject, x: number, z: number, rot: number,
     spot.approach.x = x + a.x; spot.approach.z = z + a.z;
     spot.face = rot + dface;
   }
+  refreshFootprint(o);
   simEvents.emit('objectMoved', o);
 }
 
@@ -92,6 +96,7 @@ export const carriedBy = (personId: number): WorldObject | undefined => list.fin
 /** A person picks an object up. Everybody is told (it is drawn in their hands from now on). */
 export function pickUp(o: WorldObject, personId: number): void {
   o.carriedBy = personId;
+  refreshFootprint(o); // (it no longer blocks the floor it stood on)
   simEvents.emit('objectMoved', o);
 }
 

@@ -26,14 +26,27 @@ export type Collider =
   | (ColliderBase & { shape: 'cylinder'; radius: number; height: number })
   | (ColliderBase & { shape: 'sphere'; radius: number });
 
-export interface ObjectType {
+/** The solid shape of one item: what it collides with, the floor it keeps people off, and the top other things stand on. */
+export interface Shape {
+  colliders: readonly Collider[];
+  /** It blocks walking: half its width and half its depth in plan pixels, in its own frame (facing rotation 0). */
+  foot?: readonly [number, number];
+  /** Height of its top surface in metres above its origin, when other things may be put on it (a table top). */
+  top?: number;
+}
+
+export interface ObjectType extends Shape {
   label: string;
   /** Fixed things are objects too (saved, drawn, used the same way) but players cannot move them. */
   mobility: Mobility;
   /** Mass in kg: a typical real-world weight for this kind of thing (the sources are in docs/ITEMS-PHYSICS-PLAN.md, section 3). */
   mass: number;
   material: MaterialName;
-  colliders: readonly Collider[];
+  /**
+   * For kinds that come in sizes (one sofa is longer than another): the shape for this item's own `dims`, from the layout data. Its
+   * `colliders`, `foot` and `top` then replace the fixed ones.
+   */
+  sized?: (dims: readonly number[]) => Shape;
   /** Other things may rest on it (a seat, a table top). */
   surface: boolean;
   /** How much room it takes, as a radius in metres: two objects may not be put closer than the sum of their radii. */
@@ -82,6 +95,17 @@ export const DESK_TOP = .76;
 export const CARRY_LIMITS = { oneHand: 3, twoHands: 35 } as const;
 
 export const typeOf = (type: string): ObjectType | undefined => CATALOGUE[type];
+/** The shape of this item: its kind's, or for a kind that comes in sizes, the one for its own `dims`. */
+export function shapeOf(o: { type: string; dims?: readonly number[] }): Shape {
+  const t = CATALOGUE[o.type];
+  if (!t) throw new Error(`unknown item type "${o.type}"`);
+  if (!t.sized || !o.dims) return t;
+  const key = o.type + ':' + o.dims.join(',');
+  let s = sizedShapes.get(key);
+  if (!s) { s = t.sized(o.dims); sizedShapes.set(key, s); }
+  return s;
+}
+const sizedShapes = new Map<string, Shape>(); // (a handful of sizes, made once each)
 /** Can a player move this kind of thing at all? (Whether they may move *this one* depends on who owns its station: see the server.) */
 export const isMovableType = (type: string): boolean => CATALOGUE[type]?.mobility === 'movable';
 /** How one person carries this kind of thing, from its mass; undefined for a kind that does not exist. */

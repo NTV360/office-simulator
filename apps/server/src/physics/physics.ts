@@ -1,5 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { CATALOGUE, MATERIALS, type Collider, type Triple, type WorldObject } from '@office/shared';
+import { CATALOGUE, MATERIALS, shapeOf, type Collider, type Triple, type WorldObject } from '@office/shared';
 
 // The office as rigid bodies: the building and the fixed furniture as solid shapes, every item as a body with its real mass, shapes and
 // material, under gravity. Bodies at rest sleep and cost nothing. A plain class with no Nest in it (see docs/CODING-STANDARDS.md);
@@ -74,8 +74,8 @@ export class Physics {
     const desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(o.x, o.y, o.z).setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] })
       .setCanSleep(true).setCcdEnabled(t.mass < 1); // (small things would pass through a thin shelf when they fall fast)
     const body = this.world.createRigidBody(desc);
-    const total = t.colliders.reduce((v, c) => v + volumeOf(c), 0);
-    for (const c of t.colliders) {
+    const colliders = shapeOf(o).colliders, total = colliders.reduce((v, c) => v + volumeOf(c), 0);
+    for (const c of colliders) {
       const cd = c.shape === 'box' ? RAPIER.ColliderDesc.cuboid(c.size[0] / 2, c.size[1] / 2, c.size[2] / 2)
         : c.shape === 'cylinder' ? RAPIER.ColliderDesc.cylinder(c.height / 2, c.radius) : RAPIER.ColliderDesc.ball(c.radius);
       const m = MATERIALS[c.material ?? t.material];
