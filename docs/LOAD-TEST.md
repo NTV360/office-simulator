@@ -23,7 +23,7 @@ It is a client at the protocol level, sending what the page sends: it logs in (a
 | Input to acknowledgement (p99) | under 150 ms | the bots |
 | Bandwidth per client | under 40 KB/s | the bots (bytes received) |
 | Server tick (p99) | under 10 ms of the 50 ms | `GET /api/world` `tickMs.p99Ms` (also `p50Ms`, `maxMs`, `lateTicks`) |
-| Event-loop lag (p99) | under 20 ms | `GET /api/world` `process.eventLoopP99Ms` (since the last look) |
+| Event-loop lag (p99) | under 20 ms | `GET /api/world` `process.eventLoopP99Ms` (since the window was last emptied by `GET /api/world?fresh=1`, which `npm run bots` does just before it starts playing; plain reads do not empty it) |
 | Memory | no growth over a long run | `process.rssMb`, `process.heapMb`; `--soak` prints it every minute |
 | Nobody kicked, nothing undecodable | zero | the bots |
 
@@ -52,7 +52,7 @@ You can watch the same numbers on a live server: `curl http://localhost:8080/api
 ## What the load test found, and fixed
 
 1. **Bandwidth grew with the square of the players.** 100 players cost each of them **59.8 KB/s** and 150 cost **93.2 KB/s** (budget 40): a whole person record (about 46 bytes) was sent 20 times a second for every walking player to everybody. Somebody who only walked is now sent as a **14-byte move record** (id, where, which way, stride; protocol 15); any other change is still a whole record, and a keyframe is all whole records. 100 players: **25.7 KB/s**; 150: **38.7 KB/s**.
-2. **The server's own numbers were too coarse to judge a budget:** only the last 100 ticks' average and maximum. `/api/world` now says the median and the 99th percentile of the last 2000 ticks, the memory, and the event-loop lag since you last asked.
+2. **The server's own numbers were too coarse to judge a budget:** only the last 100 ticks' average and maximum. `/api/world` now says the median and the 99th percentile of the last 2000 ticks, the memory, and the event-loop lag (`?fresh=1` empties that window).
 3. **One address could not log 20 bots in:** 30 logins a minute per address is a sensible protection, so a load test needs `AUTH_LOGINS_PER_MINUTE` raised (an environment setting; the default is unchanged).
 4. **The final save on a polite stop never worked** (found while testing the restart in `e2e:objects`, not by the bots): see [PHASE-5-BREAKDOWN.md](PHASE-5-BREAKDOWN.md), step 5.
 

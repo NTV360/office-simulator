@@ -29,10 +29,19 @@ describe('GET /api/world', () => {
     expect(w.process.rssMb).toBeGreaterThan(20);
     expect(w.process.heapMb).toBeLessThan(w.process.rssMb);
   });
-  it('the event-loop figures are for the time since the last look (a second look starts afresh)', async () => {
-    await fetch(base + '/api/world');
-    await new Promise(r => setTimeout(r, 300));
+  it('looking does not empty the event-loop window for anyone else; ?fresh=1 does', async () => {
+    const first = await (await fetch(base + '/api/world?fresh=1')).json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(first.process.eventLoopMaxMs).toBeGreaterThanOrEqual(0);
+    await new Promise(r => setTimeout(r, 60)); // (Node's histogram misses a stall in the very first interval after it is emptied)
+    const t0 = Date.now(); while (Date.now() - t0 < 120) { /* stall the loop for a moment */ }
+    await new Promise(r => setTimeout(r, 50));
+    const a = await (await fetch(base + '/api/world')).json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     const b = await (await fetch(base + '/api/world')).json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    expect(b.process.eventLoopMaxMs).toBeLessThan(500);
+    expect(a.process.eventLoopMaxMs).toBeGreaterThan(50); // the stall is seen
+    expect(b.process.eventLoopMaxMs, 'a second plain look sees it too').toBeGreaterThanOrEqual(a.process.eventLoopMaxMs);
+    const c = await (await fetch(base + '/api/world?fresh=1')).json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const d = await (await fetch(base + '/api/world')).json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(c.process.eventLoopMaxMs).toBeGreaterThan(50);
+    expect(d.process.eventLoopMaxMs, 'after a fresh look the window starts again').toBeLessThan(a.process.eventLoopMaxMs);
   });
 });

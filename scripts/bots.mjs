@@ -14,6 +14,7 @@ const arg = (name, dflt) => { const a = process.argv.find(x => x.startsWith(`--$
 const URL_ = arg('url', 'http://localhost:8080').replace(/\/+$/, '');
 const TOKEN = arg('token', process.env.BOTS_ADMIN_TOKEN || 'local-admin-token');
 const N = Number(arg('bots', 50)), SECONDS = Number(arg('seconds', 60));
+if (!Number.isInteger(N) || N < 1 || !(SECONDS > 0)) { console.error('--bots must be a whole number of at least 1 and --seconds more than 0'); process.exit(2); }
 const SOAK = process.argv.includes('--soak');
 const RUN = Date.now().toString(36).slice(-5);
 const FIRST_PASS = 'first-pass-from-admin-1', PASS = 'bots-pass-1234';
@@ -56,7 +57,6 @@ class Bot {
     r = await http('POST', '/api/auth/login', { username: this.name, password: PASS });
     if (r.status !== 200) throw new Error(r.status === 429 ? 'the server limits logins from one address (start the stack with AUTH_LOGINS_PER_MINUTE=1000 for a load test)' : `${this.name}: second login ${r.status}`);
     this.cookie = r.cookie;
-    this.ticket = await this.newTicket();
   }
   /** A one-time ticket (and a fresh login if the session is gone: the server ends other sessions when a password changes). */
   async newTicket() {
@@ -68,7 +68,9 @@ class Bot {
     }
     throw new Error(`${this.name}: no ticket after three tries`);
   }
-  connect() {
+  /** (the ticket is minted just before connecting: it lasts only 30 seconds) */
+  async connect() {
+    this.ticket = await this.newTicket();
     return new Promise((resolve, reject) => {
       this.socket = io(URL_, { transports: ['websocket'], reconnection: false, forceNew: true });
       const timer = setTimeout(() => reject(new Error(`${this.name}: no welcome`)), 30000);
@@ -118,7 +120,9 @@ for (let i = 0; i < bots.length; i += 10) await Promise.all(bots.slice(i, i + 10
 console.log(`all ${bots.length} are in (${((performance.now() - tc) / 1000).toFixed(1)} s); the first welcome listed ${bots[0].people} people`);
 
 // ---- play
-const before = (await (await fetch(URL_ + '/api/world')).json());
+// (?fresh=1 empties the server's event-loop window, so the figure below is what this run did)
+const before = (await (await fetch(URL_ + '/api/world?fresh=1')).json());
+for (const b of bots) { b.bytes = 0; b.msgs = 0; b.snapshots = 0; b.errors = 0; }
 const tStart = performance.now();
 const stepTimer = setInterval(() => { const now = performance.now() - tStart; for (const b of bots) b.step(now); }, 50);
 const pingTimer = setInterval(() => { for (const b of bots) b.send({ type: 'ping', ts: performance.now() }); }, 2000);
@@ -140,7 +144,7 @@ const rows = [
   ['ping round trip (ms), p50 / p99', `${fmt(pct(rtt, 50))} / ${fmt(pct(rtt, 99))}`, '', true],
   ['bandwidth received per bot (KB/s), mean / max', `${fmt(kbs.reduce((a, b) => a + b, 0) / kbs.length)} / ${fmt(Math.max(...kbs))}`, 'max < 40', Math.max(...kbs) < 40],
   ['server tick (ms), p50 / p99 / max (its own measure)', `${fmt(tick.p50Ms)} / ${fmt(tick.p99Ms)} / ${fmt(tick.maxMs)}`, 'p99 < 10', !(tick.p99Ms >= 10)],
-  ['server event loop lag (ms), p99', fmt(after.process?.eventLoopP99Ms), 'p99 < 20', !(after.process?.eventLoopP99Ms >= 20)],
+  ['server event loop lag (ms), p99 / max', `${fmt(after.process?.eventLoopP99Ms)} / ${fmt(after.process?.eventLoopMaxMs)}`, 'p99 < 20', !(after.process?.eventLoopP99Ms >= 20)],
   ['server memory (MB), rss', fmt(after.process?.rssMb), '', true],
   ['snapshots received per bot per second', fmt(bots.reduce((a, b) => a + b.snapshots, 0) / bots.length / seconds), 'about 20', true],
   ['bots kicked or disconnected', String(kicked.length) + (kicked.length ? ' (' + [...new Set(kicked.map(b => b.kicked))].join('; ') + ')' : ''), '0', kicked.length === 0],

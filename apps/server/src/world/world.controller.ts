@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { WorldService } from './world.service';
 
 @Controller('world')
@@ -7,7 +7,7 @@ export class WorldController {
 
   /** A summary of the running world: the clock, who is in, and how long ticks take. */
   @Get()
-  get() {
-    return this.worlds.status();
+  get(@Query('fresh') fresh?: string) {
+    return this.worlds.status(fresh === '1'); // ?fresh=1 empties the event-loop window first (a load test does; anybody else just looks)
   }
 }

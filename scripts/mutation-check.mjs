@@ -67,6 +67,7 @@ const MUTATIONS = [
   ["a person can sit while carrying", "packages/shared/src/sim/driven.ts", " || carriedBy(p.id)) return false; // (put down what you carry first)", ") return false;"],
   ["a person who changed more than their place is sent as only moved", "apps/server/src/net/broadcaster.ts", "=> same({ ...a, x: b.x, z: b.z, face: b.face, walkPhase: b.walkPhase }, b);", "=> true;"],
   ["the move records are left out of the snapshot", "packages/shared/src/protocol/codec.ts", "      writeMoves(w, msg.moves ?? []);", "      writeMoves(w, []);"],
+  ["the whole record is not repeated after a change", "apps/server/src/net/broadcaster.ts", "this.repeat.set(p.id, REPEAT_WHOLE); }", "}"],
   ["the mirror ignores the move records", "packages/shared/src/protocol/mirror.ts", "    for (const m of s.moves ?? []) { // people who only moved", "    for (const m of []) { // people who only moved"],
   ['an empty answer from the records is taken as everyone having left', 'apps/server/src/employees/employee.service.ts', "if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');", ''],
   ['the secret key is in the message when the records refuse', 'apps/server/src/employees/supabase-source.ts', '`${table}: the employee records answered ${res.status}`', '`${table}: the employee records answered ${res.status} (${this.key})`'],

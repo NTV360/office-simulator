@@ -152,6 +152,19 @@ describe('Mirror', () => {
     expect(mirror.people.get(p.id)!.photo).toBeNull();
   });
 
+  it('a client that misses a snapshot with a whole record is repaired by the repeats, before any keyframe', () => {
+    connect();
+    const server = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    const mirrored = [...mirror.people.values()].find(q => q.id === server.id)!;
+    mirror.applySnapshot(decode(bc.snapshot(2)) as Snapshot); // (the first snapshot is whole records for everyone)
+    const was = mirrored.props.mug;
+    server.props.mug = !was; server.pos.x += .3;
+    bc.snapshot(4); // this snapshot is lost on the way (a slow client skips it)
+    for (const t of [6, 8]) { server.pos.x += .3; mirror.applySnapshot(decode(bc.snapshot(t)) as Snapshot); }
+    expect(mirrored.props.mug, 'the whole record came again').toBe(!was);
+    expect(mirrored.pos.x).toBeCloseTo(server.pos.x, 3);
+  });
+
   it('a short move record moves the person and changes nothing else about them; one for somebody unknown is counted', () => {
     connect();
     const p = [...mirror.people.values()].find(q => q.state === 'doing')!;
@@ -184,11 +197,16 @@ describe('Mirror', () => {
     const m = new Mirror(interactables.all(), { added: () => {}, removed: () => {}, position: (p, _x, _z, _f, _w, isNew) => { got.push([p.id, isNew]); } });
     m.applyWelcome(decode(bc.welcome(0)) as Welcome);
     expect(got.filter(g => g[1])).toHaveLength(41);
-    const p0 = [...m.people.values()][0];
+    m.applySnapshot(decode(bc.snapshot(2)) as Snapshot); // (the first snapshot is whole records for everyone)
+    const p0 = [...m.people.values()].find(q => q.state === 'doing')!;
     const startX = p0.pos.x;
-    p0.pos.x += 0; world.step(); world.step();
-    m.applySnapshot(decode(bc.snapshot(2)) as Snapshot);
-    expect(got.some(g => !g[1])).toBe(true);
+    const mine = people.find(q => q.id === p0.id)!;
+    mine.pos.x += 3; // somebody walks
+    const snap = decode(bc.snapshot(4)) as Snapshot;
+    expect(snap.moves!.some(mv => mv.id === p0.id), 'as a short move, not a whole record').toBe(true);
+    got.length = 0;
+    m.applySnapshot(snap);
+    expect(got.some(g => g[0] === p0.id && !g[1]), 'the hook is called for a move too').toBe(true);
     expect(p0.pos.x).toBe(startX); // the hook did not move them: that is the hook job
   });
 

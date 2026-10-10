@@ -19,9 +19,11 @@ docker compose logs -f server         # the server's log (Ctrl+C leaves it runni
 docker compose stop                   # stop; the database is kept
 docker compose down                   # remove the containers (the data volume "pgdata" is kept)
 docker compose down -v                # remove the containers AND the data: a clean slate. Back up first.
-curl http://localhost:8080/api/health # {"status":"ok","db":"ok",...}
-curl http://localhost:8080/api/world  # the clock, the number of people, the tick timings, the process memory
+curl.exe http://localhost:8080/api/health # {"status":"ok","db":"ok",...}
+curl.exe http://localhost:8080/api/world  # the clock, the number of people, the tick timings, the process memory
 ```
+
+(In PowerShell `curl` alone is another command: use `curl.exe` or `Invoke-RestMethod http://localhost:8080/api/health`. On Linux and macOS `curl` is fine.)
 
 The server restarts by itself (`restart: unless-stopped`) and saves the world every 10 seconds and when it is stopped politely (`docker compose stop`/`restart`). A crash or a power cut loses at most the last few seconds.
 
@@ -35,14 +37,14 @@ See `.env.example` for every setting. The ones you will use: `ADMIN_USERNAME` / 
 npm run backup                         # backups/office-<date>-<time>.sql (everything in the database)
 npm run backup -- --keep=14            # and keep only the newest 14
 npm run backup:rehearse                # PROVE it restores: dumps the running database into a throwaway PostgreSQL and compares
-npm run restore -- backups/office-....sql --yes   # REPLACE the database with a backup (stops the server, restores, starts it)
+npm run restore -- backups/office-....sql --yes   # REPLACE the database with a backup (safety backup first, stops the server, restores, starts it)
 ```
 
 What is in a backup: accounts (names, password hashes, desks, links to employees, looks), sessions, the audit log, the staff list, and the saved office (who is where, the clock, which chairs were moved). What is not: the code (git), the `.env` (keep a copy somewhere safe), the made-up test accounts' passwords (they are only on your PC).
 
-**Take a backup:** before every update, and on a schedule if people depend on it. On Windows, Task Scheduler runs `npm run backup -- --keep=14` in the repository folder every night; on Linux a `cron` line does the same. **Rehearse a restore** now and then (`npm run backup:rehearse`): a backup nobody has restored is a hope, not a backup. Keep copies of `backups/` on another disk or machine.
+**Take a backup:** before every update, and on a schedule if people depend on it. On Windows, Task Scheduler runs `npm run backup -- --keep=14` in the repository folder every night (Docker Desktop must be running at that time and `npm` must be on the task's PATH); on Linux a `cron` line does the same. `--keep` only removes files named like the ones the script writes (`office-YYYYMMDD-HHMMSS.sql`), oldest first by date; a file you named yourself is never removed. **Rehearse a restore** now and then (`npm run backup:rehearse`): a backup nobody has restored is a hope, not a backup. Keep copies of `backups/` on another disk or machine.
 
-**Restoring:** `npm run restore -- backups/<file>.sql --yes`. People whose session is newer than the backup log in again. The server needs a few seconds to come back; `docker compose logs server` says "restored from the database" when it has.
+**Restoring:** `npm run restore -- backups/<file>.sql --yes`. It first checks the file is a complete backup (a cut-off or wrong file is refused and nothing changes), writes a safety backup of what is there now, then loads the file in one transaction: if the load fails, the database is as it was. People whose session is newer than the backup log in again. The server needs a few seconds to come back; `docker compose logs server` shows a line like "world running: ... restored from the database" when it has.
 
 ## Updating to a new version
 
@@ -69,11 +71,11 @@ If an admin password is lost: change `ADMIN_TOKEN` in `.env` and `docker compose
 | The page does not open | `docker compose ps`. `web` down: `docker compose up -d web`. Port taken: set `WEB_PORT` in `.env`. Docker not running: start Docker Desktop |
 | The page opens but says it cannot reach the server | `docker compose logs --tail=50 server`. A start-up error (database, migration) is at the top. `docker compose restart server` |
 | Everyone is logged out and the log says the database is unreachable | `docker compose ps db`; `docker compose logs db`. Starting it again keeps the data. If the volume is damaged: restore the latest backup |
-| The office looks wrong after a restart (everyone in odd places) | The saved world could not be restored: the log says why ("the saved world cannot be restored: ..."). The server then starts a fresh office and **stops saving** so the damaged save is not overwritten. Look at it, then `RESET_WORLD=true docker compose up -d server` once to replace it |
-| Laggy for everyone | `curl .../api/world`: `tickMs.p99Ms` above 10 or `process.eventLoopP99Ms` above 20 means the server is struggling (see [LOAD-TEST.md](LOAD-TEST.md)). Close other heavy programs on the PC; fewer than about 100 players is comfortable on Docker Desktop |
-| Memory keeps growing | `process.rssMb` over a day. It should settle (the one-hour soak is in PHASE-8). Restart the server to clear it, and tell the developers with the log |
+| The office looks wrong after a restart (everyone in odd places) | The saved world could not be restored: the log says why ("the saved world cannot be restored: ..."). The server then starts a fresh office and **stops saving** so the damaged save is not overwritten. Look at it, then `RESET_WORLD=true docker compose up -d server` once to replace it (PowerShell: `$env:RESET_WORLD='true'; docker compose up -d server; Remove-Item Env:RESET_WORLD`) |
+| Laggy for everyone | `curl.exe http://localhost:8080/api/world`: `tickMs.p99Ms` above 10 or `process.eventLoopP99Ms` above 20 means the server is struggling (the event-loop figures cover the time since the last `?fresh=1` look, or since the start; `curl.exe "http://localhost:8080/api/world?fresh=1"` empties that window) (see [LOAD-TEST.md](LOAD-TEST.md)). Close other heavy programs on the PC; fewer than about 100 players is comfortable on Docker Desktop |
+| Memory keeps growing | `process.rssMb` over a day. It should settle (a 25-minute soak with 60 bots was run and memory stayed flat; an hour-long soak is a command in [LOAD-TEST.md](LOAD-TEST.md) still to be run). Restart the server to clear it, and tell the developers with the log |
 | One person cannot log in | Admin page: is the account disabled, or must it choose a new password? Reset it. Too many wrong tries wait 15 minutes by themselves |
-| Too many logins from one address (many people behind one office router) | A limit of 30 logins a minute per address protects the accounts. Raise it only if it really bites: `AUTH_LOGINS_PER_MINUTE=100` in `.env` |
+| Too many logins from one address (many people behind one office router) | A limit of 30 logins a minute per address protects the accounts. Raise it only if it really bites: `AUTH_LOGINS_PER_MINUTE=100` in `.env` (a whole number; the server logs a warning at start while it is raised) |
 
 ## Ports and the firewall
 

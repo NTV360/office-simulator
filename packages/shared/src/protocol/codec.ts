@@ -127,6 +127,7 @@ function readInfo(r: Reader): PersonInfo {
 }
 
 function writeMeetings(w: Writer, list: readonly MeetingSnap[]): void {
+  if (list.length > 255) throw new RangeError('too many meetings for the protocol');
   w.u8(list.length);
   for (const m of list) {
     w.u8(m.room).str(m.topic).f32(m.start).f32(m.end).u16(toU16(m.speaker)).u16(m.members.length);
@@ -256,4 +257,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'grab' || m.type === 'place' || m.type === 'reset'; }

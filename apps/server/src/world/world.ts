@@ -119,6 +119,7 @@ export class World {
     }
     this.tick = 0;
     this.durations.length = 0;
+    this.sampleCount = 0;
     this.lateTicks = 0;
   }
 

@@ -24,8 +24,12 @@ export interface BroadcasterOptions {
   keyframeEvery?: number;
 }
 
+/** After a change that is not only a move, the whole record is sent this many more times: a snapshot a slow client skipped must not leave it out of date until the next keyframe. */
+const REPEAT_WHOLE = 2;
+
 export class Broadcaster {
   private readonly last = new Map<number, PersonSnap>();
+  private readonly repeat = new Map<number, number>();
   private readonly seenLog = new Set<object>();
   private readonly aiEvery: number;
   private readonly keyframeEvery: number;
@@ -56,14 +60,18 @@ export class Broadcaster {
       if (!full && !due) continue;
       const snap = personSnap(p, meetings);
       const prev = this.last.get(p.id);
-      if (full || !prev) { out.push(snap); this.last.set(p.id, snap); }
-      else if (!same(prev, snap)) {
-        // most changes are somebody walking: those go as the short record (a whole person is about 46 bytes, a move 12)
-        if (!onlyMoved(prev, snap)) out.push(snap); else moves.push({ id: snap.id, x: snap.x, z: snap.z, face: snap.face, walkPhase: snap.walkPhase });
+      const again = this.repeat.get(p.id) ?? 0;
+      if (full || !prev) { out.push(snap); this.last.set(p.id, snap); this.repeat.delete(p.id); }
+      else if (again > 0) { // changed a moment ago: the whole record again, moved or not
+        out.push(snap); this.last.set(p.id, snap);
+        if (again > 1) this.repeat.set(p.id, again - 1); else this.repeat.delete(p.id);
+      } else if (!same(prev, snap)) {
+        // most changes are somebody walking: those go as the short record (a whole person is about 46 bytes, a move 14)
+        if (!onlyMoved(prev, snap)) { out.push(snap); this.repeat.set(p.id, REPEAT_WHOLE); } else moves.push({ id: snap.id, x: snap.x, z: snap.z, face: snap.face, walkPhase: snap.walkPhase });
         this.last.set(p.id, snap);
       }
     }
-    for (const id of this.last.keys()) if (!seen.has(id)) this.last.delete(id);
+    for (const id of this.last.keys()) if (!seen.has(id)) { this.last.delete(id); this.repeat.delete(id); }
     return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', full, people: out, ...(moves.length ? { moves } : {}), meetings: meetings.map(meetingSnap) });
   }
 
@@ -82,6 +90,7 @@ export class Broadcaster {
   joined(p: Person): Uint8Array {
     const snap = personSnap(p, meetings);
     this.last.set(p.id, snap);
+    this.repeat.delete(p.id);
     return encode({ type: 'person', info: personInfo(p), snap });
   }
 
@@ -92,6 +101,7 @@ export class Broadcaster {
 
   left(id: number): Uint8Array {
     this.last.delete(id);
+    this.repeat.delete(id);
     return encode({ type: 'leave', id });
   }
 }

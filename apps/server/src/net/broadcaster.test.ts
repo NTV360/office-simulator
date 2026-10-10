@@ -42,8 +42,11 @@ describe('Broadcaster', () => {
     const even = snapshot(4);
     expect(even.full).toBe(false);
     expect(even.people.length).toBeLessThan(40);
-    const again = snapshot(6); // nothing moved between 4 and 6 only if the world did not step: it did not
-    expect(again.people).toHaveLength(0);
+    const again = snapshot(6); // the world did not step: only the repeats of the whole records sent at 4 come, nothing new
+    expect(again.people.map(x => x.id).sort()).toEqual(even.people.map(x => x.id).sort());
+    expect(again.moves ?? []).toHaveLength(0);
+    expect(snapshot(8).people).toHaveLength(again.people.length); // (the last repeat)
+    expect(snapshot(10).people).toHaveLength(0);
     const key = snapshot(20); // 20 ticks per second: a keyframe
     expect(key.full).toBe(true);
     expect(key.people).toHaveLength(41);
@@ -128,12 +131,34 @@ describe('Broadcaster', () => {
 
   it('measured bandwidth for one viewer over two simulated minutes stays inside the budget', () => {
     setSeed(1);
-    let bytes = 0, n = 0;
-    for (let t = 1; t <= 20 * 120; t++) { world.step(); bytes += bc.snapshot(t).length; n++; for (const e of bc.events()) bytes += e.length; }
-    const perSecond = bytes / 120;
-    console.log(`BANDWIDTH  ${(perSecond / 1024).toFixed(2)} KB/s per viewer for 40 staff (${(bytes / n).toFixed(0)} B per snapshot)`);
-    expect(perSecond).toBeLessThan(40 * 1024);
-    setSeed(null);
+    try {
+      let bytes = 0, n = 0;
+      for (let t = 1; t <= 20 * 120; t++) { world.step(); bytes += bc.snapshot(t).length; n++; for (const e of bc.events()) bytes += e.length; }
+      const perSecond = bytes / 120;
+      console.log(`BANDWIDTH  ${(perSecond / 1024).toFixed(2)} KB/s per viewer for 40 staff (${(bytes / n).toFixed(0)} B per snapshot)`);
+      expect(perSecond).toBeLessThan(40 * 1024);
+    } finally { setSeed(null); }
+  });
+
+  it('after a change that is not only a move, the whole record goes out three times in a row, then as short moves again (so a skipped snapshot does not leave a client out of date until the keyframe)', () => {
+    snapshot(2);
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    p.props.mug = true;
+    const kinds: string[] = [];
+    for (const t of [4, 6, 8, 10, 12]) {
+      p.pos.x += .2; // walking all the while
+      const s = snapshot(t);
+      kinds.push(s.people.some(x => x.id === p.id) ? 'whole' : (s.moves ?? []).some(m => m.id === p.id) ? 'move' : 'nothing');
+    }
+    expect(kinds).toEqual(['whole', 'whole', 'whole', 'move', 'move']);
+  });
+
+  it('a person who stood still after a change is still sent whole twice more, and then is quiet', () => {
+    snapshot(2);
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    p.props.mug = true;
+    const sent = [4, 6, 8, 10].map(t => snapshot(t).people.some(x => x.id === p.id));
+    expect(sent).toEqual([true, true, true, false]);
   });
 
   it('a person a human drives is sent every tick, the autopilot crowd every second tick', () => {

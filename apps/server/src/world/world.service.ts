@@ -113,21 +113,21 @@ export class WorldService implements OnApplicationBootstrap, BeforeApplicationSh
     simEvents.emit('announce', text);
   }
 
-  /** How late the event loop has been since the last time this was asked (so a load test reads what its own run did). */
+  /** How late the event loop has been since the window was last emptied (`GET /api/world?fresh=1` empties it: a load test does that before it starts). */
   private readonly loop = monitorEventLoopDelay({ resolution: LOOP_RESOLUTION_MS });
 
   /** The process: memory and the event loop (the budgets in the plan, section 14). */
-  private processStats(): { rssMb: number; heapMb: number; eventLoopP99Ms: number; eventLoopMaxMs: number } {
+  private processStats(fresh: boolean): { rssMb: number; heapMb: number; eventLoopP99Ms: number; eventLoopMaxMs: number } {
     const m = process.memoryUsage();
     // (the histogram records the whole time between two 10 ms timer ticks: what is over 10 ms is how late the loop was)
     const late = (ns: number): number => Math.max(0, Math.round((ns / 1e6 - LOOP_RESOLUTION_MS) * 100) / 100);
     const out = { rssMb: Math.round(m.rss / 1048576 * 10) / 10, heapMb: Math.round(m.heapUsed / 1048576 * 10) / 10, eventLoopP99Ms: late(this.loop.percentile(99)), eventLoopMaxMs: late(this.loop.max) };
-    this.loop.reset();
+    if (fresh) this.loop.reset(); // (only when asked: whoever else looks at this page must not empty the window for a test that is reading it)
     return out;
   }
 
-  status(): WorldStatus & { persistence: PersistenceStatus; process: ReturnType<WorldService['processStats']> } {
+  status(fresh = false): WorldStatus & { persistence: PersistenceStatus; process: ReturnType<WorldService['processStats']> } {
     const s = { ...this.persistence.status, restored: this.restored };
-    return { ...this.world.status(), persistence: s, process: this.processStats() };
+    return { ...this.world.status(), persistence: s, process: this.processStats(fresh) };
   }
 }
