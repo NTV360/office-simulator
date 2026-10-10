@@ -16,6 +16,14 @@ export interface BodyPose { x: number; y: number; z: number; q: [number, number,
 
 /** What the fixed furniture and the floor are made of, to the physics (they carry no material of their own yet). */
 const FIXED = { friction: MATERIALS.wood.friction, bounce: MATERIALS.wood.bounce };
+/**
+ * Who touches whom (Rapier collision groups: what a collider is, in the high 16 bits; what it touches, in the low 16): the building and the
+ * fixed furniture, big furniture, and small things. Normally everything touches everything; a thing being put down touches only small things
+ * (see `setPassThrough`).
+ */
+const FIXED_GROUP = 0x0001, BIG_GROUP = 0x0002, SMALL_GROUP = 0x0004, EVERYTHING = 0xffff;
+const groups = (is: number, touches: number) => (is << 16) | touches;
+
 /** Each tick is split into steps this long: short enough for a mug landing on a desk not to sink in. */
 export const SUBSTEP = 1 / 60;
 export const GRAVITY = 9.81;
@@ -48,7 +56,7 @@ export class Physics {
     // (the default 4 lets a mug landing flat on a desk skid several centimetres; 12 keeps it under half a centimetre)
     this.world.integrationParameters.numSolverIterations = 12;
     const fixed = (desc: RAPIER.ColliderDesc, at: Triple, q?: readonly number[]) => {
-      desc.setTranslation(at[0], at[1], at[2]).setFriction(FIXED.friction).setRestitution(FIXED.bounce);
+      desc.setTranslation(at[0], at[1], at[2]).setFriction(FIXED.friction).setRestitution(FIXED.bounce).setCollisionGroups(groups(FIXED_GROUP, EVERYTHING));
       if (q) desc.setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] });
       this.world.createCollider(desc);
     };
@@ -79,12 +87,42 @@ export class Physics {
       const cd = c.shape === 'box' ? RAPIER.ColliderDesc.cuboid(c.size[0] / 2, c.size[1] / 2, c.size[2] / 2)
         : c.shape === 'cylinder' ? RAPIER.ColliderDesc.cylinder(c.height / 2, c.radius) : RAPIER.ColliderDesc.ball(c.radius);
       const m = MATERIALS[c.material ?? t.material];
-      cd.setTranslation(c.at[0], c.at[1], c.at[2]).setFriction(m.friction).setRestitution(m.bounce).setMass(t.mass * volumeOf(c) / total);
+      cd.setTranslation(c.at[0], c.at[1], c.at[2]).setFriction(m.friction).setRestitution(m.bounce).setMass(t.mass * volumeOf(c) / total)
+        .setCollisionGroups(groups(shapeOf(o).foot ? BIG_GROUP : SMALL_GROUP, EVERYTHING));
       if (c.shape !== 'sphere' && c.rot) cd.setRotation(eulerQuat(c.rot));
       this.world.createCollider(cd, body);
     }
     this.bodies.set(o.index, body);
+    this.setBig(o, false);
     return body;
+  }
+
+  /**
+   * Furniture that blocks the floor (a table, a sofa, a cabinet) is not shoved by smaller things knocking into it while it stands there: it
+   * outranks them (a higher dominance group: to them it is as good as fixed). Held, it is an ordinary body again, so what is on it rides along.
+   */
+  setBig(o: WorldObject, held: boolean): void {
+    const b = this.bodies.get(o.index);
+    if (b) b.setDominanceGroup(shapeOf(o).foot && !held ? 1 : 0);
+  }
+
+  /**
+   * A thing being put down goes to its place through fixed and big furniture (a chair set down beside a desk does not catch on the desk's
+   * edge on the way), touching only small things (what rides on it still rides). Back to touching everything once it is down.
+   */
+  setPassThrough(o: WorldObject, on: boolean): void {
+    const b = this.bodies.get(o.index);
+    if (!b) return;
+    const is = shapeOf(o).foot ? BIG_GROUP : SMALL_GROUP;
+    for (let i = 0; i < b.numColliders(); i++) b.collider(i).setCollisionGroups(groups(is, on ? SMALL_GROUP : EVERYTHING));
+  }
+
+  /** Set a resting item's pose without waking it (a tidy-up of a few millimetres, not a move). */
+  nudge(index: number, pose: BodyPose): void {
+    const b = this.bodies.get(index);
+    if (!b) return;
+    b.setTranslation({ x: pose.x, y: pose.y, z: pose.z }, false);
+    b.setRotation({ x: pose.q[0], y: pose.q[1], z: pose.q[2], w: pose.q[3] }, false);
   }
 
   /** Forget an item's body. */

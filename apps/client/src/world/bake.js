@@ -27,6 +27,9 @@ function recordShape(m) {
   if (shape) { if (q && shape.s !== 's') shape.q = q; STATIC_SHAPES.push(shape); }
 }
 
+/** The baked meshes: what an aim at the fixed furniture (a desk, the counter) is tested against (net/objects.js). */
+const BAKED = [];
+
 /* Bake static furniture into a handful of draw calls */
 function bake(root) {
   root.updateMatrixWorld(true);
@@ -48,7 +51,7 @@ function bake(root) {
       if (!set.length) continue;
       const merged = mergeGeometries(set, false);
       if (!merged) continue;
-      const m = new THREE.Mesh(merged, b.mat); m.castShadow = b.cast; m.receiveShadow = true; scene.add(m);
+      const m = new THREE.Mesh(merged, b.mat); m.castShadow = b.cast; m.receiveShadow = true; scene.add(m); BAKED.push(m);
     }
   }
 }
@@ -58,4 +61,4 @@ function buildBake() {
   bake(staticRoot);
 }
 
-export { buildBake };
+export { BAKED, buildBake };

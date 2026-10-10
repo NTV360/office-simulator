@@ -1,5 +1,5 @@
 import { shapeOf, type Collider } from './catalogue';
-import type { Quat, WorldObject } from './objects';
+import type { Hold, Quat, WorldObject } from './objects';
 
 // A person's arms: how far they reach and how much they can hold out in front of them, and where on an item a hand can take it. Plain maths
 // on the item's own shapes, so the page (to say "step closer") and the server (to decide) agree. See docs/ITEMS-PHYSICS-PLAN.md, section 6.
@@ -96,6 +96,16 @@ export const onItem = (o: WorldObject, p: Point): boolean => {
   const q = closestPointOnItem(o, p);
   return Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) <= ARMS.slack;
 };
+
+/**
+ * A hold that keeps the item as it is to this person now: their hands where they took it (`at`, in the item's frame), in the direction it is
+ * from them (`az`), and its angle to them as it is (`rel`). Things close in front of the chest count as straight in front.
+ */
+export function holdFor(o: WorldObject, person: { id: number; face: number; pos: { x: number; z: number } }, point: Point): Hold {
+  const half = person.face / 2, dx = point.x - person.pos.x, dz = point.z - person.pos.z, out = Math.hypot(dx, dz);
+  const az = out < .15 ? 0 : Math.atan2(Math.sin(Math.atan2(dx, dz) - person.face), Math.cos(Math.atan2(dx, dz) - person.face));
+  return { person: person.id, at: toItemFrame(o, point), rel: mulQuat([0, -Math.sin(half), 0, Math.cos(half)], orientationOf(o)), turn: [0, 0, 0, 1], lift: point.y, out, az, raise: 0 };
+}
 
 /** Where a person takes an item when they did not say: the point of it nearest their chest. */
 export const nearestGrip = (o: WorldObject, person: { pos: { x: number; z: number } }): Point =>

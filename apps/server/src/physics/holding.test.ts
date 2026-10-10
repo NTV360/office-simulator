@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { carryPace, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
+import { carryPace, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
 import { drop, grab, holdInput, throwIt } from '../play/object-actions';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, yawQuat, type StaticShape } from './physics';
@@ -225,5 +225,61 @@ describe('dropping and throwing', () => {
     holdInput(p, [0, 0, 0, 1], .4);
     tick(w, 3);
     expect(mug.y).toBeGreaterThan(y0 + .25);
+  });
+});
+
+describe('knocking into furniture', () => {
+  it('a chair carried into a dining table does not shove the table: big furniture stands its ground', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[0], table = ofType('table-dining').reduce((a, b) => Math.hypot(a.x - chair.x, a.z - chair.z) < Math.hypot(b.x - chair.x, b.z - chair.z) ? a : b);
+    const p = standBy(chair, .6, Math.atan2(chair.x - table.x, chair.z - table.z)); // (on the far side from the table, facing it through the chair)
+    grab(p, chair.index);
+    tick(w, 2);
+    const at = { x: table.x, z: table.z };
+    const toward = { x: Math.sin(p.face) * .02, z: Math.cos(p.face) * .02 };
+    for (let i = 0; i < 50; i++) { p.pos.x += toward.x; p.pos.z += toward.z; tick(w, .05); } // walking a metre into it
+    expect(Math.hypot(table.x - at.x, table.z - at.z)).toBeLessThan(.002);
+  });
+});
+
+describe('lifting from among other things', () => {
+  it('a dining chair taken from beside you rises where it is, beside you: its neighbours in the row are not knocked about', () => {
+    const w = make();
+    const chairs = ofType('chair-wood'), chair = chairs[0];
+    const others = chairs.filter(c => c !== chair && Math.hypot(c.x - chair.x, c.z - chair.z) < 1.5).map(c => ({ c, x: c.x, z: c.z }));
+    expect(others.length).toBeGreaterThan(0);
+    // standing just off the chair's side, facing along the row (as a player who walked up to it might): the chair is beside them
+    const p = standBy(chair, .45, chair.rot + Math.PI / 2);
+    p.face = chair.rot + Math.PI;
+    expect(grab(p, chair.index).ok).toBe(true);
+    tick(w, 3);
+    expect(chair.carriedBy).toBe(p.id);
+    expect(chair.y).toBeGreaterThan(.15); // (off the floor: held by the top of its back, it hangs below the hands)
+    for (const o of others) expect(Math.hypot(o.c.x - o.x, o.c.z - o.z), o.c.id).toBeLessThan(.03);
+  });
+});
+
+describe('putting down past furniture', () => {
+  it('a chair put down round the corner of its table gets there: it does not catch on the table on the way', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[0];
+    const p = standBy(chair, .6, Math.PI / 2); // (east of it, facing it)
+    grab(p, chair.index);
+    tick(w, 1.5);
+    placeDown(chair, 3.24, 15.89, 0, 0); // (the far side of the dining table's corner from where it was)
+    tick(w, 2.5);
+    expect(chair.carriedBy).toBeNull();
+    expect(Math.hypot(chair.x - 3.24, chair.z - 15.89)).toBeLessThan(.05);
+    expect(chair.y).toBeCloseTo(0, 1);
+  });
+});
+
+describe('small bumps', () => {
+  it('a chair bumped a centimetre or so from where it started comes to rest exactly there again: not "moved" for ever', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[3];
+    setObjectPose(chair, chair.home.x + .015, chair.home.z, chair.home.rot + .01);
+    tick(w, 3);
+    expect(isAtHome(chair)).toBe(true);
   });
 });

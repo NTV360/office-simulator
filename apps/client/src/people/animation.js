@@ -104,6 +104,7 @@ function targetPose(p, k, T) {
   if (p.carrying) { o.lShX = -1.15; o.rShX = -1.15; o.lEl = -.45; o.rEl = -.45; o.lShZ = .12; o.rShZ = -.12; } // holding something out in front
   const reach = p.reachTo && performance.now() - p.reachTo.t < REACH_MS ? p.reachTo : null;
   if (reach) armsAt(p, o, reach); // reaching out to take hold of something
+  else if (p.carrying && p.carryAt) armsAt(p, o, p.carryAt); // holding it: the hands on it
   emoteOverlay(p, o);
   // look at someone
   let look = null;

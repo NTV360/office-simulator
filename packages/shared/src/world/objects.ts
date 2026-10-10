@@ -63,9 +63,11 @@ export interface Hold {
   at: { x: number; y: number; z: number };
   rel: Quat;
   turn: Quat;
-  /** How high their hands are, and how far in front of them, in metres (from where they took it, easing to where things are carried). */
+  /** How high their hands are, and how far out from them, in metres (from where they took it, easing to where things are carried). */
   lift: number;
   out: number;
+  /** Which way from them their hands are, relative to the way they face (radians): the way the thing was when they took it (0, in front). */
+  az: number;
   /** How much higher or lower than the usual carrying height they hold their hands (the mouse wheel), in metres. */
   raise: number;
 }

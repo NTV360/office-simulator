@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  ARMS, CATALOGUE, STRENGTH, carryOf, letGo, mulQuat, nearestGrip, objects, orientationOf, people, setObjectPose, setPlacer, shapeOf, simEvents, toItemFrame,
+  ARMS, CATALOGUE, STRENGTH, carryOf, holdFor, letGo, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
   type Hold, type Placing, type Quat, type WorldObject,
 } from '@office/shared';
 import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics';
@@ -12,15 +12,18 @@ import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics'
 
 /** Below these an item has not moved, as far as anyone is told: physics settles in fractions of a millimetre. */
 const MOVE_EPS = .001, TURN_EPS = .5 * Math.PI / 180;
-/** An item this close to upright is written as upright (`q` null), and one settled this close to its starting pose is put exactly there. */
-const UPRIGHT = .5 * Math.PI / 180, HOME_EPS = .003;
+/**
+ * An item this close to upright is written as upright (`q` null). One that comes to rest this close to its starting place (2 cm, a degree and
+ * a half: nudged by something carried past) is put exactly back there, so it is not "moved" for ever by a bump nobody would see.
+ */
+const UPRIGHT = .5 * Math.PI / 180, HOME_EPS = .02, HOME_TURN = 1.5 * Math.PI / 180;
 /** Put down this much above its surface, so it starts clear of it and settles onto it. */
 const LIFT = .002;
 
 /** How a hand holds: its spring's stiffness and the turn's (rad/s: about 2 and 1.6 a second), how far a hand goes before it slips off (m). */
 const HAND = { stiff: 12, turn: 10, slip: .6 } as const;
 /** Where things are carried: hands this high, this far in front (m), reached from where they were taken in about a second (gently: a mug on a chair stays on). */
-const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, ease: 1.2 } as const;
+const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, ease: 1.2, clear: .25, highest: 1.5 } as const;
 /** The most a person pulls or pushes something along, sideways to their reach (N): one hand, both. */
 const PULL = { oneHand: 120, twoHands: 450 } as const;
 /** A thing being put down: it is let go when within this of its place, or after this long whatever happens (s). */
@@ -65,13 +68,15 @@ export class ItemPhysics {
     this.physics = new Physics(shapes);
     for (const o of objects.all()) this.physics.addItem(o, o.q ?? yawQuat(o.rot));
     this.stop = simEvents.on('objectMoved', o => this.follow(o));
-    setPlacer((o, p) => { o.placing = p; this.physics.body(o.index)?.wakeUp(); });
+    setPlacer((o, p) => { o.placing = p; this.physics.setPassThrough(o, true); this.physics.body(o.index)?.wakeUp(); });
   }
 
   /** The game moved an item: its body goes there too. (One somebody holds is moved by their hands; one just let go keeps moving as it was.) */
   private follow(o: WorldObject): void {
     if (this.writing) return; // (physics moved it: the body is already there)
-    if (o.carriedBy !== null) { this.physics.body(o.index)?.wakeUp(); return; }
+    if (o.carriedBy !== null) { this.physics.setBig(o, true); this.physics.body(o.index)?.wakeUp(); return; }
+    this.physics.setBig(o, false);
+    this.physics.setPassThrough(o, false); // (down: it touches everything again)
     if (o.released) {
       const b = this.physics.body(o.index), v = o.released;
       o.released = undefined;
@@ -102,8 +107,7 @@ export class ItemPhysics {
     if (o.holds.length) return;
     const p = people.find(q => q.id === o.carriedBy);
     if (!p) return;
-    const at = nearestGrip(o, p), half = p.face / 2;
-    o.holds = [{ person: p.id, at: toItemFrame(o, at), rel: mulQuat([0, -Math.sin(half), 0, Math.cos(half)], orientationOf(o)), turn: [0, 0, 0, 1], lift: at.y, out: Math.hypot(at.x - p.pos.x, at.z - p.pos.z), raise: 0 }];
+    o.holds = [holdFor(o, p, nearestGrip(o, p))];
   }
 
   /** The hands go from where they took it to where things are carried, and up or down as the person asks. Once a tick. */
@@ -113,16 +117,20 @@ export class ItemPhysics {
     const share = CATALOGUE[o.type].mass / Math.max(1, o.holds.length) * GRAVITY;
     const out = Math.max(.2, Math.min(one ? CARRY.out.oneHand : CARRY.out.twoHands, .9 * (one ? STRENGTH.oneHand : STRENGTH.twoHands) / share));
     for (const h of o.holds) {
-      h.out += (out - h.out) * k;
-      h.lift += (Math.max(ARMS.lowest + .1, Math.min(ARMS.highest - .2, CARRY.y + h.raise)) - h.lift) * k;
+      // (hands high enough for it to clear the floor: a chair held by the top of its back is carried higher than a mug)
+      const lift = Math.max(ARMS.lowest + .1, Math.min(ARMS.highest - .2, Math.min(CARRY.highest, Math.max(CARRY.y, h.at.y + CARRY.clear)) + h.raise));
+      // (up first, then in: a chair tucked in at a table is lifted clear before it is drawn towards you, not dragged through the table)
+      if (h.lift > lift - .2) h.out += (out - h.out) * k;
+      h.lift += (lift - h.lift) * k;
     }
   }
 
-  /** Where a hand is now: in front of the person, as far out and as high as their hold says. */
+  /** Where a hand is now: out from the person in the direction the thing was when they took it (turning with them), as far and as high as their hold says. */
   private handOf(h: Hold): V | null {
     const p = people.find(q => q.id === h.person);
     if (!p) return null;
-    return { x: p.pos.x + Math.sin(p.face) * h.out, y: h.lift, z: p.pos.z + Math.cos(p.face) * h.out };
+    const a = p.face + h.az;
+    return { x: p.pos.x + Math.sin(a) * h.out, y: h.lift, z: p.pos.z + Math.cos(a) * h.out };
   }
 
   /** Every hand on this item pushes on it, for one substep (and a thing being put down is lowered to its place). */
@@ -244,8 +252,10 @@ export class ItemPhysics {
     if (!o || !p) return;
     let q: Quat | null = tiltOf(p.q) < UPRIGHT ? null : p.q;
     let { x, y, z } = p, rot = yawOf(p.q);
-    if (settled && !q && o.carriedBy === null && Math.hypot(x - o.home.x, y - o.home.y, z - o.home.z) < HOME_EPS && angle(rot, o.home.rot) < UPRIGHT) {
+    if (settled && !q && o.carriedBy === null && Math.hypot(x - o.home.x, y - o.home.y, z - o.home.z) < HOME_EPS && angle(rot, o.home.rot) < HOME_TURN) {
+      const bumped = Math.hypot(x - o.home.x, y - o.home.y, z - o.home.z) > .001; // (more than settling: the body is put there too)
       ({ x, y, z, rot } = o.home); q = null; // back exactly where it started: it counts as at home again, so it is neither saved nor sent
+      if (bumped) this.physics.nudge(index, { x, y, z, q: yawQuat(rot) });
     }
     const was = o.q ?? yawQuat(o.rot), now = q ?? yawQuat(rot);
     // (a body that has come to rest is written once more only if that changes what it is: upright or not, home or not; never for float noise)

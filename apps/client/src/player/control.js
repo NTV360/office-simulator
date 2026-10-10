@@ -1,6 +1,6 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, people, stepPlayer } from '@office/shared';
+import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, carryPace, people, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';
@@ -43,8 +43,14 @@ function endControl(nextId) {
 // stream of walking orders.
 function releaseSticks() { ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0; }
 
-function look(dx, dy) { ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035)); }
+// While something is held, the mouse may be wanted for it (net/objects.js): turning it (R and the mouse), throwing it (the right button). These
+// hooks say so by returning true. (Not cleared on leaving first person: they ask whether something is held each time.)
+function look(dx, dy) {
+  if (ctl.holdLook && ctl.holdLook(dx, dy)) return;
+  ctl.yaw -= dx * .0035; ctl.pitch = Math.max(ctl.pitchMin, Math.min(ctl.pitchMax, ctl.pitch - dy * .0035));
+}
 function pointerDown(e) {
+  if (e.button === 2 && ctl.holdPress && ctl.holdPress(true)) { e.preventDefault(); return; }
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
   if (e.pointerType === 'touch' && e.clientX < innerWidth * .45 && e.clientY > innerHeight * .45 && ctl.stickId === null) {
     ctl.stickId = e.pointerId; ctl.stickO = { x: e.clientX, y: e.clientY };
@@ -63,6 +69,7 @@ function pointerMove(e) {
   } else if (e.pointerId === ctl.lookId) { look(e.clientX - ctl.lx, e.clientY - ctl.ly); ctl.lx = e.clientX; ctl.ly = e.clientY; }
 }
 function pointerUp(e) {
+  if (e.button === 2 && ctl.holdPress) ctl.holdPress(false);
   if (e.pointerId === ctl.stickId) { ctl.stickId = null; ctl.stick.x = ctl.stick.y = 0; $('knob').style.transform = ''; const st = $('stick'); st.style.left = ''; st.style.bottom = ''; }
   if (e.pointerId === ctl.lookId) ctl.lookId = null;
 }
@@ -120,7 +127,8 @@ function driveOnline(dt, p) {
   const nowMs = performance.now(), elapsed = lastDriveAt === null ? dt : Math.min(.25, Math.max(dt, (nowMs - lastDriveAt) / 1000));
   lastDriveAt = nowMs;
   if (!seat && stick > .08 && player.online.predicting) {
-    const speed = (run ? RUN_SPEED : WALK_SPEED) * Math.min(1, stick) * elapsed;
+    const pace = carryPace(p.id); // (slower with something heavy, as the server has it)
+    const speed = (run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * Math.min(1, stick) * elapsed;
     const steps = Math.max(1, Math.ceil(speed / .25));
     for (let i = 0; i < steps; i++) moved += stepPlayer(p, mx / stick * speed / steps, mz / stick * speed / steps, people);
     if (moved > 0) player.online.movedNow();

@@ -357,7 +357,7 @@ export function startOnline() {
       p.faceGoal = p.face;
       trackMotion(p, px, pz, dt);
     }
-    updateCarriedObjects(); tickObjectControls(dt); // (after everybody has been placed for this frame)
+    updateCarriedObjects(dt); tickObjectControls(dt); // (after everybody has been placed for this frame)
     const el = document.getElementById('netStatus');
     if (net.connected && !net.fatal && el && el.className === 'ok') {
       const t = `Online · ${people.length} people${net.rttMs !== null ? ` · ${net.rttMs} ms` : ''}`;

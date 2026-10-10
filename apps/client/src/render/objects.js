@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { CATALOGUE, S, objects, people, simEvents } from '@office/shared';
+import { S, closestPointOnItem, objects, people, simEvents } from '@office/shared';
 import { M } from './materials.js';
 import { scene } from './renderer.js';
 import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
@@ -153,32 +153,86 @@ function add(o) {
   write(kind, slot, o);
 }
 
+// Where each moving item is drawn now. The server sends where things are about 20 times a second; drawn there at once, a carried chair or a
+// falling mug would step. So it glides to each new place, quickly: index -> { pos, q }. Something that jumped far (put back where it started,
+// a new page) is just put there.
+const shown = new Map();
+const gliding = new Set();
+const UP = new THREE.Vector3(0, 1, 0), GLIDE = 18, JUMP = 1.5;
+const poseOf = (o, pos, q) => { pos.set(o.x, o.y, o.z); return o.q ? q.set(o.q[0], o.q[1], o.q[2], o.q[3]) : q.setFromAxisAngle(UP, o.rot); };
+function writeShown(index) {
+  const s = slotOf.get(index), c = shown.get(index);
+  if (!s || !c) return;
+  scratch.compose(c.pos, c.q, one);
+  for (const p of s.kind.parts) { p.mesh.setMatrixAt(s.slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; p.mesh.boundingSphere = null; }
+  const att = attached.get(index);
+  if (att) for (const a of att) a.mesh.matrix.multiplyMatrices(scratch, a.local);
+}
+const want = new THREE.Vector3(), wantQ = new THREE.Quaternion();
+function glideTo(o) {
+  let c = shown.get(o.index);
+  if (!c) { c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; shown.set(o.index, c); poseOf(o, c.pos, c.q); writeShown(o.index); return; }
+  poseOf(o, want, wantQ);
+  // (nothing is gliding things along: offline, where nothing calls updateCarriedObjects. Put it there)
+  if (c.pos.distanceTo(want) > JUMP || performance.now() - lastGlide > 200) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(o.index); writeShown(o.index); return; }
+  gliding.add(o.index);
+}
+let lastGlide = -Infinity;
+
 /** Draw every object the world has, and keep each where the simulation says it is. */
 export function initObjectViews() {
   for (const o of objects.all()) add(o);
+  for (const o of objects.all()) { const c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; poseOf(o, c.pos, c.q); shown.set(o.index, c); }
   simEvents.on('objectMoved', o => {
-    const s = slotOf.get(o.index);
-    if (!s) return;
+    if (!slotOf.has(o.index)) return;
     const before = carrierOf.get(o.index);
-    if (before !== undefined && before !== o.carriedBy) { const q = people.find(x => x.id === before); if (q) q.carrying = false; }
-    if (o.carriedBy !== null) { carried.set(o.index, o); carrierOf.set(o.index, o.carriedBy); updateCarriedObjects(); } // (drawn in the hands from the next frame on)
-    else { carried.delete(o.index); carrierOf.delete(o.index); write(s.kind, s.slot, o); }
+    if (before !== undefined && before !== o.carriedBy) { const q = people.find(x => x.id === before); if (q) { q.carrying = false; q.carryAt = null; } }
+    if (o.carriedBy !== null) { carried.set(o.index, o); carrierOf.set(o.index, o.carriedBy); } else { carried.delete(o.index); carrierOf.delete(o.index); }
+    glideTo(o);
   });
 }
 
 /**
- * Objects somebody carries are drawn a step in front of them, at hand height, facing the way they face, and the carrier is told they carry
- * something (the page lifts their arms). Only these are touched each frame: usually none, never more than the people playing.
+ * Once a frame: what is moving glides on towards where it is, and whoever carries something holds their arms out to it (to the point of it
+ * nearest their chest). Only moving and carried things are touched: usually none.
  */
-export function updateCarriedObjects() {
+export function updateCarriedObjects(dt = 1 / 60) {
+  lastGlide = performance.now();
+  const k = 1 - Math.exp(-dt * GLIDE);
+  for (const index of gliding) {
+    const o = objects.at(index), c = shown.get(index);
+    if (!o || !c) { gliding.delete(index); continue; }
+    poseOf(o, want, wantQ);
+    c.pos.lerp(want, k); c.q.slerp(wantQ, k);
+    if (c.pos.distanceToSquared(want) < 1e-8 && c.q.angleTo(wantQ) < 1e-4) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(index); }
+    writeShown(index);
+  }
   for (const o of carried.values()) {
     const p = people.find(x => x.id === o.carriedBy);
-    const s = slotOf.get(o.index);
-    if (!p || !s) continue;
+    if (!p) continue;
     p.carrying = true;
-    const floor = CATALOGUE[o.type]?.rests !== 'surface';
-    write(s.kind, s.slot, { index: o.index, x: p.pos.x + Math.sin(p.face) * .55, y: floor ? .5 : .95, z: p.pos.z + Math.cos(p.face) * .55, rot: p.face });
+    p.carryAt = closestPointOnItem(o, { x: p.pos.x, y: 1.1, z: p.pos.z });
   }
+}
+
+/**
+ * A see-through copy of an item, for showing where it would go (the ghost): its own shapes in one green or red glass. Made once per kind;
+ * `ok` colours it. Returns a group to place and a function to colour it.
+ */
+const ghostGlass = { ok: new THREE.MeshBasicMaterial({ color: 0x55c27a, transparent: true, opacity: .38, depthWrite: false }), no: new THREE.MeshBasicMaterial({ color: 0xd66f5a, transparent: true, opacity: .38, depthWrite: false }) };
+const ghosts = new Map();
+export function ghostOf(o) {
+  const k = key(o);
+  let g = ghosts.get(k);
+  if (!g) {
+    const kind = kinds.get(k);
+    if (!kind) return null;
+    const group = new THREE.Group(), meshes = kind.parts.map(p => { const m = new THREE.Mesh(p.geometry, ghostGlass.ok); m.renderOrder = 4; group.add(m); return m; });
+    group.visible = false; scene.add(group);
+    g = { group, paint: ok => { for (const m of meshes) m.material = ok ? ghostGlass.ok : ghostGlass.no; } };
+    ghosts.set(k, g);
+  }
+  return g;
 }
 
 /**

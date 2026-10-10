@@ -63,7 +63,7 @@ function initInput() {
   el.addEventListener('wheel', e => {
     e.preventDefault();
     const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
-    if (ctl.active) { if (ctl.wheelHook) ctl.wheelHook(dy); return; }
+    if (ctl.active) { if (ctl.holdWheel && ctl.holdWheel(dy)) return; if (ctl.wheelHook) ctl.wheelHook(dy); return; } // (holding something: the wheel raises your hands)
     // Trackpad pinch arrives as ctrl+wheel: zoom. A notched mouse wheel: zoom.
     // A two-finger trackpad swipe: move around the floor, like dragging.
     const notched = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50) || (e.wheelDeltaY && Math.abs(e.wheelDeltaY) % 120 === 0 && !e.deltaX);

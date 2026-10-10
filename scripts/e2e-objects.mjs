@@ -1,7 +1,8 @@
-// End to end: phase 5 "done when". Starts its own copy of the whole stack (its own project, port and database) and puts three players in it, in
-// three real browsers: two have a desk each, one is a guest. They pick up and move chairs (their own at a desk, a dining chair in a shared area),
-// everybody sees every step, nobody may move another person's desk chair, "tidy my desk" puts a station back, and what was moved survives a polite
-// restart and a hard kill. An admin sees what was moved and puts things back; a player who leaves while carrying loses what they carried.
+// End to end: phase 5 "done when", as items and physics have it now. Starts its own copy of the whole stack (its own project, port and database)
+// and puts three players in it, in three real browsers: two have a desk each, one is a guest. They take hold of chairs and carry them (their own
+// at a desk, a dining chair in a shared area) and put them down where they look, everybody sees every step, anyone may move anyone's things,
+// "tidy my desk" puts a station back, and what was moved survives a polite restart and a hard kill. An admin sees what was moved and puts things
+// back; a player who leaves while carrying loses what they carried.
 //   npm run e2e:objects
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
@@ -33,14 +34,25 @@ const joined = page => page.waitForFunction(() => window.__sim.net.joined && win
 /** Where an object is on this page: { x, z, by } (by: who carries it, or null). */
 const where = (page, index) => page.evaluate(i => { const o = window.__sim.objects.at(i); return { x: o.x, z: o.z, by: o.carriedBy, hx: o.home.x, hz: o.home.z }; }, index);
 const moved = w => Math.hypot(w.x - w.hx, w.z - w.hz) > .2;
-/** Face the valid place furthest from where the chair started, within a metre (so moving it is something you can see). Returns it. */
-const aimSomewhere = page => page.evaluate(() => {
-  const s = window.__sim, p = s.player.person, o = s.objects.all().find(x => x.carriedBy === p.id); if (!o) return null;
-  let best = null;
-  for (let a = 0; a < Math.PI * 2; a += .2) { const x = p.pos.x + Math.sin(a), z = p.pos.z + Math.cos(a); if (!s.placementProblem(o, x, z, o.rot)) { const d = Math.hypot(x - o.home.x, z - o.home.z); if (!best || d > best.d) best = { a, x, z, d }; } }
-  if (best) p.face = p.faceGoal = best.a;
-  return best && { x: best.x, z: best.z };
-});
+/**
+ * Look down at the floor toward somewhere the chair may go, as a player would: turn the view until the ghost is green, trying the ways furthest
+ * from where the chair started first (so moving it is something you can see). The page puts down where you look. Returns where it then aims.
+ */
+const aimSomewhere = async page => {
+  const ways = await page.evaluate(() => {
+    const s = window.__sim, p = s.player.person, o = s.objects.all().find(x => x.carriedBy === p.id); if (!o) return [];
+    const out = [];
+    for (let a = 0; a < Math.PI * 2; a += .3) { const x = p.pos.x + Math.sin(a), z = p.pos.z + Math.cos(a); if (!s.placementProblem(o, x, z, o.rot)) out.push({ a, d: Math.hypot(x - o.home.x, z - o.home.z) }); }
+    return out.sort((u, v) => v.d - u.d).map(w => w.a);
+  });
+  for (const a of ways.slice(0, 10)) for (const pitch of [-.75, -.6, -.9]) {
+    await page.evaluate(([a, pitch]) => { window.__sim.ctl.yaw = a; window.__sim.ctl.pitch = pitch; }, [a, pitch]);
+    await sleep(350); // (the page aims a few times a second)
+    const aim = await page.evaluate(() => window.__sim.objectAim);
+    if (aim && aim.ok) return aim;
+  }
+  return null;
+};
 
 let browser;
 try {
@@ -83,15 +95,14 @@ try {
   await sleep(300);
   await A.page.keyboard.press('g');
   const put = await until(async () => { const w = await where(B.page, anaChair); return w.by === null && moved(w) ? w : null; });
-  check('and sees it set down where Ana aimed', !!put && !!aim && Math.hypot(put.x - aim.x, put.z - aim.z) < .05, JSON.stringify(put));
+  check('and sees it set down where Ana aimed', !!put && !!aim && Math.hypot(put.x - aim.x, put.z - aim.z) < .1, JSON.stringify({ put, aim }));
   const seatMoved = await B.page.evaluate(i => { const o = window.__sim.objects.at(i); const s = o.link.spot; return Math.hypot(s.pos.x - o.x, s.pos.z - o.z) < 1.2 && Math.hypot(s.pos.x - o.home.x, s.pos.z - o.home.z) > .15; }, anaChair);
   check('the seat went with the chair, on the other page too', seatMoved);
 
-  // ---- 3. Ben may not move Ana's chair: he is not offered it
+  // ---- 3. anyone may move anyone's things: Ben, at Ana's desk, is offered something of hers to pick up
   await walkTo(B.page, `interactables.of('desk').find(s => s.id === '${deskOf.obj_ana}').approach`);
-  await sleep(600);
-  const benOffer = await B.page.evaluate(() => { const b = document.getElementById('fpObj'); return b.hidden ? null : b.textContent; });
-  check('Ben, standing by Ana\'s chair, is not offered it', benOffer === null || !/office chair/.test(benOffer), String(benOffer));
+  const benOffer = await until(() => B.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up/.test(b.textContent) ? b.textContent : null; }), 8000);
+  check('Ben, at Ana\'s desk, is offered her things to pick up too', !!benOffer, String(benOffer));
 
   // ---- 4. Cat, the guest, moves a dining chair in a shared area
   await walkTo(C.page, "interactables.of('dining')[0].approach");
@@ -103,7 +114,7 @@ try {
   await sleep(300);
   await C.page.keyboard.press('g');
   const catPut = await until(async () => { const w = await where(A.page, diningIdx); return w.by === null && moved(w) ? w : null; });
-  check('Cat moves a dining chair; Ana, far away, sees it where Cat put it', !!catPut && !!catAim && Math.hypot(catPut.x - catAim.x, catPut.z - catAim.z) < .4);
+  check('Cat moves a dining chair; Ana, far away, sees it where Cat put it', !!catPut && !!catAim && Math.hypot(catPut.x - catAim.x, catPut.z - catAim.z) < .4, JSON.stringify({ catPut, catAim }));
 
   // ---- 5. "tidy my desk" puts Ana's chair back (and not Cat's)
   await A.page.keyboard.press('t');

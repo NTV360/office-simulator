@@ -1,6 +1,6 @@
 import {
-  CATALOGUE, canReach, carriedBy, inReach, isSeated, letGo, simEvents, movability, mulQuat, nearestGrip, objects, onItem, orientationOf, pickUp, placeDown, placementProblem, resetObject, restHeightAt, toItemFrame,
-  type Hold, type Quat,
+  CATALOGUE, canReach, carriedBy, holdFor, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
+  type Quat,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -66,11 +66,7 @@ export function throwIt(person: Person, power: number): ObjectResult {
   return yes();
 }
 
-/** A hold that keeps the item as it is to this person now: their hands where they took it, its angle to them as it is. */
-function holdFor(o: WorldObject, person: Person, point: { x: number; y: number; z: number }): Hold {
-  const half = person.face / 2, facing: Quat = [0, -Math.sin(half), 0, Math.cos(half)]; // (the inverse of the way they face)
-  return { person: person.id, at: toItemFrame(o, point), rel: mulQuat(facing, orientationOf(o)), turn: [0, 0, 0, 1], lift: point.y, out: Math.hypot(point.x - person.pos.x, point.z - person.pos.z), raise: 0 };
-}
+
 
 /** Put down what the person carries at (x, z), facing `rot`. */
 export function place(person: Person, x: number, z: number, rot: number): ObjectResult {
