@@ -11,6 +11,8 @@ This is the page to read first if you are going to work on the office game. It g
 | **git** | Any recent version |
 | **A browser** | Chrome or Edge. Open the game in two windows to see yourself from the outside |
 
+Commands written as `NAME=value npm run something` are bash syntax (Git Bash, WSL, Mac, Linux). In **PowerShell** set the variable on its own line first, `$env:NAME='value'`, then run the command (it stays set in that window; `Remove-Item Env:NAME` clears it). Plain `npm run ...` commands are the same everywhere.
+
 The scripts were written and tried on Windows 11 with Docker Desktop. They only use Node and the `docker` command, so Mac and Linux should work, but nobody has run them there yet: tell us what you hit.
 
 ## First time
@@ -62,12 +64,14 @@ A fresh database has no accounts and no employees, so there is nothing to log in
 
 `dev:online` starts the records itself unless `SUPABASE_URL` is set (turn it off with `DEV_RECORDS=0`, skip the accounts with `DEV_SEED=0`). To use the **real** records instead, put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` or the environment (see [SUPABASE.md](SUPABASE.md)); `npm run seed` then makes the accounts and links them to employees named Ana Lopez, Ben Reyes, Cat Dizon and Dan Cruz if the real records have people by those names (otherwise they are plain accounts: link them on the admin page).
 
-For the **Docker stack**: run `npm run dev:records` in one terminal; in another start the stack pointing at it, then seed it:
+For the **Docker stack**, if you want the test company in it (but see the warning below): run `npm run dev:records` in one terminal; in another start the stack pointing at it, then seed it:
 
 ```
 SUPABASE_URL=http://host.docker.internal:18090 SUPABASE_SECRET_KEY=dev-records-key ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass ADMIN_TOKEN=local-admin-token docker compose up --build -d
 SEED_URL=http://localhost:16769 SEED_ADMIN_TOKEN=local-admin-token npm run seed
 ```
+
+**Warning: `npm run verify:browser` against the Docker stack must run on a stack WITHOUT the test company.** Its online checks count the plain 40 made-up staff; with 36 imported employees the counts differ and they fail. Start that stack with only the three admin variables (next section); use the stack with records for hand testing.
 
 **Starting again from nothing:** `docker rm -f office-dev-db && docker volume rm office-dev-pgdata` (dev loop) or `docker compose down -v` (stack), then run it again.
 
@@ -76,10 +80,10 @@ SEED_URL=http://localhost:16769 SEED_ADMIN_TOKEN=local-admin-token npm run seed
 `docker compose up --build` builds the same images the office server runs and serves the finished site on http://localhost:16769. It is slower to change (rebuild after each edit) but it is the closest to real, and some checks below need it. Details and troubleshooting: [LOCAL-DOCKER.md](LOCAL-DOCKER.md). To log in you need an admin: start it with
 
 ```
-ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass ADMIN_TOKEN=local-admin-token docker compose up --build -d
+GRACE_MS=4000 ADMIN_USERNAME=boss ADMIN_PASSWORD=a-long-admin-pass ADMIN_TOKEN=local-admin-token docker compose up --build -d
 ```
 
-(or put those three in a `.env` file, which is never committed).
+(or put those in a `.env` file, which is never committed; `GRACE_MS=4000` makes a person who leaves go after 4 seconds instead of 30, which the browser checks want). In PowerShell, set them first: `$env:GRACE_MS='4000'; $env:ADMIN_USERNAME='boss'; ...` then `docker compose up --build -d`.
 
 ## You have rebased onto `feature/leigh/server-multiplayer`: what changed
 

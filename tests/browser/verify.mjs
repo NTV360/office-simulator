@@ -620,7 +620,7 @@ try {
       await A.page.evaluate(() => document.getElementById('tNames').click()); // (it sits in the collapsed "More options")
       await A.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.nameTag; }, nb, { timeout: 5000 }).then(() => pass('and on again'), () => fail('labels did not come back'));
       await B.page.click('#accountBox button:last-child');
-      await A.page.waitForFunction(n => !window.__sim.people.find(x => x.name === n), nb, { timeout: 30000 }).then(() => pass('when they leave, the label goes with them'), () => fail('the person or label stayed'));
+      await A.page.waitForFunction(n => !window.__sim.people.find(x => x.name === n), nb, { timeout: 70000 }).then(() => pass('when they leave, the label goes with them'), () => fail('the person or label stayed'));
       [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
       await A.page.close(); await B.page.close();
       for (const n of [na, nb]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
