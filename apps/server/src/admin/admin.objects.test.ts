@@ -13,6 +13,7 @@ import { useAuth } from '../test-support';
 // The things in the office that players move, through the admin API: what is out of place, putting one or all back, the audit log.
 
 process.env.WORLD_SEED = '1';
+process.env.PHYSICS = 'off'; // (these put chairs anywhere to test the admin's requests alone: physics would push them about. physics/item-physics.test.ts covers that)
 delete process.env.DATABASE_URL;
 
 let app: INestApplication, base: string;
