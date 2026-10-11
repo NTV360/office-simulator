@@ -1,7 +1,7 @@
 import { Inject, Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { DecodeError, PROTOCOL_VERSION, REFUSAL_TEXT, addLog, decodeClient, encode, sim, simEvents, type ClientMessage } from '@office/shared';
+import { DecodeError, PROTOCOL_VERSION, REFUSAL_TEXT, addLog, decodeClient, encode, sim, simEvents, type ClientMessage, type WorldObject } from '@office/shared';
 import type { ObjectResult } from '../play/object-actions';
 import { addressKey } from '../auth/http';
 import { parseTrustProxy } from '../app.config';
@@ -55,6 +55,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @WebSocketServer() server!: Server;
   private readonly log = new Logger('Gateway');
   private broadcaster!: Broadcaster;
+  /** Objects that moved during the tick, sent after its snapshot (index -> object: one message each, the latest pose). */
+  private readonly movedThisTick = new Map<number, WorldObject>();
   private readonly options = gatewayOptions(process.env);
   /** The one live connection of each account. */
   private readonly byAccount = new Map<number, Socket>();
@@ -84,7 +86,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
     simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p))); // who drives them, their name or look changed
     this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason));
-    simEvents.on('objectMoved', o => this.broadcast(this.broadcaster.objectMoved(o))); // a chair or a mug was moved: everybody sees it
+    // a chair or a mug was moved: everybody sees it, once per tick and after that tick's snapshot. (Sent at once, they went out ahead of the
+    // snapshot every tick while anything moved, and a snapshot is volatile: with data still queued it is dropped, so while somebody carried
+    // something nobody's position reached anybody.)
+    simEvents.on('objectMoved', o => { this.movedThisTick.set(o.index, o); });
     simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
     this.auth.onSessionEnd(e => this.onSessionEnd(e));
     this.sweepTimer = setInterval(() => { void this.sweep(); }, this.options.sweepMs);
@@ -94,6 +99,8 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
         this.sendAcks(tick);
       } else this.broadcaster.snapshot(tick); // keep change tracking moving even with nobody watching
+      for (const o of this.movedThisTick.values()) this.broadcast(this.broadcaster.objectMoved(o));
+      this.movedThisTick.clear();
       for (const e of this.broadcaster.events()) this.broadcast(e);
     });
   }

@@ -53,4 +53,24 @@ describe('holding, with physics', () => {
     }
     a.socket.close(); b.socket.close();
   });
+
+  it('while somebody walks about carrying something, everybody keeps getting snapshots, the carrier moving in them', async () => {
+    resetAllObjects();
+    const a = await join('carry_walker'), b = await join('carry_viewer');
+    const chair: WorldObject = objects.all().filter(o => o.type === 'chair-wood')[1];
+    const p = personOf('carry_walker');
+    p.pos.x = chair.x + .6; p.pos.z = chair.z; p.face = -Math.PI / 2;
+    send(a, { type: 'grab', object: chair.index });
+    await sleep(1200);
+    const from = b.messages.length, z0 = p.pos.z;
+    let seq = 1000;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 1200) { send(a, { type: 'input', seq: seq++, mx: 0, mz: 1, heading: 0, run: false }); await sleep(50); }
+    const snaps = b.messages.slice(from).filter((m): m is Extract<Message, { type: 'snapshot' }> => m.type === 'snapshot');
+    expect(snaps.length).toBeGreaterThan(15); // (twenty a second: volatile snapshots are not crowded out by the moving chair's messages)
+    const zs = snaps.map(s => (s.moves ?? []).find(m => m.id === p.id)?.z ?? s.people.find(q => q.id === p.id)?.z).filter((z): z is number => z !== undefined);
+    expect(zs.length).toBeGreaterThan(10);
+    expect(zs[zs.length - 1] - z0).toBeGreaterThan(.5); // they walked, and everybody saw it
+    a.socket.close(); b.socket.close();
+  });
 });
