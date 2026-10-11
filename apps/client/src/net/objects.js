@@ -10,19 +10,17 @@ import { $ } from '../ui/dom.js';
 // Moving things about, online. Aim at something and take hold of it where you aim (G); the hands go there and lift it. Holding it: a ghost
 // shows where it would go, where you look (G puts it down there gently, or lets go of it where it is if that is not a place it may go); hold
 // R and move the mouse to turn it in your hands (Shift+R rolls it); hold Z and turn the wheel to raise and lower your hands (the wheel alone zooms); hold the right button and let go
-// to throw it (longer is harder). T puts everything at your desk back. The page only asks: the server holds things with real hands, by the
+// to throw it (turn the wheel meanwhile to set how hard). T puts everything at your desk back. The page only asks: the server holds things with real hands, by the
 // same rules (shared/world/arms.ts, placement.ts), and everybody sees what happens. See docs/ITEMS-PHYSICS-PLAN.md, sections 6 and 7.
 
 const state = {
   send: null, acc: 0, candidate: null, grip: null, far: null,
-  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwFrom: null, target: null, problem: null,
+  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwing: false, power: .5, target: null, problem: null,
 };
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
 aim.far = 6;
 /** How far from where you stand a thing can be put down (m): your arm, and the thing's own size. */
 const PUT_REACH = 1.2;
-/** The longest a throw is wound up (ms): held that long, it is as hard as it gets. */
-const WIND_UP = 1000;
 const UP = new THREE.Vector3(0, 1, 0), RIGHT = new THREE.Vector3(-1, 0, 0), FORWARD = new THREE.Vector3(0, 0, 1), turnBy = new THREE.Quaternion();
 
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
@@ -77,7 +75,7 @@ function refresh() {
   const p = player.person, on = !!p && ctl.active;
   const held = on ? carriedBy(p.id) : undefined;
   state.candidate = null; state.target = null; state.problem = null;
-  if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwFrom = null; hideGhost(); }
+  if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; hideGhost(); }
   if (!on) { setPrompt('', false); highlightItem(null); return; }
   if (held) {
     const t = putTarget(p, held);
@@ -86,7 +84,7 @@ function refresh() {
     showGhost(held, t, !state.problem);
     highlightItem(null);
     const name = labelOf(held);
-    if (state.throwFrom !== null) setPrompt(`Throwing the ${name}: let go of the right button`, false);
+    if (state.throwing) setPrompt(`Throwing the ${name}: wheel sets how hard  ·  let go of the right button`, false);
     else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
     return;
   }
@@ -140,20 +138,21 @@ function turnIt(dx, dy) {
   state.turn.normalize(); state.dirty = true;
   return true;
 }
-// (only while Z is held: otherwise the wheel is the camera's, zooming in third person as always)
+// (while the right button is held the wheel sets how hard the throw will be; while Z is held it raises your hands; otherwise it is the
+// camera's, zooming as always)
 function raiseHands(dy) {
+  if (state.throwing && holding()) { state.power = Math.max(.05, Math.min(1, state.power - dy * .0005)); return true; }
   if (!state.zKey || !holding()) return false;
   state.raise = Math.max(-.6, Math.min(.6, state.raise - dy * .0008));
   state.dirty = true;
   return true;
 }
 function windUp(down) {
-  if (!holding()) { state.throwFrom = null; return false; }
-  if (down) { state.throwFrom = performance.now(); return true; }
-  if (state.throwFrom === null) return false;
-  const power = Math.min(1, (performance.now() - state.throwFrom) / WIND_UP);
-  state.throwFrom = null;
-  state.send?.({ type: 'throw', power });
+  if (!holding()) { state.throwing = false; return false; }
+  if (down) { state.throwing = true; return true; }
+  if (!state.throwing) return false;
+  state.throwing = false;
+  state.send?.({ type: 'throw', power: state.power }); // (the strength is remembered for the next throw)
   return true;
 }
 /** How it is held goes to the server when it changes, at most ten times a second. */
@@ -180,15 +179,15 @@ export function initObjectControls({ send }) {
     else if (k === 't' && player.person?.slot && !carriedBy(player.person.id)) send({ type: 'reset', scope: 'station', object: NONE });
   });
   addEventListener('keyup', e => { if (e.key === 'Shift') state.shift = false; if (e.key.toLowerCase() === 'r') state.rKey = false; if (e.key.toLowerCase() === 'z') state.zKey = false; });
-  addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwFrom = null; });
+  addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwing = false; });
 }
 
-/** The throw bar: how hard the throw will be if the right button is let go now (it fills in a second, and stays full). */
+/** The throw bar: how hard the throw will be if the right button is let go now (set with the wheel, starting where the last throw was). */
 function showWindUp() {
   const bar = $('fpThrow'); if (!bar) return;
-  const on = state.throwFrom !== null;
+  const on = state.throwing;
   if (bar.hidden === on) bar.hidden = !on;
-  if (on) $('fpThrowFill').style.width = `${Math.round(Math.min(1, (performance.now() - state.throwFrom) / WIND_UP) * 100)}%`;
+  if (on) $('fpThrowFill').style.width = `${Math.round(state.power * 100)}%`;
 }
 
 /** Every frame, cheaply: how it is held goes out when it changes; the throw bar fills; the ghost and the prompt are refreshed a few times a second. */
