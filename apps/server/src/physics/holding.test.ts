@@ -122,17 +122,17 @@ describe('weight', () => {
 });
 
 describe('letting go', () => {
-  it('a hand pulled too far from where it holds slips off, and the thing falls', () => {
+  it('a hand pulled too far from what it holds, for more than a moment, slips off: a sofa dragged alone, its holder suddenly metres away', () => {
     const w = make();
-    const chair = ofType('chair-wood')[0];
-    const p = standBy(chair, .6, 1.0);
-    grab(p, chair.index);
+    const sofa = ofType('sofa')[0];
+    const p = standBy(sofa, .55, 0);
+    grab(p, sofa.index);
     tick(w, 1.5);
     p.pos.x += 3;
     tick(w, .2);
-    expect(chair.carriedBy).toBeNull();
-    tick(w, 2);
-    expect(chair.y).toBeLessThan(.25);
+    expect(sofa.carriedBy).toBe(p.id); // (not at once: a moment's grace)
+    tick(w, .8);
+    expect(sofa.carriedBy).toBeNull();
   });
 
   it('put down, it is lowered to the place, upright, and let go there', () => {
@@ -309,5 +309,41 @@ describe('carrying together', () => {
     expect(sofa.helpers).toEqual([]);
     tick(w, 3);
     expect(sofa.y).toBeLessThan(.05);
+  });
+});
+
+describe('keeping hold while moving and turning', () => {
+  it('walking at full pace with a chair, it stays in the hands and keeps up', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[0];
+    const p = standBy(chair, .6, 1.0);
+    grab(p, chair.index);
+    tick(w, 1.5);
+    const to = openFloorNear(chair), d = Math.hypot(to.x - p.pos.x, to.z - p.pos.z), steps = Math.ceil(d / (1.3 * .05));
+    const dx = (to.x - p.pos.x) / steps, dz = (to.z - p.pos.z) / steps;
+    for (let i = 0; i < steps; i++) { p.pos.x += dx; p.pos.z += dz; tick(w, .05); } // (1.3 m/s: a walk, slowed by the chair)
+    expect(chair.carriedBy).toBe(p.id);
+  });
+
+  it('turning round on the spot (a quick look behind), it comes round with them and stays in their hands', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[0];
+    const p = standBy(chair, .6, 1.0);
+    grab(p, chair.index);
+    tick(w, 1.5);
+    p.face += Math.PI; // (all at once, as a mouse flick would)
+    tick(w, 2);
+    expect(chair.carriedBy).toBe(p.id);
+  });
+
+  it('turned right over in the hands in one go, it turns at the pace hands can, and stays held', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[0];
+    const p = standBy(chair, .6, 1.0);
+    grab(p, chair.index);
+    tick(w, 1.5);
+    holdInput(p, [1, 0, 0, 0], 0); // (half a turn about its own right: upside down)
+    tick(w, 3);
+    expect(chair.carriedBy).toBe(p.id);
   });
 });

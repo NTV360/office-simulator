@@ -20,8 +20,12 @@ const UPRIGHT = .5 * Math.PI / 180, HOME_EPS = .02, HOME_TURN = 1.5 * Math.PI / 
 /** Put down this much above its surface, so it starts clear of it and settles onto it. */
 const LIFT = .002;
 
-/** How a hand holds: its spring's stiffness and the turn's (rad/s: about 2 and 1.6 a second), how far a hand goes before it slips off (m). */
-const HAND = { stiff: 12, turn: 10, slip: .6 } as const;
+/**
+ * How a hand holds: its spring's stiffness and the turn's (rad/s: about 2 and 1.6 a second); how far a hand may be from its grip, and for how
+ * long (s), before it slips off; how fast the hands follow the person turning round, and how fast the thing turns when they turn it in their
+ * hands (rad/s: a flick of the mouse does not fling it out of their hands).
+ */
+const HAND = { stiff: 12, turn: 10, slip: .6, slipAfter: .5, follow: 3, twist: 2.5, fastest: 3 } as const;
 /** Where things are carried: hands this high, this far in front (m), reached from where they were taken in about a second (gently: a mug on a chair stays on). */
 /** (`hug`: the closest anything is held, against the chest, where two hands bear the most, about 38 kg: the plan's "over 35 kg, not alone") */
 const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, hug: .16, ease: 1.2, clear: .25, highest: 1.5 } as const;
@@ -49,6 +53,18 @@ function rotate(q: Quat, v: V): V {
   return { x: v.x + qw * tx + (qy * tz - qz * ty), y: v.y + qw * ty + (qz * tx - qx * tz), z: v.z + qw * tz + (qx * ty - qy * tx) };
 }
 /** The turn that takes orientation `from` to `to`, as a rotation vector (axis times angle), the short way round. */
+/** Part of the way from orientation `a` to `b` (0 to 1), the short way round. */
+function slerp(a: Quat, b: Quat, t: number): Quat {
+  let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+  const s = d < 0 ? -1 : 1; d *= s;
+  if (d > .9995) { const q = a.map((v, i) => v + (s * b[i] - v) * t), n = Math.hypot(...q); return q.map(v => v / n) as Quat; }
+  const th = Math.acos(d), sa = Math.sin((1 - t) * th) / Math.sin(th), sb = Math.sin(t * th) / Math.sin(th);
+  return a.map((v, i) => v * sa + s * b[i] * sb) as Quat;
+}
+/** A hand as it is now: which way it is round the person (it follows their turning, not faster than it can), the turn it holds the thing at
+ *  (following theirs the same way), where it was last tick and how fast it goes, and how long it has been too far from its grip. */
+type HandNow = { face: number; turn: Quat; at: V | null; v: V; away: number };
+
 function turnBetween(from: Quat, to: Quat): V {
   let [x, y, z, w] = mulQuat(to, [-from[0], -from[1], -from[2], from[3]]);
   if (w < 0) { x = -x; y = -y; z = -z; w = -w; }
@@ -61,6 +77,7 @@ function turnBetween(from: Quat, to: Quat): V {
 export class ItemPhysics {
   readonly physics: Physics;
   private awakeBefore = new Set<number>();
+  private readonly hands = new WeakMap<Hold, HandNow>();
   private writing = false;
   private readonly stop: () => void;
 
@@ -90,7 +107,7 @@ export class ItemPhysics {
   /** Advance the physics by `dt` seconds (the hands pushing on what they hold before every substep), and move every item whose body moved. */
   step(dt: number): void {
     const held = objects.all().filter(o => o.carriedBy !== null);
-    for (const o of held) { this.ensureHold(o); this.ease(o, dt); }
+    for (const o of held) { this.ensureHold(o); this.ease(o, dt); for (const h of o.holds) this.track(h, dt); }
     const flying = this.physics.awake().map(i => objects.at(i)).filter((o): o is WorldObject => !!o && o.carriedBy === null);
     this.physics.step(dt, () => {
       for (const o of held) if (o.carriedBy !== null) this.push(o);
@@ -130,8 +147,29 @@ export class ItemPhysics {
   private handOf(h: Hold): V | null {
     const p = people.find(q => q.id === h.person);
     if (!p) return null;
-    const a = p.face + h.az;
+    const a = (this.hands.get(h)?.face ?? p.face) + h.az;
     return { x: p.pos.x + Math.sin(a) * h.out, y: h.lift, z: p.pos.z + Math.cos(a) * h.out };
+  }
+
+  /** Once a tick: the hand follows the person's turning, and the turn asked, as fast as it can; and how fast it is moving is noted. */
+  private track(h: Hold, dt: number): void {
+    const p = people.find(q => q.id === h.person);
+    if (!p) return;
+    let n = this.hands.get(h);
+    if (!n) { n = { face: p.face, turn: [...h.turn] as Quat, at: null, v: { x: 0, y: 0, z: 0 }, away: 0 }; this.hands.set(h, n); }
+    const da = Math.atan2(Math.sin(p.face - n.face), Math.cos(p.face - n.face)), most = HAND.follow * dt;
+    n.face += Math.max(-most, Math.min(most, da));
+    const off = between(n.turn, h.turn);
+    if (off > 1e-6) n.turn = slerp(n.turn, h.turn, Math.min(1, HAND.twist * dt / off));
+    const hand = this.handOf(h);
+    if (hand) {
+      if (n.at && dt > 0) {
+        n.v = { x: (hand.x - n.at.x) / dt, y: (hand.y - n.at.y) / dt, z: (hand.z - n.at.z) / dt };
+        const speed = Math.hypot(n.v.x, n.v.y, n.v.z); // (no faster than hands go: a person put somewhere else does not fling what they hold after them)
+        if (speed > HAND.fastest) { n.v.x *= HAND.fastest / speed; n.v.y *= HAND.fastest / speed; n.v.z *= HAND.fastest / speed; }
+      }
+      n.at = hand;
+    }
   }
 
   /** Every hand on this item pushes on it, for one substep (and a thing being put down is lowered to its place). */
@@ -148,8 +186,9 @@ export class ItemPhysics {
       if (!hand || !p) continue;
       const g0 = rotate(q, h.at), g = { x: t.x + g0.x, y: t.y + g0.y, z: t.z + g0.z };
       const gv = { x: v.x + w.y * g0.z - w.z * g0.y, y: v.y + w.z * g0.x - w.x * g0.z, z: v.z + w.x * g0.y - w.y * g0.x };
-      const share = m / n, k = HAND.stiff * HAND.stiff, c = 2 * HAND.stiff;
-      const f = { x: share * (k * (hand.x - g.x) - c * gv.x), y: share * (k * (hand.y - g.y) - c * gv.y), z: share * (k * (hand.z - g.z) - c * gv.z) };
+      const share = m / n, k = HAND.stiff * HAND.stiff, c = 2 * HAND.stiff, hv = this.hands.get(h)?.v ?? { x: 0, y: 0, z: 0 };
+      // (damped against the hand's own movement, not against standing still: carried at a walk, it keeps up instead of trailing behind)
+      const f = { x: share * (k * (hand.x - g.x) + c * (hv.x - gv.x)), y: share * (k * (hand.y - g.y) + c * (hv.y - gv.y)), z: share * (k * (hand.z - g.z) + c * (hv.z - gv.z)) };
       // the arms hold up what they can at the distance they are out from the shoulders (m·g·d against their strength: where the hands are, not
       // where the thing has got to: a sofa dragged in short of the hands is still held as close as the arms are), and pull what they can along
       const d = Math.max(CARRY.hug, h.out);
@@ -167,7 +206,7 @@ export class ItemPhysics {
     if (o.holds.length === 1) {
       const h = o.holds[0], p = people.find(x => x.id === h.person);
       if (!p) return;
-      const target = mulQuat(mulQuat(yawQuat(p.face), h.turn), h.rel);
+      const now = this.hands.get(h), target = mulQuat(mulQuat(yawQuat(now?.face ?? p.face), now?.turn ?? h.turn), h.rel);
       this.steer(b, q, target, HAND.turn, (one ? STRENGTH.oneHand : STRENGTH.twoHands) * 1.5);
     }
   }
@@ -237,11 +276,14 @@ export class ItemPhysics {
       if (there || o.placing.t > PLACE.give) { b.setLinvel({ x: 0, y: 0, z: 0 }, true); b.setAngvel({ x: 0, y: 0, z: 0 }, true); letGo(o); }
       return;
     }
+    // (a hand slips off only when it has been too far from its grip for a moment: a bump or a quick turn does not knock it out of their hands)
     const kept = o.holds.filter(h => {
-      const hand = this.handOf(h);
+      const hand = this.handOf(h), n = this.hands.get(h);
       if (!hand) return false;
-      const g0 = rotate(q, h.at);
-      return Math.hypot(hand.x - t.x - g0.x, hand.y - t.y - g0.y, hand.z - t.z - g0.z) <= HAND.slip;
+      const g0 = rotate(q, h.at), far = Math.hypot(hand.x - t.x - g0.x, hand.y - t.y - g0.y, hand.z - t.z - g0.z) > HAND.slip;
+      if (!n) return !far;
+      n.away = far ? n.away + dt : 0;
+      return n.away <= HAND.slipAfter;
     });
     if (kept.length === o.holds.length) return;
     if (!kept.length) { letGo(o); return; }
