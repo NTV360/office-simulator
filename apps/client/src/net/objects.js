@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CATALOGUE, NONE, REFUSAL_TEXT, canReach, carriedBy, carryOf, holderCount, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt } from '@office/shared';
 import { camera } from '../render/renderer.js';
-import { ghostOf, itemAt } from '../render/objects.js';
+import { ghostOf, highlightItem, itemAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
@@ -78,12 +78,13 @@ function refresh() {
   const held = on ? carriedBy(p.id) : undefined;
   state.candidate = null; state.target = null; state.problem = null;
   if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwFrom = null; hideGhost(); }
-  if (!on) { setPrompt('', false); return; }
+  if (!on) { setPrompt('', false); highlightItem(null); return; }
   if (held) {
     const t = putTarget(p, held);
     state.target = t;
     state.problem = !inReach(p, t.x, t.z) ? 'too-far' : placementProblem(held, t.x, t.z, t.rot);
     showGhost(held, t, !state.problem);
+    highlightItem(null);
     const name = labelOf(held);
     if (state.throwFrom !== null) setPrompt(`Throwing the ${name}: let go of the right button`, false);
     else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
@@ -91,6 +92,7 @@ function refresh() {
   }
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
   state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
+  highlightItem(state.candidate); // (the thing G would take hold of: outlined on this page only)
   if (state.candidate) setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (G)` : `Pick up the ${labelOf(state.candidate)}  (G)`, true);
   else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }
@@ -181,10 +183,19 @@ export function initObjectControls({ send }) {
   addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwFrom = null; });
 }
 
-/** Every frame, cheaply: how it is held goes out when it changes; the ghost and the prompt are refreshed a few times a second. */
+/** The throw bar: how hard the throw will be if the right button is let go now (it fills in a second, and stays full). */
+function showWindUp() {
+  const bar = $('fpThrow'); if (!bar) return;
+  const on = state.throwFrom !== null;
+  if (bar.hidden === on) bar.hidden = !on;
+  if (on) $('fpThrowFill').style.width = `${Math.round(Math.min(1, (performance.now() - state.throwFrom) / WIND_UP) * 100)}%`;
+}
+
+/** Every frame, cheaply: how it is held goes out when it changes; the throw bar fills; the ghost and the prompt are refreshed a few times a second. */
 export function tickObjectControls(dt) {
   state.acc += dt;
   sendHold();
+  showWindUp();
   // (for the browser checks: where G would put it, and whether it may go there: the ghost green, or red)
   if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; }
 }

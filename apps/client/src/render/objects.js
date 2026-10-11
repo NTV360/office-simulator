@@ -208,12 +208,43 @@ export function updateCarriedObjects(dt = 1 / 60) {
     if (c.pos.distanceToSquared(want) < 1e-8 && c.q.angleTo(wantQ) < 1e-4) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(index); }
     writeShown(index);
   }
+  if (rimOn) placeRim();
   for (const o of carried.values()) for (const id of carrierOf.get(o.index) ?? []) {
     const p = people.find(x => x.id === id);
     if (!p) continue;
     p.carrying = true;
     p.carryAt = closestPointOnItem(o, { x: p.pos.x, y: 1.1, z: p.pos.z });
   }
+}
+
+/**
+ * The thing you would take hold of, outlined on your page alone (nobody else sees it): a slightly larger copy of its shapes, drawn from the
+ * inside only, in a warm colour, so a rim shows round it. Follows it if it moves. `null` takes it away.
+ */
+const rimGlass = new THREE.MeshBasicMaterial({ color: 0xffc34d, side: THREE.BackSide, depthWrite: false });
+const rims = new Map();
+let rimOn = null;
+export function highlightItem(o) {
+  const k = o ? key(o) : null;
+  if (rimOn && (!o || rimOn.k !== k || rimOn.index !== o.index)) { rimOn.group.visible = false; rimOn = null; }
+  if (!o) return;
+  let g = rims.get(k);
+  if (!g) {
+    const kind = kinds.get(k);
+    if (!kind) return;
+    const group = new THREE.Group();
+    for (const p of kind.parts) { const m = new THREE.Mesh(p.geometry, rimGlass); m.renderOrder = 2; group.add(m); }
+    group.matrixAutoUpdate = false; group.visible = false; scene.add(group);
+    g = { group, k }; rims.set(k, g);
+  }
+  rimOn = { ...g, index: o.index };
+  placeRim();
+  g.group.visible = true;
+}
+const RIM = 1.06, rimScale = new THREE.Vector3(RIM, RIM, RIM);
+function placeRim() {
+  const c = rimOn && shown.get(rimOn.index);
+  if (c) { rimOn.group.matrix.compose(c.pos, c.q, rimScale); rimOn.group.matrixWorldNeedsUpdate = true; }
 }
 
 /**

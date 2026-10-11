@@ -11,3 +11,6 @@
 body.fp #hud,body.fp #ledger,body.fp #person,body.fp #topBar,body.fp #dock,body.tp #hud,body.tp #ledger,body.tp #person,body.tp #topBar,body.tp #dock{display:none}
 body.fp #stage canvas,body.tp #stage canvas{cursor:crosshair}
 @media (max-width:760px){#fpBar{left:12px;right:12px;transform:none;max-width:none}.fp-keys{display:none}#fpPrompt{bottom:calc(160px + env(safe-area-inset-bottom,0px))}}
+/* how hard a throw will be: fills while the right button is held (net/objects.js) */
+#fpThrow{width:220px;height:10px;border-radius:5px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--line)}
+#fpThrowFill{height:100%;width:0;background:linear-gradient(90deg,#55c27a,#e8b84a 60%,#d66f5a)}
