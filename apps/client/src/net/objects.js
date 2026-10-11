@@ -9,13 +9,13 @@ import { $ } from '../ui/dom.js';
 
 // Moving things about, online. Aim at something and take hold of it where you aim (G); the hands go there and lift it. Holding it: a ghost
 // shows where it would go, where you look (G puts it down there gently, or lets go of it where it is if that is not a place it may go); hold
-// R and move the mouse to turn it in your hands (Shift+R rolls it); the wheel raises and lowers your hands; hold the right button and let go
+// R and move the mouse to turn it in your hands (Shift+R rolls it); hold Z and turn the wheel to raise and lower your hands (the wheel alone zooms); hold the right button and let go
 // to throw it (longer is harder). T puts everything at your desk back. The page only asks: the server holds things with real hands, by the
 // same rules (shared/world/arms.ts, placement.ts), and everybody sees what happens. See docs/ITEMS-PHYSICS-PLAN.md, sections 6 and 7.
 
 const state = {
   send: null, acc: 0, candidate: null, grip: null, far: null,
-  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, shift: false, throwFrom: null, target: null, problem: null,
+  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwFrom: null, target: null, problem: null,
 };
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
 aim.far = 6;
@@ -86,7 +86,7 @@ function refresh() {
     showGhost(held, t, !state.problem);
     const name = labelOf(held);
     if (state.throwFrom !== null) setPrompt(`Throwing the ${name}: let go of the right button`, false);
-    else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (wheel)  ·  throw  (hold right button)`, true);
+    else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
     return;
   }
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
@@ -138,8 +138,9 @@ function turnIt(dx, dy) {
   state.turn.normalize(); state.dirty = true;
   return true;
 }
+// (only while Z is held: otherwise the wheel is the camera's, zooming in third person as always)
 function raiseHands(dy) {
-  if (!holding()) return false;
+  if (!state.zKey || !holding()) return false;
   state.raise = Math.max(-.6, Math.min(.6, state.raise - dy * .0008));
   state.dirty = true;
   return true;
@@ -173,10 +174,11 @@ export function initObjectControls({ send }) {
     const k = e.key.toLowerCase();
     if (k === 'g') act();
     else if (k === 'r') state.rKey = true;
+    else if (k === 'z') state.zKey = true;
     else if (k === 't' && player.person?.slot && !carriedBy(player.person.id)) send({ type: 'reset', scope: 'station', object: NONE });
   });
-  addEventListener('keyup', e => { if (e.key === 'Shift') state.shift = false; if (e.key.toLowerCase() === 'r') state.rKey = false; });
-  addEventListener('blur', () => { state.rKey = false; state.shift = false; state.throwFrom = null; });
+  addEventListener('keyup', e => { if (e.key === 'Shift') state.shift = false; if (e.key.toLowerCase() === 'r') state.rKey = false; if (e.key.toLowerCase() === 'z') state.zKey = false; });
+  addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwFrom = null; });
 }
 
 /** Every frame, cheaply: how it is held goes out when it changes; the ghost and the prompt are refreshed a few times a second. */

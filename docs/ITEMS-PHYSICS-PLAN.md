@@ -245,7 +245,7 @@ The owner was asked on 2026-10-11 and chose; anything marked *picked* was decide
 | Question | Decision |
 |---|---|
 | Walk grid when big items move | Updated in this branch (step 4), not later. *Decided* |
-| Controls while holding | Mouse plus a modifier: hold R and move the mouse to turn the item freely (Shift+R rolls it), the wheel raises and lowers your hands, G lets go. *Decided*; the throw key is in the step 9 notes below |
+| Controls while holding | Mouse plus a modifier: hold R and move the mouse to turn the item freely (Shift+R rolls it), hold Z and turn the wheel to raise and lower your hands, G lets go. *Decided*; the throw key is in the step 9 notes below |
 | Pull request | None: the commits are pushed and the owner opens the PR. *Decided* |
 | Unplanned questions | Pick the simpler or safer option, note it here, keep going. *Decided* |
 | A seat is a top | A mug can be put on a chair, a stool or a sofa's cushion (it falls when somebody picks the chair up). *Picked* |
@@ -256,7 +256,7 @@ The owner was asked on 2026-10-11 and chose; anything marked *picked* was decide
 | Activity props | The guitar on its stand, the bucket, the darts and the golf ball stay as they are: an activity shows and hides them (the guitar is drawn on its stand, which is an item, and goes where the stand goes). They become items with "activities use real items" (later). *Picked* |
 | What stays fixed | Desks (the islands, the conference tables, the booth shelves), the kitchen counter, the sink, the snack cabinet, the lockers, the server rack, the dartboard, the wall TV, the booths, the lamps, the rug, the putting green, the building. *Decided* (desks) and *picked* (the built-in rest) |
 | Throwing | Hold the **right** mouse button and let go: the left button looks around while you play (it is the drag-to-look), so it cannot also throw. Longer held, harder thrown (a second for the hardest). *Picked* |
-| The wheel while holding | Raises and lowers your hands; third person's zoom waits until you let go. *Picked* |
+| The wheel while holding | Zooms, as always. Holding `Z` while turning it raises and lowers your hands, in first and third person. *Decided* (changed from "the wheel moves your hands") |
 | Where a held thing is carried | Out from you **in the direction it was when you took it**, turning with you (taken from your side, it stays at your side), as far as your strength comfortably bears (a chair at arm's length, a TV hugged), and high enough to clear the floor (a chair held by the top of its back is carried higher than a mug). Lifted up first, then drawn in, so a chair tucked in at a table does not drag through it. *Picked* |
 | Strength | Measured where the hands are (how far out the arms are), not where the thing has got to. Two hands hold about 38 kg against the chest: the sofa needs two people, the tall cabinet three. *Picked* (the plan's numbers, tuned) |
 | Putting down | Lowered to the place the ghost shows, carried across first and set down last; on the way it passes through fixed and big furniture (it would catch on a desk's edge), touching only small things. Let go when it is there, or after two seconds. *Picked* |
