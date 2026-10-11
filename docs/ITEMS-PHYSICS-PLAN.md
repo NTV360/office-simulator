@@ -245,6 +245,7 @@ The owner was asked on 2026-10-11 and chose; anything marked *picked* was decide
 | Question | Decision |
 |---|---|
 | Walk grid when big items move | Updated in this branch (step 4), not later. *Decided* |
+| What G takes hold of | Only what you look at: the thing under the middle of the screen, or else the one nearest it within about 9 degrees, never one beside or behind you. Pressing G turns you to face where your hands will take it (a quarter of a second or so), then you reach; the server turns you too, so it is always held in front of you. *Decided* (first built as "the nearest thing in reach"; changed after trying it) |
 | Controls while holding | Mouse plus a modifier: hold R and move the mouse to turn the item freely (Shift+R rolls it), hold Z and turn the wheel to raise and lower your hands, G lets go. *Decided*; the throw key is in the step 9 notes below |
 | Pull request | None: the commits are pushed and the owner opens the PR. *Decided* |
 | Unplanned questions | Pick the simpler or safer option, note it here, keep going. *Decided* |

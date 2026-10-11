@@ -25,6 +25,8 @@ export function grab(person: Person, index: number, at?: readonly number[]): Obj
   if (aimed && !onItem(o, aimed)) return no('too-far'); // (a point that is not on it at all)
   const point = aimed ?? nearestGrip(o, person);
   if (!canReach(person, point)) return no('too-far');
+  // they face where their hands take it (the page turns them first; this makes it so whatever the page did): it is held in front of them
+  if (Math.hypot(point.x - person.pos.x, point.z - person.pos.z) > .15) person.face = person.faceGoal = Math.atan2(point.x - person.pos.x, point.z - person.pos.z);
   if (joining) { o.holds.push(holdFor(o, person, point)); syncHolders(o); simEvents.emit('objectMoved', o); }
   else pickUp(o, person.id, holdFor(o, person, point));
   return yes();

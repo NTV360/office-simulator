@@ -1,6 +1,6 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, carryPace, people, stepPlayer } from '@office/shared';
+import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, angDiff, carryPace, people, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';
@@ -15,6 +15,7 @@ const ctl = {
   active: false, mode: null, yaw: 0, pitch: 0, pitchMin: -1.2, pitchMax: 1.2, savedWall: LOW_H, coarse: false,
   stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
   keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
+  faceTo: null, // turning to face something before taking hold of it (net/objects.js): the way to turn, or null
 };
 
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
@@ -113,8 +114,10 @@ function driveOnline(dt, p) {
     const fx = Math.sin(ctl.yaw), fz = Math.cos(ctl.yaw), rx = -Math.cos(ctl.yaw), rz = Math.sin(ctl.yaw), k = Math.min(1, len) / len;
     mx = (fx * f + rx * r) * k; mz = (fz * f + rz * r) * k;
   }
-  // first person faces where you look; third person faces where you walk
-  const heading = ctl.mode === 'fp' ? ctl.yaw : (len > .08 ? Math.atan2(mx, mz) : p.face);
+  // first person faces where you look; third person faces where you walk. Turning to take hold of something (ctl.faceTo, net/objects.js),
+  // you turn to it first: the view in first person, the body in third (thirdPerson.js)
+  if (ctl.faceTo !== null && ctl.mode === 'fp') ctl.yaw += angDiff(ctl.yaw, ctl.faceTo) * (1 - Math.exp(-dt * 14));
+  const heading = ctl.mode === 'fp' ? ctl.yaw : (ctl.faceTo !== null ? p.face : len > .08 ? Math.atan2(mx, mz) : p.face);
   const run = keys.has('shift');
   const seat = p.task && p.task.kind === 'playerSit' ? p.task.spot : null;
   if (seat && !player.sitting) { ctl.yaw = seat.face; ctl.pitch = -.12; } // just sat down: look the way the seat faces

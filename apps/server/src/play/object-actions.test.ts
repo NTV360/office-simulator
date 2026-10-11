@@ -32,7 +32,7 @@ const diningChair = (n = 0): WorldObject => objects.all().filter(o => o.type ===
 const free = (o: WorldObject, from = .5) => { for (let r = from; r < 3; r += .15) for (let a = 0; a < 6.3; a += .4) { const x = o.x + Math.cos(a) * r, z = o.z + Math.sin(a) * r; if (placementProblem(o, x, z, o.rot) === null) return { x, z }; } throw new Error('no place'); };
 
 describe('taking hold where you aim', () => {
-  it('takes a chair by the point aimed at, and keeps the angle it has to the person: hands there, chair as it stands', async () => {
+  it('takes a chair by the point aimed at, turning to face it, and keeps the angle it has to the person: hands there, chair as it stands', async () => {
     const { id, person } = await guest('ana');
     const chair = diningChair(); stand(person, chair, .5);
     person.face = 1.2;
@@ -42,8 +42,12 @@ describe('taking hold where you aim', () => {
     expect(h.person).toBe(person.id);
     const back = fromItemFrame(chair, h.at);
     expect(Math.hypot(back.x - at.x, back.y - at.y, back.z - at.z)).toBeLessThan(1e-6);
+    // they turned to face where their hands took it (from facing 1.2), so it is straight in front of them
+    const toGrip = Math.atan2(at.x - person.pos.x, at.z - person.pos.z);
+    expect(Math.abs(Math.atan2(Math.sin(person.face - toGrip), Math.cos(person.face - toGrip)))).toBeLessThan(1e-9);
+    expect(Math.abs(h.az)).toBeLessThan(1e-9);
     // its orientation is the person's facing then `rel`: turn the person back by their facing and the chair's own turn is left
-    const expected = mulQuat([0, Math.sin(-1.2 / 2), 0, Math.cos(-1.2 / 2)], orientationOf(chair));
+    const f = person.face, expected = mulQuat([0, Math.sin(-f / 2), 0, Math.cos(-f / 2)], orientationOf(chair));
     h.rel.forEach((v, i) => expect(Math.abs(v)).toBeCloseTo(Math.abs(expected[i]), 6));
   });
 

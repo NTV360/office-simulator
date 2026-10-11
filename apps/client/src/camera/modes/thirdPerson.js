@@ -46,7 +46,7 @@ const thirdPersonMode = {
     const { dx, dz } = driveLocomotion(dt, p);
     // the character turns toward where it walks; when seated it faces its seat
     if (player.sitting) p.face = p.faceGoal = player.sitting.face;
-    else { if (dx || dz) p.faceGoal = Math.atan2(dx, dz); p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12)); }
+    else { if (ctl.faceTo !== null) p.faceGoal = ctl.faceTo; else if (dx || dz) p.faceGoal = Math.atan2(dx, dz); p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12)); }
 
     tp.sideNow += (tp.side - tp.sideNow) * (1 - Math.exp(-dt * 8));
     const headGoal = eyeHeight(p.body, player.sitting?.hipY); tp.head += (headGoal - tp.head) * (1 - Math.exp(-dt * 8));

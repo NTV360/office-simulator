@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REFUSAL_TEXT, canReach, carriedBy, carryOf, holderCount, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt } from '@office/shared';
+import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, closestPointOnItem, holderCount, inReach, movability, objects, placementProblem, restHeightAt } from '@office/shared';
 import { camera } from '../render/renderer.js';
 import { ghostOf, highlightItem, itemAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
@@ -15,7 +15,7 @@ import { $ } from '../ui/dom.js';
 
 const state = {
   send: null, acc: 0, candidate: null, grip: null, far: null,
-  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwing: false, power: .5, target: null, problem: null,
+  held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwing: false, power: .5, turning: null, target: null, problem: null,
 };
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
 aim.far = 6;
@@ -29,9 +29,26 @@ const joinable = o => o.carriedBy !== null && carryOf(o.type) !== 'one-hand' && 
 /** The way a thing faces now, seen from above. */
 const yawOf = o => { if (!o.q) return o.rot; const [x, y, z, w] = o.q; return Math.atan2(2 * (x * z + w * y), 1 - 2 * (x * x + y * y)); };
 
+/** How far off the middle of the screen a thing may be and still be the one you mean (rad, about 9 degrees). */
+const AIM_CONE = .16;
+/** The point on a ray nearest a point. */
+function onRay(ray, q) {
+  const t = Math.max(0, (q.x - ray.origin.x) * ray.direction.x + (q.y - ray.origin.y) * ray.direction.y + (q.z - ray.origin.z) * ray.direction.z);
+  return { x: ray.origin.x + ray.direction.x * t, y: ray.origin.y + ray.direction.y * t, z: ray.origin.z + ray.direction.z * t };
+}
+/** The point of a thing nearest the line you look along, and how far off that line it is, as an angle from the eye. */
+function nearAim(o, ray) {
+  let c = closestPointOnItem(o, onRay(ray, { x: o.x, y: o.y, z: o.z }));
+  c = closestPointOnItem(o, onRay(ray, c)); // (twice: near enough to the true nearest point for a box or two)
+  const dx = c.x - ray.origin.x, dy = c.y - ray.origin.y, dz = c.z - ray.origin.z, d = Math.hypot(dx, dy, dz);
+  const cos = d < 1e-6 ? 1 : (dx * ray.direction.x + dy * ray.direction.y + dz * ray.direction.z) / d;
+  return { at: c, off: Math.acos(Math.max(-1, Math.min(1, cos))) };
+}
+
 /**
  * The thing G would take hold of, and where: the one under the middle of the screen, at the point aimed at, if a hand gets there; else the
- * nearest one a hand gets to (anyone's: anyone may move anything). `far` is a thing aimed at that is out of reach (to say "step closer").
+ * one nearest the middle of the screen (within a few degrees of it) that a hand gets to, at its point nearest where you look. Never one
+ * you are not looking at. Anyone's: anyone may move anything. `far` is a thing aimed at that is out of reach (to say "step closer").
  */
 function pickable(p) {
   aim.setFromCamera(MIDDLE, camera);
@@ -44,11 +61,11 @@ function pickable(p) {
       far = o;
     }
   }
-  let best = null, bd = Infinity;
+  let best = null, bd = AIM_CONE;
   for (const o of objects.all()) {
-    if (Math.abs(o.x - p.pos.x) > 1.5 || Math.abs(o.z - p.pos.z) > 1.5 || (movability(o) !== null && !joinable(o))) continue;
-    const at = nearestGrip(o, p), d = Math.hypot(at.x - p.pos.x, at.z - p.pos.z);
-    if (d < bd && canReach(p, at)) { bd = d; best = { o, at, far }; }
+    if (Math.abs(o.x - p.pos.x) > 2 || Math.abs(o.z - p.pos.z) > 2 || (movability(o) !== null && !joinable(o))) continue;
+    const { at, off } = nearAim(o, aim.ray);
+    if (off < bd && canReach(p, at)) { bd = off; best = { o, at, far }; }
   }
   return best ?? { o: null, at: null, far };
 }
@@ -122,11 +139,25 @@ function act() {
     const t = state.held === held ? state.target : null;
     if (t && !state.problem) state.send({ type: 'place', x: t.x, z: t.z, rot: t.rot });
     else state.send({ type: 'drop' });
-  } else if (state.candidate) {
-    const at = state.grip;
-    state.send(at ? { type: 'grab', object: state.candidate.index, at: [at.x, at.y, at.z] } : { type: 'grab', object: state.candidate.index });
-    if (at) p.reachTo = { x: at.x, y: at.y, z: at.z, t: performance.now() }; // (the arms go out to it: people/animation.js)
+  } else if (state.candidate && state.grip && !state.turning) {
+    // first turn to face where the hands will take it (a moment), then reach: see turnThenReach
+    const at = state.grip, heading = Math.atan2(at.x - p.pos.x, at.z - p.pos.z);
+    state.turning = { index: state.candidate.index, at, heading, until: performance.now() + TURN_MS };
+    ctl.faceTo = heading;
   }
+}
+/** The longest the turn to face a thing takes before the hands go out to it anyway (ms). */
+const TURN_MS = 450;
+/** Each frame while turning to take hold of something: once facing it (or after a moment), ask the server to take hold, and reach. */
+function turnThenReach() {
+  const t = state.turning; if (!t) return;
+  const p = player.person;
+  if (!p || !ctl.active || carriedBy(p.id) || player.sitting) { state.turning = null; ctl.faceTo = null; return; }
+  const facing = ctl.mode === 'fp' ? ctl.yaw : p.face;
+  if (Math.abs(angDiff(facing, t.heading)) > .1 && performance.now() < t.until) return;
+  state.turning = null; ctl.faceTo = null;
+  state.send?.({ type: 'grab', object: t.index, at: [t.at.x, t.at.y, t.at.z] });
+  p.reachTo = { x: t.at.x, y: t.at.y, z: t.at.z, t: performance.now() }; // (the arms go out to it: people/animation.js)
 }
 
 // ---- turning it in your hands, raising your hands, throwing: the mouse while something is held
@@ -200,6 +231,7 @@ export function tickObjectControls(dt) {
   state.acc += dt;
   sendHold();
   showWindUp();
+  turnThenReach();
   // (for the browser checks: where G would put it, and whether it may go there: the ghost green, or red)
-  if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; }
+  if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; } }
 }

@@ -46,8 +46,8 @@ describe('picking something up', () => {
     const w = make();
     const chair = ofType('chair-wood')[0];
     const p = standBy(chair, .6, 1.0);
-    const before = wrap(yawOf(chair) - p.face);
     expect(grab(p, chair.index).ok).toBe(true);
+    const before = wrap(yawOf(chair) - p.face); // (taking hold turned them to face it: the angle is to the way they face now)
     tick(w, 2);
     expect(chair.carriedBy).toBe(p.id);
     expect(chair.y).toBeGreaterThan(.3); // off the floor
