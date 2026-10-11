@@ -26,10 +26,14 @@ export interface BroadcasterOptions {
 
 /** After a change that is not only a move, the whole record is sent this many more times: a snapshot a slow client skipped must not leave it out of date until the next keyframe. */
 const REPEAT_WHOLE = 2;
+/** After someone a human drives last moved, where they stopped is sent this many more times (a short move record, every tick): a snapshot a
+ *  busy connection skipped must not leave their own page, or anyone's, with them somewhere else until the next keyframe. */
+const REPEAT_STOP = 6;
 
 export class Broadcaster {
   private readonly last = new Map<number, PersonSnap>();
   private readonly repeat = new Map<number, number>();
+  private readonly stopRepeat = new Map<number, number>();
   private readonly seenLog = new Set<object>();
   private readonly aiEvery: number;
   private readonly keyframeEvery: number;
@@ -69,9 +73,14 @@ export class Broadcaster {
         // most changes are somebody walking: those go as the short record (a whole person is about 46 bytes, a move 14)
         if (!onlyMoved(prev, snap)) { out.push(snap); this.repeat.set(p.id, REPEAT_WHOLE); } else moves.push({ id: snap.id, x: snap.x, z: snap.z, face: snap.face, walkPhase: snap.walkPhase });
         this.last.set(p.id, snap);
+        if (isDriven(p)) this.stopRepeat.set(p.id, REPEAT_STOP);
+      } else if ((this.stopRepeat.get(p.id) ?? 0) > 0) { // stood still since: where they stopped, again
+        moves.push({ id: snap.id, x: snap.x, z: snap.z, face: snap.face, walkPhase: snap.walkPhase });
+        const n = this.stopRepeat.get(p.id)! - 1;
+        if (n > 0) this.stopRepeat.set(p.id, n); else this.stopRepeat.delete(p.id);
       }
     }
-    for (const id of this.last.keys()) if (!seen.has(id)) { this.last.delete(id); this.repeat.delete(id); }
+    for (const id of this.last.keys()) if (!seen.has(id)) { this.last.delete(id); this.repeat.delete(id); this.stopRepeat.delete(id); }
     return encode({ type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', full, people: out, ...(moves.length ? { moves } : {}), meetings: meetings.map(meetingSnap) });
   }
 

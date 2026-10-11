@@ -172,4 +172,14 @@ describe('Broadcaster', () => {
     const next = snapshot(5);
     expect(next.people.map(x => x.id).concat((next.moves ?? []).map(m => m.id))).toEqual([driven.id]);
   });
+
+  it('where a driven person stopped is sent again for a few ticks (a skipped snapshot must not leave them somewhere else), then they are quiet', () => {
+    const driven = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    driven.controller = 'account'; driven.state = 'controlled';
+    for (let t = 1; t <= 12; t++) snapshot(t); // (the whole records for the change of state, and the stop repeats after it, go out)
+    driven.pos.x += 0.3;
+    const mine = (t: number) => { const s = snapshot(t); return (s.moves ?? []).some(m => m.id === driven.id && Math.abs(m.x - driven.pos.x) < 1e-3); };
+    const sent = [13, 14, 15, 16, 17, 18, 19, 21, 22].map(mine); // (20 is a keyframe)
+    expect(sent).toEqual([true, true, true, true, true, true, true, false, false]);
+  });
 });

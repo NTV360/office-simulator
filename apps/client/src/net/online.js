@@ -82,7 +82,7 @@ export function startOnline() {
   net.you = null; // the id of the person this account drives (from the welcome)
   net.joined = false; // the server has accepted our hello: inputs may be sent
   net.autoView = false; // the first welcome of a login puts you in third person, once
-  net.pred = { acks: 0, pulls: 0, snaps: 0, maxError: 0, lastError: 0 }; // what prediction has been doing (for checks)
+  net.pred = { acks: 0, pulls: 0, snaps: 0, maxError: 0, lastError: 0, owed: { x: 0, z: 0 } }; // what prediction has been doing (for checks); `owed`: a pull not yet glided in
   lockServerControls();
   setStatus('wait', 'Connecting to the server…');
 
@@ -110,7 +110,7 @@ export function startOnline() {
     const n = seq++;
     send({ type: 'input', seq: n, mx, mz, heading, run: !!run });
     const me = player.person;
-    if (me) reconciler.record(n, me.pos.x, me.pos.z); // where the prediction is when this input goes out
+    if (me) reconciler.record(n, me.pos.x + net.pred.owed.x, me.pos.z + net.pred.owed.z); // where the prediction is when this input goes out (with any correction still being glided in)
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
   initObjectControls({ send });
@@ -223,7 +223,7 @@ export function startOnline() {
         }
         mirror.applyWelcome(msg);
         applyObjectPoses(msg.objects); // chairs and things that are not where they started
-        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; reconciler.reset(); // (a new connection numbers its messages from the start)
+        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; reconciler.reset(); net.pred.owed = { x: 0, z: 0 }; // (a new connection numbers its messages from the start)
         player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
         reassignOccupants();
@@ -251,8 +251,9 @@ export function startOnline() {
         net.pred.acks++;
         const idle = performance.now() - player.online.lastMovedAt > 400; // standing still for a moment
         const c = reconciler.reconcile(msg, me.pos, idle);
-        if (c.kind === 'pull') { me.pos.x += c.dx; me.pos.z += c.dz; net.pred.pulls++; }
-        else if (c.kind === 'snap') { me.pos.x = c.x; me.pos.z = c.z; net.pred.snaps++; }
+        // (a pull is glided in over a few frames, not jumped: see frame. A snap is a real teleport, a desk taken or the world reset)
+        if (c.kind === 'pull') { net.pred.owed.x += c.dx; net.pred.owed.z += c.dz; net.pred.pulls++; }
+        else if (c.kind === 'snap') { me.pos.x = c.x; me.pos.z = c.z; net.pred.owed = { x: 0, z: 0 }; net.pred.snaps++; }
         if (c.kind !== 'none') { net.pred.lastError = c.error; net.pred.maxError = Math.max(net.pred.maxError, c.error); }
         break;
       }
@@ -337,8 +338,16 @@ export function startOnline() {
         const n = buf[buf.length - 1];
         while (buf.length > 1) buf.shift();
         const steered = player.controlling && player.online.predicting && now - player.online.lastMovedAt < 400; // moved by prediction a moment ago: the acks keep it right
+        const owed = net.pred.owed;
+        if (owed.x || owed.z) { // a pull from an ack, glided in over about a tenth of a second
+          const k = 1 - Math.exp(-dt * 12), gx = owed.x * k, gz = owed.z * k;
+          p.pos.x += gx; p.pos.z += gz; owed.x -= gx; owed.z -= gz;
+          if (Math.hypot(owed.x, owed.z) < 1e-3) { p.pos.x += owed.x; p.pos.z += owed.z; owed.x = owed.z = 0; }
+        }
         if (steered) { /* position comes from the keys; net.pred pulls it back if the server disagrees */ } else if (Math.hypot(n.x - p.pos.x, n.z - p.pos.z) > SNAP_DISTANCE) { p.pos.x = n.x; p.pos.z = n.z; } else {
-          const k = 1 - Math.exp(-dt * 30);
+          // standing still: settle onto where the server has you. Gently while you steer (the few centimetres the server's ticks put you
+          // off where you stopped, settled over half a second, not jumped); quickly while you only watch
+          const k = 1 - Math.exp(-dt * (player.controlling ? 5 : 30));
           p.pos.x += (n.x - p.pos.x) * k; p.pos.z += (n.z - p.pos.z) * k;
         }
         if (!player.controlling) { p.face += angDiff(p.face, n.face) * (1 - Math.exp(-dt * 20)); p.faceGoal = p.face; } // (while steering, the camera owns the facing)
