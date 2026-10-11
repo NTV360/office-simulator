@@ -10,7 +10,7 @@ import { $ } from '../ui/dom.js';
 // Moving things about, online. Aim at something and take hold of it where you aim (G); the hands go there and lift it. Holding it: a ghost
 // shows where it would go, where you look (G puts it down there gently, or lets go of it where it is if that is not a place it may go); hold
 // R and move the mouse to turn it in your hands (Shift+R rolls it); hold Z and turn the wheel to raise and lower your hands (the wheel alone zooms); hold the right button and let go
-// to throw it (turn the wheel meanwhile to set how hard). T puts everything at your desk back. The page only asks: the server holds things with real hands, by the
+// to throw it (turn the wheel meanwhile to set how hard; Esc calls it off). T puts everything at your desk back. The page only asks: the server holds things with real hands, by the
 // same rules (shared/world/arms.ts, placement.ts), and everybody sees what happens. See docs/ITEMS-PHYSICS-PLAN.md, sections 6 and 7.
 
 const state = {
@@ -84,7 +84,7 @@ function refresh() {
     showGhost(held, t, !state.problem);
     highlightItem(null);
     const name = labelOf(held);
-    if (state.throwing) setPrompt(`Throwing the ${name}: wheel sets how hard  ·  let go of the right button`, false);
+    if (state.throwing) setPrompt(`Throwing the ${name}: wheel sets how hard  ·  let go of the right button  ·  Esc calls it off`, false);
     else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
     return;
   }
@@ -178,6 +178,11 @@ export function initObjectControls({ send }) {
     else if (k === 'z') state.zKey = true;
     else if (k === 't' && player.person?.slot && !carriedBy(player.person.id)) send({ type: 'reset', scope: 'station', object: NONE });
   });
+  // (Esc while winding up calls the throw off, and does nothing else: caught first, so it does not also leave walking or close a card)
+  addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !state.throwing) return;
+    state.throwing = false; e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
   addEventListener('keyup', e => { if (e.key === 'Shift') state.shift = false; if (e.key.toLowerCase() === 'r') state.rKey = false; if (e.key.toLowerCase() === 'z') state.zKey = false; });
   addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwing = false; });
 }
