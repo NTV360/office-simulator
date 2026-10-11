@@ -38,6 +38,22 @@ const moved = w => Math.hypot(w.x - w.hx, w.z - w.hz) > .2;
  * Look down at the floor toward somewhere the chair may go, as a player would: turn the view until the ghost is green, trying the ways furthest
  * from where the chair started first (so moving it is something you can see). The page puts down where you look. Returns where it then aims.
  */
+// look at a thing until it is the one G would take (only what is at the middle of the screen is: net/objects.js): in first person, as a player
+// would, straight at it from the eyes, then a little about that
+const lookAt = async (page, index) => {
+  if (await page.evaluate(() => window.__sim.ctl.mode) !== 'fp') { await page.keyboard.press('v'); await sleep(400); }
+  const to = await page.evaluate(i => {
+    const p = window.__sim.player.person, o = window.__sim.objects.at(i), dx = o.x - p.pos.x, dz = o.z - p.pos.z;
+    return { yaw: Math.atan2(dx, dz), pitch: Math.atan2(o.y + .35 - 1.5, Math.hypot(dx, dz)) };
+  }, index);
+  for (const da of [0, .1, -.1, .2, -.2]) for (const dp of [0, .12, -.12, .25]) {
+    await page.evaluate(([a, pitch]) => { window.__sim.ctl.yaw = a; window.__sim.ctl.pitch = pitch; }, [to.yaw + da, to.pitch + dp]);
+    await sleep(250);
+    if (await page.evaluate(() => window.__sim.objectPick) === index) return true;
+  }
+  return false;
+};
+const thirdPerson = async page => { if (await page.evaluate(() => window.__sim.ctl.mode) === 'fp') { await page.keyboard.press('v'); await sleep(400); } };
 const aimSomewhere = async page => {
   const ways = await page.evaluate(() => {
     const s = window.__sim, p = s.player.person, o = s.objects.all().find(x => x.carriedBy === p.id); if (!o) return [];
@@ -86,11 +102,13 @@ try {
 
   // ---- 2. Ana walks to her chair, picks it up, puts it down somewhere else; the others see each step, and the seat goes with it
   await walkTo(A.page, `interactables.of('desk').find(s => s.id === '${deskOf.obj_ana}').approach`);
+  await lookAt(A.page, anaChair);
   const offer = await until(() => A.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up the office chair/.test(b.textContent) ? b.textContent : null; }), 8000);
   check('at her desk the page offers her her own chair', !!offer, offer ?? 'no prompt');
   await A.page.keyboard.press('g');
   const held = await until(async () => { const w = await where(B.page, anaChair); return w.by !== null ? w : null; });
   check('Ben sees Ana pick up her chair', !!held);
+  await thirdPerson(A.page);
   const aim = await aimSomewhere(A.page);
   await sleep(300);
   await A.page.keyboard.press('g');
@@ -101,15 +119,18 @@ try {
 
   // ---- 3. anyone may move anyone's things: Ben, at Ana's desk, is offered something of hers to pick up
   await walkTo(B.page, `interactables.of('desk').find(s => s.id === '${deskOf.obj_ana}').approach`);
+  await lookAt(B.page, anaChair);
   const benOffer = await until(() => B.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up/.test(b.textContent) ? b.textContent : null; }), 8000);
   check('Ben, at Ana\'s desk, is offered her things to pick up too', !!benOffer, String(benOffer));
 
   // ---- 4. Cat, the guest, moves a dining chair in a shared area
   await walkTo(C.page, "interactables.of('dining')[0].approach");
   const diningIdx = await C.page.evaluate(() => window.__sim.objects.all().find(o => o.spot === 'dining:0').index);
+  check('Cat looks at the dining chair, and it is the one offered', await lookAt(C.page, diningIdx));
   await until(() => C.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up/.test(b.textContent); }), 8000);
   await C.page.keyboard.press('g');
   await until(async () => (await where(A.page, diningIdx)).by !== null);
+  await thirdPerson(C.page); // (to look about for a place without turning round with it: in first person she turns as she looks)
   const catAim = await aimSomewhere(C.page);
   await sleep(300);
   await C.page.keyboard.press('g');
@@ -151,6 +172,7 @@ try {
 
   // ---- 8. a player who leaves while carrying: what they carried goes home, and the others see it
   await walkTo(C.page, "interactables.of('dining')[0].approach"); // (a guest is not kept over a restart: Cat is back at the door)
+  await lookAt(C.page, diningIdx);
   await until(() => C.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up/.test(b.textContent); }), 10000);
   await C.page.keyboard.press('g');
   await until(async () => (await where(A.page, diningIdx)).by !== null);

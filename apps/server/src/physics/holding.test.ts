@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { carryPace, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
+import { carryPace, closestPointOnItem, interactables, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
 import { drop, grab, holdInput, throwIt } from '../play/object-actions';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, yawQuat, type StaticShape } from './physics';
@@ -260,6 +260,20 @@ describe('lifting from among other things', () => {
 });
 
 describe('putting down past furniture', () => {
+  it('a chair put down past another chair goes through it: the one it passes is not shoved', () => {
+    const w = make();
+    const chair = objects.all().find(o => o.spot === 'dining:0')!, ap = interactables.all().find(s => s.id === 'dining:0')!.approach;
+    const others = objects.all().filter(o => o !== chair && Math.hypot(o.x - chair.x, o.z - chair.z) < 1.6).map(o => ({ o, x: o.x, z: o.z }));
+    const p = people.find(q => q.state !== 'away')!; p.task = null; p.path = null; p.pos.x = ap.x; p.pos.z = ap.z;
+    const at = closestPointOnItem(chair, { x: chair.x, y: .7, z: chair.z - 1 });
+    expect(grab(p, chair.index, [at.x, at.y, at.z]).ok).toBe(true);
+    tick(w, 2);
+    placeDown(chair, 1.99, 17.83, -3.13, 0); // (across the row: the chair behind it is on the way)
+    tick(w, 3);
+    expect(Math.hypot(chair.x - 1.99, chair.z - 17.83)).toBeLessThan(.05);
+    for (const n of others) expect(Math.hypot(n.o.x - n.x, n.o.z - n.z), n.o.id).toBeLessThan(.02);
+  });
+
   it('a chair put down round the corner of its table gets there: it does not catch on the table on the way', () => {
     const w = make();
     const chair = ofType('chair-wood')[0];

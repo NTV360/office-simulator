@@ -21,7 +21,7 @@ const FIXED = { friction: MATERIALS.wood.friction, bounce: MATERIALS.wood.bounce
  * fixed furniture, big furniture, and small things. Normally everything touches everything; a thing being put down touches only small things
  * (see `setPassThrough`).
  */
-const FIXED_GROUP = 0x0001, BIG_GROUP = 0x0002, SMALL_GROUP = 0x0004, EVERYTHING = 0xffff;
+const FIXED_GROUP = 0x0001, BIG_GROUP = 0x0002, SMALL_GROUP = 0x0004, RIDER_GROUP = 0x0008, EVERYTHING = 0xffff;
 const groups = (is: number, touches: number) => (is << 16) | touches;
 
 /** Each tick is split into steps this long: short enough for a mug landing on a desk not to sink in. */
@@ -47,6 +47,8 @@ function eulerQuat([x, y, z]: Triple): RAPIER.Rotation {
 export class Physics {
   readonly world: RAPIER.World;
   private readonly bodies = new Map<number, RAPIER.RigidBody>();
+  /** What rides on each thing being put down (by its index): the bodies marked as riders, to unmark once it is down. */
+  private readonly riders = new Map<number, RAPIER.RigidBody[]>();
   private carry = 0; // time not stepped yet, less than one substep
 
   /** Build the fixed world. `loadPhysics()` must have finished. */
@@ -107,14 +109,33 @@ export class Physics {
   }
 
   /**
-   * A thing being put down goes to its place through fixed and big furniture (a chair set down beside a desk does not catch on the desk's
-   * edge on the way), touching only small things (what rides on it still rides). Back to touching everything once it is down.
+   * A thing being put down goes to its place through everything (a chair set down beside a desk does not catch on the desk's edge, nor shove
+   * the chairs it passes on the way), touching only what rides on it: the things resting on top of it when it starts, which still ride.
+   * Back to touching everything once it is down.
    */
   setPassThrough(o: WorldObject, on: boolean): void {
     const b = this.bodies.get(o.index);
     if (!b) return;
     const is = shapeOf(o).foot ? BIG_GROUP : SMALL_GROUP;
-    for (let i = 0; i < b.numColliders(); i++) b.collider(i).setCollisionGroups(groups(is, on ? SMALL_GROUP : EVERYTHING));
+    for (const r of this.riders.get(o.index) ?? []) this.mark(r, false);
+    this.riders.delete(o.index);
+    if (on) {
+      const mine = new Set<RAPIER.RigidBody>([b]), up = b.translation().y, found: RAPIER.RigidBody[] = [];
+      for (let i = 0; i < b.numColliders(); i++) this.world.contactPairsWith(b.collider(i), other => {
+        const r = other.parent();
+        if (r && !mine.has(r) && r.isDynamic() && r.translation().y > up && !found.includes(r)) found.push(r);
+      });
+      for (const r of found) this.mark(r, true);
+      if (found.length) this.riders.set(o.index, found);
+    }
+    for (let i = 0; i < b.numColliders(); i++) b.collider(i).setCollisionGroups(groups(is, on ? RIDER_GROUP : EVERYTHING));
+  }
+  /** Mark a body as riding on something being put down (it is touched by it), or not. */
+  private mark(r: RAPIER.RigidBody, on: boolean): void {
+    for (let i = 0; i < r.numColliders(); i++) {
+      const c = r.collider(i), g = c.collisionGroups(), is = g >>> 16;
+      c.setCollisionGroups(groups(on ? is | RIDER_GROUP : is & ~RIDER_GROUP, g & 0xffff));
+    }
   }
 
   /** Set a resting item's pose without waking it (a tidy-up of a few millimetres, not a move). */
