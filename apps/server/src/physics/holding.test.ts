@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { carryPace, closestPointOnItem, interactables, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
+import { carryPace, closestPointOnItem, throwPath, throwVelocity, interactables, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
 import { drop, grab, holdInput, throwIt } from '../play/object-actions';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, yawQuat, type StaticShape } from './physics';
@@ -201,6 +201,21 @@ describe('dropping and throwing', () => {
     throwIt(q, 1);
     tick(w, 3);
     expect(Math.hypot(chair.x - at.x, chair.z - at.z)).toBeLessThan(mugGone);
+  });
+
+  it('a thrown chair flies where the page draws its path: the server and the page throw by the same rules', () => {
+    const w = make();
+    const chair = ofType('chair-wood')[2];
+    const q = standBy(chair, .6, 1.0);
+    grab(q, chair.index);
+    tick(w, 2);
+    const from = { x: chair.x, y: chair.y, z: chair.z }, yaw = q.face + Math.PI, pitch = .5; // (away from the table it stands at)
+    const path = throwPath(chair, from, throwVelocity(chair, 1, yaw, pitch), undefined, 1 / 20);
+    expect(throwIt(q, 1, yaw, pitch).ok).toBe(true);
+    for (let i = 1; i <= 8; i++) { // (the first 0.4 s, before it can meet anything)
+      tick(w, .05);
+      expect(Math.hypot(chair.x - path[i].x, chair.y - path[i].y, chair.z - path[i].z)).toBeLessThan(.3);
+    }
   });
 
   it('turned in the hands, it turns: a quarter turn about the up axis', () => {

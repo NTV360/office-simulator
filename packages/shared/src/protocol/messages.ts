@@ -5,7 +5,7 @@ import type { PersonState } from '../sim/types';
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 17;
+export const WIRE_VERSION = 18;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -195,7 +195,8 @@ export interface HoldInput { type: 'hold'; turn: [number, number, number, number
 /** Let go of your hold: it falls (or, held by others too, they carry on). */
 export interface Drop { type: 'drop' }
 /** Throw what you hold, as hard as `power` says (0 to 1). */
-export interface Throw { type: 'throw'; power: number }
+/** Throw what you hold: how hard (0 to 1), and which way you look (yaw, and pitch: up is positive), which is the way it goes. */
+export interface Throw { type: 'throw'; power: number; yaw: number; pitch: number }
 
 export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Grab | Place | Reset | HoldInput | Drop | Throw;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;

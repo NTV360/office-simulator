@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  ARMS, CATALOGUE, STRENGTH, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
+  ARMS, CATALOGUE, DRAG_FROM, STRENGTH, dragOf, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
   type Hold, type Placing, type Quat, type WorldObject,
 } from '@office/shared';
 import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics';
@@ -34,7 +34,6 @@ const PULL = { oneHand: 120, twoHands: 450 } as const;
 /** A thing being put down: it is let go when within this of its place, or after this long whatever happens (s). */
 const PLACE = { near: .02, turn: 3 * Math.PI / 180, give: 2, stiff: 9 } as const;
 /** The air's density (kg/m³). */
-const AIR = 1.2;
 
 /** How far an orientation is turned away from upright, in radians. */
 const tiltOf = (q: readonly number[]): number => 2 * Math.asin(Math.min(1, Math.hypot(q[0], q[2])));
@@ -242,28 +241,10 @@ export class ItemPhysics {
     const b = this.physics.body(o.index);
     if (!b) return;
     const v = b.linvel(), speed = Math.hypot(v.x, v.y, v.z);
-    if (speed < 2) return;
-    const k = .5 * AIR * (CATALOGUE[o.type].material === 'paper' ? 1.3 : 1.0) * this.areaOf(o) * speed;
+    if (speed < DRAG_FROM) return;
+    const k = dragOf(o) * speed;
     b.applyImpulse({ x: -k * v.x * SUBSTEP, y: -k * v.y * SUBSTEP, z: -k * v.z * SUBSTEP }, true);
   }
-  private readonly areas = new Map<string, number>();
-  /** The area an item shows the air, about: the mean face of the box round its shapes (m²). */
-  private areaOf(o: WorldObject): number {
-    const key = o.type + (o.dims ? ':' + o.dims.join(',') : '');
-    let a = this.areas.get(key);
-    if (a === undefined) {
-      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-      for (const c of shapeOf(o).colliders) {
-        const half = c.shape === 'box' ? c.size.map(s => s / 2) : c.shape === 'cylinder' ? [c.radius, c.height / 2, c.radius] : [c.radius, c.radius, c.radius];
-        for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], c.at[i] - half[i]); hi[i] = Math.max(hi[i], c.at[i] + half[i]); }
-      }
-      const [x, y, z] = [0, 1, 2].map(i => hi[i] - lo[i]);
-      a = (x * y + y * z + x * z) / 3;
-      this.areas.set(key, a);
-    }
-    return a;
-  }
-
   /** After a tick: a hand pulled too far from its grip slips off; a thing put down that has got there (or taken too long) is let go. */
   private check(o: WorldObject, dt: number): void {
     if (o.carriedBy === null) return;

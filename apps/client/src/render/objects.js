@@ -189,8 +189,28 @@ export function initObjectViews() {
     const now = o.carriedBy === null ? [] : [o.carriedBy, ...o.helpers];
     for (const id of carrierOf.get(o.index) ?? []) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; } }
     if (now.length) { carried.set(o.index, o); carrierOf.set(o.index, now); } else { carried.delete(o.index); carrierOf.delete(o.index); }
+    const c = shown.get(o.index);
+    if (c && c.mine && !(now.length && carrierFrame(o))) { c.mine = null; gliding.add(o.index); return; } // (out of your hands: it glides on from where it is drawn)
+    if (now.length && carrierFrame(o)) return; // (yours: drawn with you, every frame)
     glideTo(o);
   });
+}
+
+/**
+ * What you carry yourself is drawn with you, not a round trip behind you. You are drawn where your keys put you (prediction), ahead of where
+ * the server last said you were; the server's word on the thing is where it is to that older you. So it is drawn where the server puts it
+ * relative to you then, moved to where you are drawn now: it goes with your hands at once, and how it hangs and swings is still
+ * the server's. `carrierFrame(o)` (net/online.js) says, for a thing you alone carry, where you are drawn and where the server has you; else null.
+ */
+let carrierFrame = () => null;
+export function predictCarried(fn) { carrierFrame = fn; }
+const rel = new THREE.Vector3();
+// (moved with you, not turned with you: the server's hands follow a turn at their own rate, and turning it here at once would swing it
+// ahead of them and back)
+function carriedWant(o, f) {
+  poseOf(o, want, wantQ);
+  rel.set(want.x - f.serverX, want.y, want.z - f.serverZ);
+  want.set(f.x + rel.x, rel.y, f.z + rel.z);
 }
 
 /**
@@ -200,6 +220,16 @@ export function initObjectViews() {
 export function updateCarriedObjects(dt = 1 / 60) {
   lastGlide = performance.now();
   const k = 1 - Math.exp(-dt * GLIDE);
+  for (const o of carried.values()) { // (what you carry: where it is to you, every frame, smoothed only for the server's steps)
+    const f = carrierFrame(o), c = shown.get(o.index);
+    if (!f || !c) continue;
+    carriedWant(o, f);
+    if (!c.mine) { c.mine = new THREE.Vector3().subVectors(c.pos, { x: f.x, y: 0, z: f.z }); }
+    c.mine.lerp(rel, k); // (the offset from you glides; you do not: so it is never left behind)
+    c.pos.set(f.x + c.mine.x, c.mine.y, f.z + c.mine.z); c.q.slerp(wantQ, k);
+    gliding.delete(o.index);
+    writeShown(o.index);
+  }
   for (const index of gliding) {
     const o = objects.at(index), c = shown.get(index);
     if (!o || !c) { gliding.delete(index); continue; }
@@ -213,7 +243,10 @@ export function updateCarriedObjects(dt = 1 / 60) {
     const p = people.find(x => x.id === id);
     if (!p) continue;
     p.carrying = true;
-    p.carryAt = closestPointOnItem(o, { x: p.pos.x, y: 1.1, z: p.pos.z });
+    // (to where it is drawn, which is not quite where the server has it: see carriedWant)
+    const c = shown.get(o.index), dx = c ? c.pos.x - o.x : 0, dy = c ? c.pos.y - o.y : 0, dz = c ? c.pos.z - o.z : 0;
+    const at = closestPointOnItem(o, { x: p.pos.x - dx, y: 1.1 - dy, z: p.pos.z - dz });
+    p.carryAt = { x: at.x + dx, y: at.y + dy, z: at.z + dz };
   }
 }
 
@@ -271,19 +304,22 @@ export function ghostOf(o) {
  * The item a ray hits first, and where: { index, point, distance }, or null. `skip` is an item to look through (the one in your hands).
  * Every kind's parts are tested; an instanced mesh tests each instance, so this is for a few times a second, not every frame.
  */
-export function itemAt(raycaster, skip = -1) {
+export function itemAt(raycaster, skip = -1, from = 0) {
   let best = null;
   for (const kind of kinds.values()) for (const p of kind.parts) {
     if (!p.mesh) continue;
     for (const h of raycaster.intersectObject(p.mesh, false)) {
       const index = kind.slots[h.instanceId];
-      if (index === undefined || index === skip) continue;
+      if (index === undefined || index === skip || h.distance < from) continue; // (`from`: nearer than that along the ray does not count)
       if (!best || h.distance < best.distance) best = { index, point: h.point.clone(), distance: h.distance };
       break;
     }
   }
   return best;
 }
+
+/** Where an item is drawn now (smoothed), or undefined. */
+export const shownAt = index => shown.get(index)?.pos;
 
 /** Draw objects made after the start (the stress check adds many). */
 export const addObjectView = add;

@@ -4,6 +4,7 @@ import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
 import { initObjectControls, tickObjectControls } from './objects.js';
+import { predictCarried } from '../render/objects.js';
 import { updateCarriedObjects } from '../render/objects.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
@@ -114,6 +115,33 @@ export function startOnline() {
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
   initObjectControls({ send });
+  // ?netdebug: a readout of how prediction is doing, top left, for chasing a jump you can see: how often the server corrected you, by how
+  // much, how far your person is drawn from where the server has you, and the biggest step your person made in one frame lately
+  const netDebug = new URLSearchParams(location.search).has('netdebug');
+  let dbgEl = null, dbgAt = 0, dbgLast = null, dbgBig = { d: 0, t: 0 }, dbgFps = 60;
+  function showNetDebug(dt) {
+    const me = player.person, now = performance.now();
+    dbgFps += (1 / Math.max(dt, 1e-3) - dbgFps) * .05;
+    if (me) {
+      if (dbgLast) { const d = Math.hypot(me.pos.x - dbgLast.x, me.pos.z - dbgLast.z); if (d > dbgBig.d || now - dbgBig.t > 5000) dbgBig = { d, t: now }; }
+      dbgLast = { x: me.pos.x, z: me.pos.z };
+    }
+    if (now - dbgAt < 250) return;
+    dbgAt = now;
+    if (!dbgEl) { dbgEl = document.createElement('pre'); dbgEl.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;margin:0;padding:6px 8px;font:11px/1.4 monospace;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;pointer-events:none'; document.body.appendChild(dbgEl); }
+    const n = me && me._buf && me._buf[me._buf.length - 1], pr = net.pred;
+    dbgEl.textContent = `fps ${dbgFps.toFixed(0)}  rtt ${net.rttMs ?? '-'} ms
+pulls ${pr.pulls}  snaps ${pr.snaps}  last ${pr.lastError.toFixed(2)} m  max ${pr.maxError.toFixed(2)} m
+drawn vs server ${n ? Math.hypot(me.pos.x - n.x, me.pos.z - n.z).toFixed(2) : '-'} m
+biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
+  }
+  // what you alone carry is drawn with you (render/objects.js): where you are drawn, and where the server last had you
+  predictCarried(o => {
+    const me = player.person;
+    if (!me || o.carriedBy !== net.you || o.helpers?.length || !player.online.predicting) return null;
+    const n = me._buf && me._buf[me._buf.length - 1];
+    return n ? { x: me.pos.x, z: me.pos.z, face: me.face, serverX: n.x, serverZ: n.z, serverFace: n.face } : null;
+  });
   player.online = { input: sendInput, act: sendAct, predicting, lastMovedAt: -1e9, movedNow() { this.lastMovedAt = performance.now(); } };
 
   /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
@@ -367,6 +395,7 @@ export function startOnline() {
       trackMotion(p, px, pz, dt);
     }
     updateCarriedObjects(dt); tickObjectControls(dt); // (after everybody has been placed for this frame)
+    if (netDebug) showNetDebug(dt);
     const el = document.getElementById('netStatus');
     if (net.connected && !net.fatal && el && el.className === 'ok') {
       const t = `Online · ${people.length} people${net.rttMs !== null ? ` · ${net.rttMs} ms` : ''}`;

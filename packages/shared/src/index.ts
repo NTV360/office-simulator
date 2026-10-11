@@ -46,6 +46,7 @@ export * from './world/objects';
 export * from './world/placement';
 export * from './world/footprint';
 export * from './world/arms';
+export * from './world/throw';
 export * from './protocol';
 export * from './sim/persist';
 export * from './sim/takeover';

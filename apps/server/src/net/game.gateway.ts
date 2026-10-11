@@ -199,7 +199,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       case 'drop': case 'throw': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.players.manager().dropObject(socket.data.accountId, this.worlds.world.tick, this.worlds.world.options.tickRate, msg.type === 'throw' ? msg.power : null);
+        const r = this.players.manager().dropObject(socket.data.accountId, this.worlds.world.tick, this.worlds.world.options.tickRate, msg.type === 'throw' ? { power: msg.power, yaw: msg.yaw, pitch: msg.pitch } : null);
         this.objectNotice(socket, r, false);
         return;
       }

@@ -188,7 +188,7 @@ export function encode(msg: Message): Uint8Array {
     case 'reset': w.u8(T.reset).u8(index(RESET_SCOPES, msg.scope, 'reset scope')).u16(toU16(msg.object)); break;
     case 'hold': w.u8(T.hold).f32(msg.turn[0]).f32(msg.turn[1]).f32(msg.turn[2]).f32(msg.turn[3]).f32(msg.raise); break;
     case 'drop': w.u8(T.drop); break;
-    case 'throw': w.u8(T.throw).f32(msg.power); break;
+    case 'throw': w.u8(T.throw).f32(msg.power).f32(msg.yaw).f32(msg.pitch); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
     case 'ack': w.u8(T.ack).u32(msg.seq).u32(msg.tick).f32(msg.x).f32(msg.z).f32(msg.face); break;
@@ -241,7 +241,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.reset: { const scope = readIndex(r, RESET_SCOPES, 'reset scope'), object = fromU16(r.u16()); msg = { type: 'reset', scope, object }; break; }
     case T.hold: { const turn: [number, number, number, number] = [r.f32(), r.f32(), r.f32(), r.f32()]; msg = { type: 'hold', turn, raise: r.f32() }; break; }
     case T.drop: msg = { type: 'drop' }; break;
-    case T.throw: msg = { type: 'throw', power: r.f32() }; break;
+    case T.throw: msg = { type: 'throw', power: r.f32(), yaw: r.f32(), pitch: r.f32() }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;
     case T.ack: msg = { type: 'ack', seq: r.u32(), tick: r.u32(), x: r.f32(), z: r.f32(), face: r.f32() }; break;

@@ -1,5 +1,5 @@
 import {
-  CATALOGUE, canReach, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
+  CATALOGUE, canReach, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
@@ -60,16 +60,18 @@ export function drop(person: Person): ObjectResult {
 }
 
 /** The most energy a throw puts into what is thrown (J), and the fastest anything leaves the hand (m/s): a mug flies, a chair is shoved. */
-const THROW = { energy: 60, least: 8, fastest: 9, up: .35 } as const;
-/** Throw what you hold, alone, as hard as `power` (0 to 1) says: forward and a little up from where you face. */
-export function throwIt(person: Person, power: number): ObjectResult {
+/**
+ * Throw what you hold, alone, as hard as `power` (0 to 1) says, the way you look (`yaw`; `pitch` up or down: up lobs it in an arc, level
+ * throws it straight), by the shared throwing rules (shared/world/throw.ts: the page draws its path by the same). Without a way to look it
+ * goes the way they face, a little up. They turn to face where they throw.
+ */
+export function throwIt(person: Person, power: number, yaw = person.face, pitch = .25): ObjectResult {
   const o = heldBy(person);
   if (!o) return no('nothing-carried');
   if (o.holds.length > 1) return no('carried'); // (not something several people are holding)
-  const p = Math.max(0, Math.min(1, Number.isFinite(power) ? power : 0));
-  const speed = Math.min(THROW.fastest, Math.sqrt(2 * (THROW.least + THROW.energy * p) / CATALOGUE[o.type].mass));
-  const c = Math.cos(THROW.up);
-  letGo(o, { vx: Math.sin(person.face) * c * speed, vy: Math.sin(THROW.up) * speed, vz: Math.cos(person.face) * c * speed });
+  const a = Number.isFinite(yaw) ? yaw : person.face;
+  person.face = person.faceGoal = a;
+  letGo(o, throwVelocity(o, power, a, Number.isFinite(pitch) ? pitch : .25));
   return yes();
 }
 

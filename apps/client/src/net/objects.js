@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, closestPointOnItem, holderCount, inReach, movability, objects, placementProblem, restHeightAt } from '@office/shared';
-import { camera } from '../render/renderer.js';
-import { ghostOf, highlightItem, itemAt } from '../render/objects.js';
+import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
+import { camera, scene } from '../render/renderer.js';
+import { ghostOf, highlightItem, itemAt, shownAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
@@ -29,45 +29,21 @@ const joinable = o => o.carriedBy !== null && carryOf(o.type) !== 'one-hand' && 
 /** The way a thing faces now, seen from above. */
 const yawOf = o => { if (!o.q) return o.rot; const [x, y, z, w] = o.q; return Math.atan2(2 * (x * z + w * y), 1 - 2 * (x * x + y * y)); };
 
-/** How far off the middle of the screen a thing may be and still be the one you mean (rad, about 9 degrees). */
-const AIM_CONE = .16;
-/** The point on a ray nearest a point. */
-function onRay(ray, q) {
-  const t = Math.max(0, (q.x - ray.origin.x) * ray.direction.x + (q.y - ray.origin.y) * ray.direction.y + (q.z - ray.origin.z) * ray.direction.z);
-  return { x: ray.origin.x + ray.direction.x * t, y: ray.origin.y + ray.direction.y * t, z: ray.origin.z + ray.direction.z * t };
-}
-/** The point of a thing nearest the line you look along, and how far off that line it is, as an angle from the eye. */
-function nearAim(o, ray) {
-  let c = closestPointOnItem(o, onRay(ray, { x: o.x, y: o.y, z: o.z }));
-  c = closestPointOnItem(o, onRay(ray, c)); // (twice: near enough to the true nearest point for a box or two)
-  const dx = c.x - ray.origin.x, dy = c.y - ray.origin.y, dz = c.z - ray.origin.z, d = Math.hypot(dx, dy, dz);
-  const cos = d < 1e-6 ? 1 : (dx * ray.direction.x + dy * ray.direction.y + dz * ray.direction.z) / d;
-  return { at: c, off: Math.acos(Math.max(-1, Math.min(1, cos))) };
-}
-
 /**
- * The thing G would take hold of, and where: the one under the middle of the screen, at the point aimed at, if a hand gets there; else the
- * one nearest the middle of the screen (within a few degrees of it) that a hand gets to, at its point nearest where you look. Never one
- * you are not looking at. Anyone's: anyone may move anything. `far` is a thing aimed at that is out of reach (to say "step closer").
+ * The thing G would take hold of, and where: the one under the cursor (the middle of the screen), at the point aimed at, if a hand gets
+ * there. Nothing else: not the one nearest it. In third person the view starts behind you, so what is between the camera and you (the chair
+ * you stand in front of) does not count, and nothing counts behind a wall or a desk. Anyone's: anyone may move anything. `far` is a thing
+ * aimed at that is out of reach (to say "step closer").
  */
 function pickable(p) {
   aim.setFromCamera(MIDDLE, camera);
-  const hit = itemAt(aim);
-  let far = null;
-  if (hit) {
-    const o = objects.at(hit.index);
-    if (o && (movability(o) === null || joinable(o))) {
-      if (canReach(p, hit.point)) return { o, at: hit.point, far: null };
-      far = o;
-    }
-  }
-  let best = null, bd = AIM_CONE;
-  for (const o of objects.all()) {
-    if (Math.abs(o.x - p.pos.x) > 2 || Math.abs(o.z - p.pos.z) > 2 || (movability(o) !== null && !joinable(o))) continue;
-    const { at, off } = nearAim(o, aim.ray);
-    if (off < bd && canReach(p, at)) { bd = off; best = { o, at, far }; }
-  }
-  return best ?? { o: null, at: null, far };
+  const r = aim.ray, from = ctl.mode === 'fp' ? 0 : Math.max(0, (p.pos.x - r.origin.x) * r.direction.x + (1 - r.origin.y) * r.direction.y + (p.pos.z - r.origin.z) * r.direction.z - .3);
+  const hit = itemAt(aim, -1, from);
+  if (!hit) return { o: null, at: null, far: null };
+  for (const h of aim.intersectObjects(BAKED, false)) { if (h.distance >= from) { if (h.distance < hit.distance - .02) return { o: null, at: null, far: null }; break; } }
+  const o = objects.at(hit.index);
+  if (!o || (movability(o) !== null && !joinable(o))) return { o: null, at: null, far: null };
+  return canReach(p, hit.point) ? { o, at: hit.point, far: null } : { o: null, at: null, far: o };
 }
 
 /**
@@ -92,7 +68,7 @@ function refresh() {
   const p = player.person, on = !!p && ctl.active;
   const held = on ? carriedBy(p.id) : undefined;
   state.candidate = null; state.target = null; state.problem = null;
-  if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; hideGhost(); }
+  if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; hideGhost(); hideArc(); }
   if (!on) { setPrompt('', false); highlightItem(null); return; }
   if (held) {
     const t = putTarget(p, held);
@@ -101,7 +77,7 @@ function refresh() {
     showGhost(held, t, !state.problem);
     highlightItem(null);
     const name = labelOf(held);
-    if (state.throwing) setPrompt(`Throwing the ${name}: wheel sets how hard  ·  let go of the right button  ·  Esc calls it off`, false);
+    if (state.throwing) { hideGhost(); showArc(); setPrompt(`Throwing the ${name}: look up to lob it, level to throw it straight  ·  wheel: how hard  ·  let go of the right button  ·  Esc calls it off`, false); }
     else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
     return;
   }
@@ -111,6 +87,48 @@ function refresh() {
   if (state.candidate) setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (G)` : `Pick up the ${labelOf(state.candidate)}  (G)`, true);
   else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }
+
+// ---- the throw's path: where it will fly, drawn while the right button is held (by the same rules the server throws it by: shared/world/throw.ts)
+/** Which way you look: the middle of the screen. */
+function lookDir() {
+  aim.setFromCamera(MIDDLE, camera);
+  const d = aim.ray.direction;
+  return { yaw: Math.atan2(d.x, d.z), pitch: Math.asin(Math.max(-1, Math.min(1, d.y))) };
+}
+const ARC_MAX = 120;
+let arc = null;
+function makeArc() {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ARC_MAX * 3), 3));
+  const line = new THREE.Line(geo, new THREE.LineDashedMaterial({ color: 0xffc34d, dashSize: .12, gapSize: .08, depthTest: false, transparent: true, opacity: .9 }));
+  line.renderOrder = 3; line.frustumCulled = false;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.12, .2, 24), new THREE.MeshBasicMaterial({ color: 0xffc34d, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: .9 }));
+  ring.rotation.x = -Math.PI / 2; ring.renderOrder = 3;
+  scene.add(line); scene.add(ring);
+  return { line, ring, cast: new THREE.Raycaster(), a: new THREE.Vector3(), b: new THREE.Vector3() };
+}
+function showArc() {
+  const p = player.person, held = p && carriedBy(p.id);
+  if (!held) { hideArc(); return; }
+  arc ??= makeArc();
+  const at = shownAt(held.index) ?? { x: held.x, y: held.y, z: held.z }, { yaw, pitch } = lookDir();
+  const { cast, a, b } = arc;
+  const hit = (u, v) => { // (stops where it meets the room: a wall, a desk)
+    a.set(u.x, u.y, u.z); b.set(v.x - u.x, v.y - u.y, v.z - u.z);
+    const len = b.length(); if (len < 1e-6) return false;
+    cast.set(a, b.divideScalar(len)); cast.far = len;
+    return cast.intersectObjects(BAKED, false).length > 0;
+  };
+  const path = throwPath(held, { x: at.x, y: at.y, z: at.z }, throwVelocity(held, state.power, yaw, pitch), hit).slice(0, ARC_MAX);
+  const pos = arc.line.geometry.attributes.position;
+  path.forEach((q, i) => pos.setXYZ(i, q.x, q.y, q.z));
+  pos.needsUpdate = true; arc.line.geometry.setDrawRange(0, path.length); arc.line.computeLineDistances();
+  const end = path[path.length - 1];
+  if (window.__sim) window.__sim.throwArc = { from: path[0], end, n: path.length, yaw, pitch, power: state.power }; // (for checks)
+  arc.ring.position.set(end.x, end.y + .02, end.z);
+  arc.line.visible = arc.ring.visible = true;
+}
+function hideArc() { if (arc) arc.line.visible = arc.ring.visible = false; }
 
 // ---- the ghost: a see-through copy where the thing would go, green when it may go there, red when not
 let ghost = null;
@@ -172,7 +190,7 @@ function turnIt(dx, dy) {
 // (while the right button is held the wheel sets how hard the throw will be; while Z is held it raises your hands; otherwise it is the
 // camera's, zooming as always)
 function raiseHands(dy) {
-  if (state.throwing && holding()) { state.power = Math.max(.05, Math.min(1, state.power - dy * .0005)); return true; }
+  if (state.throwing && holding()) { state.power = Math.max(.05, Math.min(1, state.power - dy * .0005)); showArc(); return true; }
   if (!state.zKey || !holding()) return false;
   state.raise = Math.max(-.6, Math.min(.6, state.raise - dy * .0008));
   state.dirty = true;
@@ -182,8 +200,9 @@ function windUp(down) {
   if (!holding()) { state.throwing = false; return false; }
   if (down) { state.throwing = true; return true; }
   if (!state.throwing) return false;
-  state.throwing = false;
-  state.send?.({ type: 'throw', power: state.power }); // (the strength is remembered for the next throw)
+  state.throwing = false; hideArc();
+  const { yaw, pitch } = lookDir();
+  state.send?.({ type: 'throw', power: state.power, yaw, pitch }); // (the strength is remembered for the next throw)
   return true;
 }
 /** How it is held goes to the server when it changes, at most ten times a second. */
@@ -212,10 +231,10 @@ export function initObjectControls({ send }) {
   // (Esc while winding up calls the throw off, and does nothing else: caught first, so it does not also leave walking or close a card)
   addEventListener('keydown', e => {
     if (e.key !== 'Escape' || !state.throwing) return;
-    state.throwing = false; e.preventDefault(); e.stopImmediatePropagation();
+    state.throwing = false; hideArc(); e.preventDefault(); e.stopImmediatePropagation();
   }, true);
   addEventListener('keyup', e => { if (e.key === 'Shift') state.shift = false; if (e.key.toLowerCase() === 'r') state.rKey = false; if (e.key.toLowerCase() === 'z') state.zKey = false; });
-  addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwing = false; });
+  addEventListener('blur', () => { state.rKey = false; state.zKey = false; state.shift = false; state.throwing = false; hideArc(); });
 }
 
 /** The throw bar: how hard the throw will be if the right button is let go now (set with the wheel, starting where the last throw was). */
@@ -231,7 +250,8 @@ export function tickObjectControls(dt) {
   state.acc += dt;
   sendHold();
   showWindUp();
+  if (state.throwing) showArc();
   turnThenReach();
   // (for the browser checks: where G would put it, and whether it may go there: the ghost green, or red)
-  if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; } }
+  if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; window.__sim.shownAt ??= shownAt; } }
 }

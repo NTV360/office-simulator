@@ -207,11 +207,11 @@ export class PlayerManager {
   }
 
   /** The player lets go of what they hold, or throws it. */
-  dropObject(accountId: number, tick: number, tickRate = 20, power: number | null = null): ObjectResult | null {
+  dropObject(accountId: number, tick: number, tickRate = 20, aim: { power: number; yaw: number; pitch: number } | null = null): ObjectResult | null {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!this.takeObjectToken(s, tick, tickRate)) return { ok: false, reason: 'too-fast' };
-    return power === null ? drop(s.person) : throwIt(s.person, power);
+    return aim === null ? drop(s.person) : throwIt(s.person, aim.power, aim.yaw, aim.pitch);
   }
 
   /** The player puts one object, or everything at their own desk, back where it started. */
