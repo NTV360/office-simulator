@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION, encode, setSeed } from '@office/shared';
+import type { ImportedEmployee } from '../employees/employee-store';
 import {
   bootTestServer, connect, enter, hello, isKick, isPong, isSnapshot, isWelcome, sessionFor, sleep, ticketFor, type TestServer,
 } from '../test-support';
@@ -14,10 +15,12 @@ process.env.GRACE_MS = '300';
 
 let server: TestServer;
 let base: string;
+const staffCount = 40;
+const staff: ImportedEmployee[] = Array.from({ length: staffCount }, (_, i) => ({ userId: `gateway-${i + 1}`, firstName: i === 0 ? 'Hazel' : `Employee${i + 1}`, lastName: i === 0 ? 'Sellote' : 'Test', department: 'UI/UX', intern: false, shift: null, character: null, desk: null }));
 const open: Array<{ close(): void }> = [];
 const client = () => { const c = connect(base); open.push(c.socket); return c; };
 
-beforeAll(async () => { server = await bootTestServer(); base = server.base; }, 30000);
+beforeAll(async () => { server = await bootTestServer(staff); base = server.base; }, 30000);
 afterAll(async () => { open.forEach(s => s.close()); await server.close(); setSeed(null); });
 
 describe('the gateway', () => {
@@ -28,12 +31,12 @@ describe('the gateway', () => {
     await c.ready;
     hello(c, ticket);
     const w = await c.waitFor(isWelcome);
-    expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(41); // the 40 staff and the helper
+    expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(staffCount + 1); // roster staff and the helper
     const me = w.people.find(p => p.info.id === w.you)!;
     expect(me.info).toMatchObject({ controller: 'account', name: 'solo', role: 'Guest' }); // no desk yet: a guest at the entrance
     expect(w.layout.spots).toBe(158);
     expect(w).toMatchObject({ tickRate: 20, paused: false, speed: 1 });
-    expect(w.people[0].info.name).toBe('Hazel Sellote');
+    expect(w.people.some(p => p.info.name === 'Hazel Sellote')).toBe(true);
     c.socket.close();
   });
 
@@ -50,7 +53,7 @@ describe('the gateway', () => {
     for (const s of sb) { const o = byTick.get(s.tick); if (o) { shared++; expect(o).toEqual(s); } }
     expect(shared).toBeGreaterThan(15);
     expect(sa[sa.length - 1].simTime).toBeGreaterThan(sa[0].simTime);
-    expect(sa.some(s => s.full && s.people.length >= 41)).toBe(true); // a keyframe about once a second: the 40 staff and the two guests
+    expect(sa.some(s => s.full && s.people.length >= staffCount + 1)).toBe(true); // a keyframe about once a second: roster staff and guests
     const deltas = sa.filter(s => !s.full);
     expect(deltas.length).toBeGreaterThan(10);
     const small = deltas.filter(s => s.people.length < 20).length;

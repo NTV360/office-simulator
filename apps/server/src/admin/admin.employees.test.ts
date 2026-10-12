@@ -51,10 +51,10 @@ async function staffed(list: ImportedEmployee[]) { await employees.applyImport(l
 const makeAccount = async (username: string): Promise<number> => (await (await call('POST', '/api/admin/users', { username, password: 'first-password-1' })).json()).account.id;
 
 describe('the staff list', () => {
-  it('is empty at first (the office has made-up staff), and then lists everyone with where they sit and who plays them', async () => {
+  it('is empty at first, and then lists every roster employee with where they sit and who plays them', async () => {
     expect(await (await call('GET', '/api/admin/employees')).json()).toEqual([]);
     await staffed([imp(1), imp(2, { department: 'Human Resources' }), imp(3, { desk: 'C3' })]);
-    expect(people.filter(hasSlot)).toHaveLength(3); // the made-up staff made way
+    expect(people.filter(hasSlot)).toHaveLength(3);
     const list = await (await call('GET', '/api/admin/employees')).json();
     expect(list.map((e: { name: string }) => e.name)).toEqual(['Emp1 Cruz', 'Emp2 Cruz', 'Emp3 Cruz']);
     expect(list[2]).toMatchObject({ desk: 'C3', seat: 'C3', inOffice: true, hasLook: false, account: null, department: 'UI/UX' });
@@ -63,7 +63,7 @@ describe('the staff list', () => {
   it('says nothing about contact details or anything but what the admin needs', async () => {
     await staffed([imp(1)]);
     const [e] = await (await call('GET', '/api/admin/employees')).json();
-    expect(Object.keys(e).sort()).toEqual(['account', 'department', 'desk', 'hasLook', 'inOffice', 'intern', 'name', 'present', 'seat', 'shift', 'userId']);
+    expect(Object.keys(e).sort()).toEqual(['account', 'assigned', 'department', 'desk', 'hasLook', 'inOffice', 'intern', 'name', 'present', 'seat', 'shift', 'userId']);
   });
 });
 
@@ -157,13 +157,13 @@ describe('importing the company\'s records', () => {
     const r = await call('POST', '/api/admin/import');
     expect(r.status).toBe(201);
     const out = (await r.json()).result;
-    expect(out).toMatchObject({ added: 3, updated: 0, removed: 0, sync: { added: 3, replaced: 40 } });
+    expect(out).toMatchObject({ added: 3, updated: 0, removed: 0, sync: { added: 3, replaced: 0, assigned: 3, unassigned: 0, unassignedUserIds: [] } });
     expect(people.filter(hasSlot).map(p => p.userId).sort()).toEqual([U(1), U(2), U(3)]);
     const again = (await (await call('POST', '/api/admin/import')).json()).result;
     expect(again).toMatchObject({ added: 0, updated: 0, removed: 0, sync: { added: 0, updated: 0, removed: 0 } });
     expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ configured: true, lastImportOk: true, lastImportError: null });
   });
-  it('a failed import (the records are unreachable or empty) changes nothing, says why, and never shows the key', async () => {
+  it('a failed import changes nothing, while a successful empty import clears the office, says why, and never shows the key', async () => {
     await staffed([imp(1), imp(2)]);
     service.useSource(fakeSource(records([row(1), row(2)]), 500));
     const failed = await call('POST', '/api/admin/import');
@@ -173,9 +173,10 @@ describe('importing the company\'s records', () => {
     expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ lastImportOk: false });
     service.useSource(fakeSource(records([])));
     const empty = await call('POST', '/api/admin/import');
-    expect(empty.status).toBe(409);
-    expect((await empty.json()).message).toMatch(/empty/);
-    expect(people.filter(hasSlot)).toHaveLength(2); // (an empty answer is not "everyone left")
+    expect(empty.status).toBe(201);
+    expect((await empty.json()).result).toMatchObject({ added: 0, updated: 0, removed: 2, sync: { assigned: 0, unassigned: 0, unassignedUserIds: [] } });
+    expect(people.filter(hasSlot)).toHaveLength(0);
+    expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ lastImportOk: true, lastImportError: null });
   });
   it('a much shorter list than the stored one is refused as a likely partial answer, unless an admin forces it', async () => {
     await staffed([1, 2, 3, 4, 5, 6, 7, 8].map(n => imp(n)));

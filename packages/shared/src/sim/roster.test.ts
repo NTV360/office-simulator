@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { drawCount, setSeed } from '../util';
 import { simEvents } from './events';
 import { initDay } from './day';
-import { makeStaff, moveToDesk, removeStaff, seatById, setStaffCount } from './factory';
+import { applyEmployee, makeStaff, moveToDesk, removeStaff, seatById, setStaffCount } from './factory';
 import { interactables } from './interactables';
 import { hasSlot } from './person';
-import { fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
+import { allocateDesks, fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
 import { DAY_END } from './schedule';
 import { bucketRun } from './tasks';
 import { handBack, takeControl } from './takeover';
@@ -20,6 +20,38 @@ const by = (id: string) => people.find(p => p.userId === id)!;
 
 beforeEach(() => { setSeed(1); buildTestLayout({ desks: 20, hr: 6 }); });
 afterEach(() => { roster.list = null; setSeed(null); });
+
+describe('canonical desk allocation', () => {
+  const desks = [
+    { deskId: 'B2' }, { deskId: 'A1' }, { deskId: 'HR1', department: 'Human Resources' },
+    { deskId: 'A2' }, { deskId: 'HR2', department: 'Human Resources' },
+  ];
+
+  it('is independent of employee and desk input order', () => {
+    const employees = [emp('z'), emp('a'), emp('m')];
+    const expected = [...allocateDesks(employees, desks)].sort();
+    expect([...allocateDesks([...employees].reverse(), [...desks].reverse())].sort()).toEqual(expected);
+  });
+
+  it('honours eligible explicit claims before fallback assignment', () => {
+    const result = allocateDesks([emp('fallback'), emp('claimed', { desk: 'A2' })], desks);
+    expect(result.get('claimed')).toBe('A2');
+    expect(result.get('fallback')).toBe('A1');
+  });
+
+  it('does not place employees in restricted desks for another department', () => {
+    const result = allocateDesks([emp('eng'), emp('hr', { department: 'Human Resources' })], desks);
+    expect(result.get('eng')).not.toMatch(/^HR/);
+    expect(result.get('hr')).toMatch(/^HR/);
+  });
+
+  it('stops at capacity and preserves blocked occupancy', () => {
+    const result = allocateDesks([emp('a'), emp('b'), emp('hr', { department: 'Human Resources' }), emp('d')], desks, ['A1', 'A2']);
+    expect(result.size).toBe(2);
+    expect(result.has('a')).toBe(true);
+    expect(result.has('hr')).toBe(true);
+  });
+});
 
 describe('what the card says', () => {
   it('a department staff member is "<Department> Department", an intern is "Intern <Department>", and a few names are shortened', () => {
@@ -77,11 +109,10 @@ describe('the staff list becomes the people in the office', () => {
     expect(staff().filter(p => p.department === 'Human Resources')).toHaveLength(6);
     expect(staff().filter(p => p.department !== 'Human Resources')).toHaveLength(20);
   });
-  it('made-up staff (no staff list) never sit in the HR office', () => {
+  it('an unavailable roster creates no autonomous staff', () => {
     roster.list = null;
     initDay(40);
-    expect(staff()).toHaveLength(20); // only the 20 ordinary desks
-    expect(staff().every(p => !p.slot!.department)).toBe(true);
+    expect(staff()).toHaveLength(0);
   });
   it('an employee whose chosen desk does not exist gets a free one instead', () => {
     roster.list = [emp('a', { desk: 'Z99' })];
@@ -93,6 +124,27 @@ describe('the staff list becomes the people in the office', () => {
     initDay();
     expect(by('x').slot!.department ?? null).toBeNull();
     expect(by('hr').slot!.deskId).toBe('T21');
+  });
+  it('clearing a desk keeps a compatible seat, but a department change leaves a restricted seat', () => {
+    roster.list = [emp('x'), emp('hr', { department: 'Human Resources' })];
+    initDay();
+    const x = by('x'), hr = by('hr');
+    const xDesk = x.slot!, hrDesk = hr.slot!;
+    expect(applyEmployee(x, emp('x', { desk: null }))).toBe(false);
+    expect(x.slot).toBe(xDesk);
+    expect(applyEmployee(hr, emp('hr', { department: 'UI/UX', desk: null }))).toBe(true);
+    expect(hr.slot).not.toBe(hrDesk);
+    expect(hr.slot?.department ?? null).toBeNull();
+  });
+  it('an invalid or ineligible requested desk falls back to a compatible desk', () => {
+    roster.list = [emp('x'), emp('hr', { department: 'Human Resources' })];
+    initDay();
+    const x = by('x'), hr = by('hr');
+    expect(applyEmployee(x, emp('x', { desk: 'Z99' }))).toBe(true);
+    expect(x.slot).not.toBeNull();
+    expect(x.slot?.department ?? null).toBeNull();
+    expect(applyEmployee(hr, emp('hr', { department: 'UI/UX', desk: 'T21' }))).toBe(true);
+    expect(hr.slot?.department ?? null).toBeNull();
   });
   it('a failed attempt to add staff (only the HR desks are free) uses up no name and no random numbers', () => {
     roster.list = null;

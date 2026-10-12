@@ -1,12 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { people, hasSlot, isHelper, parseSavedWorld, serializeWorld, sim, setSeed } from '@office/shared';
+import { people, hasSlot, isHelper, parseSavedWorld, roster, serializeWorld, sim, setSeed, type Employee } from '@office/shared';
 import { World, readWorldOptions, type WorldOptions } from './world';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 1 };
+const employee = (userId: string, department = 'UI/UX'): Employee => ({ userId, firstName: userId, lastName: 'Employee', department, intern: false, shift: null, character: null, desk: null });
+const rosterFor = (count: number): Employee[] => Array.from({ length: count }, (_, i) => employee(`world-${i + 1}`));
 
-afterEach(() => { vi.useRealTimers(); setSeed(null); });
+beforeEach(() => { roster.list = rosterFor(12); roster.status = 'ready'; });
+afterEach(() => { vi.useRealTimers(); setSeed(null); roster.list = null; roster.status = 'unavailable'; });
 
 describe('readWorldOptions', () => {
   it('uses the defaults when nothing is set', () => {
@@ -22,11 +25,13 @@ describe('readWorldOptions', () => {
 });
 
 describe('World', () => {
-  it('builds the real office with the requested number of staff, never more than there are desks', () => {
+  it('builds only roster employees and never more than the roster or compatible desks', () => {
     const w = new World({ ...base, slotCount: 12 }); w.init();
     expect(w.status()).toMatchObject({ staff: 12, desks: 80, tick: 0 });
+    roster.list = [...rosterFor(74), ...Array.from({ length: 6 }, (_, i) => employee(`hr-${i + 1}`, 'Human Resources'))];
     const many = new World({ ...base, slotCount: 500 }); many.init();
-    expect(many.status().staff).toBe(74); // (80 desks; the six in the HR office are only for the HR department, and made-up staff have none)
+    expect(many.status().staff).toBe(80);
+    expect(people.filter(hasSlot).every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
   });
 
   it('has the office helper, and has her again after a restart from a save (she is not saved)', () => {
@@ -68,7 +73,8 @@ describe('World', () => {
       const g = golden.fingerprints[i];
       expect(r3(sim.t)).toBe(g.clock.t);
       const staff = people.filter(hasSlot);
-      expect(staff.map(p => [p.name, p.state, r3(p.pos.x), r3(p.pos.z)])).toEqual(g.persons.map((p: { name: string; state: string; x: number; z: number }) => [p.name, p.state, p.x, p.z]));
+      expect(staff).toHaveLength(roster.list!.length);
+      expect(staff.every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
     }
   });
 

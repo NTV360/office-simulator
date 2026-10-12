@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { findPath } from '../nav/astar';
 import { NAV } from '../nav/grid';
 import { initDay } from '../sim/day';
 import { interactables } from '../sim/interactables';
 import { hasSlot } from '../sim/person';
+import { roster } from '../sim/roster';
 import { ENTRY } from '../sim/spots';
 import { meetings, people, resetSim, sim, initState } from '../sim/state';
 import { stepSim } from '../sim/step';
@@ -12,7 +13,13 @@ import { objects } from '../world/objects';
 import { loadLayout, spotsToLayout } from './layout';
 import { officeLayout } from './office';
 
-beforeEach(() => { resetSim(); loadLayout(officeLayout); });
+const testRoster = Array.from({ length: 40 }, (_, i) => ({
+  userId: `layout-${i + 1}`, firstName: i === 0 ? 'Hazel' : `Test${i + 1}`, lastName: i === 0 ? 'Sellote' : 'Employee', department: 'UI/UX' as string | null,
+  intern: false, shift: null, character: null, desk: null,
+}));
+
+beforeEach(() => { resetSim(); roster.list = testRoster; roster.status = 'ready'; loadLayout(officeLayout); });
+afterEach(() => { roster.list = null; roster.status = 'unavailable'; });
 
 describe('the office layout data', () => {
   it('has the recorded shape', () => {

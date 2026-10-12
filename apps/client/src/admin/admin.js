@@ -264,9 +264,15 @@ function drawStaff() {
   let status;
   if (!info || !info.configured) status = 'The employee records are not connected (SUPABASE_URL and SUPABASE_SECRET_KEY are not set). What is stored stays as it is.';
   else if (info.lastImportOk === null) status = 'Not imported yet.';
-  else if (info.lastImportOk) { const r = info.lastResult; status = `Imported ${ago(info.lastImportAt)}${r ? `: ${r.added} new, ${r.updated} changed, ${r.removed} gone, ${r.restored} back` : ''}.`; }
+  else if (info.lastImportOk) {
+    const r = info.lastResult;
+    status = `Imported ${ago(info.lastImportAt)}${r ? `: ${r.added} new, ${r.updated} changed, ${r.removed} gone, ${r.restored} back` : ''}.`;
+    if (r?.sync) status += ` ${r.sync.assigned} assigned, ${r.sync.unassigned} unassigned.`;
+  }
   else status = `The last import (${ago(info.lastImportAt)}) failed and changed nothing: ${info.lastImportError}`;
   if (info && info.configured && info.lastAttendanceOk === false) status += ` Who is clocked in could not be read (${info.lastAttendanceError}).`;
+  const capacity = info?.lastResult?.sync;
+  if (capacity?.unassigned) status += ` The following employees are waiting for a compatible desk: ${capacity.unassignedUserIds.length ? capacity.unassignedUserIds.join(', ') : 'see the employee list'}.`;
   const head = el('div', { class: 'a-row' },
     el('p', { id: 'importStatus' }, status),
     info && info.configured && el('button', { type: 'button', class: 'a-btn', id: 'importNow', onclick: () => runImport(false) }, 'Import now'),
@@ -306,7 +312,7 @@ function drawStaff() {
       } }, 'Link'));
     }
     body.append(el('tr', { 'data-employee': e.name },
-      el('td', {}, e.name, e.intern && el('span', { class: 'a-chip' }, 'intern'), !e.inOffice && el('span', { class: 'a-chip warn' }, 'not in the office')),
+      el('td', {}, e.name, e.intern && el('span', { class: 'a-chip' }, 'intern'), !e.inOffice && el('span', { class: 'a-chip warn' }, 'not in the office'), !e.assigned && el('span', { class: 'a-chip warn' }, 'unassigned')),
       el('td', { class: 'hide-s' }, e.department || ''), el('td', {}, deskSel), el('td', {}, accountCell, rowNote)));
   }
   if (!list.length) body.append(el('tr', {}, el('td', { colspan: '4' }, employees.length ? 'No one matches.' : 'No employees yet.')));

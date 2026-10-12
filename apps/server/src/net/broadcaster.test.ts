@@ -1,15 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addLog, decode, encode, meetings, personSnap, live, resetLive, setMode, interactables, hasSlot, makeStaff, people, removeStaff, setSeed, simEvents, type Snapshot, type Welcome } from '@office/shared';
+import { addLog, decode, encode, meetings, personSnap, live, resetLive, setMode, interactables, hasSlot, makeStaff, people, removeStaff, roster, setSeed, simEvents, type Employee, type Snapshot, type Welcome } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { Broadcaster } from './broadcaster';
 
 const options: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 3 };
 let world: World;
 let bc: Broadcaster;
+const employee = (n: number): Employee => ({ userId: `broadcaster-${n}`, firstName: `Employee${n}`, lastName: 'Test', department: 'UI/UX', intern: false, shift: null, character: null, desk: null });
+const staffCount = 40;
 
-afterEach(() => resetLive());
+afterEach(() => { resetLive(); roster.list = null; roster.status = 'unavailable'; });
 beforeEach(() => {
   simEvents.clear();
+  roster.list = Array.from({ length: staffCount }, (_, i) => employee(i + 1));
+  roster.status = 'ready';
   world = new World(options); world.init();
   bc = new Broadcaster({ tickRate: 20 });
 });
@@ -19,12 +23,12 @@ const snapshot = (tick: number) => decode(bc.snapshot(tick)) as Snapshot;
 describe('Broadcaster', () => {
   it('welcome lists everyone and does not disturb change tracking', () => {
     const w = decode(bc.welcome(0)) as Welcome;
-    expect(w.people).toHaveLength(41); // (40 staff and the helper)
+    expect(w.people).toHaveLength(staffCount + 1); // roster staff and the helper
     expect(w.people.filter(p => p.info.slot >= 0).every(p => interactables.all()[p.info.slot].kind === 'desk')).toBe(true);
     expect(w.people.filter(p => p.info.slot < 0).map(p => p.info.name)).toEqual(['Office Helper']); // (no desk: she cleans)
     // a welcome must not make the next snapshot think nothing changed for the other clients
     const first = snapshot(2);
-    expect(first.people).toHaveLength(41);
+    expect(first.people).toHaveLength(staffCount + 1);
   });
 
   it('says in every welcome and snapshot whether the clock is Live or Simulate', () => {
@@ -41,7 +45,7 @@ describe('Broadcaster', () => {
     expect(odd.people).toHaveLength(0); // staff are only due on even ticks
     const even = snapshot(4);
     expect(even.full).toBe(false);
-    expect(even.people.length).toBeLessThan(40);
+    expect(even.people.length).toBeLessThan(staffCount);
     const again = snapshot(6); // the world did not step: only the repeats of the whole records sent at 4 come, nothing new
     expect(again.people.map(x => x.id).sort()).toEqual(even.people.map(x => x.id).sort());
     expect(again.moves ?? []).toHaveLength(0);
@@ -49,7 +53,7 @@ describe('Broadcaster', () => {
     expect(snapshot(10).people).toHaveLength(0);
     const key = snapshot(20); // 20 ticks per second: a keyframe
     expect(key.full).toBe(true);
-    expect(key.people).toHaveLength(41);
+    expect(key.people).toHaveLength(staffCount + 1);
   });
 
   it('a person who moves shows up again', () => {
@@ -75,7 +79,7 @@ describe('Broadcaster', () => {
     p.pos.x += .5;
     const key = snapshot(20); // a keyframe
     expect(key.full).toBe(true);
-    expect(key.people).toHaveLength(41);
+    expect(key.people).toHaveLength(staffCount + 1);
     expect(key.moves ?? []).toEqual([]);
   });
 
@@ -135,8 +139,8 @@ describe('Broadcaster', () => {
       let bytes = 0, n = 0;
       for (let t = 1; t <= 20 * 120; t++) { world.step(); bytes += bc.snapshot(t).length; n++; for (const e of bc.events()) bytes += e.length; }
       const perSecond = bytes / 120;
-      console.log(`BANDWIDTH  ${(perSecond / 1024).toFixed(2)} KB/s per viewer for 40 staff (${(bytes / n).toFixed(0)} B per snapshot)`);
-      expect(perSecond).toBeLessThan(40 * 1024);
+      console.log(`BANDWIDTH  ${(perSecond / 1024).toFixed(2)} KB/s per viewer for ${staffCount} staff (${(bytes / n).toFixed(0)} B per snapshot)`);
+      expect(perSecond).toBeLessThan(staffCount * 1024);
     } finally { setSeed(null); }
   });
 

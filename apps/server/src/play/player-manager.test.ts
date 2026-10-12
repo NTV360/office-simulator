@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { HAZEL_NAME, drawCount, initDay, mkSpot, interactables, people, setSeed, sim, simEvents, stepSim, buildTestLayout, type Person } from '@office/shared';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { HAZEL_NAME, drawCount, initDay, mkSpot, interactables, people, roster, setSeed, sim, simEvents, stepSim, buildTestLayout, type Employee, type Person } from '@office/shared';
 import { MemoryAccountStore, type Account } from '../auth/account-store';
 import { PlayError, PlayerManager, type Timers } from './player-manager';
 
@@ -23,7 +23,7 @@ let timers: FakeTimers;
 let kicks: Array<[number, string]>;
 let manager: PlayerManager;
 let updated: Person[];
-const deskPerson = (n: number): Person => interactables.of('desk')[n].owner as Person;
+const deskPerson = (n: number): Person => interactables.of('desk').find(d => d.id === `desk:${n}`)!.owner as Person;
 
 async function account(name: string, slot: string | null = null): Promise<Account> {
   const a = await store.create({ username: name, passwordHash: 'h', role: 'player' });
@@ -33,12 +33,27 @@ async function account(name: string, slot: string | null = null): Promise<Accoun
 }
 const code = async (p: Promise<unknown>) => { try { await p; return 'ok'; } catch (e) { return e instanceof PlayError ? e.code : 'other:' + String(e); } };
 
+const staff: Employee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `test-${i + 1}`,
+  firstName: i === 0 ? 'Hazel' : `Test${i + 1}`,
+  lastName: i === 0 ? 'Sellote' : 'Employee',
+  department: 'UI/UX', intern: false, shift: null, character: null, desk: null,
+}));
+
 beforeEach(() => {
   simEvents.clear();
+  roster.list = staff;
+  roster.status = 'ready';
   setSeed(1); buildTestLayout({ desks: 40 }); initDay();
   store = new MemoryAccountStore(); timers = new FakeTimers(); kicks = []; updated = [];
   manager = new PlayerManager(store, { graceMs: 30_000, timers, kick: (id, why) => kicks.push([id, why]) });
   simEvents.on('personUpdated', p => updated.push(p));
+});
+
+afterEach(() => {
+  roster.list = null;
+  roster.status = 'unavailable';
+  simEvents.clear();
 });
 
 describe('a login', () => {
@@ -103,9 +118,10 @@ describe('a login', () => {
   it('the database saying "this is your desk" wins when the world did not know (a reset world)', async () => {
     const bob = await account('bob', 'desk:7');
     const p = deskPerson(7);
+    const name = p.name;
     expect(p.owner).toBeUndefined();
     expect(await manager.attach(bob)).toBe(p);
-    expect([p.owner, p.name]).toEqual([bob.id, 'bob']);
+    expect([p.owner, p.name]).toEqual([bob.id, name]);
   });
 
   it('plays as a guest, with a warning, if the desk is not available any more', async () => {
@@ -141,8 +157,7 @@ describe('an admin giving a desk', () => {
     const ana = await account('ana');
     const before = deskPerson(10).name;
     const p = await manager.assignSlot(ana.id, 'desk:10');
-    expect([p.owner, p.name]).toEqual([ana.id, 'ana']);
-    expect(p.name).not.toBe(before);
+    expect([p.owner, p.name]).toEqual([ana.id, before]);
     expect((await store.byId(ana.id))!.slotSpot).toBe('desk:10');
     expect(updated).toContain(p);
   });
@@ -152,8 +167,8 @@ describe('an admin giving a desk', () => {
     expect(await code(manager.assignSlot(999, 'desk:3'))).toBe('no-account');
     expect(await code(manager.assignSlot(ana.id, 'desk:99'))).toBe('no-desk');
     expect(await code(manager.assignSlot(ana.id, 'chair:1'))).toBe('no-desk');
-    const hazelDesk = interactables.of('desk').findIndex(d => (d.owner as Person)?.name === HAZEL_NAME);
-    expect(await code(manager.assignSlot(ana.id, 'desk:' + hazelDesk))).toBe('reserved');
+    const hazelDesk = interactables.of('desk').find(d => (d.owner as Person)?.name === HAZEL_NAME)!;
+    expect(await code(manager.assignSlot(ana.id, hazelDesk.id))).toBe('reserved');
     await manager.assignSlot(ana.id, 'desk:3');
     expect(await code(manager.assignSlot(ana.id, 'desk:4'))).toBe('has-desk');
     expect(await code(manager.assignSlot(bob.id, 'desk:3'))).toBe('claimed');
@@ -196,7 +211,7 @@ describe('an admin taking a desk back', () => {
     expect((await store.byId(ana.id))!.slotSpot).toBeNull();
     expect(p.controller).toBe('ai');
     expect((await manager.assignSlot(bob.id, 'desk:13')) === p).toBe(true); // the same person, now bob's
-    expect(p.name).toBe('bob');
+    expect(p.name).toBe('Test21 Employee');
   });
 
   it('ends the play of an account that is playing that person right now', async () => {
@@ -259,9 +274,9 @@ describe('things that happen at the same time', () => {
   });
 
   it('Hazel can not be played or claimed even if the database says her desk belongs to an account', async () => {
-    const hazelDesk = interactables.of('desk').findIndex(d => (d.owner as Person)?.name === HAZEL_NAME);
-    const ana = await account('ana', 'desk:' + hazelDesk);
-    const hazel = deskPerson(hazelDesk);
+    const hazelDesk = interactables.of('desk').find(d => (d.owner as Person)?.name === HAZEL_NAME)!;
+    const ana = await account('ana', hazelDesk.id);
+    const hazel = hazelDesk.owner as Person;
     const g = await manager.attach(ana);
     expect(g.role).toBe('Guest'); // playing as a guest instead
     expect(hazel.name).toBe(HAZEL_NAME);
@@ -277,7 +292,8 @@ describe('giving a desk back', () => {
     const ana = await account('ana');
     await manager.assignSlot(ana.id, 'desk:25');
     const p = deskPerson(25);
-    expect(p.name).toBe('ana');
+    const rosterName = p.name;
+    expect(rosterName).not.toBe('ana');
     const draws = drawCount();
     await manager.releaseSlot(ana.id);
     expect(p.name).not.toBe('ana');
@@ -355,7 +371,7 @@ describe('making the world agree with the accounts at start-up', () => {
     expect(deskPerson(16).owner).toBe(b.id);
     expect(deskPerson(17).owner).toBeUndefined();
     expect(r).toEqual({ claimed: 2, released: 1 });
-    expect(deskPerson(15).name).toBe('ana');
+    expect(deskPerson(15).name).not.toBe('ana');
   });
 
   it('is quiet when everything already agrees, and survives an account whose desk has nobody', async () => {

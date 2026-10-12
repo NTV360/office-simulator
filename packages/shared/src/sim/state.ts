@@ -1,5 +1,5 @@
-import { shuffle } from '../util';
 import { interactables, type Spot } from './interactables';
+import { shuffle } from '../util';
 import type { Meeting, Person } from './types';
 
 /** Sim minutes that pass per real second at 1x speed. */

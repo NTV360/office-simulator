@@ -11,7 +11,7 @@ import { MemoryAccountStore } from '../auth/account-store';
 import { AuthProvider } from '../auth/auth.provider';
 import { AuthService } from '../auth/auth.service';
 import { sessionFor, ticketFor, useAuth } from '../test-support';
-import { MemoryEmployeeStore } from '../employees/employee-store';
+import { MemoryEmployeeStore, type ImportedEmployee } from '../employees/employee-store';
 import { EmployeeService } from '../employees/employee.service';
 
 process.env.WORLD_SEED = '1';
@@ -28,7 +28,10 @@ async function boot() {
   base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
   const auth = new AuthService(new MemoryAccountStore(), { limits: { logins: 1000 } }); // players log in to watch
   app.get(AuthProvider).useService(auth);
-  app.get(EmployeeService).useStore(new MemoryEmployeeStore());
+  const employees = new MemoryEmployeeStore();
+  app.get(EmployeeService).useStore(employees);
+  await employees.applyImport(staffFixture);
+  await app.get(EmployeeService).syncWorld();
   useAuth(base, auth);
 }
 beforeEach(async () => { process.env.ADMIN_TOKEN = TOKEN; await boot(); });
@@ -42,6 +45,7 @@ const call = async (method: string, path: string, body?: unknown, token: string 
 };
 const world = async () => (await fetch(base + '/api/world')).json() as Promise<{ staff: number; speed: number; paused: boolean; simTime: number }>;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const staffFixture: ImportedEmployee[] = Array.from({ length: 40 }, (_, i) => ({ userId: `admin-staff-${i + 1}`, firstName: `Employee${i + 1}`, lastName: 'Test', department: 'UI/UX', intern: false, shift: null, character: null, desk: null }));
 
 describe('who may use the admin API', () => {
   it('does not exist without ADMIN_TOKEN', async () => {
@@ -72,16 +76,16 @@ describe('changing settings', () => {
     expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 80, speed: 1, paused: false, tickRate: 20, clockMode: 'sim', attendance: false });
   });
 
-  it('slots: add and remove staff, never beyond the desks', async () => {
+  it('slots cannot fabricate employees outside the authoritative roster', async () => {
     let r = await call('PUT', '/api/admin/settings', { slots: 55 });
-    expect((await r.json()).slots).toBe(55);
-    expect((await world()).staff).toBe(55);
-    expect(people.filter(hasSlot)).toHaveLength(55);
+    expect((await r.json()).slots).toBe(40);
+    expect((await world()).staff).toBe(40);
+    expect(people.filter(hasSlot)).toHaveLength(40);
     r = await call('PUT', '/api/admin/settings', { slots: 12 });
     expect((await r.json()).slots).toBe(12);
     expect((await world()).staff).toBe(12);
     r = await call('PUT', '/api/admin/settings', { slots: 5000 });
-    expect((await r.json()).slots).toBe(74); // (there are 80 desks; the six in the HR office are only for HR staff)
+    expect((await r.json()).slots).toBe(40);
     r = await call('PUT', '/api/admin/settings', { slots: 0 });
     expect((await r.json()).slots).toBe(0);
   });

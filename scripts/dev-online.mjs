@@ -76,7 +76,9 @@ start('server', 'npm', ['run', 'dev', '-w', '@office/server'], {
   ADMIN_USERNAME: ADMIN.user, ADMIN_PASSWORD: ADMIN.pass, ADMIN_TOKEN: ADMIN.token,
   ...(recordsServer ? { SUPABASE_URL: `http://127.0.0.1:${RECORDS_PORT}`, SUPABASE_SECRET_KEY: RECORDS_KEY } : {}),
 });
-start('page', 'npm', ['run', 'dev']);
+// DEV_HOST=1 lets other computers on your network open the page (Vite listens on every network address, not just this PC)
+const lan = process.env.DEV_HOST === '1';
+start('page', 'npm', lan ? ['run', 'dev', '-w', '@office/client', '--', '--host'] : ['run', 'dev']);
 
 // the test accounts (safe to repeat: see scripts/seed.mjs); DEV_SEED=0 skips it
 if (process.env.DEV_SEED !== '0') {
@@ -98,6 +100,6 @@ setTimeout(() => console.log(`
   First login: user "${ADMIN.user}", password "${ADMIN.pass}" (it asks you to choose a new one).
   Test accounts (made for you the first time; npm run seed makes them again): ana, ben, cat, dan and guest1, password dev-pass-1234.
   Ana, Ben, Cat and Dan play employees of a made-up company (see docs/GETTING-STARTED.md, "Test data").
-  Ctrl+C stops the server and the page. The database keeps running: docker stop ${DB}
+${lan ? `  On your network: http://<this PC's address>:5173/?online   (find it with ipconfig; Windows Firewall must allow TCP 5173)\n` : ''}  Ctrl+C stops the server and the page. The database keeps running: docker stop ${DB}
 ==================================================================================
 `), 6000);

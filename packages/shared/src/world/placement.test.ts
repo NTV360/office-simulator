@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadLayout } from '../layout/layout';
 import { officeLayout } from '../layout/office';
 import { initDay } from '../sim/day';
 import { simEvents } from '../sim/events';
 import { interactables } from '../sim/interactables';
 import { isHelper } from '../sim/person';
+import { roster, type Employee } from '../sim/roster';
 import { initState, meetings, people, resetSim, sim } from '../sim/state';
 import { stepSim } from '../sim/step';
 import { Vec3 } from '../vec3';
@@ -20,7 +21,13 @@ import { REACH, inReach, movability, nearestMovable, placementProblem, restHeigh
 
 // The rules for moving things: where a chair or a small thing may be put, and when it may not be moved at all.
 
-beforeEach(() => { simEvents.clear(); setSeed(1); resetSim(); loadLayout(officeLayout); initState(); });
+const testRoster = (count = 40): Employee[] => Array.from({ length: count }, (_, i) => ({
+  userId: `placement-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX',
+  intern: false, shift: null, character: null, desk: null,
+}));
+
+beforeEach(() => { simEvents.clear(); setSeed(1); resetSim(); roster.list = testRoster(); roster.status = 'ready'; loadLayout(officeLayout); initState(); });
+afterEach(() => { roster.list = null; roster.status = 'unavailable'; });
 
 const ofType = (type: string) => objects.all().filter(o => o.type === type);
 /** A place near the object where it may be put (not where it is), searching outwards in rings of 15 cm. */

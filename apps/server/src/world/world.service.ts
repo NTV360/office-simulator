@@ -6,7 +6,7 @@ import { DbService } from '../db.service';
 import { runMigrations } from '../db/migrate';
 import { WorldStore } from '../db/world-store';
 import { PgEmployeeStore } from '../employees/employee-store';
-import { setRoster, syncRoster } from '../employees/roster-sync';
+import { setRoster, syncRoster, setRosterUnavailable } from '../employees/roster-sync';
 import { loadPhysics, type StaticShape } from '../physics/physics';
 import officeShapes from '../physics/office-shapes.json';
 import { Persistence, loadForBoot, type PersistenceStatus } from './persistence';
@@ -58,7 +58,7 @@ export class WorldService implements OnApplicationBootstrap, BeforeApplicationSh
   /** Read the save (if any), build the world from it, and only then switch saving on. */
   private async boot(): Promise<{ store: object | null }> {
     const pool = this.db.pool;
-    if (!pool) { this.world.init(null); this.persistence.disable('no DATABASE_URL'); return { store: null }; }
+    if (!pool) { setRosterUnavailable(); this.world.init(null); this.persistence.disable('no DATABASE_URL'); return { store: null }; }
     const reset = process.env.RESET_WORLD === 'true';
     if (reset) this.log.warn('RESET_WORLD is set: the saved world will be replaced by a fresh one');
 
@@ -69,17 +69,25 @@ export class WorldService implements OnApplicationBootstrap, BeforeApplicationSh
       return reset ? { load: async () => null, save: (w: SavedWorld) => store.save(w) } : store;
     }, this.log);
 
-    if (!boot.store) { this.world.init(null); this.persistence.disable(boot.reason ?? 'database unavailable'); return { store: null }; }
+    if (!boot.store) {
+      setRosterUnavailable();
+      this.world.init(null);
+      this.persistence.disable(boot.reason ?? 'database unavailable');
+      return { store: null };
+    }
 
     // the staff list (from the employee records, as last imported): the office is made of it
-    let staff: Awaited<ReturnType<PgEmployeeStore['list']>> = [];
-    try { staff = await new PgEmployeeStore(pool).list(); } catch (err) { this.log.error(`could not read the staff list: ${err instanceof Error ? err.message : String(err)}; made-up staff are used`); }
-    setRoster(staff);
+    let staff: Awaited<ReturnType<PgEmployeeStore['list']>> | null = null;
+    try { staff = await new PgEmployeeStore(pool).list(); } catch (err) {
+      this.log.error(`could not read the staff list: ${err instanceof Error ? err.message : String(err)}; starting without autonomous staff`);
+      setRosterUnavailable();
+    }
+    if (staff) setRoster(staff);
 
     let saved = boot.saved;
     try {
       this.world.init(saved);
-      if (saved && staff.length) { const r = syncRoster(staff); if (r.added || r.removed || r.updated || r.replaced) this.log.log(`staff list applied to the saved world: ${r.added} in, ${r.removed} out, ${r.updated} changed, ${r.replaced} made-up replaced`); }
+      if (saved && staff) { const r = syncRoster(staff); if (r.added || r.removed || r.updated || r.replaced) this.log.log(`staff list applied to the saved world: ${r.added} in, ${r.removed} out, ${r.updated} changed, ${r.replaced} legacy synthetic staff replaced`); }
     } catch (err) {
       if (!(err instanceof SaveError)) throw err;
       // The save is readable but this office cannot be built from it (for example a desk it names no longer exists).

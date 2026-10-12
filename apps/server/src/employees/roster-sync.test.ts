@@ -121,28 +121,28 @@ describe('keeping the office in line with the list', () => {
     expect(r.removed).toBe(0);
     expect(staff().map(p => p.userId).sort()).toEqual([U(1), U(2), U(3)]);
   });
-  it('made-up staff make way for the real ones the first time there is a list (but not those who belong to an account)', () => {
-    fresh([]); // no list: 40 made-up staff
-    expect(staff()).toHaveLength(40);
-    staff()[5].owner = 3;
-    const keep = staff()[5];
+  it('does not fabricate staff when the roster was unavailable', () => {
+    fresh([]);
+    expect(staff()).toHaveLength(0);
     const r = syncRoster([rec(1), rec(2), rec(3)]);
-    expect(r).toMatchObject({ replaced: 39, added: 3 });
-    expect(staff()).toHaveLength(4);
-    expect(staff()).toContain(keep);
-    expect([by(1), by(2), by(3)].every(Boolean)).toBe(true);
+    expect(r).toMatchObject({ replaced: 0, added: 3 });
+    expect(staff()).toHaveLength(3);
   });
-  it('an empty list changes nothing (the office is left as it is)', () => {
+  it('a confirmed empty list removes unclaimed roster staff', () => {
     fresh([rec(1), rec(2)]);
     const r = syncRoster([]);
-    expect(r).toEqual({ added: 0, updated: 0, removed: 0, replaced: 0 });
-    expect(staff()).toHaveLength(2);
-    expect(roster.list).toBeNull();
+    expect(r).toMatchObject({ added: 0, updated: 0, removed: 2, replaced: 0, assigned: 0, unassigned: 0, unassignedUserIds: [] });
+    expect(staff()).toHaveLength(0);
+    expect(roster.list).toEqual([]);
   });
   it('more employees than desks: the ones who fit come in, and the rest wait (the other HR desks are for HR only)', () => {
     const many = Array.from({ length: 90 }, (_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' }));
     fresh(many);
     expect(staff().length).toBe(74 + 3); // the 74 ordinary desks and the 3 HR desks the 3 HR staff fill
     expect(interactables.of('desk').filter(d => !d.owner).every(d => d.department === 'Human Resources')).toBe(true);
+    const result = syncRoster(many.map((_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' })));
+    expect(result.assigned).toBe(74 + 3);
+    expect(result.unassigned).toBe(13);
+    expect(result.unassignedUserIds).toHaveLength(13);
   });
 });

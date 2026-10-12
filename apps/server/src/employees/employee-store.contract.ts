@@ -113,6 +113,21 @@ export function employeeStoreContract(label: string, make: () => Promise<Employe
       expect(await store.setCharacter(U(1), LOOK)).toBe(true);
     });
 
+    it('applies canonical assignments atomically, including swaps and clearing overflow', async () => {
+      await store.applyImport([imp(1, { desk: 'A1' }), imp(2, { desk: 'A2' }), imp(3, { desk: 'A3' })]);
+      await store.setDeskAssignments(new Map([[U(1), 'A2'], [U(2), 'A1'], [U(3), null]]));
+      expect((await store.byId(U(1)))!.desk).toBe('A2');
+      expect((await store.byId(U(2)))!.desk).toBe('A1');
+      expect((await store.byId(U(3)))!.desk).toBeNull();
+    });
+
+    it('rejects a canonical collision without changing any row', async () => {
+      await store.applyImport([imp(1, { desk: 'A1' }), imp(2, { desk: 'A2' })]);
+      await expect(store.setDeskAssignments(new Map([[U(1), 'A2'], [U(2), 'A2']]))).rejects.toThrow();
+      expect((await store.byId(U(1)))!.desk).toBe('A1');
+      expect((await store.byId(U(2)))!.desk).toBe('A2');
+    });
+
     it('names with accents, quotes and long text are kept as they are', async () => {
       await store.applyImport([imp(1, { firstName: "Zoë O'Brien-\"X\"", lastName: 'Ñandú 你好', department: 'R&D <b>' })]);
       expect(await store.byId(U(1))).toMatchObject({ firstName: "Zoë O'Brien-\"X\"", lastName: 'Ñandú 你好', department: 'R&D <b>' });

@@ -1,5 +1,5 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { carryPace, closestPointOnItem, throwPath, throwVelocity, interactables, isAtHome, objects, people, placeDown, placementProblem, setObjectPose, setSeed, sim, type Person, type WorldObject } from '@office/shared';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { carryPace, closestPointOnItem, throwPath, throwVelocity, interactables, isAtHome, objects, people, placeDown, placementProblem, roster, setObjectPose, setSeed, sim, type Employee, type Person, type WorldObject } from '@office/shared';
 import { drop, grab, holdInput, throwIt } from '../play/object-actions';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, yawQuat, type StaticShape } from './physics';
@@ -11,6 +11,11 @@ import shapes from './office-shapes.json';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 10, speed: 1, paused: true, seed: 1 };
 let world: World | null = null;
+const testRoster: Employee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `holding-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX',
+  intern: false, shift: null, character: null, desk: null,
+}));
+beforeEach(() => { roster.list = testRoster; roster.status = 'ready'; });
 function make(): World {
   world = new World(base);
   world.usePhysics(shapes as unknown as StaticShape[]);
@@ -39,7 +44,7 @@ function openFloorNear(o: WorldObject): { x: number; z: number } {
 }
 
 beforeAll(async () => { await loadPhysics(); });
-afterEach(() => { world?.itemPhysics?.dispose(); world = null; setSeed(null); });
+afterEach(() => { world?.itemPhysics?.dispose(); world = null; setSeed(null); roster.list = null; roster.status = 'unavailable'; });
 
 describe('picking something up', () => {
   it('a chair is lifted to carrying height in front of the person, held where the hands took it, at the angle it was taken', () => {

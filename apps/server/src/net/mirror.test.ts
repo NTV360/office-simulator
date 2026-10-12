@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  Mirror, PROP_KEYS, decode, interactables, hasSlot, isHelper, meetings, people, personSnap, removeStaff, setLook, setStaffCount, simEvents, takeControl,
-  type Person, type PersonSnap, type Snapshot, type Welcome,
+  Mirror, PROP_KEYS, decode, interactables, hasSlot, isHelper, meetings, people, personSnap, removeStaff, roster, setLook, setStaffCount, simEvents, takeControl,
+  type Employee, type Person, type PersonSnap, type Snapshot, type Welcome,
 } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { Broadcaster } from './broadcaster';
@@ -13,9 +13,14 @@ let world: World;
 let bc: Broadcaster;
 let mirror: Mirror;
 let added: Person[], removed: Person[];
+const staffCount = 40;
+const employee = (n: number): Employee => ({ userId: `mirror-${n}`, firstName: n === 1 ? 'Hazel' : `Employee${n}`, lastName: n === 1 ? 'Sellote' : 'Test', department: 'UI/UX', intern: false, shift: null, character: null, desk: null });
 
+afterEach(() => { roster.list = null; roster.status = 'unavailable'; });
 beforeEach(() => {
   simEvents.clear();
+  roster.list = Array.from({ length: staffCount }, (_, i) => employee(i + 1));
+  roster.status = 'ready';
   world = new World(options); world.init();
   bc = new Broadcaster({ tickRate: 20 });
   added = []; removed = [];
@@ -53,7 +58,7 @@ describe('Mirror', () => {
   it('rebuilds the whole office from a welcome, with real desks, specs and people objects', () => {
     connect();
     expectSame('welcome');
-    expect(added).toHaveLength(41); // (the helper too)
+    expect(added).toHaveLength(staffCount + 1); // the helper too
     const hazel = [...mirror.people.values()].find(p => p.name === 'Hazel Sellote')!;
     expect(hazel.spec).toMatchObject({ type: 'blocky', height: 'short', angry: true });
     expect(hazel.slot!.kind).toBe('desk');
@@ -105,8 +110,8 @@ describe('Mirror', () => {
     connect();
     setStaffCount(30);
     tick();
-    expect(mirror.people.size).toBe(31); // (30 staff and the helper)
-    expect(removed).toHaveLength(10);
+    expect(mirror.people.size).toBe(31); // 30 staff and the helper
+    expect(removed).toHaveLength(staffCount - 30);
     const before = added.length;
     setStaffCount(36);
     tick();
@@ -187,8 +192,8 @@ describe('Mirror', () => {
     connect();
     for (let i = 0; i < 100; i++) tick();
     connect();
-    expect(mirror.people.size).toBe(41);
-    expect(removed).toHaveLength(41);
+    expect(mirror.people.size).toBe(staffCount + 1);
+    expect(removed).toHaveLength(staffCount + 1);
     expectSame('reconnect');
   });
 
@@ -196,7 +201,7 @@ describe('Mirror', () => {
     const got: Array<[number, boolean]> = [];
     const m = new Mirror(interactables.all(), { added: () => {}, removed: () => {}, position: (p, _x, _z, _f, _w, isNew) => { got.push([p.id, isNew]); } });
     m.applyWelcome(decode(bc.welcome(0)) as Welcome);
-    expect(got.filter(g => g[1])).toHaveLength(41);
+    expect(got.filter(g => g[1])).toHaveLength(staffCount + 1);
     m.applySnapshot(decode(bc.snapshot(2)) as Snapshot); // (the first snapshot is whole records for everyone)
     const p0 = [...m.people.values()].find(q => q.state === 'doing')!;
     const startX = p0.pos.x;

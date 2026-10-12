@@ -3,6 +3,7 @@ import { interactables } from './interactables';
 import { isHelper } from './person';
 import { initState, people, resetSim } from './state';
 import { endTask } from './tasks';
+import { roster, type Employee } from './roster';
 import { mkSpot, type SpotOptions } from './spots';
 
 // A small, fully equipped office for tests and for a server with no client: open floor, no furniture, but one of
@@ -65,4 +66,10 @@ export function buildTestLayout({ desks = 40, hr = 0 }: TestLayoutOptions = {}):
   { const [x, y] = next(); mkSpot('exit', x, y, 0, { shared: false, place: 'the exit' }); }
 
   initState();
+  if (roster.list === null) {
+    roster.list = Array.from({ length: desks + hr }, (_, i): Employee => ({
+      userId: `test-${i + 1}`, firstName: i === 0 ? 'Hazel' : `Test${i + 1}`, lastName: i === 0 ? 'Sellote' : 'Employee', department: i >= desks ? 'Human Resources' : 'UI/UX',
+      intern: false, shift: null, character: null, desk: null,
+    }));
+  }
 }

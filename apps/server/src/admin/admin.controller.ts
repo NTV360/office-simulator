@@ -267,7 +267,7 @@ export class AdminController {
 
   /** Every employee in the staff list: who they are, where they sit, whether they have a look, and which account (if any) plays them. */
   @Get('employees')
-  async employeeList(): Promise<Array<{ userId: string; name: string; department: string | null; intern: boolean; shift: unknown; desk: string | null; seat: string | null; hasLook: boolean; inOffice: boolean; present: boolean; account: { id: number; username: string } | null }>> {
+  async employeeList(): Promise<Array<{ userId: string; name: string; department: string | null; intern: boolean; shift: unknown; desk: string | null; seat: string | null; assigned: boolean; hasLook: boolean; inOffice: boolean; present: boolean; account: { id: number; username: string } | null }>> {
     const records = await this.employees.require().list();
     const linked = new Map((await this.auth.require().accounts.list()).filter(a => a.employeeId).map(a => [a.employeeId as string, a]));
     return records.map(r => {
@@ -275,7 +275,7 @@ export class AdminController {
       const account = linked.get(r.userId);
       return {
         userId: r.userId, name: `${r.firstName} ${r.lastName}`.trim(), department: r.department, intern: r.intern, shift: r.shift, desk: r.desk,
-        seat: person?.slot?.deskId ?? null, hasLook: r.character !== null, inOffice: !!person, present: !!person && person.state !== 'away',
+        seat: person?.slot?.deskId ?? null, assigned: !!person?.slot, hasLook: r.character !== null, inOffice: !!person, present: !!person && person.state !== 'away',
         account: account ? { id: account.id, username: account.username } : null,
       };
     });

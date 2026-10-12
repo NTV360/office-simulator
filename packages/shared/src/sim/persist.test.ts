@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadLayout } from '../layout/layout';
 import { officeLayout } from '../layout/office';
 import { drawCount, setSeed } from '../util';
@@ -6,12 +6,19 @@ import { initDay } from './day';
 import { live, resetLive } from './live';
 import { simEvents } from './events';
 import { hasSlot } from './person';
+import { roster } from './roster';
 import { SAVE_VERSION, SaveError, parseSavedWorld, restoreWorld, serializeWorld } from './persist';
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
 import { removeHelper } from './testing';
 
-beforeEach(() => { simEvents.clear(); resetSim(); loadLayout(officeLayout); });
+const testRoster = (count = 40) => Array.from({ length: count }, (_, i) => ({
+  userId: `persist-${i + 1}`, firstName: i === 0 ? 'Hazel' : `Test${i + 1}`, lastName: i === 0 ? 'Sellote' : 'Employee', department: 'UI/UX' as string | null,
+  intern: false, shift: null, character: null, desk: null,
+}));
+
+beforeEach(() => { simEvents.clear(); resetSim(); roster.list = testRoster(); roster.status = 'ready'; loadLayout(officeLayout); });
+afterEach(() => { roster.list = null; roster.status = 'unavailable'; });
 
 function runningWorld(seed = 1, steps = 8000) {
   setSeed(seed); initState(); initDay(40); removeHelper(); // (she is not saved: see the test of her own)

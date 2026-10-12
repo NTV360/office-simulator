@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { io, type Socket } from 'socket.io-client';
 import { PROTOCOL_VERSION, decode, encode, type Message } from '@office/shared';
+import type { ImportedEmployee } from './employees/employee-store';
 import { AppModule } from './app.module';
 import { configureApp } from './app.config';
 import { MemoryAccountStore } from './auth/account-store';
@@ -25,7 +26,7 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-export async function bootTestServer(): Promise<TestServer> {
+export async function bootTestServer(staff: readonly ImportedEmployee[] = []): Promise<TestServer> {
   delete process.env.DATABASE_URL;
   const app = await NestFactory.create(AppModule, { logger: false });
   configureApp(app);
@@ -36,6 +37,10 @@ export async function bootTestServer(): Promise<TestServer> {
   app.get(AuthProvider).useService(auth);
   const employees = new MemoryEmployeeStore();
   app.get(EmployeeService).useStore(employees);
+  if (staff.length) {
+    await employees.applyImport(staff);
+    await app.get(EmployeeService).syncWorld();
+  }
   useAuth(base, auth);
   return { app, base, store, employees, auth, close: () => app.close() };
 }

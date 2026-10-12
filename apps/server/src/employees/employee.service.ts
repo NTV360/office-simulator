@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown, ServiceUnavailableException } from '@nestjs/common';
-import { applyAttendance, live, type AttendanceRecord } from '@office/shared';
+import { allocateDesks, applyAttendance, hasSlot, interactables, live, people, type AttendanceRecord } from '@office/shared';
 import { DbService } from '../db.service';
 import { WorldService } from '../world/world.service';
 import { PgEmployeeStore, type EmployeeStore, type ImportResult } from './employee-store';
@@ -86,8 +86,8 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   /**
-   * Read the employee records, bring the stored list in line with them, and the office in line with the list. A failure (the records cannot be
-   * reached, or come back empty) changes nothing. Resolves with what was done.
+   * Read the employee records, bring the stored list in line with them, and the office in line with the list. A failed read changes nothing;
+   * a successful empty response is authoritative and produces an empty active roster. Resolves with what was done.
    */
   importNow(opts: { force?: boolean } = {}): Promise<ImportResult & { sync: SyncResult }> {
     return this.serial(async () => {
@@ -95,12 +95,19 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
       const store = this.require();
       try {
         const list = await this.source.employees();
-        if (list.length === 0) throw new SourceError('the employee records came back empty; nothing was changed');
+        // An empty successful response is authoritative: it means the roster is currently empty.
+        if (list.length === 0) {
+          const result = await store.applyImport(list);
+          const sync = syncRoster(await this.canonicalRecords(store));
+          const out = { ...result, sync };
+          this.status.lastImportAt = new Date().toISOString(); this.status.lastImportOk = true; this.status.lastImportError = null; this.status.lastResult = out;
+          return out;
+        }
         // a much shorter list than the one stored is more likely a partial answer than half the company leaving: an admin can still force it
         const stored = (await store.list()).length;
         if (!opts.force && stored >= SHRINK_FLOOR && list.length < stored / 2) throw new SourceError(`the employee records list ${list.length} people where ${stored} are stored; nothing was changed (an admin can import anyway)`);
         const result = await store.applyImport(list);
-        const sync = syncRoster(await store.list());
+        const sync = syncRoster(await this.canonicalRecords(store));
         const out = { ...result, sync };
         this.status.lastImportAt = new Date().toISOString(); this.status.lastImportOk = true; this.status.lastImportError = null; this.status.lastResult = out;
         if (result.added || result.updated || result.removed || result.restored) this.log.log(`employee records imported: ${result.added} new, ${result.updated} changed, ${result.removed} gone, ${result.restored} back; the office: ${sync.added} in, ${sync.removed} out, ${sync.updated} changed, ${sync.replaced} made-up replaced`);
@@ -114,9 +121,43 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
     });
   }
 
+  /** Persist stable desk choices before rebuilding the in-memory office. */
+  private async canonicalRecords(store: EmployeeStore): Promise<Awaited<ReturnType<EmployeeStore['list']>>> {
+    const records = await store.list();
+    const ids = new Set(records.map(r => r.userId));
+    const owned = new Map(records.map(r => [r.userId, people.find(p => p.userId === r.userId && hasSlot(p) && p.owner !== undefined)]));
+    const blocked = people
+      .filter(p => hasSlot(p) && p.owner !== undefined && (!p.userId || !ids.has(p.userId)))
+      .map(p => p.slot?.deskId)
+      .filter((id): id is string => !!id);
+    const inputs = records.map(r => ({
+      userId: r.userId,
+      department: r.department,
+      desk: owned.get(r.userId)?.slot?.deskId ?? r.desk,
+    }));
+    const allocations = allocateDesks(
+      inputs,
+      interactables.of('desk').map(s => ({ deskId: s.deskId!, department: s.department })),
+      blocked,
+    );
+    const changes = new Map<string, string | null>();
+    for (const record of records) {
+      const desired = allocations.get(record.userId) ?? null;
+      if (desired !== record.desk) changes.set(record.userId, desired);
+    }
+    if (changes.size) {
+      await store.setDeskAssignments(changes);
+      return store.list();
+    }
+    return records;
+  }
+
   /** Bring the office in line with the stored list (after an admin changed something about an employee). */
   syncWorld(): Promise<SyncResult> {
-    return this.serial(async () => syncRoster(await this.require().list()));
+    return this.serial(async () => {
+      const store = this.require();
+      return syncRoster(await this.canonicalRecords(store));
+    });
   }
 
   /** Who is clocked in right now, from the records. Without a source there is nothing to read. */

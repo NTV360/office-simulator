@@ -55,6 +55,8 @@ export interface EmployeeStore {
   setCharacter(userId: string, spec: unknown): Promise<boolean>;
   /** Choose a desk (a seat id) or none. 'taken' if another employee chose it, 'missing' if there is no such employee. */
   setDesk(userId: string, desk: string | null): Promise<'ok' | 'taken' | 'missing'>;
+  /** Persist the canonical assignments computed for active employees in one operation. */
+  setDeskAssignments(assignments: ReadonlyMap<string, string | null>): Promise<void>;
 }
 
 const sameShift = (a: Shift | null, b: Shift | null): boolean => (a === null || b === null ? a === b : a.code === b.code && a.start === b.start && a.end === b.end);
@@ -138,6 +140,23 @@ export class PgEmployeeStore implements EmployeeStore {
       throw err;
     }
   }
+
+  async setDeskAssignments(assignments: ReadonlyMap<string, string | null>): Promise<void> {
+    if (!assignments.size) return;
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const ids = [...assignments.keys()];
+      await client.query('UPDATE employees SET desk = NULL, updated_at = now() WHERE user_id = ANY($1::uuid[]) AND NOT removed', [ids]);
+      for (const [userId, desk] of assignments) {
+        if (desk !== null) await client.query('UPDATE employees SET desk = $2, updated_at = now() WHERE user_id = $1 AND NOT removed', [userId, desk]);
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally { client.release(); }
+  }
 }
 
 /** A store that lives in memory: the same behaviour, for fast tests. */
@@ -191,5 +210,16 @@ export class MemoryEmployeeStore implements EmployeeStore {
     if (desk !== null && [...this.rows.values()].some(x => x.userId !== userId && !x.removed && x.desk === desk)) return 'taken';
     r.desk = desk;
     return 'ok';
+  }
+
+  async setDeskAssignments(assignments: ReadonlyMap<string, string | null>): Promise<void> {
+    const rows = [...assignments.keys()].map(id => this.rows.get(id));
+    if (rows.some(r => !r || r.removed)) throw new Error('cannot assign a missing employee');
+    const occupied = new Set([...this.rows.values()].filter(r => !r.removed && !assignments.has(r.userId) && r.desk).map(r => r.desk as string));
+    for (const desk of assignments.values()) {
+      if (desk !== null && occupied.has(desk)) throw new Error(`desk is already occupied: ${desk}`);
+      if (desk !== null) occupied.add(desk);
+    }
+    for (const [userId, desk] of assignments) this.rows.get(userId)!.desk = desk;
   }
 }

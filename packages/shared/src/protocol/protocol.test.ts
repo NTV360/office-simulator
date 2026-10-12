@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SPEC } from '../character/spec';
 import { loadLayout } from '../layout/layout';
 import { officeLayout } from '../layout/office';
 import { initDay } from '../sim/day';
+import { roster, type Employee } from '../sim/roster';
 import { hasSlot } from '../sim/person';
 import { initState, meetings, people, resetSim } from '../sim/state';
 import { stepSim } from '../sim/step';
@@ -16,6 +17,10 @@ import {
 } from './messages';
 
 const TAU = Math.PI * 2;
+const testRoster: Employee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `protocol-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX',
+  intern: false, shift: null, character: null, desk: null,
+}));
 const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
   id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', photo: 'https://img.example.test/ana.png', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
 });
@@ -195,7 +200,8 @@ describe('bad input is refused with a DecodeError, never anything else', () => {
 });
 
 describe('from the real simulation', () => {
-  beforeEach(() => { resetSim(); loadLayout(officeLayout); });
+  beforeEach(() => { resetSim(); roster.list = testRoster; roster.status = 'ready'; loadLayout(officeLayout); });
+  afterEach(() => { roster.list = null; roster.status = 'unavailable'; });
 
   it('every person, sampled across a whole day and the roll-over, survives the wire and uses only the known names', () => {
     const seenKinds = new Set<string>(), seenAnims = new Set<string>(), seenCats = new Set<string>();

@@ -11,7 +11,7 @@ SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SECRET_KEY=the secret (service role) key: server only
 ```
 
-Leave them empty and the office starts with made-up staff (or the staff list stored from an earlier import). The key bypasses Row Level Security, so it is passed only to the server container, never logged and never in an API answer.
+Leave them empty and no new autonomous staff are fabricated: a successfully imported empty roster means an empty office, while an unavailable source leaves the last trusted stored roster unchanged. The key bypasses Row Level Security, so it is passed only to the server container, never logged and never in an API answer.
 
 ## What it needs permission to read
 

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
-  resetSim, setSeed, simEvents, takeControl, type Person, type WorldObject,
+  resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
 import { OBJECT_BUCKET, PlayerManager } from './player-manager';
@@ -11,15 +11,19 @@ import { OBJECT_BUCKET, PlayerManager } from './player-manager';
 
 let manager: PlayerManager, store: MemoryAccountStore;
 let tick = 0;
+const testRoster: Employee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `object-actions-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX',
+  intern: false, shift: null, character: null, desk: null,
+}));
 const T = () => (tick += 20); // a second between actions unless a test says otherwise
 
 beforeEach(async () => {
-  simEvents.clear(); setSeed(1); resetSim(); loadLayout(officeLayout); initState(); initDay(); resetAllObjects();
+  simEvents.clear(); setSeed(1); resetSim(); roster.list = testRoster; roster.status = 'ready'; loadLayout(officeLayout); initState(); initDay(); resetAllObjects();
   store = new MemoryAccountStore();
   manager = new PlayerManager(store, { graceMs: 1000 });
   tick = 0;
 });
-afterEach(() => { setSeed(null); resetAllObjects(); });
+afterEach(() => { setSeed(null); resetAllObjects(); roster.list = null; roster.status = 'unavailable'; });
 
 async function guest(name: string): Promise<{ id: number; person: Person }> {
   const a = await store.create({ username: name, passwordHash: 'h', role: 'player' });

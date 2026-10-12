@@ -1,5 +1,5 @@
 import {
-  DEFAULTS, clampSlotCount, ensureHelper, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
+  DEFAULTS, ensureHelper, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
 import { ItemPhysics } from '../physics/item-physics';
@@ -127,8 +127,8 @@ export class World {
       ensureHelper(); // (she is not saved: made again, and at work at once if it is her time)
     } else {
       initState();
-      // with a staff list the office is everyone on it (as many as there are desks); without one, the configured number of made-up staff
-      initDay(roster.list ? undefined : clampSlotCount(this.options.slotCount, interactables.of('desk').length));
+      // The office contains only employees from the authoritative roster; unavailable or empty means no autonomous staff.
+      initDay(roster.list?.length ?? 0);
       sim.speed = this.options.speed;
       sim.paused = this.options.paused;
     }

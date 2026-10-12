@@ -1,7 +1,7 @@
 import { normalizeSpec, randomSpec, type CharacterSpec } from '../character/spec';
 import { clampSlotCount } from '../server-defaults';
-import { TAU, pick, random, rnd, seededRandom } from '../util';
-import { FIRST, LAST, SCREEN_VARIANTS, roleBag, type ScreenKind } from './data';
+import { TAU, random, rnd, seededRandom } from '../util';
+import { FIRST, LAST, SCREEN_VARIANTS, type ScreenKind } from './data';
 import { simEvents } from './events';
 import { HAZEL_NAME, applyHazel } from './hazel';
 import { helperIdentity } from './helper';
@@ -9,7 +9,7 @@ import { liveSchedule, usesAttendance } from './live';
 import { hasSlot, isAi } from './person';
 import { newProps } from './props';
 import { interactables, type Spot } from './interactables';
-import { fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
+import { allocateDesks, fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
 import { DAY_END, shiftWindow, type Shift } from './schedule';
 import { allocatePersonId, counters, deskPool, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
@@ -19,23 +19,21 @@ import type { Person } from './types';
 /** What the choice of a desk depends on. */
 type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'>;
 
-/** Who is about to be created: made up, or a real employee. */
-interface Who { name: string; role: string; title: string; userId: string | null; department: string | null; desk: string | null; shift: Shift | null; photo?: string | null; spec: CharacterSpec }
+/** Who is about to be created: always a real roster employee. */
+interface Who { name: string; role: string; title: string; userId: string; department: string | null; desk: string | null; shift: Shift | null; photo?: string | null; spec: CharacterSpec }
 
-/** Create the next staff member at a free desk. Returns null when no desk is free. The new person is away until their arrival time. */
+/** Create the next roster employee at a free desk. */
 export function makeStaff(): Person | null {
-  if (!deskPool.some(s => !s.owner)) return null;
-  // find the desk before making anyone, so a failed attempt uses up no name and no random numbers
-  const placed = roster.list ? nextSeated() : ((seat: Spot | null) => (seat ? { who: madeUp(), seat } : null))(seatFor({ desk: null, department: null, userId: null }));
-  if (!placed) return null;
-  return createPerson(placed.who, placed.seat);
+  const placed = nextSeated();
+  return placed ? createPerson(placed.who, placed.seat) : null;
 }
 
 /** The office helper (sim/helper.ts): no desk, not on the staff list. She is away until her arrival time. */
 export function makeHelper(): Person { return createPerson(helperIdentity(), null); }
 
-function createPerson(who: Who, slot: Spot | null): Person {
-  const { name, role, title, userId, department, shift, photo, spec } = who;
+function createPerson(who: Who | ReturnType<typeof helperIdentity>, slot: Spot | null): Person {
+  const { name, role, title, userId, department, shift, spec } = who;
+  const photo = 'photo' in who ? who.photo : null;
   const at = slot ?? { pos: ENTRY, face: Math.PI };
   const screenKind: ScreenKind = role.includes('Designer') ? 'design' : role === 'DevOps' || role === 'CTO' ? 'dash' : 'code';
   // the order of the random draws below is part of the recorded simulation; do not reorder
@@ -68,18 +66,15 @@ function employee(e: (typeof roster.list & object)[number]): Who {
 
 /** The next employee not yet in the office who has a desk to go to (one without a free desk is skipped). */
 function nextSeated(): { who: Who; seat: Spot } | null {
-  for (const e of unplacedEmployees(people)) { const seat = seatFor(e); if (seat) return { who: employee(e), seat }; } // (the look is only made for someone who has a desk to go to)
+  const unplaced = unplacedEmployees(people);
+  const blocked = people.filter(hasSlot).map(p => p.slot?.deskId).filter((id): id is string => !!id);
+  const assignments = allocateDesks(unplaced, deskPool.map(s => ({ deskId: s.deskId!, department: s.department })), blocked);
+  for (const e of [...unplaced].sort((a, b) => a.userId.localeCompare(b.userId))) {
+    const deskId = assignments.get(e.userId);
+    const seat = deskId ? deskPool.find(s => s.deskId === deskId && !s.owner) : null;
+    if (seat) return { who: employee(e), seat }; // (the look is only made for someone who has a desk to go to)
+  }
   return null;
-}
-
-/** No staff list: made-up names and roles, and the first person is Hazel. */
-function madeUp(): Who {
-  let role = pick(roleBag), spec = randomSpec(role);
-  const nameIdx = counters.nameIdx;
-  let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
-  if (nameIdx === 0) ({ first, last, role, spec } = applyHazel());
-  counters.nameIdx++;
-  return { name: `${first} ${last}`, role, title: role, userId: null, department: null, desk: null, shift: null, spec };
 }
 
 /**
@@ -158,9 +153,17 @@ export function applyEmployee(p: Person, e: Employee): boolean {
     if (JSON.stringify(spec) !== JSON.stringify(p.spec)) { p.spec = spec; changed = true; }
   }
   if (changed) simEvents.emit('personUpdated', p);
-  if (e.desk) {
-    const seat = seatById(e.desk), other = seat?.owner as Person | null | undefined;
-    if (seat && seat !== p.slot && (!other || (isAi(other) && other.owner === undefined))) { if (moveToDesk(p, seat)) changed = true; }
+  const currentAllowed = p.slot && (!p.slot.department || p.slot.department === e.department);
+  const requested = e.desk ? seatById(e.desk) : null;
+  const requestedAllowed = requested && (!requested.department || requested.department === e.department);
+  const wanted = e.desk
+    ? requestedAllowed ? requested : seatFor({ userId: e.userId, department: e.department, desk: null })
+    : currentAllowed ? p.slot : seatFor({ userId: e.userId, department: e.department, desk: null });
+  if (wanted && wanted !== p.slot) {
+    const other = wanted.owner as Person | null | undefined;
+    if (!other || (isAi(other) && other.owner === undefined)) {
+      if (moveToDesk(p, wanted)) changed = true;
+    }
   }
   return changed;
 }

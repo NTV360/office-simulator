@@ -71,7 +71,7 @@ SUPABASE_URL=http://host.docker.internal:18090 SUPABASE_SECRET_KEY=dev-records-k
 SEED_URL=http://localhost:16769 SEED_ADMIN_TOKEN=local-admin-token npm run seed
 ```
 
-**Warning: `npm run verify:browser` against the Docker stack must run on a stack WITHOUT the test company.** Its online checks count the plain 40 made-up staff; with 36 imported employees the counts differ and they fail. Start that stack with only the three admin variables (next section); use the stack with records for hand testing.
+**Warning: `npm run verify:browser` against the Docker stack must run on a stack with the roster expected by the checks.** The online checks use the authoritative employee roster; with 36 imported employees the counts differ from an empty roster. Start that stack with only the three admin variables for an empty-roster run, or use the records stack for hand testing.
 
 **Starting again from nothing:** `docker rm -f office-dev-db && docker volume rm office-dev-pgdata` (dev loop) or `docker compose down -v` (stack), then run it again.
 
@@ -134,7 +134,7 @@ Things that look like failures but are not:
 | `Docker is not running` | Start Docker Desktop and wait until it says it is running |
 | The page says it cannot reach the server | `npm run dev:online` is not running, or you opened `http://localhost:5173` without `?online` (that is the private offline office) |
 | You log in but sit nowhere / are a guest | An admin has to give the account a desk (admin page), or link it to an employee (Staff box). The test accounts `ana`..`dan` are already linked |
-| No employees, only made-up names ("Ana B.") | The server has no employee records: `npm run dev:online` makes them (not with `DEV_RECORDS=0`), or run `npm run dev:records` and start the server with `SUPABASE_URL=http://localhost:18090 SUPABASE_SECRET_KEY=dev-records-key`. Then `npm run seed` |
+| No employees | The roster is empty or unavailable; no fictional staff are created. For local test data, run `npm run dev:records` and start the server with `SUPABASE_URL=http://localhost:18090 SUPABASE_SECRET_KEY=dev-records-key`, then `npm run seed` |
 | `npm run seed` says the admin API said no | Wrong admin password: `SEED_ADMIN_TOKEN` (dev loop `dev-admin-token`, the Docker stack above `local-admin-token`) |
 | A change to `packages/shared` does not show on the server | Wait a few seconds for the rebuild (a short burst of type errors while it rebuilds is normal and clears itself). If it does not clear, stop and start `npm run dev:online` |
 | `port is already allocated` | Something else uses the port. For the database `DEV_DB_PORT=5434`; for the Docker site `WEB_PORT=16770` in `.env` |

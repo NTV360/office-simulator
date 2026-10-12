@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   NONE, REFUSAL_TEXT, encode, movedObjects, objects, people, placementProblem, resetAllObjects, setSeed, sim, type ClientMessage, type Message, type Person, type WorldObject,
 } from '@office/shared';
+import type { ImportedEmployee } from '../employees/employee-store';
 import { api, bootTestServer, connect, enter, isWelcome, sessionFor, sleep, type Client, type TestServer } from '../test-support';
 
 // Picking things up, putting them down and putting them back, through real logins and real sockets: what works tells everybody, and
@@ -17,15 +18,18 @@ const ADMIN = { authorization: 'Bearer admin-secret-for-tests' };
 
 let server: TestServer;
 let base: string;
+const staff: ImportedEmployee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `objects-gateway-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX', intern: false, shift: null, character: null, desk: null,
+}));
 const open: Array<{ close(): void }> = [];
-beforeAll(async () => { server = await bootTestServer(); base = server.base; }, 30000);
+beforeAll(async () => { server = await bootTestServer(staff); base = server.base; }, 30000);
 afterAll(async () => { open.forEach(s => s.close()); resetAllObjects(); await server.close(); setSeed(null); delete process.env.ADMIN_TOKEN; });
 
 const objectMessages = (c: Client, index?: number) => c.messages.filter((m): m is Extract<Message, { type: 'object' }> => m.type === 'object' && (index === undefined || m.pose.index === index));
 const notices = (c: Client) => c.messages.filter((m): m is Extract<Message, { type: 'event' }> => m.type === 'event' && m.kind === 'notice').map(m => m.text);
 const send = (c: Client, m: ClientMessage) => c.socket.emit('m', encode(m));
-const personOf = (name: string): Person => people.find(p => p.name === name)!;
 const accountId = (name: string) => [...server.store.accounts.values()].find(a => a.username === name)!.id;
+const personOf = (name: string): Person => people.find(p => p.name === name || p.owner === accountId(name))!;
 const admin = (method: string, path: string, body?: unknown) => api(base, method, path, body, ADMIN);
 
 async function join(name: string): Promise<Client> {
@@ -162,8 +166,13 @@ describe('whose things they are', () => {
     resetAllObjects();
     const { c: owner, desk } = await deskPlayer('obj_owner');
     const other = await join('obj_guest');
-    // a desk nobody plays: the autopilot's
-    const npcChair = objects.all().find(o => o.station && o.station !== desk && (people.find(p => p.slot?.id === o.station)?.owner === undefined) && o.type === 'chair-office')!;
+    // a desk nobody plays: the autopilot's; choose a chair whose linked seat is currently free
+    const npcChair = objects.all().find(o => {
+      if (!o.station || o.station === desk || o.type !== 'chair-office') return false;
+      const person = people.find(p => p.slot?.id === o.station);
+      return person?.owner === undefined && o.link?.spot.occupant == null && !people.some(p => p.task?.spot === o.link?.spot && p.state !== 'away');
+    })!;
+    expect(npcChair, 'an unoccupied NPC office chair').toBeDefined();
     stand('obj_guest', npcChair); send(other, { type: 'grab', object: npcChair.index }); await sleep(200);
     expect(npcChair.carriedBy).toBe(personOf('obj_guest').id);
     expect(npcChair.station).not.toBeNull(); // (still that desk's chair: the station only says whose it is)
@@ -188,7 +197,8 @@ describe('whose things they are', () => {
   it('"reset my station" puts everything at the desk back, and anyone may "reset" one thing', async () => {
     resetAllObjects();
     const { c: owner, desk } = await deskPlayer('obj_tidy');
-    const chair = objects.all().find(o => o.station === desk && o.type === 'chair-office')!;
+    const chair = objects.all().find(o => o.station === desk && o.type === 'chair-office' && o.link?.spot.occupant == null)!;
+    expect(chair, 'the account desk chair').toBeDefined();
     stand('obj_tidy', chair); send(owner, { type: 'grab', object: chair.index }); await sleep(250);
     const spot = freePlaceNear(chair, .5); stand('obj_tidy', spot, .4);
     send(owner, { type: 'place', x: spot.x, z: spot.z, rot: 0 }); await sleep(250);
@@ -198,7 +208,11 @@ describe('whose things they are', () => {
     send(owner, { type: 'reset', scope: 'station', object: NONE }); await sleep(200);
     expect(notices(owner).at(-1)).toBe('Your desk is already as it started.');
     // somebody else's thing too
-    const theirs = objects.all().find(o => o.station && o.station !== desk && o.type === 'chair-office')!;
+    const theirs = objects.all().find(o => {
+      if (!o.station || o.station === desk || o.type !== 'chair-office' || o.link?.spot.occupant != null) return false;
+      return !people.some(p => p.task?.spot === o.link?.spot && p.state !== 'away');
+    })!;
+    expect(theirs, 'another unoccupied office chair').toBeDefined();
     stand('obj_tidy', theirs); send(owner, { type: 'grab', object: theirs.index }); await sleep(250);
     const there = freePlaceNear(theirs, .5); stand('obj_tidy', there, .4);
     send(owner, { type: 'place', x: there.x, z: there.z, rot: 0 }); await sleep(250);

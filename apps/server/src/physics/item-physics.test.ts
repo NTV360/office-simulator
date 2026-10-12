@@ -1,5 +1,5 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { DESK_TOP, isAtHome, movedObjects, objects, parseSavedWorld, pickUp, placementProblem, putDown, serializeWorld, setObjectPose, setSeed, simEvents, type WorldObject } from '@office/shared';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DESK_TOP, isAtHome, movedObjects, objects, parseSavedWorld, pickUp, placementProblem, putDown, roster, serializeWorld, setObjectPose, setSeed, simEvents, type Employee, type WorldObject } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, type StaticShape } from './physics';
 import shapes from './office-shapes.json';
@@ -9,6 +9,11 @@ import shapes from './office-shapes.json';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 10, speed: 1, paused: false, seed: 1 };
 let world: World | null = null;
+const testRoster: Employee[] = Array.from({ length: 40 }, (_, i) => ({
+  userId: `item-physics-${i + 1}`, firstName: `Test${i + 1}`, lastName: 'Employee', department: 'UI/UX',
+  intern: false, shift: null, character: null, desk: null,
+}));
+beforeEach(() => { roster.list = testRoster; roster.status = 'ready'; });
 function make(saved: ReturnType<typeof parseSavedWorld> | null = null): World {
   world = new World(base);
   world.usePhysics(shapes as unknown as StaticShape[]);
@@ -34,7 +39,7 @@ function freeSpot(o: WorldObject): { x: number; z: number } {
 }
 
 beforeAll(async () => { await loadPhysics(); });
-afterEach(() => { world?.itemPhysics?.dispose(); world = null; setSeed(null); });
+afterEach(() => { world?.itemPhysics?.dispose(); world = null; setSeed(null); roster.list = null; roster.status = 'unavailable'; });
 
 describe('an office at rest', () => {
   it('stays exactly as it was: nothing moves, nobody is told anything, nothing counts as moved for the save', () => {

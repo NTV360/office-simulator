@@ -66,8 +66,8 @@ export function ensureHelper(): void {
   if (sim.t >= h.arriveAt && sim.t < h.leaveAt) seatNow(h);
 }
 
-/** Start the day with `staff` people (default: everyone on the staff list, else 40; never more than there are desks). */
-export function initDay(staff: number = roster.list ? roster.list.length : 40): void {
+/** Start the day with every employee in the loaded roster; unavailable and empty rosters create no staff. */
+export function initDay(staff: number = roster.list?.length ?? 0): void {
   populate(staff);
   ensureHelper(); // our helper, cleaning
   // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion (only if the
