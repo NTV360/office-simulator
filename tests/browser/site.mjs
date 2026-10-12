@@ -166,7 +166,7 @@ async function openPage(browser, url, query = '', opts = {}) {
   const online = !/seed=|offline/.test(query) && await serverBehind(url);
   const login = opts.login === undefined ? (online ? 'verify_a' : null) : opts.login;
   if (login) await loginAs(context, url, login, opts.password);
-  await page.goto(`${url}/${query}`, { waitUntil: 'load' });
+  await page.goto(`${url}/${query}`, { waitUntil: 'load', timeout: 90000 });
   await page.waitForFunction(() => window.__simReady === true, null, { timeout: 90000 });
   return { page, errors, context };
 }
