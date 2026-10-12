@@ -11,6 +11,7 @@ import { initPlayer } from './player/player.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { initSearch } from './ui/search.js';
+import { initTeto } from './ui/teto.js';
 import { buildBake } from './world/bake.js';
 import { buildDoors } from './world/doors.js';
 import { buildEntrance } from './world/entrance.js';
@@ -27,6 +28,7 @@ import { buildGolf } from './world/furniture/golf.js';
 import { buildKitchen } from './world/furniture/kitchen.js';
 import { buildLounge } from './world/furniture/lounge.js';
 import { buildPlants } from './world/furniture/plants.js';
+import { buildPlush } from './world/furniture/plush.js';
 import { buildMusic } from './world/furniture/music.js';
 import { buildServer } from './world/furniture/server.js';
 import { buildStorage } from './world/furniture/storage.js';
@@ -42,6 +44,7 @@ export function bootstrap() {
   buildWalls();
   buildDoors();
   buildDesks();
+  buildPlush();
   buildWhiteboards();
   buildConference();
   buildLounge();
@@ -76,4 +79,5 @@ export function bootstrap() {
   initControl();
   initCreator();
   initSearch();
+  initTeto();
 }

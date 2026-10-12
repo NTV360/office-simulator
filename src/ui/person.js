@@ -62,6 +62,7 @@ function renderPerson() {
   $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
   $('pEdit').hidden = !p.userId; // only real employees have a saved character
+  $('pDance').hidden = $('pPlay').hidden = !p.isTeto || p.state === 'away'; // Teto's own buttons (people/teto.js)
 }
 
 

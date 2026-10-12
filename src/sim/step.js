@@ -10,6 +10,7 @@ import { interactables } from '../world/interactables.js';
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
+  if (p.danceK > .05) { p.animT += dt; return; } // Teto's Tetoris dance
   if (p.state === 'player') return;
   if (p.state === 'away') {
     if (p.toiletUntil) { if (sim.t >= p.toiletUntil) returnFromToilet(p); return; }
@@ -55,8 +56,19 @@ function updateScreens() {
     const p = s.owner;
     let m = SCREENS.off;
     if (p && p.state !== 'away') m = (p.state === 'doing' && p.task?.spot === s && (p.task.kind === 'work')) ? p.screenMat : SCREENS.lock;
-    if (s.screen.material !== m) s.screen.material = m;
+    setDeskScreens(s, m);
+  }
+}
+// Show `m` on a desk's monitor, and on its side monitors if it has them.
+function setDeskScreens(s, m) {
+  if (s.screen.material !== m) s.screen.material = m;
+  if (s.sideScreens) {
+    // Teto's side monitors: a dashboard on her left, a second code window on her right
+    const working = m !== SCREENS.off && m !== SCREENS.lock;
+    const l = working ? SCREENS.dash[0] : m, r = working ? SCREENS.code[(SCREENS.code.indexOf(m) + 1) % SCREENS.code.length] : m;
+    if (s.sideScreens[0].material !== l) s.sideScreens[0].material = l;
+    if (s.sideScreens[1].material !== r) s.sideScreens[1].material = r;
   }
 }
 
-export { stepPerson, updateScreens };
+export { setDeskScreens, stepPerson, updateScreens };

@@ -58,7 +58,7 @@ function populate(n) {
 
 
 function initDay() {
-  populate(roster.list ? roster.list.length : 40); // everyone on the staff list (as many as there are desks)
+  populate(roster.list ? roster.list.length + 1 : 40); // everyone on the staff list (as many as there are desks), then Kasane Teto if a desk is left
   { const h = makeHelper(); if (sim.t >= h.arriveAt && sim.t < h.leaveAt) seatNow(h); } // our helper, cleaning
   // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion
   // (only if the day starts during office hours)

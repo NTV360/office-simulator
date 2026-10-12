@@ -2,6 +2,7 @@ import { TAU, angDiff } from '../core/util.js';
 import { player } from '../player/player.js';
 import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
+import { driveTetoModel } from '../character/tetoModel.js';
 
 /* ================= Animation ================= */
 // Poses are written for a human with an elbow and a knee: hipY in metres for a .88 m hip, angles in radians.
@@ -11,6 +12,7 @@ const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
+  if (p.danceK > .3) return 'tetoris';
   if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
   if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
@@ -53,6 +55,15 @@ function targetPose(p, k, T) {
     case 'phone': sit(); o.lean = .02; o.rShX = -.45; o.rShZ = .55; o.rEl = -2.55; o.lShX = -.4 + Math.sin(T * 2.2) * .15; o.lEl = -1.0; o.headY = Math.sin(T * .5) * .3; o.headX = -.05 + Math.sin(T * 4) * .03; break;
     case 'piano': { sit(); o.lean = .1; o.lShX = -.75; o.rShX = -.75; o.lEl = -1.0 + Math.sin(T * 7) * .08; o.rEl = -1.0 + Math.sin(T * 8 + 1) * .08; o.lShZ = .05 + Math.sin(T * 1.3) * .18; o.rShZ = -.05 + Math.sin(T * 1.1 + 2) * .18; o.headX = .2; o.headY = Math.sin(T * .9) * .15; o.lean += Math.sin(T * 2) * .03; break; }
     case 'guitar': { sit(); o.lean = .06; o.lShX = -1.05; o.lShZ = .55; o.lEl = -1.2 + Math.sin(T * 3) * .05; o.rShX = -.35; o.rShZ = -.15; o.rEl = -1.35 + Math.sin(T * 12) * .2; o.headX = .25; o.headY = .35 + Math.sin(T * 2) * .08; break; }
+    case 'tetoris': {
+      // spinning in place, arms up, bouncing on the beat
+      const beat = T * 2 * TAU, s = Math.sin(beat);
+      o.hipY = .87 + Math.abs(s) * .05; o.lean = -.05;
+      o.lShX = -2.6 + Math.sin(beat / 2) * .25; o.rShX = -2.6 - Math.sin(beat / 2) * .25; o.lShZ = .45; o.rShZ = -.45; o.lEl = o.rEl = -.35;
+      o.lHip = Math.min(0, s) * .45; o.lKnee = Math.max(0, -s) * .7 + .05; o.rHip = Math.min(0, -s) * .45; o.rKnee = Math.max(0, s) * .7 + .05;
+      o.headX = -.12; o.headY = Math.sin(beat / 2) * .25;
+      break;
+    }
     case 'darts': {
       const ph = (T + (p.task?.spot?.dartOff || 0)) % 6;
       o.lShX = -.3; o.lEl = -.6; o.headX = -.05; o.lean = .04;
@@ -103,6 +114,7 @@ function applyPose(p, dt) {
   b.legL.rotation.x = c.lHip; b.legR.rotation.x = c.rHip;
   b.neck.rotation.set(c.headX, c.headY, 0);
   for (const it of b.items) if (it.visible !== !!hold) it.visible = !!hold;
+  if (b.mmd) driveTetoModel(b.mmd, c, p.state === 'player' ? player.sitting : p.task?.spot); // Teto's real model follows the pose
 }
 // One-piece arm: the shoulder takes part of the elbow bend. While carrying a pack item, use the pack's pose for it.
 function arm(node, held, shX, shZ, el, side) {

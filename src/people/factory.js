@@ -5,6 +5,7 @@ import { FIRST, LAST, roleBag } from './data.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { helperIdentity } from './helper.js';
 import { fullName, jobTitle, roster, simRole, unplacedEmployees } from './roster.js';
+import { attachTeto, isTetoEmployee, isTetoNext, tetoAfterStaff, tetoEmployeeDesk, tetoSeat, tetoWho } from './teto.js';
 import { SCREENS } from '../render/screens.js';
 import { deskPool, people, peopleGroup } from '../sim/state.js';
 import { liveSchedule, usesAttendance } from '../sim/live.js';
@@ -12,12 +13,15 @@ import { DAY_END, shiftWindow } from '../sim/schedule.js';
 import { endTask, goWork } from '../sim/tasks.js';
 import { ENTRY } from '../world/entrance.js';
 import { select, selected } from '../ui/person.js';
+import { TETO_SEAT } from '../world/furniture/desks.js';
 
 let nameIdx = 0;
 
 function makePerson() {
   if (!deskPool.some(s => !s.owner)) return null;
-  const placed = roster.list ? nextSeated() : (w => w && { who: w, seat: seatFor(w) })(madeUp());
+  // Kasane Teto: the 15th made-up person, or with the staff list, after every employee has a desk (never instead of one)
+  const teto = () => ({ who: tetoWho(), seat: tetoSeat() });
+  const placed = isTetoNext() ? teto() : roster.list ? nextSeated() ?? (tetoAfterStaff() ? teto() : null) : (w => w && { who: w, seat: seatFor(w) })(madeUp());
   if (!placed?.seat) return null;
   return createPerson(placed.who, placed.seat);
 }
@@ -31,7 +35,7 @@ function createPerson(who, seat) {
   const { name, role, title, userId, department, shift, photo, spec } = who;
   const body = buildBody(spec), at = seat ?? { pos: ENTRY, face: Math.PI };
   const p = {
-    id: people.length, name, role, title, userId, department, shift, photo: photo ?? null, spec, body, seat,
+    id: people.length, name, role, title, userId, department, shift, photo: photo ?? null, spec, body, seat, isTeto: !!who.isTeto,
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: Math.random() * TAU, animT: Math.random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null,
@@ -44,6 +48,7 @@ function createPerson(who, seat) {
   peopleGroup.add(body.root); peopleGroup.add(body.ring);
   scheduleDay(p);
   people.push(p);
+  if (p.isTeto) attachTeto(p);
   return p;
 }
 // A real employee: their name, department (shown as their job) and their saved look (or a generated one that is
@@ -53,7 +58,8 @@ function employee(e) {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ?? randomSpec(role, seededRandom(e.userId));
   if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
-  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
+  const teto = isTetoEmployee(e); // looks like Kasane Teto (people/teto.js)
+  return { name, role, title, userId: e.userId, department: e.department, desk: teto ? tetoEmployeeDesk(e) : e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec, isTeto: teto };
 }
 // The next employee not yet in the office who has a desk to go to (one without a free desk is skipped).
 function nextSeated() {
@@ -76,7 +82,8 @@ function seatFor(who) {
   const open = s => !s.owner && !chosen.has(s.deskId);
   return deskPool.find(s => s.deskId === who.desk && !s.owner)
     ?? deskPool.find(s => open(s) && s.department && s.department === who.department)
-    ?? deskPool.find(s => open(s) && !s.department) ?? null;
+    ?? deskPool.find(s => open(s) && !s.department && s.deskId !== TETO_SEAT) // Teto's desk is kept for her...
+    ?? deskPool.find(s => open(s) && !s.department) ?? null; // ...unless it's the only one left
 }
 const seatById = id => deskPool.find(s => s.deskId === id) ?? null;
 
@@ -98,6 +105,7 @@ function restylePerson(p, spec) {
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   peopleGroup.remove(old.root, old.ring); peopleGroup.add(body.root, body.ring); disposeBody(old);
   p.spec = spec; p.body = body; p.pose = {};
+  if (p.isTeto) attachTeto(p); // still Teto with any saved look
 }
 
 // Remove the last employee (never the helper).
