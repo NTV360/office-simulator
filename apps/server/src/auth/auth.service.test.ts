@@ -14,7 +14,7 @@ let auth: AuthService;
 const advance = (ms: number) => { now += ms; };
 beforeEach(() => {
   now = Date.UTC(2026, 9, 9, 9, 0, 0);
-  store = new MemoryAccountStore();
+  store = new MemoryAccountStore(() => now);
   auth = new AuthService(store, { now: () => now });
 });
 

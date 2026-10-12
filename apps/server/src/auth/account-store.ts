@@ -201,10 +201,12 @@ export class MemoryAccountStore implements AccountStore {
   private nextId = 1;
   private nextSession = 1;
 
+  constructor(private readonly now: () => number = Date.now) {}
+
   async create(a: { username: string; passwordHash: string; role: Role; mustChangePassword?: boolean }): Promise<Account | 'taken'> {
     const lower = a.username.toLowerCase();
     for (const x of this.accounts.values()) if (x.usernameLower === lower) return 'taken';
-    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, muted: false, slotSpot: null, employeeId: null, spec: null, createdAt: new Date(), lastLoginAt: null };
+    const acc: Account = { id: this.nextId++, username: a.username, usernameLower: lower, passwordHash: a.passwordHash, role: a.role, disabled: false, mustChangePassword: a.mustChangePassword ?? false, muted: false, slotSpot: null, employeeId: null, spec: null, createdAt: new Date(this.now()), lastLoginAt: null };
     this.accounts.set(acc.id, acc);
     return { ...acc };
   }
@@ -238,7 +240,7 @@ export class MemoryAccountStore implements AccountStore {
   async audit(a: { actorName: string; action: string; target?: string | null; detail?: unknown }) { this.auditLog.push({ id: this.auditLog.length + 1, at: new Date(), actor: a.actorName, action: a.action, target: a.target ?? null, detail: a.detail ?? null }); }
   async recentAudit(limit: number) { return [...this.auditLog].reverse().slice(0, limit); }
   async createSession(accountId: number, tokenHash: Buffer, expiresAt: Date, userAgent: string | null) {
-    this.sessions.set(tokenHash.toString('hex'), { info: { id: this.nextSession++, accountId, createdAt: new Date(), expiresAt, lastSeenAt: new Date() }, userAgent });
+    this.sessions.set(tokenHash.toString('hex'), { info: { id: this.nextSession++, accountId, createdAt: new Date(this.now()), expiresAt, lastSeenAt: new Date(this.now()) }, userAgent });
   }
   async sessionByHash(h: Buffer) {
     const s = this.sessions.get(h.toString('hex'));
