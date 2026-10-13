@@ -60,6 +60,9 @@
   <button type="button" class="dock-btn" id="openCreator" title="Edit employees' characters and desks">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Character lab</span>
   </button>
+  <button type="button" class="dock-btn" id="chatBtn" aria-expanded="false" aria-controls="chatPanel" title="Office chat">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Chat</span><b class="badge" id="chatBadge" hidden>0</b>
+  </button>
   <div class="pop-wrap">
     <button type="button" class="dock-btn" data-pop="goPop" aria-expanded="false" aria-controls="goPop">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Go to</span>
@@ -146,6 +149,29 @@
       <button class="btn" id="pClose" type="button">Close</button>
     </div>
   </div>
+</section>
+
+<!-- Bottom right: the office chat (Socket.IO, ui/chat.js) -->
+<section class="card" id="chatPanel" hidden aria-label="Office chat">
+  <header class="chat-head">
+    <div><div class="eyebrow">Office chat</div><div id="chatOnline">Connecting…</div></div>
+    <button class="icon-btn" id="chatClose" type="button" aria-label="Close chat" title="Close (Esc)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <ol id="chatList" aria-live="polite"></ol>
+  <form id="chatForm" autocomplete="off">
+    <div id="chatWho">Chatting as <b id="chatMe"></b> · <button type="button" class="linkish" id="chatRename">change</button></div>
+    <div class="chat-send" id="chatNameStep" hidden>
+      <input id="chatName" maxlength="40" placeholder="Your name (shown to everyone)" aria-label="Your name">
+      <button class="btn primary" type="submit">Start chatting</button>
+    </div>
+    <div class="chat-send" id="chatMsgStep">
+      <input id="chatInput" maxlength="500" placeholder="Message the office…" aria-label="Message">
+      <button class="btn primary" type="submit" id="chatSend">Send</button>
+    </div>
+    <div class="chat-err" id="chatError" role="alert" hidden></div>
+  </form>
 </section>
 
 <!-- Top centre: find someone, hide the controls, fullscreen -->

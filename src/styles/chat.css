@@ -1,0 +1,22 @@
+/* The office chat: a panel at the bottom right, opened from "Chat" in the dock. */
+#chatPanel{right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:320px;height:min(400px,calc(100vh - 380px));min-height:260px;display:flex;flex-direction:column;z-index:4}
+#chatPanel[hidden]{display:none}
+.chat-head{display:flex;justify-content:space-between;align-items:center;padding:12px 12px 10px 14px;border-bottom:1px solid var(--line)}
+#chatOnline{font-size:12px;color:var(--muted);margin-top:3px}
+#chatOnline::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#5ab57a;margin-right:6px;vertical-align:1px}
+#chatList{flex:1;min-height:0;overflow-y:auto;margin:0;padding:10px 12px;list-style:none;display:flex;flex-direction:column;gap:8px}
+#chatList li{max-width:85%;align-self:flex-start;background:var(--chip);border:1px solid var(--line);border-radius:12px 12px 12px 4px;padding:6px 10px}
+#chatList li.mine{align-self:flex-end;background:color-mix(in srgb,var(--accent) 22%,var(--chip));border-radius:12px 12px 4px 12px}
+.chat-meta{display:flex;gap:8px;align-items:baseline;font-size:11.5px}
+.chat-meta time{color:var(--muted);font:500 10.5px var(--f-mono)}
+#chatList p{margin:2px 0 0;font-size:13px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+#chatForm{display:grid;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--line)}
+#chatWho{font-size:11.5px;color:var(--muted)}
+#chatWho[hidden],.chat-send[hidden],.chat-err[hidden]{display:none}
+.linkish{background:none;border:0;padding:0;color:var(--accent);font:inherit;cursor:pointer;text-decoration:underline}
+.chat-send{display:flex;gap:6px}
+#chatName,#chatInput{flex:1;min-width:0;box-sizing:border-box;font:500 13px var(--f-body);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+.chat-err{font-size:12px;color:#d64545}
+.dock-btn .badge{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#d64545;color:#fff;font:700 10px/16px var(--f-body);text-align:center}
+body.ui-hidden #chatPanel{display:none}
+@media (max-width:760px){#chatPanel{left:12px;right:12px;width:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));height:min(380px,calc(100vh - 260px))}}

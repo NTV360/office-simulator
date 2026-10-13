@@ -1,12 +1,16 @@
 import { defineConfig, loadEnv } from 'vite';
 import { makeApi } from './server/api.js';
+import { attachChat } from './server/chat.js';
 
 // The BFF (server/api.js) runs inside Vite's dev and preview servers too, so `npm run dev` is still one
 // command and the browser always calls /api on its own origin. Server env vars (no VITE_ prefix) are read
 // from .env here and never reach the browser bundle. Restart the dev server after changing server/ code.
 const bff = mode => {
   // a block body on purpose: Vite treats a function returned from these hooks as a post hook
-  const mount = server => { server.middlewares.use('/api', makeApi({ ...loadEnv(mode, process.cwd(), ''), ...process.env })); };
+  const mount = server => {
+    server.middlewares.use('/api', makeApi({ ...loadEnv(mode, process.cwd(), ''), ...process.env }));
+    if (server.httpServer) attachChat(server.httpServer); // the office chat, on the dev/preview port too
+  };
   return { name: 'office-sim-bff', configureServer: mount, configurePreviewServer: mount };
 };
 

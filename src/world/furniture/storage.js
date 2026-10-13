@@ -11,8 +11,9 @@ function buildStorage() {
   cabinet(276.8, 1041.6, 326.2, 1051.1, 1.85, M.cabinet);
   cabinet(281.8, 1072.7, 338.4, 1082.7, 1.85, M.cabinet);
   mkSpot('storage', 300, 1062, SO, { place: 'the storage room' }); mkSpot('storage', 322, 1061, N, { place: 'the storage room' });
-  // Lockers along the wall below the dining tables (as in Draft 06: Locker 2 left, Locker 1 right)
-  [[455, 562, 'Locker 2'], [562, 669, 'Locker 1']].forEach(([x1, x2, name]) => {
+  // Lockers along the wall below the dining tables (as in Draft 06: Locker 2 left, Locker 1 right). Locker 2
+  // starts at 466 to leave room for the fridge between it and the sink.
+  [[466, 562, 'Locker 2'], [562, 669, 'Locker 1']].forEach(([x1, x2, name]) => {
     const y1 = 1096, y2 = 1110.6; addObs(x1, y1, x2, y2);
     const f = frame((x1 + x2) / 2, (y1 + y2) / 2, N), w = (x2 - x1) * S - .04, d = (y2 - y1) * S, n = 6;
     box(f, w, 1.9, d, M.locker, 0, .95, 0);

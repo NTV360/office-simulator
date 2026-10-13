@@ -2,8 +2,10 @@ import express from 'express';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { makeApi } from './api.js';
+import { attachChat } from './chat.js';
 
-// Production server (`npm start`, used on Render): the built app from dist/ plus the API at /api.
+// Production server (`npm start`, used on Render): the built app from dist/, the API at /api and the chat
+// (Socket.IO at /socket.io).
 // Hosts like Render pass the port in $PORT and expect the server on 0.0.0.0.
 const root = fileURLToPath(new URL('..', import.meta.url));
 const dist = root + 'dist';
@@ -17,4 +19,5 @@ app.use(express.static(dist, { maxAge: '1h', setHeaders: (res, path) => { if (pa
 app.get('/{*any}', (req, res) => res.sendFile(dist + '/index.html'));
 
 const port = Number(process.env.PORT) || 4173;
-app.listen(port, '0.0.0.0', () => console.log(`Office Floor Sim on http://localhost:${port} (Supabase ${process.env.SUPABASE_URL ? 'configured' : 'not configured'})`));
+const server = app.listen(port, '0.0.0.0', () => console.log(`Office Floor Sim on http://localhost:${port} (Supabase ${process.env.SUPABASE_URL ? 'configured' : 'not configured'})`));
+attachChat(server); // the office chat (Socket.IO) on the same port

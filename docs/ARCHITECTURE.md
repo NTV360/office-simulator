@@ -5,7 +5,7 @@ Office Floor Sim is a Three.js simulation of an office floor: NPCs follow daily 
 - **Entry:** `index.html` (markup only) loads `src/main.js`.
 - **Assembly:** `src/bootstrap.js` builds the world and wires everything up.
 - **Loop:** `src/main.js` runs the per-frame loop.
-- **Server:** `server/` is the BFF (backend for frontend): an Express app that serves the build and the `/api` routes, and the only code that talks to Supabase (with a server-only secret key). In development the same API runs inside the Vite dev server (`vite.config.js`), so `npm run dev` is one command. The browser reaches it only through `persistence/`.
+- **Server:** `server/` is the BFF (backend for frontend): an Express app that serves the build and the `/api` routes, and the only code that talks to Supabase (with a server-only secret key). In development the same API runs inside the Vite dev server (`vite.config.js`), so `npm run dev` is one command. The office chat (`server/chat.js`, Socket.IO at `/socket.io`) is attached to the same HTTP server in both cases; the browser side is `ui/chat.js`. Chat history is the last 50 messages, in memory only. The browser reaches it only through `persistence/`.
 
 ## Layers and dependency rules
 

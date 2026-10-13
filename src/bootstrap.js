@@ -5,6 +5,7 @@ import { initLabels } from './render/labels.js';
 import { initDay } from './sim/day.js';
 import { initState } from './sim/state.js';
 import { initControls } from './ui/controls.js';
+import { initChat } from './ui/chat.js';
 import { initCreator } from './ui/creator.js';
 import { initControl } from './player/control.js';
 import { initPlayer } from './player/player.js';
@@ -76,4 +77,5 @@ export function bootstrap() {
   initControl();
   initCreator();
   initSearch();
+  initChat();
 }

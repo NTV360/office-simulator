@@ -11,7 +11,7 @@ The app is the built front end (`npm run build` → `dist/`) plus a small Node s
 | Node version | from `.node-version` (22), or set the `NODE_VERSION` environment variable |
 | Environment variables | `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (Render supplies `PORT`) |
 
-The server listens on `0.0.0.0` and on the port in `$PORT`. Without the Supabase variables the app still runs: `/api/health` reports `"supabase": false`, the other API calls answer 503, and players' looks are kept only in their browser.
+The server listens on `0.0.0.0` and on the port in `$PORT`. The chat uses WebSockets (Socket.IO) on the same port; Render web services support them, nothing to configure. Without the Supabase variables the app still runs: `/api/health` reports `"supabase": false`, the other API calls answer 503, and players' looks are kept only in their browser.
 
 ## Supabase
 

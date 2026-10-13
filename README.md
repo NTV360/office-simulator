@@ -21,6 +21,7 @@ Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). On Render, build with `
 - **Hours:** people work through their shift (meetings, whiteboards, booth calls, coffee and snacks) and play only at lunch, 15:00 and 17:00. The clock runs a full day, 06:00 to 06:00.
 - **Desks:** Desk A–H and the HR Office; pick an employee's desk on the seat map in the character lab.
 - **Clock:** **Simulate** (the default) runs the office's own faster clock (pause, 1×/3×/8×) for every employee on their shift, starting the **Day** or the **Night**; **Live** follows the actual time in Manila, and who is in comes from the attendances table.
+- **Chat:** "Chat" in the dock opens the office chat. Pick a display name once, then talk to everyone who has the app open (the last 50 messages are kept until the server restarts).
 - **Find someone:** type a name in the search box at the bottom left; pick them to fly to them and open their card. **Edit character** on the card opens the character lab for them.
 
 ## Documentation

@@ -9,6 +9,7 @@ import './styles/ui-toggle.css';
 import './styles/first-person.css';
 import './styles/creator.css';
 import './styles/search.css';
+import './styles/chat.css';
 import './styles/veil.css';
 import './styles/responsive.css';
 
@@ -43,6 +44,7 @@ import { updateDiningTv } from './world/furniture/diningTv.js';
 import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
+import { updateKitchen } from './world/furniture/kitchen.js';
 import { scalers, wall } from './world/helpers.js';
 
 /* ================= Main loop ================= */
@@ -63,7 +65,7 @@ function tick(now) {
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
-  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now);
+  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now); updateKitchen(dt);
   { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
   renderer.render(scene, camera);

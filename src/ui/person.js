@@ -45,7 +45,7 @@ function statusText(p) {
     case 'chat': return going ? `Walking over to ${t.partner.name.split(' ')[0]}` : `Chatting with ${t.partner.name.split(' ')[0]}`;
     case 'clean': return going ? 'Heading off to clean' : { table: `Wiping the table at ${where}`, window: 'Wiping the windows', floor: 'Mopping the floor', organize: `Tidying up ${where}` }[t.job];
     case 'tv': return going ? 'Heading to the dining area to watch TV' : 'Watching a movie in the dining area';
-    case 'snack': return going ? 'Getting a snack' : 'Grabbing a snack from the cabinet';
+    case 'snack': return going ? 'Getting a snack' : `Grabbing a snack from ${where}`;
     case 'snackDesk': return going ? `Taking a snack back to ${where}` : `Having a snack at ${where}`;
     case 'whiteboard': return going ? 'Heading to the whiteboard' : t.anim === 'present' ? 'Leading a whiteboard discussion' : `Discussing at the whiteboard with ${t.partner.name.split(' ')[0]}`;
     case 'bucket': return 'Running for the bucket';
