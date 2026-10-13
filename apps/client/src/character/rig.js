@@ -75,7 +75,7 @@ function buildBody(spec) {
   const ring = new THREE.Mesh(ringGeo, ringMats.work); ring.rotation.x = -Math.PI / 2; ring.position.y = .015; ring.renderOrder = 2;
   const sockets = { head, torso: spine, leftHand: handL, rightHand: handR };
   return {
-    root, character, hips, spine, neck, head, armL, armR, legL, legR, items, hold: heldItems(character),
+    root, character, hips, spine, neck, head, armL, armR, handL, handR, legL, legR, items, hold: heldItems(character),
     unit, standHip, eyeY, topY, ...held, guitar, ring, skinMeshes, sockets, geometries,
   };
 }

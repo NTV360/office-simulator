@@ -132,14 +132,14 @@ export const carriedBy = (personId: number): WorldObject | undefined => list.fin
 export const holderCount = (o: WorldObject): number => o.carriedBy === null ? 0 : 1 + o.helpers.length;
 /** The holds changed: who carries it is the first, the rest help (what every page is told). */
 export function syncHolders(o: WorldObject): void {
-  o.carriedBy = o.holds.length ? o.holds[0].person : o.carriedBy;
+  o.carriedBy = o.holds[0]?.person ?? null;
   o.helpers = o.holds.slice(1).map(h => h.person);
 }
 
 /** A person picks an object up (taking it the way `hold` says, when the server knows). Everybody is told (it is drawn in their hands from now on). */
 export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
   o.carriedBy = personId;
-  o.holds = hold ? [hold] : []; o.helpers = [];
+  o.holds = hold ? [hold] : []; o.helpers = []; o.released = undefined;
   refreshFootprint(o); // (it no longer blocks the floor it stood on)
   simEvents.emit('objectMoved', o);
 }
@@ -166,7 +166,7 @@ export function letGo(o: WorldObject, v: { vx: number; vy: number; vz: number } 
 
 /** A person puts what they carry down at a place (already checked: see placement.ts), standing upright at height `y` (what is under it there). */
 export function putDown(o: WorldObject, x: number, z: number, rot: number, y: number = o.home.y): void {
-  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
   setObjectPose(o, x, z, wrapAngle(rot), y, null);
 }
 
@@ -202,7 +202,7 @@ export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z ===
 
 /** Put an object back where it started (and not carried). */
 export function resetObject(o: WorldObject): void {
-  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
   setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
 }
 

@@ -43,6 +43,10 @@ async function startSite() {
 }
 
 
+// The roster the seeded (offline) pages are given: a snapshot of the real employees, kept on this PC only (npm run snapshot:roster). null if there is none.
+export const rosterFile = path.join(root, 'tests/fixtures/roster.local.json');
+const rosterFixture = () => (fs.existsSync(rosterFile) ? JSON.parse(fs.readFileSync(rosterFile, 'utf8')) : null);
+
 // ---- helpers
 function collectErrors(page) {
   const errors = [];
@@ -162,6 +166,8 @@ async function loginAs(context, url, username, password = TEST_PASSWORD) {
 async function openPage(browser, url, query = '', opts = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
+  const roster = rosterFixture();
+  if (roster) await page.addInitScript(r => { window.__OFFICE_ROSTER__ = r; }, roster);
   const errors = collectErrors(page);
   const online = !/seed=|offline/.test(query) && await serverBehind(url);
   const login = opts.login === undefined ? (online ? 'verify_a' : null) : opts.login;

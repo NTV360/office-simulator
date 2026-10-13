@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
-  resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
+  resetSim, roster, seatInUse, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
 import { OBJECT_BUCKET, PlayerManager } from './player-manager';
@@ -121,7 +121,7 @@ describe('picking up', () => {
 
   it('anyone may take a chair from somebody else\'s desk, a player\'s or the autopilot\'s', async () => {
     const mine = await guest('ana');
-    const desk = interactables.of('desk').find(d => d.owner && (d.owner as Person).owner === undefined)!;
+    const desk = interactables.of('desk').find(d => d.owner && (d.owner as Person).owner === undefined && !seatInUse(d))!;
     const owner = desk.owner as Person;
     // ana plays the person who owns this desk
     owner.owner = mine.id; takeControl(owner); (manager as unknown as { sessions: Map<number, unknown> }).sessions.set(mine.id, { person: owner, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0 });
@@ -130,7 +130,7 @@ describe('picking up', () => {
     stand(stranger.person, chair);
     expect(manager.grabObject(stranger.id, chair.index, T())).toEqual({ ok: true, changed: 1 });
     expect(chair.station).toBe(desk.id); // (still that desk's chair: the station only says whose it is)
-    const npcDesk = interactables.of('desk').find(d => d !== desk && d.owner && (d.owner as Person).owner === undefined)!;
+    const npcDesk = interactables.of('desk').find(d => d !== desk && d.owner && (d.owner as Person).owner === undefined && !seatInUse(d))!;
     const npcChair = objects.all().find(o => o.station === npcDesk.id && o.type === 'chair-office')!;
     const other = await guest('cat');
     stand(other.person, npcChair);
@@ -191,7 +191,7 @@ describe('putting back', () => {
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 1 });
     expect(movedObjects()).toEqual([]);
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 0 });
-    const npcChair = objects.all().find(o => o.station && o.type === 'chair-office')!;
+    const npcChair = objects.all().find(o => o.station && o.type === 'chair-office' && !(o.link && seatInUse(o.link.spot)))!;
     stand(person, npcChair);
     expect(manager.resetObjects(id, 'object', npcChair.index, T())).toEqual({ ok: true, changed: 0 }); // (somebody else's desk: allowed, and it was home)
   });

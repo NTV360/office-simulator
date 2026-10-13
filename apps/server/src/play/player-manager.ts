@@ -1,5 +1,5 @@
 import {
-  HAZEL_NAME, handBack, sanitizeInput, sit, stand, stepAllDriven, type ActKind, type DrivenInput, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
+  HAZEL_NAME, clearMovementIntent, handBack, sanitizeInput, sit, stand, stepAllDriven, type ActKind, type DrivenInput, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, type Person,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
 import { drop, grab, holdInput, place, putBack, putBackStation, throwIt, type ObjectResult } from './object-actions';
@@ -128,6 +128,7 @@ export class PlayerManager {
     s.graceTimer = this.timers.set(() => {
       this.sessions.delete(accountId);
       this.inputs.delete(s.person.id);
+      clearMovementIntent(s.person.id);
       handBack(s.person); // a guest has no desk, so this removes them
     }, this.graceMs);
   }
@@ -232,6 +233,7 @@ export class PlayerManager {
     for (const [id, s] of this.sessions) {
       if (s.graceTimer !== null) this.timers.clear(s.graceTimer);
       this.inputs.delete(s.person.id);
+      clearMovementIntent(s.person.id);
       handBack(s.person);
       this.sessions.delete(id);
     }

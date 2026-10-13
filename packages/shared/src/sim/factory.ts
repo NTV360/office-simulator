@@ -12,6 +12,8 @@ import { interactables, type Spot } from './interactables';
 import { allocateDesks, fullName, jobTitle, roster, simRole, unplacedEmployees, type Employee } from './roster';
 import { DAY_END, shiftWindow, type Shift } from './schedule';
 import { allocatePersonId, counters, deskPool, meetings, people, sim } from './state';
+import { releaseCarried } from '../world/objects';
+import { clearMovementIntent } from './movement-intent';
 import { ENTRY } from './spots';
 import { endTask, goWork } from './tasks';
 import type { Person } from './types';
@@ -128,7 +130,10 @@ export function removePerson(p: Person): boolean {
 }
 
 function takeOut(i: number): Person {
-  const [p] = people.splice(i, 1);
+  const p = people[i];
+  clearMovementIntent(p.id);
+  releaseCarried(p.id);
+  people.splice(i, 1);
   endTask(p); if (p.slot) p.slot.owner = null;
   // nobody may keep pointing at someone who has gone: take them out of the meetings and any chat at their desk
   for (const m of meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }

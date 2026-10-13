@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { carryPace, closestPointOnItem, throwPath, throwVelocity, interactables, isAtHome, objects, people, placeDown, placementProblem, roster, setObjectPose, setSeed, sim, type Employee, type Person, type WorldObject } from '@office/shared';
+import { carryPace, closestPointOnItem, COOPERATIVE, followCooperativeCarry, setMovementIntent, throwPath, throwVelocity, interactables, isAtHome, objects, people, placeDown, placementProblem, roster, setObjectPose, setSeed, sim, type Employee, type Person, type WorldObject } from '@office/shared';
 import { drop, grab, holdInput, throwIt } from '../play/object-actions';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, yawQuat, type StaticShape } from './physics';
@@ -343,6 +343,164 @@ describe('carrying together', () => {
     expect(sofa.helpers).toEqual([]);
     tick(w, 3);
     expect(sofa.y).toBeLessThan(.05);
+  });
+
+  it('a turn-only helper gets a bounded correction toward its grip', () => {
+    const w = make();
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(w, 1.5);
+    expect(grab(b, sofa.index).ok).toBe(true);
+    tick(w, 3);
+
+    const before = { x: b.pos.x, z: b.pos.z };
+    b.pos.x += along.x * .5; b.pos.z += along.z * .5;
+    const lag = Math.hypot(b.pos.x - before.x, b.pos.z - before.z);
+    expect(lag).toBeCloseTo(.5, 6);
+    const moved = followCooperativeCarry(b, [a, b], true);
+
+    expect(moved).toBeGreaterThan(0);
+    expect(moved).toBeLessThanOrEqual(COOPERATIVE.followStep + 1e-9);
+    expect(Math.hypot(b.pos.x - before.x, b.pos.z - before.z)).toBeLessThan(.5);
+    expect(sofa.helpers).toEqual([b.id]);
+  });
+
+  it('does not apply cooperative correction when it is not explicitly authorized', () => {
+    const w = make();
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(w, 1.5);
+    expect(grab(b, sofa.index).ok).toBe(true);
+    tick(w, 3);
+
+    b.pos.x += along.x * .5; b.pos.z += along.z * .5;
+    const before = { x: b.pos.x, z: b.pos.z };
+    expect(followCooperativeCarry(b, [a, b], false)).toBe(0);
+    expect({ x: b.pos.x, z: b.pos.z }).toEqual(before);
+    expect(sofa.helpers).toEqual([b.id]);
+  });
+
+  it('a helper walking against the sofa lets go without dropping the carrier\'s hold', () => {
+    const w = make();
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(w, 1.5);
+    expect(grab(b, sofa.index).ok).toBe(true);
+    tick(w, 3);
+    expect(sofa.helpers).toEqual([b.id]);
+
+    // The helper walks away while the carrier stays put: only the helper's hold breaks.
+    b.pos.x -= along.x * 2; b.pos.z -= along.z * 2;
+    tick(w, 1.2);
+
+    expect(sofa.carriedBy).toBe(a.id);
+    expect(sofa.helpers).toEqual([]);
+    expect(sofa.y).toBeGreaterThan(.1);
+  });
+});
+
+describe('cooperative opposition lifecycle', () => {
+  function setUpTwoHolderSofa() {
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(world!, 1.5);
+    expect(grab(b, sofa.index).ok).toBe(true);
+    tick(world!, 3);
+    return { sofa, a, b };
+  }
+
+  it('releases only the opposing helper after the exact grace boundary', () => {
+    const w = make();
+    const { sofa, a, b } = setUpTwoHolderSofa();
+    setMovementIntent(a.id, { x: 1, z: 0 });
+    setMovementIntent(b.id, { x: -1, z: 0 });
+    for (let i = 0; i < 6; i++) tick(w, .05);
+    expect(sofa.helpers).toEqual([b.id]);
+    tick(w, .05); // exactly .35 seconds: the inclusive boundary still retains the hold
+    expect(sofa.carriedBy).toBe(a.id);
+    expect(sofa.helpers).toEqual([b.id]);
+    tick(w, .05);
+    expect(sofa.carriedBy).toBe(a.id);
+    expect(sofa.helpers).toEqual([]);
+  });
+
+  it('requires the full clear interval before a new opposition episode starts', () => {
+    const w = make();
+    const { sofa, a, b } = setUpTwoHolderSofa();
+    setMovementIntent(a.id, { x: 1, z: 0 });
+    setMovementIntent(b.id, { x: -1, z: 0 });
+    for (let i = 0; i < 4; i++) tick(w, .05);
+    setMovementIntent(b.id, { x: 0, z: 0 });
+    for (let i = 0; i < 2; i++) tick(w, .05);
+    setMovementIntent(b.id, { x: -1, z: 0 });
+    for (let i = 0; i < 2; i++) tick(w, .05);
+    expect(sofa.helpers).toEqual([b.id]); // the short reversal did not clear the active episode
+    setMovementIntent(b.id, { x: 0, z: 0 });
+    for (let i = 0; i < 3; i++) tick(w, .05); // .15 s: clear is now complete
+    setMovementIntent(b.id, { x: -1, z: 0 });
+    for (let i = 0; i < 6; i++) tick(w, .05);
+    expect(sofa.helpers).toEqual([b.id]); // a fresh episode has its own grace period
+    tick(w, .05); // exactly .35 seconds remains inclusive
+    expect(sofa.helpers).toEqual([b.id]);
+    tick(w, .05);
+    expect(sofa.helpers).toEqual([]);
+  });
+});
+
+describe('cooperative carry obstruction and rollback', () => {
+  function setUpTwoHolderSofa() {
+    const sofa = ofType('sofa')[0];
+    const [a, b] = people.filter(q => q.state !== 'away').slice(0, 2);
+    const along = { x: Math.cos(sofa.rot), z: -Math.sin(sofa.rot) }, front = { x: Math.sin(sofa.rot), z: Math.cos(sofa.rot) };
+    for (const [p, s] of [[a, 1], [b, -1]] as const) {
+      p.pos.x = sofa.x + along.x * .6 * s + front.x * .5; p.pos.z = sofa.z + along.z * .6 * s + front.z * .5;
+      p.face = Math.atan2(sofa.x + along.x * .6 * s - p.pos.x, sofa.z + along.z * .6 * s - p.pos.z); p.task = null; p.path = null;
+    }
+    expect(grab(a, sofa.index).ok).toBe(true);
+    tick(world!, 1.5);
+    expect(grab(b, sofa.index).ok).toBe(true);
+    tick(world!, 3);
+    return { sofa, a, b, along };
+  }
+
+  it('rolls back a partial-axis correction instead of sliding into an active player blocker', () => {
+    const w = make();
+    const { b, along } = setUpTwoHolderSofa();
+    const c = people.filter(q => q.state !== 'away').find(q => q !== b)!
+      ;
+    b.pos.x += along.x * .5; b.pos.z += along.z * .5;
+    const before = { x: b.pos.x, z: b.pos.z };
+    c.pos.x = b.pos.x - along.x * COOPERATIVE.followStep;
+    c.pos.z = b.pos.z - along.z * COOPERATIVE.followStep;
+    c.task = null; c.path = null;
+
+    expect(followCooperativeCarry(b, [b, c], true)).toBe(0);
+    expect({ x: b.pos.x, z: b.pos.z }).toEqual(before);
+    void w;
   });
 });
 

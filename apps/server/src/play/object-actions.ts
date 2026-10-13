@@ -1,5 +1,5 @@
 import {
-  CATALOGUE, canReach, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
+  CATALOGUE, canReach, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, gripPair, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
@@ -23,7 +23,8 @@ export function grab(person: Person, index: number, at?: readonly number[]): Obj
   if (refusal) return no(refusal);
   const aimed = at && at.length === 3 && at.every(Number.isFinite) ? { x: at[0], y: at[1], z: at[2] } : null;
   if (aimed && !onItem(o, aimed)) return no('too-far'); // (a point that is not on it at all)
-  const point = aimed ?? nearestGrip(o, person);
+  // they take hold of it at its grip spots (an edge, a rim: never the middle of a flat face), two hands on either side unless it is a one-hand thing
+  const point = gripPair(o, person, aimed ?? nearestGrip(o, person), carryOf(o.type) === 'one-hand').mid;
   if (!canReach(person, point)) return no('too-far');
   // they face where their hands take it (the page turns them first; this makes it so whatever the page did): it is held in front of them
   if (Math.hypot(point.x - person.pos.x, point.z - person.pos.z) > .15) person.face = person.faceGoal = Math.atan2(point.x - person.pos.x, point.z - person.pos.z);

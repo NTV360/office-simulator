@@ -7,13 +7,13 @@
     "y": 0,
     "z": -17.84115
    },
-   "deskId": "A1",
+   "deskId": "A4",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:0",
    "index": 1,
    "kind": "desk",
-   "label": "Desk A1",
+   "label": "Desk A4",
    "object": "obj:0",
    "place": "Desk A",
    "pos": {
@@ -30,13 +30,13 @@
     "y": 0,
     "z": -17.84115
    },
-   "deskId": "A2",
+   "deskId": "A3",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:1",
    "index": 2,
    "kind": "desk",
-   "label": "Desk A2",
+   "label": "Desk A3",
    "object": "obj:2",
    "place": "Desk A",
    "pos": {
@@ -53,13 +53,13 @@
     "y": 0,
     "z": -17.84115
    },
-   "deskId": "A3",
+   "deskId": "A2",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:2",
    "index": 3,
    "kind": "desk",
-   "label": "Desk A3",
+   "label": "Desk A2",
    "object": "obj:4",
    "place": "Desk A",
    "pos": {
@@ -76,13 +76,13 @@
     "y": 0,
     "z": -17.84115
    },
-   "deskId": "A4",
+   "deskId": "A1",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:3",
    "index": 4,
    "kind": "desk",
-   "label": "Desk A4",
+   "label": "Desk A1",
    "object": "obj:5",
    "place": "Desk A",
    "pos": {
@@ -191,13 +191,13 @@
     "y": 0,
     "z": -13.462349999999999
    },
-   "deskId": "B1",
+   "deskId": "B4",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:8",
    "index": 9,
    "kind": "desk",
-   "label": "Desk B1",
+   "label": "Desk B4",
    "object": "obj:12",
    "place": "Desk B",
    "pos": {
@@ -214,13 +214,13 @@
     "y": 0,
     "z": -13.462349999999999
    },
-   "deskId": "B2",
+   "deskId": "B3",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:9",
    "index": 10,
    "kind": "desk",
-   "label": "Desk B2",
+   "label": "Desk B3",
    "object": "obj:13",
    "place": "Desk B",
    "pos": {
@@ -237,13 +237,13 @@
     "y": 0,
     "z": -13.462349999999999
    },
-   "deskId": "B3",
+   "deskId": "B2",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:10",
    "index": 11,
    "kind": "desk",
-   "label": "Desk B3",
+   "label": "Desk B2",
    "object": "obj:14",
    "place": "Desk B",
    "pos": {
@@ -260,13 +260,13 @@
     "y": 0,
     "z": -13.462349999999999
    },
-   "deskId": "B4",
+   "deskId": "B1",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:11",
    "index": 12,
    "kind": "desk",
-   "label": "Desk B4",
+   "label": "Desk B1",
    "object": "obj:16",
    "place": "Desk B",
    "pos": {
@@ -375,13 +375,13 @@
     "y": 0,
     "z": -9.042549999999999
    },
-   "deskId": "C1",
+   "deskId": "C4",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:16",
    "index": 17,
    "kind": "desk",
-   "label": "Desk C1",
+   "label": "Desk C4",
    "object": "obj:22",
    "place": "Desk C",
    "pos": {
@@ -398,13 +398,13 @@
     "y": 0,
     "z": -9.042549999999999
    },
-   "deskId": "C2",
+   "deskId": "C3",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:17",
    "index": 18,
    "kind": "desk",
-   "label": "Desk C2",
+   "label": "Desk C3",
    "object": "obj:23",
    "place": "Desk C",
    "pos": {
@@ -421,13 +421,13 @@
     "y": 0,
     "z": -9.042549999999999
    },
-   "deskId": "C3",
+   "deskId": "C2",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:18",
    "index": 19,
    "kind": "desk",
-   "label": "Desk C3",
+   "label": "Desk C2",
    "object": "obj:25",
    "place": "Desk C",
    "pos": {
@@ -444,13 +444,13 @@
     "y": 0,
     "z": -9.042549999999999
    },
-   "deskId": "C4",
+   "deskId": "C1",
    "face": 0,
    "hipY": 0.53,
    "id": "desk:19",
    "index": 20,
    "kind": "desk",
-   "label": "Desk C4",
+   "label": "Desk C1",
    "object": "obj:26",
    "place": "Desk C",
    "pos": {
@@ -555,90 +555,21 @@
   },
   {
    "approach": {
-    "x": -5.224630000000003,
-    "y": 0,
-    "z": -14.34385
-   },
-   "deskId": "D1",
-   "face": 0,
-   "hipY": 0.53,
-   "id": "desk:24",
-   "index": 25,
-   "kind": "desk",
-   "label": "Desk D1",
-   "object": "obj:35",
-   "place": "Desk D",
-   "pos": {
-    "x": -5.224630000000003,
-    "y": 0,
-    "z": -14.34385
-   },
-   "shared": false,
-   "sit": true
-  },
-  {
-   "approach": {
-    "x": -4.01759,
-    "y": 0,
-    "z": -14.34385
-   },
-   "deskId": "D2",
-   "face": 0,
-   "hipY": 0.53,
-   "id": "desk:25",
-   "index": 26,
-   "kind": "desk",
-   "label": "Desk D2",
-   "object": "obj:37",
-   "place": "Desk D",
-   "pos": {
-    "x": -4.01759,
-    "y": 0,
-    "z": -14.34385
-   },
-   "shared": false,
-   "sit": true
-  },
-  {
-   "approach": {
-    "x": -2.8105500000000028,
-    "y": 0,
-    "z": -14.34385
-   },
-   "deskId": "D3",
-   "face": 0,
-   "hipY": 0.53,
-   "id": "desk:26",
-   "index": 27,
-   "kind": "desk",
-   "label": "Desk D3",
-   "object": "obj:39",
-   "place": "Desk D",
-   "pos": {
-    "x": -2.8105500000000028,
-    "y": 0,
-    "z": -14.34385
-   },
-   "shared": false,
-   "sit": true
-  },
-  {
-   "approach": {
-    "x": -1.6035100000000007,
+    "x": -5.059400000000002,
     "y": 0,
     "z": -14.34385
    },
    "deskId": "D4",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:27",
-   "index": 28,
+   "id": "desk:24",
+   "index": 25,
    "kind": "desk",
    "label": "Desk D4",
-   "object": "obj:41",
+   "object": "obj:35",
    "place": "Desk D",
    "pos": {
-    "x": -1.6035100000000007,
+    "x": -5.059400000000002,
     "y": 0,
     "z": -14.34385
    },
@@ -647,12 +578,81 @@
   },
   {
    "approach": {
-    "x": -0.396470000000003,
+    "x": -3.5219000000000014,
     "y": 0,
     "z": -14.34385
    },
-   "deskId": "D5",
+   "deskId": "D3",
    "face": 0,
+   "hipY": 0.53,
+   "id": "desk:25",
+   "index": 26,
+   "kind": "desk",
+   "label": "Desk D3",
+   "object": "obj:37",
+   "place": "Desk D",
+   "pos": {
+    "x": -3.5219000000000014,
+    "y": 0,
+    "z": -14.34385
+   },
+   "shared": false,
+   "sit": true
+  },
+  {
+   "approach": {
+    "x": -1.9844000000000015,
+    "y": 0,
+    "z": -14.34385
+   },
+   "deskId": "D2",
+   "face": 0,
+   "hipY": 0.53,
+   "id": "desk:26",
+   "index": 27,
+   "kind": "desk",
+   "label": "Desk D2",
+   "object": "obj:39",
+   "place": "Desk D",
+   "pos": {
+    "x": -1.9844000000000015,
+    "y": 0,
+    "z": -14.34385
+   },
+   "shared": false,
+   "sit": true
+  },
+  {
+   "approach": {
+    "x": -0.4469000000000014,
+    "y": 0,
+    "z": -14.34385
+   },
+   "deskId": "D1",
+   "face": 0,
+   "hipY": 0.53,
+   "id": "desk:27",
+   "index": 28,
+   "kind": "desk",
+   "label": "Desk D1",
+   "object": "obj:41",
+   "place": "Desk D",
+   "pos": {
+    "x": -0.4469000000000014,
+    "y": 0,
+    "z": -14.34385
+   },
+   "shared": false,
+   "sit": true
+  },
+  {
+   "approach": {
+    "x": -5.059400000000002,
+    "y": 0,
+    "z": -11.818249999999999
+   },
+   "deskId": "D5",
+   "face": 3.141592653589793,
    "hipY": 0.53,
    "id": "desk:28",
    "index": 29,
@@ -661,16 +661,16 @@
    "object": "obj:42",
    "place": "Desk D",
    "pos": {
-    "x": -0.396470000000003,
+    "x": -5.059400000000002,
     "y": 0,
-    "z": -14.34385
+    "z": -11.818249999999999
    },
    "shared": false,
    "sit": true
   },
   {
    "approach": {
-    "x": -5.224630000000003,
+    "x": -3.5219000000000014,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -684,7 +684,7 @@
    "object": "obj:44",
    "place": "Desk D",
    "pos": {
-    "x": -5.224630000000003,
+    "x": -3.5219000000000014,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -693,7 +693,7 @@
   },
   {
    "approach": {
-    "x": -4.01759,
+    "x": -1.9844000000000015,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -707,7 +707,7 @@
    "object": "obj:46",
    "place": "Desk D",
    "pos": {
-    "x": -4.01759,
+    "x": -1.9844000000000015,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -716,7 +716,7 @@
   },
   {
    "approach": {
-    "x": -2.8105500000000028,
+    "x": -0.4469000000000014,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -730,53 +730,7 @@
    "object": "obj:48",
    "place": "Desk D",
    "pos": {
-    "x": -2.8105500000000028,
-    "y": 0,
-    "z": -11.818249999999999
-   },
-   "shared": false,
-   "sit": true
-  },
-  {
-   "approach": {
-    "x": -1.6035100000000007,
-    "y": 0,
-    "z": -11.818249999999999
-   },
-   "deskId": "D9",
-   "face": 3.141592653589793,
-   "hipY": 0.53,
-   "id": "desk:32",
-   "index": 33,
-   "kind": "desk",
-   "label": "Desk D9",
-   "object": "obj:49",
-   "place": "Desk D",
-   "pos": {
-    "x": -1.6035100000000007,
-    "y": 0,
-    "z": -11.818249999999999
-   },
-   "shared": false,
-   "sit": true
-  },
-  {
-   "approach": {
-    "x": -0.396470000000003,
-    "y": 0,
-    "z": -11.818249999999999
-   },
-   "deskId": "D10",
-   "face": 3.141592653589793,
-   "hipY": 0.53,
-   "id": "desk:33",
-   "index": 34,
-   "kind": "desk",
-   "label": "Desk D10",
-   "object": "obj:50",
-   "place": "Desk D",
-   "pos": {
-    "x": -0.396470000000003,
+    "x": -0.4469000000000014,
     "y": 0,
     "z": -11.818249999999999
    },
@@ -789,14 +743,14 @@
     "y": 0,
     "z": -4.40545
    },
-   "deskId": "E1",
+   "deskId": "E4",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:34",
-   "index": 35,
+   "id": "desk:32",
+   "index": 33,
    "kind": "desk",
-   "label": "Desk E1",
-   "object": "obj:52",
+   "label": "Desk E4",
+   "object": "obj:49",
    "place": "Desk E",
    "pos": {
     "x": 2.9765999999999986,
@@ -812,14 +766,14 @@
     "y": 0,
     "z": -4.40545
    },
-   "deskId": "E2",
+   "deskId": "E3",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:35",
-   "index": 36,
+   "id": "desk:33",
+   "index": 34,
    "kind": "desk",
-   "label": "Desk E2",
-   "object": "obj:54",
+   "label": "Desk E3",
+   "object": "obj:50",
    "place": "Desk E",
    "pos": {
     "x": 4.514099999999999,
@@ -835,14 +789,14 @@
     "y": 0,
     "z": -4.40545
    },
-   "deskId": "E3",
+   "deskId": "E2",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:36",
-   "index": 37,
+   "id": "desk:34",
+   "index": 35,
    "kind": "desk",
-   "label": "Desk E3",
-   "object": "obj:55",
+   "label": "Desk E2",
+   "object": "obj:52",
    "place": "Desk E",
    "pos": {
     "x": 6.051600000000001,
@@ -858,14 +812,14 @@
     "y": 0,
     "z": -4.40545
    },
-   "deskId": "E4",
+   "deskId": "E1",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:37",
-   "index": 38,
+   "id": "desk:35",
+   "index": 36,
    "kind": "desk",
-   "label": "Desk E4",
-   "object": "obj:56",
+   "label": "Desk E1",
+   "object": "obj:54",
    "place": "Desk E",
    "pos": {
     "x": 7.589100000000001,
@@ -884,11 +838,11 @@
    "deskId": "E5",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:38",
-   "index": 39,
+   "id": "desk:36",
+   "index": 37,
    "kind": "desk",
    "label": "Desk E5",
-   "object": "obj:58",
+   "object": "obj:55",
    "place": "Desk E",
    "pos": {
     "x": 2.9765999999999986,
@@ -907,11 +861,11 @@
    "deskId": "E6",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:39",
-   "index": 40,
+   "id": "desk:37",
+   "index": 38,
    "kind": "desk",
    "label": "Desk E6",
-   "object": "obj:60",
+   "object": "obj:56",
    "place": "Desk E",
    "pos": {
     "x": 4.514099999999999,
@@ -930,11 +884,11 @@
    "deskId": "E7",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:40",
-   "index": 41,
+   "id": "desk:38",
+   "index": 39,
    "kind": "desk",
    "label": "Desk E7",
-   "object": "obj:62",
+   "object": "obj:58",
    "place": "Desk E",
    "pos": {
     "x": 6.051600000000001,
@@ -953,11 +907,11 @@
    "deskId": "E8",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:41",
-   "index": 42,
+   "id": "desk:39",
+   "index": 40,
    "kind": "desk",
    "label": "Desk E8",
-   "object": "obj:63",
+   "object": "obj:60",
    "place": "Desk E",
    "pos": {
     "x": 7.589100000000001,
@@ -973,14 +927,14 @@
     "y": 0,
     "z": -0.0799499999999972
    },
-   "deskId": "F1",
+   "deskId": "F4",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:42",
-   "index": 43,
+   "id": "desk:40",
+   "index": 41,
    "kind": "desk",
-   "label": "Desk F1",
-   "object": "obj:64",
+   "label": "Desk F4",
+   "object": "obj:62",
    "place": "Desk F",
    "pos": {
     "x": 2.9765999999999986,
@@ -996,14 +950,14 @@
     "y": 0,
     "z": -0.0799499999999972
    },
-   "deskId": "F2",
+   "deskId": "F3",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:43",
-   "index": 44,
+   "id": "desk:41",
+   "index": 42,
    "kind": "desk",
-   "label": "Desk F2",
-   "object": "obj:65",
+   "label": "Desk F3",
+   "object": "obj:63",
    "place": "Desk F",
    "pos": {
     "x": 4.514099999999999,
@@ -1019,14 +973,14 @@
     "y": 0,
     "z": -0.0799499999999972
    },
-   "deskId": "F3",
+   "deskId": "F2",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:44",
-   "index": 45,
+   "id": "desk:42",
+   "index": 43,
    "kind": "desk",
-   "label": "Desk F3",
-   "object": "obj:67",
+   "label": "Desk F2",
+   "object": "obj:64",
    "place": "Desk F",
    "pos": {
     "x": 6.051600000000001,
@@ -1042,14 +996,14 @@
     "y": 0,
     "z": -0.0799499999999972
    },
-   "deskId": "F4",
+   "deskId": "F1",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:45",
-   "index": 46,
+   "id": "desk:43",
+   "index": 44,
    "kind": "desk",
-   "label": "Desk F4",
-   "object": "obj:68",
+   "label": "Desk F1",
+   "object": "obj:65",
    "place": "Desk F",
    "pos": {
     "x": 7.589100000000001,
@@ -1068,11 +1022,11 @@
    "deskId": "F5",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:46",
-   "index": 47,
+   "id": "desk:44",
+   "index": 45,
    "kind": "desk",
    "label": "Desk F5",
-   "object": "obj:69",
+   "object": "obj:67",
    "place": "Desk F",
    "pos": {
     "x": 2.9765999999999986,
@@ -1091,11 +1045,11 @@
    "deskId": "F6",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:47",
-   "index": 48,
+   "id": "desk:45",
+   "index": 46,
    "kind": "desk",
    "label": "Desk F6",
-   "object": "obj:71",
+   "object": "obj:68",
    "place": "Desk F",
    "pos": {
     "x": 4.514099999999999,
@@ -1114,11 +1068,11 @@
    "deskId": "F7",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:48",
-   "index": 49,
+   "id": "desk:46",
+   "index": 47,
    "kind": "desk",
    "label": "Desk F7",
-   "object": "obj:72",
+   "object": "obj:69",
    "place": "Desk F",
    "pos": {
     "x": 6.051600000000001,
@@ -1137,11 +1091,11 @@
    "deskId": "F8",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:49",
-   "index": 50,
+   "id": "desk:47",
+   "index": 48,
    "kind": "desk",
    "label": "Desk F8",
-   "object": "obj:73",
+   "object": "obj:71",
    "place": "Desk F",
    "pos": {
     "x": 7.589100000000001,
@@ -1157,14 +1111,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G1",
+   "deskId": "G6",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:50",
-   "index": 51,
+   "id": "desk:48",
+   "index": 49,
    "kind": "desk",
-   "label": "Desk G1",
-   "object": "obj:75",
+   "label": "Desk G6",
+   "object": "obj:72",
    "place": "Desk G",
    "pos": {
     "x": 1.4749749999999986,
@@ -1180,14 +1134,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G2",
+   "deskId": "G5",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:51",
-   "index": 52,
+   "id": "desk:49",
+   "index": 50,
    "kind": "desk",
-   "label": "Desk G2",
-   "object": "obj:76",
+   "label": "Desk G5",
+   "object": "obj:73",
    "place": "Desk G",
    "pos": {
     "x": 2.8792249999999986,
@@ -1203,14 +1157,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G3",
+   "deskId": "G4",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:52",
-   "index": 53,
+   "id": "desk:50",
+   "index": 51,
    "kind": "desk",
-   "label": "Desk G3",
-   "object": "obj:78",
+   "label": "Desk G4",
+   "object": "obj:75",
    "place": "Desk G",
    "pos": {
     "x": 4.283474999999998,
@@ -1226,14 +1180,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G4",
+   "deskId": "G3",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:53",
-   "index": 54,
+   "id": "desk:51",
+   "index": 52,
    "kind": "desk",
-   "label": "Desk G4",
-   "object": "obj:79",
+   "label": "Desk G3",
+   "object": "obj:76",
    "place": "Desk G",
    "pos": {
     "x": 5.687725000000001,
@@ -1249,14 +1203,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G5",
+   "deskId": "G2",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:54",
-   "index": 55,
+   "id": "desk:52",
+   "index": 53,
    "kind": "desk",
-   "label": "Desk G5",
-   "object": "obj:80",
+   "label": "Desk G2",
+   "object": "obj:78",
    "place": "Desk G",
    "pos": {
     "x": 7.0919750000000015,
@@ -1272,14 +1226,14 @@
     "y": 0,
     "z": 4.155350000000006
    },
-   "deskId": "G6",
+   "deskId": "G1",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:55",
-   "index": 56,
+   "id": "desk:53",
+   "index": 54,
    "kind": "desk",
-   "label": "Desk G6",
-   "object": "obj:81",
+   "label": "Desk G1",
+   "object": "obj:79",
    "place": "Desk G",
    "pos": {
     "x": 8.496225,
@@ -1298,11 +1252,11 @@
    "deskId": "G7",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:56",
-   "index": 57,
+   "id": "desk:54",
+   "index": 55,
    "kind": "desk",
    "label": "Desk G7",
-   "object": "obj:82",
+   "object": "obj:80",
    "place": "Desk G",
    "pos": {
     "x": 1.4749749999999986,
@@ -1321,11 +1275,11 @@
    "deskId": "G8",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:57",
-   "index": 58,
+   "id": "desk:55",
+   "index": 56,
    "kind": "desk",
    "label": "Desk G8",
-   "object": "obj:84",
+   "object": "obj:81",
    "place": "Desk G",
    "pos": {
     "x": 2.8792249999999986,
@@ -1344,11 +1298,11 @@
    "deskId": "G9",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:58",
-   "index": 59,
+   "id": "desk:56",
+   "index": 57,
    "kind": "desk",
    "label": "Desk G9",
-   "object": "obj:86",
+   "object": "obj:82",
    "place": "Desk G",
    "pos": {
     "x": 4.283474999999998,
@@ -1367,11 +1321,11 @@
    "deskId": "G10",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:59",
-   "index": 60,
+   "id": "desk:57",
+   "index": 58,
    "kind": "desk",
    "label": "Desk G10",
-   "object": "obj:87",
+   "object": "obj:84",
    "place": "Desk G",
    "pos": {
     "x": 5.687725000000001,
@@ -1390,11 +1344,11 @@
    "deskId": "G11",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:60",
-   "index": 61,
+   "id": "desk:58",
+   "index": 59,
    "kind": "desk",
    "label": "Desk G11",
-   "object": "obj:89",
+   "object": "obj:86",
    "place": "Desk G",
    "pos": {
     "x": 7.0919750000000015,
@@ -1413,11 +1367,11 @@
    "deskId": "G12",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:61",
-   "index": 62,
+   "id": "desk:59",
+   "index": 60,
    "kind": "desk",
    "label": "Desk G12",
-   "object": "obj:91",
+   "object": "obj:87",
    "place": "Desk G",
    "pos": {
     "x": 8.496225,
@@ -1433,14 +1387,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H1",
+   "deskId": "H6",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:62",
-   "index": 63,
+   "id": "desk:60",
+   "index": 61,
    "kind": "desk",
-   "label": "Desk H1",
-   "object": "obj:93",
+   "label": "Desk H6",
+   "object": "obj:89",
    "place": "Desk H",
    "pos": {
     "x": 1.429875,
@@ -1456,14 +1410,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H2",
+   "deskId": "H5",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:63",
-   "index": 64,
+   "id": "desk:61",
+   "index": 62,
    "kind": "desk",
-   "label": "Desk H2",
-   "object": "obj:95",
+   "label": "Desk H5",
+   "object": "obj:91",
    "place": "Desk H",
    "pos": {
     "x": 2.8341250000000002,
@@ -1479,14 +1433,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H3",
+   "deskId": "H4",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:64",
-   "index": 65,
+   "id": "desk:62",
+   "index": 63,
    "kind": "desk",
-   "label": "Desk H3",
-   "object": "obj:96",
+   "label": "Desk H4",
+   "object": "obj:93",
    "place": "Desk H",
    "pos": {
     "x": 4.2383750000000004,
@@ -1502,14 +1456,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H4",
+   "deskId": "H3",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:65",
-   "index": 66,
+   "id": "desk:63",
+   "index": 64,
    "kind": "desk",
-   "label": "Desk H4",
-   "object": "obj:98",
+   "label": "Desk H3",
+   "object": "obj:95",
    "place": "Desk H",
    "pos": {
     "x": 5.642625000000001,
@@ -1525,14 +1479,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H5",
+   "deskId": "H2",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:66",
-   "index": 67,
+   "id": "desk:64",
+   "index": 65,
    "kind": "desk",
-   "label": "Desk H5",
-   "object": "obj:99",
+   "label": "Desk H2",
+   "object": "obj:96",
    "place": "Desk H",
    "pos": {
     "x": 7.046875,
@@ -1548,14 +1502,14 @@
     "y": 0,
     "z": 8.345550000000003
    },
-   "deskId": "H6",
+   "deskId": "H1",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:67",
-   "index": 68,
+   "id": "desk:65",
+   "index": 66,
    "kind": "desk",
-   "label": "Desk H6",
-   "object": "obj:101",
+   "label": "Desk H1",
+   "object": "obj:98",
    "place": "Desk H",
    "pos": {
     "x": 8.451125000000001,
@@ -1574,11 +1528,11 @@
    "deskId": "H7",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:68",
-   "index": 69,
+   "id": "desk:66",
+   "index": 67,
    "kind": "desk",
    "label": "Desk H7",
-   "object": "obj:103",
+   "object": "obj:99",
    "place": "Desk H",
    "pos": {
     "x": 1.429875,
@@ -1597,11 +1551,11 @@
    "deskId": "H8",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:69",
-   "index": 70,
+   "id": "desk:67",
+   "index": 68,
    "kind": "desk",
    "label": "Desk H8",
-   "object": "obj:104",
+   "object": "obj:101",
    "place": "Desk H",
    "pos": {
     "x": 2.8341250000000002,
@@ -1620,11 +1574,11 @@
    "deskId": "H9",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:70",
-   "index": 71,
+   "id": "desk:68",
+   "index": 69,
    "kind": "desk",
    "label": "Desk H9",
-   "object": "obj:105",
+   "object": "obj:103",
    "place": "Desk H",
    "pos": {
     "x": 4.2383750000000004,
@@ -1643,11 +1597,11 @@
    "deskId": "H10",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:71",
-   "index": 72,
+   "id": "desk:69",
+   "index": 70,
    "kind": "desk",
    "label": "Desk H10",
-   "object": "obj:107",
+   "object": "obj:104",
    "place": "Desk H",
    "pos": {
     "x": 5.642625000000001,
@@ -1666,11 +1620,11 @@
    "deskId": "H11",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:72",
-   "index": 73,
+   "id": "desk:70",
+   "index": 71,
    "kind": "desk",
    "label": "Desk H11",
-   "object": "obj:108",
+   "object": "obj:105",
    "place": "Desk H",
    "pos": {
     "x": 7.046875,
@@ -1689,11 +1643,11 @@
    "deskId": "H12",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:73",
-   "index": 74,
+   "id": "desk:71",
+   "index": 72,
    "kind": "desk",
    "label": "Desk H12",
-   "object": "obj:110",
+   "object": "obj:107",
    "place": "Desk H",
    "pos": {
     "x": 8.451125000000001,
@@ -1713,11 +1667,11 @@
    "deskId": "HR1",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:74",
-   "index": 75,
+   "id": "desk:72",
+   "index": 73,
    "kind": "desk",
    "label": "HR Office · desk 1",
-   "object": "obj:112",
+   "object": "obj:108",
    "place": "HR Office",
    "pos": {
     "x": -3.697516666666667,
@@ -1737,11 +1691,11 @@
    "deskId": "HR2",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:75",
-   "index": 76,
+   "id": "desk:73",
+   "index": 74,
    "kind": "desk",
    "label": "HR Office · desk 2",
-   "object": "obj:113",
+   "object": "obj:110",
    "place": "HR Office",
    "pos": {
     "x": -2.740850000000001,
@@ -1761,11 +1715,11 @@
    "deskId": "HR3",
    "face": 0,
    "hipY": 0.53,
-   "id": "desk:76",
-   "index": 77,
+   "id": "desk:74",
+   "index": 75,
    "kind": "desk",
    "label": "HR Office · desk 3",
-   "object": "obj:114",
+   "object": "obj:112",
    "place": "HR Office",
    "pos": {
     "x": -1.784183333333335,
@@ -1785,11 +1739,11 @@
    "deskId": "HR4",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:77",
-   "index": 78,
+   "id": "desk:75",
+   "index": 76,
    "kind": "desk",
    "label": "HR Office · desk 4",
-   "object": "obj:115",
+   "object": "obj:113",
    "place": "HR Office",
    "pos": {
     "x": -3.697516666666667,
@@ -1809,11 +1763,11 @@
    "deskId": "HR5",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:78",
-   "index": 79,
+   "id": "desk:76",
+   "index": 77,
    "kind": "desk",
    "label": "HR Office · desk 5",
-   "object": "obj:117",
+   "object": "obj:114",
    "place": "HR Office",
    "pos": {
     "x": -2.740850000000001,
@@ -1833,11 +1787,11 @@
    "deskId": "HR6",
    "face": 3.141592653589793,
    "hipY": 0.53,
-   "id": "desk:79",
-   "index": 80,
+   "id": "desk:77",
+   "index": 78,
    "kind": "desk",
    "label": "HR Office · desk 6",
-   "object": "obj:118",
+   "object": "obj:115",
    "place": "HR Office",
    "pos": {
     "x": -1.784183333333335,
@@ -1858,7 +1812,7 @@
    "hipY": 0.53,
    "id": "whiteboard:0",
    "kind": "whiteboard",
-   "object": "obj:402",
+   "object": "obj:393",
    "place": "the whiteboard",
    "pos": {
     "x": 10.70715,
@@ -1879,7 +1833,7 @@
    "hipY": 0.53,
    "id": "whiteboard:1",
    "kind": "whiteboard",
-   "object": "obj:402",
+   "object": "obj:393",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1900,7 +1854,7 @@
    "hipY": 0.53,
    "id": "whiteboard:2",
    "kind": "whiteboard",
-   "object": "obj:402",
+   "object": "obj:393",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1921,7 +1875,7 @@
    "hipY": 0.53,
    "id": "whiteboard:3",
    "kind": "whiteboard",
-   "object": "obj:403",
+   "object": "obj:394",
    "place": "the whiteboard",
    "pos": {
     "x": 10.70715,
@@ -1942,7 +1896,7 @@
    "hipY": 0.53,
    "id": "whiteboard:4",
    "kind": "whiteboard",
-   "object": "obj:403",
+   "object": "obj:394",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1963,7 +1917,7 @@
    "hipY": 0.53,
    "id": "whiteboard:5",
    "kind": "whiteboard",
-   "object": "obj:403",
+   "object": "obj:394",
    "place": "the whiteboard",
    "pos": {
     "x": 9.84615,
@@ -1983,7 +1937,7 @@
    "hipY": 0.53,
    "id": "conf:0",
    "kind": "conf",
-   "object": "obj:120",
+   "object": "obj:117",
    "place": "Conference 1",
    "pos": {
     "x": -8.808850000000001,
@@ -2004,7 +1958,7 @@
    "hipY": 0.53,
    "id": "conf:1",
    "kind": "conf",
-   "object": "obj:121",
+   "object": "obj:118",
    "place": "Conference 1",
    "pos": {
     "x": -6.881850000000001,
@@ -2025,7 +1979,7 @@
    "hipY": 0.53,
    "id": "conf:2",
    "kind": "conf",
-   "object": "obj:122",
+   "object": "obj:119",
    "place": "Conference 1",
    "pos": {
     "x": -8.808850000000001,
@@ -2046,7 +2000,7 @@
    "hipY": 0.53,
    "id": "conf:3",
    "kind": "conf",
-   "object": "obj:123",
+   "object": "obj:120",
    "place": "Conference 1",
    "pos": {
     "x": -6.881850000000001,
@@ -2067,7 +2021,7 @@
    "hipY": 0.53,
    "id": "conf:4",
    "kind": "conf",
-   "object": "obj:124",
+   "object": "obj:121",
    "place": "Conference 1",
    "pos": {
     "x": -8.808850000000001,
@@ -2088,7 +2042,7 @@
    "hipY": 0.53,
    "id": "conf:5",
    "kind": "conf",
-   "object": "obj:125",
+   "object": "obj:122",
    "place": "Conference 1",
    "pos": {
     "x": -6.881850000000001,
@@ -2109,7 +2063,7 @@
    "hipY": 0.53,
    "id": "conf:6",
    "kind": "conf",
-   "object": "obj:126",
+   "object": "obj:123",
    "place": "Conference 1",
    "pos": {
     "x": -8.808850000000001,
@@ -2130,7 +2084,7 @@
    "hipY": 0.53,
    "id": "conf:7",
    "kind": "conf",
-   "object": "obj:127",
+   "object": "obj:124",
    "place": "Conference 1",
    "pos": {
     "x": -6.881850000000001,
@@ -2151,7 +2105,7 @@
    "hipY": 0.53,
    "id": "conf:8",
    "kind": "conf",
-   "object": "obj:128",
+   "object": "obj:125",
    "place": "Conference 3",
    "pos": {
     "x": -10.530850000000001,
@@ -2172,7 +2126,7 @@
    "hipY": 0.53,
    "id": "conf:9",
    "kind": "conf",
-   "object": "obj:129",
+   "object": "obj:126",
    "place": "Conference 3",
    "pos": {
     "x": -8.31685,
@@ -2193,7 +2147,7 @@
    "hipY": 0.53,
    "id": "conf:10",
    "kind": "conf",
-   "object": "obj:130",
+   "object": "obj:127",
    "place": "Conference 3",
    "pos": {
     "x": -10.530850000000001,
@@ -2214,7 +2168,7 @@
    "hipY": 0.53,
    "id": "conf:11",
    "kind": "conf",
-   "object": "obj:131",
+   "object": "obj:128",
    "place": "Conference 3",
    "pos": {
     "x": -8.31685,
@@ -2235,7 +2189,7 @@
    "hipY": 0.53,
    "id": "conf:12",
    "kind": "conf",
-   "object": "obj:132",
+   "object": "obj:129",
    "place": "Conference 3",
    "pos": {
     "x": -10.530850000000001,
@@ -2256,7 +2210,7 @@
    "hipY": 0.53,
    "id": "conf:13",
    "kind": "conf",
-   "object": "obj:133",
+   "object": "obj:130",
    "place": "Conference 3",
    "pos": {
     "x": -8.31685,
@@ -2277,7 +2231,7 @@
    "hipY": 0.53,
    "id": "conf:14",
    "kind": "conf",
-   "object": "obj:134",
+   "object": "obj:131",
    "place": "Conference 3",
    "pos": {
     "x": -9.423850000000002,
@@ -2298,7 +2252,7 @@
    "hipY": 0.53,
    "id": "conf:15",
    "kind": "conf",
-   "object": "obj:135",
+   "object": "obj:132",
    "place": "Conference 3",
    "pos": {
     "x": -9.423850000000002,
@@ -2319,7 +2273,7 @@
    "hipY": 0.5,
    "id": "lounge:0",
    "kind": "lounge",
-   "object": "obj:410",
+   "object": "obj:401",
    "place": "the lounge sofa",
    "pos": {
     "x": -9.567350000000001,
@@ -2339,7 +2293,7 @@
    "hipY": 0.5,
    "id": "lounge:1",
    "kind": "lounge",
-   "object": "obj:410",
+   "object": "obj:401",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.93185,
@@ -2359,7 +2313,7 @@
    "hipY": 0.5,
    "id": "lounge:2",
    "kind": "lounge",
-   "object": "obj:410",
+   "object": "obj:401",
    "place": "the lounge sofa",
    "pos": {
     "x": -8.296350000000002,
@@ -2379,7 +2333,7 @@
    "hipY": 0.5,
    "id": "lounge:3",
    "kind": "lounge",
-   "object": "obj:411",
+   "object": "obj:402",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2399,7 +2353,7 @@
    "hipY": 0.5,
    "id": "lounge:4",
    "kind": "lounge",
-   "object": "obj:411",
+   "object": "obj:402",
    "place": "the couch",
    "pos": {
     "x": -11.166350000000001,
@@ -2420,7 +2374,7 @@
    "hipY": 0.5,
    "id": "lounge:5",
    "kind": "lounge",
-   "object": "obj:412",
+   "object": "obj:403",
    "place": "the TV lounge",
    "pos": {
     "x": -1.961850000000001,
@@ -2441,7 +2395,7 @@
    "hipY": 0.5,
    "id": "lounge:6",
    "kind": "lounge",
-   "object": "obj:412",
+   "object": "obj:403",
    "place": "the TV lounge",
    "pos": {
     "x": -1.469850000000001,
@@ -2462,7 +2416,7 @@
    "hipY": 0.5,
    "id": "lounge:7",
    "kind": "lounge",
-   "object": "obj:412",
+   "object": "obj:403",
    "place": "the TV lounge",
    "pos": {
     "x": -0.977850000000001,
@@ -2483,7 +2437,7 @@
    "hipY": 0.5,
    "id": "lounge:8",
    "kind": "lounge",
-   "object": "obj:413",
+   "object": "obj:404",
    "place": "the TV lounge",
    "pos": {
     "x": -2.0705,
@@ -2504,7 +2458,7 @@
    "hipY": 0.5,
    "id": "lounge:9",
    "kind": "lounge",
-   "object": "obj:414",
+   "object": "obj:405",
    "place": "the TV lounge",
    "pos": {
     "x": -1.090600000000001,
@@ -2525,7 +2479,7 @@
    "hipY": 0.5,
    "id": "lounge:10",
    "kind": "lounge",
-   "object": "obj:415",
+   "object": "obj:406",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -2546,7 +2500,7 @@
    "hipY": 0.5,
    "id": "lounge:11",
    "kind": "lounge",
-   "object": "obj:416",
+   "object": "obj:407",
    "place": "the TV lounge",
    "pos": {
     "x": -0.07585000000000093,
@@ -2566,7 +2520,7 @@
    "hipY": 0.76,
    "id": "bar:0",
    "kind": "bar",
-   "object": "obj:136",
+   "object": "obj:133",
    "place": "the bar table",
    "pos": {
     "x": 0.8671499999999991,
@@ -2586,7 +2540,7 @@
    "hipY": 0.76,
    "id": "bar:1",
    "kind": "bar",
-   "object": "obj:137",
+   "object": "obj:134",
    "place": "the bar table",
    "pos": {
     "x": 3.409149999999999,
@@ -2606,7 +2560,7 @@
    "hipY": 0.76,
    "id": "bar:2",
    "kind": "bar",
-   "object": "obj:138",
+   "object": "obj:135",
    "place": "the bar table",
    "pos": {
     "x": 10.545199999999998,
@@ -2626,7 +2580,7 @@
    "hipY": 0.76,
    "id": "bar:3",
    "kind": "bar",
-   "object": "obj:139",
+   "object": "obj:136",
    "place": "the bar table",
    "pos": {
     "x": 10.545199999999998,
@@ -2646,7 +2600,7 @@
    "hipY": 0.53,
    "id": "booth:0",
    "kind": "booth",
-   "object": "obj:140",
+   "object": "obj:137",
    "place": "Booth B1",
    "pos": {
     "x": 4.487449999999997,
@@ -2666,7 +2620,7 @@
    "hipY": 0.53,
    "id": "booth:1",
    "kind": "booth",
-   "object": "obj:141",
+   "object": "obj:138",
    "place": "Booth B2",
    "pos": {
     "x": 6.537449999999997,
@@ -2686,7 +2640,7 @@
    "hipY": 0.53,
    "id": "booth:2",
    "kind": "booth",
-   "object": "obj:142",
+   "object": "obj:139",
    "place": "Booth B3",
    "pos": {
     "x": 8.587449999999997,
@@ -2706,7 +2660,7 @@
    "hipY": 0.53,
    "id": "booth:3",
    "kind": "booth",
-   "object": "obj:143",
+   "object": "obj:140",
    "place": "Booth B4",
    "pos": {
     "x": 10.637449999999998,
@@ -2726,7 +2680,7 @@
    "hipY": 0.52,
    "id": "dining:0",
    "kind": "dining",
-   "object": "obj:144",
+   "object": "obj:141",
    "place": "the dining area",
    "pos": {
     "x": 2.384149999999999,
@@ -2746,7 +2700,7 @@
    "hipY": 0.52,
    "id": "dining:1",
    "kind": "dining",
-   "object": "obj:145",
+   "object": "obj:142",
    "place": "the dining area",
    "pos": {
     "x": 4.270149999999999,
@@ -2766,7 +2720,7 @@
    "hipY": 0.52,
    "id": "dining:2",
    "kind": "dining",
-   "object": "obj:146",
+   "object": "obj:143",
    "place": "the dining area",
    "pos": {
     "x": 2.384149999999999,
@@ -2786,7 +2740,7 @@
    "hipY": 0.52,
    "id": "dining:3",
    "kind": "dining",
-   "object": "obj:147",
+   "object": "obj:144",
    "place": "the dining area",
    "pos": {
     "x": 4.270149999999999,
@@ -2806,7 +2760,7 @@
    "hipY": 0.52,
    "id": "dining:4",
    "kind": "dining",
-   "object": "obj:148",
+   "object": "obj:145",
    "place": "the dining area",
    "pos": {
     "x": 5.049149999999999,
@@ -2826,7 +2780,7 @@
    "hipY": 0.52,
    "id": "dining:5",
    "kind": "dining",
-   "object": "obj:149",
+   "object": "obj:146",
    "place": "the dining area",
    "pos": {
     "x": 6.935149999999999,
@@ -2846,7 +2800,7 @@
    "hipY": 0.52,
    "id": "dining:6",
    "kind": "dining",
-   "object": "obj:150",
+   "object": "obj:147",
    "place": "the dining area",
    "pos": {
     "x": 5.049149999999999,
@@ -2866,7 +2820,7 @@
    "hipY": 0.52,
    "id": "dining:7",
    "kind": "dining",
-   "object": "obj:151",
+   "object": "obj:148",
    "place": "the dining area",
    "pos": {
     "x": 6.935149999999999,
@@ -2886,7 +2840,7 @@
    "hipY": 0.52,
    "id": "dining:8",
    "kind": "dining",
-   "object": "obj:152",
+   "object": "obj:149",
    "place": "the dining area",
    "pos": {
     "x": 7.714149999999999,
@@ -2906,7 +2860,7 @@
    "hipY": 0.52,
    "id": "dining:9",
    "kind": "dining",
-   "object": "obj:153",
+   "object": "obj:150",
    "place": "the dining area",
    "pos": {
     "x": 9.60015,
@@ -2926,7 +2880,7 @@
    "hipY": 0.52,
    "id": "dining:10",
    "kind": "dining",
-   "object": "obj:154",
+   "object": "obj:151",
    "place": "the dining area",
    "pos": {
     "x": 7.714149999999999,
@@ -2946,7 +2900,7 @@
    "hipY": 0.52,
    "id": "dining:11",
    "kind": "dining",
-   "object": "obj:155",
+   "object": "obj:152",
    "place": "the dining area",
    "pos": {
     "x": 9.60015,
@@ -2966,7 +2920,7 @@
    "hipY": 0.52,
    "id": "dining:12",
    "kind": "dining",
-   "object": "obj:156",
+   "object": "obj:153",
    "place": "the dining area",
    "pos": {
     "x": 2.466149999999999,
@@ -2986,7 +2940,7 @@
    "hipY": 0.52,
    "id": "dining:13",
    "kind": "dining",
-   "object": "obj:157",
+   "object": "obj:154",
    "place": "the dining area",
    "pos": {
     "x": 4.1061499999999995,
@@ -3006,7 +2960,7 @@
    "hipY": 0.52,
    "id": "dining:14",
    "kind": "dining",
-   "object": "obj:158",
+   "object": "obj:155",
    "place": "the dining area",
    "pos": {
     "x": 5.172149999999999,
@@ -3026,7 +2980,7 @@
    "hipY": 0.52,
    "id": "dining:15",
    "kind": "dining",
-   "object": "obj:159",
+   "object": "obj:156",
    "place": "the dining area",
    "pos": {
     "x": 6.812149999999999,
@@ -3046,7 +3000,7 @@
    "hipY": 0.52,
    "id": "dining:16",
    "kind": "dining",
-   "object": "obj:160",
+   "object": "obj:157",
    "place": "the dining area",
    "pos": {
     "x": 7.87815,
@@ -3066,7 +3020,7 @@
    "hipY": 0.52,
    "id": "dining:17",
    "kind": "dining",
-   "object": "obj:161",
+   "object": "obj:158",
    "place": "the dining area",
    "pos": {
     "x": 9.51815,
@@ -3146,7 +3100,7 @@
    "hipY": 0.6,
    "id": "piano:0",
    "kind": "piano",
-   "object": "obj:439",
+   "object": "obj:430",
    "place": "the keyboard",
    "pos": {
     "x": 10.42015,
@@ -3167,7 +3121,7 @@
    "hipY": 0.6,
    "id": "guitar:0",
    "kind": "guitar",
-   "object": "obj:441",
+   "object": "obj:432",
    "place": "the guitar",
    "pos": {
     "x": 10.25615,
@@ -3663,7 +3617,7 @@
   [
    255.7,
    240,
-   402.9,
+   405.7,
    276
   ],
   [
@@ -4230,7 +4184,7 @@
   },
   {
    "type": "chair-office",
-   "x": -5.224630000000003,
+   "x": -5.059400000000002,
    "z": -14.34385,
    "rot": 0,
    "y": 0,
@@ -4240,7 +4194,7 @@
   },
   {
    "type": "mug",
-   "x": -5.604630000000003,
+   "x": -5.439400000000002,
    "z": -13.49905,
    "rot": 0,
    "y": 0.76,
@@ -4250,7 +4204,7 @@
   },
   {
    "type": "chair-office",
-   "x": -4.01759,
+   "x": -3.5219000000000014,
    "z": -14.34385,
    "rot": 0,
    "y": 0,
@@ -4260,7 +4214,7 @@
   },
   {
    "type": "mug",
-   "x": -4.39759,
+   "x": -3.9019000000000013,
    "z": -13.49905,
    "rot": 0,
    "y": 0.76,
@@ -4270,7 +4224,7 @@
   },
   {
    "type": "chair-office",
-   "x": -2.8105500000000028,
+   "x": -1.9844000000000015,
    "z": -14.34385,
    "rot": 0,
    "y": 0,
@@ -4280,7 +4234,7 @@
   },
   {
    "type": "plant-desk",
-   "x": -3.2105500000000027,
+   "x": -2.3844000000000016,
    "z": -13.29105,
    "rot": 0,
    "y": 0.76,
@@ -4290,7 +4244,7 @@
   },
   {
    "type": "chair-office",
-   "x": -1.6035100000000007,
+   "x": -0.4469000000000014,
    "z": -14.34385,
    "rot": 0,
    "y": 0,
@@ -4300,9 +4254,9 @@
   },
   {
    "type": "chair-office",
-   "x": -0.396470000000003,
-   "z": -14.34385,
-   "rot": 0,
+   "x": -5.059400000000002,
+   "z": -11.818249999999999,
+   "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
    "station": "desk:28",
@@ -4310,9 +4264,9 @@
   },
   {
    "type": "notebook",
-   "x": -0.036470000000003,
-   "z": -13.43905,
-   "rot": 0,
+   "x": -5.419400000000002,
+   "z": -12.723049999999999,
+   "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
    "station": "desk:28",
@@ -4320,7 +4274,7 @@
   },
   {
    "type": "chair-office",
-   "x": -5.224630000000003,
+   "x": -3.5219000000000014,
    "z": -11.818249999999999,
    "rot": 3.141592653589793,
    "y": 0,
@@ -4330,7 +4284,7 @@
   },
   {
    "type": "plant-desk",
-   "x": -4.824630000000003,
+   "x": -3.1219000000000015,
    "z": -12.871049999999999,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4340,17 +4294,17 @@
   },
   {
    "type": "chair-office",
-   "x": -4.01759,
+   "x": -1.9844000000000015,
    "z": -11.818249999999999,
    "rot": 3.141592653589793,
    "y": 0,
-   "variant": 0,
+   "variant": 1,
    "station": "desk:30",
    "spot": "desk:30"
   },
   {
    "type": "mug",
-   "x": -3.6375900000000003,
+   "x": -1.6044000000000014,
    "z": -12.663049999999998,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4360,43 +4314,13 @@
   },
   {
    "type": "chair-office",
-   "x": -2.8105500000000028,
+   "x": -0.4469000000000014,
    "z": -11.818249999999999,
    "rot": 3.141592653589793,
    "y": 0,
-   "variant": 1,
+   "variant": 0,
    "station": "desk:31",
    "spot": "desk:31"
-  },
-  {
-   "type": "chair-office",
-   "x": -1.6035100000000007,
-   "z": -11.818249999999999,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:32",
-   "spot": "desk:32"
-  },
-  {
-   "type": "chair-office",
-   "x": -0.396470000000003,
-   "z": -11.818249999999999,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:33",
-   "spot": "desk:33"
-  },
-  {
-   "type": "mug",
-   "x": -0.016470000000002878,
-   "z": -12.663049999999998,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:33",
-   "spot": null
   },
   {
    "type": "chair-office",
@@ -4405,12 +4329,42 @@
    "rot": 0,
    "y": 0,
    "variant": 1,
+   "station": "desk:32",
+   "spot": "desk:32"
+  },
+  {
+   "type": "chair-office",
+   "x": 4.514099999999999,
+   "z": -4.40545,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:33",
+   "spot": "desk:33"
+  },
+  {
+   "type": "mug",
+   "x": 4.134099999999999,
+   "z": -3.56065,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:33",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 6.051600000000001,
+   "z": -4.40545,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
    "station": "desk:34",
    "spot": "desk:34"
   },
   {
    "type": "notebook",
-   "x": 3.3365999999999985,
+   "x": 6.411600000000002,
    "z": -3.5006500000000003,
    "rot": 0,
    "y": 0.76,
@@ -4420,43 +4374,13 @@
   },
   {
    "type": "chair-office",
-   "x": 4.514099999999999,
-   "z": -4.40545,
-   "rot": 0,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:35",
-   "spot": "desk:35"
-  },
-  {
-   "type": "chair-office",
-   "x": 6.051600000000001,
-   "z": -4.40545,
-   "rot": 0,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:36",
-   "spot": "desk:36"
-  },
-  {
-   "type": "chair-office",
    "x": 7.589100000000001,
    "z": -4.40545,
    "rot": 0,
    "y": 0,
    "variant": 1,
-   "station": "desk:37",
-   "spot": "desk:37"
-  },
-  {
-   "type": "mug",
-   "x": 7.209100000000001,
-   "z": -3.56065,
-   "rot": 0,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:37",
-   "spot": null
+   "station": "desk:35",
+   "spot": "desk:35"
   },
   {
    "type": "chair-office",
@@ -4465,12 +4389,42 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
+   "station": "desk:36",
+   "spot": "desk:36"
+  },
+  {
+   "type": "chair-office",
+   "x": 4.514099999999999,
+   "z": -1.4001499999999991,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:37",
+   "spot": "desk:37"
+  },
+  {
+   "type": "mug",
+   "x": 4.894099999999999,
+   "z": -2.2449499999999993,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:37",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 6.051600000000001,
+   "z": -1.4001499999999991,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 1,
    "station": "desk:38",
    "spot": "desk:38"
   },
   {
    "type": "mug",
-   "x": 3.3565999999999985,
+   "x": 6.431600000000001,
    "z": -2.2449499999999993,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4480,7 +4434,7 @@
   },
   {
    "type": "chair-office",
-   "x": 4.514099999999999,
+   "x": 7.589100000000001,
    "z": -1.4001499999999991,
    "rot": 3.141592653589793,
    "y": 0,
@@ -4490,7 +4444,7 @@
   },
   {
    "type": "notebook",
-   "x": 4.154099999999999,
+   "x": 7.229100000000001,
    "z": -2.304949999999999,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4500,33 +4454,13 @@
   },
   {
    "type": "chair-office",
-   "x": 6.051600000000001,
-   "z": -1.4001499999999991,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:40",
-   "spot": "desk:40"
-  },
-  {
-   "type": "chair-office",
-   "x": 7.589100000000001,
-   "z": -1.4001499999999991,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:41",
-   "spot": "desk:41"
-  },
-  {
-   "type": "chair-office",
    "x": 2.9765999999999986,
    "z": -0.0799499999999972,
    "rot": 0,
    "y": 0,
    "variant": 1,
-   "station": "desk:42",
-   "spot": "desk:42"
+   "station": "desk:40",
+   "spot": "desk:40"
   },
   {
    "type": "chair-office",
@@ -4535,12 +4469,32 @@
    "rot": 0,
    "y": 0,
    "variant": 0,
+   "station": "desk:41",
+   "spot": "desk:41"
+  },
+  {
+   "type": "chair-office",
+   "x": 6.051600000000001,
+   "z": -0.0799499999999972,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:42",
+   "spot": "desk:42"
+  },
+  {
+   "type": "chair-office",
+   "x": 7.589100000000001,
+   "z": -0.0799499999999972,
+   "rot": 0,
+   "y": 0,
+   "variant": 1,
    "station": "desk:43",
    "spot": "desk:43"
   },
   {
    "type": "mug",
-   "x": 4.134099999999999,
+   "x": 7.209100000000001,
    "z": 0.7648500000000028,
    "rot": 0,
    "y": 0.76,
@@ -4550,9 +4504,9 @@
   },
   {
    "type": "chair-office",
-   "x": 6.051600000000001,
-   "z": -0.0799499999999972,
-   "rot": 0,
+   "x": 2.9765999999999986,
+   "z": 2.9253500000000012,
+   "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
    "station": "desk:44",
@@ -4560,27 +4514,27 @@
   },
   {
    "type": "chair-office",
-   "x": 7.589100000000001,
-   "z": -0.0799499999999972,
-   "rot": 0,
+   "x": 4.514099999999999,
+   "z": 2.9253500000000012,
+   "rot": 3.141592653589793,
    "y": 0,
-   "variant": 1,
+   "variant": 0,
    "station": "desk:45",
    "spot": "desk:45"
   },
   {
    "type": "chair-office",
-   "x": 2.9765999999999986,
+   "x": 6.051600000000001,
    "z": 2.9253500000000012,
    "rot": 3.141592653589793,
    "y": 0,
-   "variant": 0,
+   "variant": 1,
    "station": "desk:46",
    "spot": "desk:46"
   },
   {
    "type": "mug",
-   "x": 3.3565999999999985,
+   "x": 6.431600000000001,
    "z": 2.0805500000000015,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4590,7 +4544,7 @@
   },
   {
    "type": "chair-office",
-   "x": 4.514099999999999,
+   "x": 7.589100000000001,
    "z": 2.9253500000000012,
    "rot": 3.141592653589793,
    "y": 0,
@@ -4600,43 +4554,13 @@
   },
   {
    "type": "chair-office",
-   "x": 6.051600000000001,
-   "z": 2.9253500000000012,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:48",
-   "spot": "desk:48"
-  },
-  {
-   "type": "chair-office",
-   "x": 7.589100000000001,
-   "z": 2.9253500000000012,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:49",
-   "spot": "desk:49"
-  },
-  {
-   "type": "mug",
-   "x": 7.969100000000001,
-   "z": 2.0805500000000015,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:49",
-   "spot": null
-  },
-  {
-   "type": "chair-office",
    "x": 1.4749749999999986,
    "z": 4.155350000000006,
    "rot": 0,
    "y": 0,
    "variant": 1,
-   "station": "desk:50",
-   "spot": "desk:50"
+   "station": "desk:48",
+   "spot": "desk:48"
   },
   {
    "type": "chair-office",
@@ -4645,12 +4569,42 @@
    "rot": 0,
    "y": 0,
    "variant": 0,
+   "station": "desk:49",
+   "spot": "desk:49"
+  },
+  {
+   "type": "mug",
+   "x": 2.4992249999999987,
+   "z": 5.000150000000006,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:49",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 4.283474999999998,
+   "z": 4.155350000000006,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:50",
+   "spot": "desk:50"
+  },
+  {
+   "type": "chair-office",
+   "x": 5.687725000000001,
+   "z": 4.155350000000006,
+   "rot": 0,
+   "y": 0,
+   "variant": 1,
    "station": "desk:51",
    "spot": "desk:51"
   },
   {
    "type": "notebook",
-   "x": 3.2392249999999985,
+   "x": 6.047725000000002,
    "z": 5.0601500000000055,
    "rot": 0,
    "y": 0.76,
@@ -4660,7 +4614,7 @@
   },
   {
    "type": "chair-office",
-   "x": 4.283474999999998,
+   "x": 7.0919750000000015,
    "z": 4.155350000000006,
    "rot": 0,
    "y": 0,
@@ -4670,33 +4624,13 @@
   },
   {
    "type": "chair-office",
-   "x": 5.687725000000001,
-   "z": 4.155350000000006,
-   "rot": 0,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:53",
-   "spot": "desk:53"
-  },
-  {
-   "type": "chair-office",
-   "x": 7.0919750000000015,
-   "z": 4.155350000000006,
-   "rot": 0,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:54",
-   "spot": "desk:54"
-  },
-  {
-   "type": "chair-office",
    "x": 8.496225,
    "z": 4.155350000000006,
    "rot": 0,
    "y": 0,
    "variant": 0,
-   "station": "desk:55",
-   "spot": "desk:55"
+   "station": "desk:53",
+   "spot": "desk:53"
   },
   {
    "type": "chair-office",
@@ -4705,12 +4639,32 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
+   "station": "desk:54",
+   "spot": "desk:54"
+  },
+  {
+   "type": "chair-office",
+   "x": 2.8792249999999986,
+   "z": 7.209850000000001,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:55",
+   "spot": "desk:55"
+  },
+  {
+   "type": "chair-office",
+   "x": 4.283474999999998,
+   "z": 7.209850000000001,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 1,
    "station": "desk:56",
    "spot": "desk:56"
   },
   {
    "type": "notebook",
-   "x": 1.1149749999999985,
+   "x": 3.9234749999999985,
    "z": 6.305050000000001,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4720,7 +4674,7 @@
   },
   {
    "type": "chair-office",
-   "x": 2.8792249999999986,
+   "x": 5.687725000000001,
    "z": 7.209850000000001,
    "rot": 3.141592653589793,
    "y": 0,
@@ -4730,7 +4684,7 @@
   },
   {
    "type": "plant-desk",
-   "x": 3.2792249999999985,
+   "x": 6.087725000000002,
    "z": 5.892600000000002,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -4740,53 +4694,13 @@
   },
   {
    "type": "chair-office",
-   "x": 4.283474999999998,
-   "z": 7.209850000000001,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:58",
-   "spot": "desk:58"
-  },
-  {
-   "type": "chair-office",
-   "x": 5.687725000000001,
-   "z": 7.209850000000001,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:59",
-   "spot": "desk:59"
-  },
-  {
-   "type": "mug",
-   "x": 6.067725000000001,
-   "z": 6.365050000000001,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:59",
-   "spot": null
-  },
-  {
-   "type": "chair-office",
    "x": 7.0919750000000015,
    "z": 7.209850000000001,
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
-   "station": "desk:60",
-   "spot": "desk:60"
-  },
-  {
-   "type": "mug",
-   "x": 7.471975000000001,
-   "z": 6.365050000000001,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:60",
-   "spot": null
+   "station": "desk:58",
+   "spot": "desk:58"
   },
   {
    "type": "chair-office",
@@ -4795,8 +4709,8 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 1,
-   "station": "desk:61",
-   "spot": "desk:61"
+   "station": "desk:59",
+   "spot": "desk:59"
   },
   {
    "type": "mug",
@@ -4805,7 +4719,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:61",
+   "station": "desk:59",
    "spot": null
   },
   {
@@ -4815,8 +4729,8 @@
    "rot": 0,
    "y": 0,
    "variant": 1,
-   "station": "desk:62",
-   "spot": "desk:62"
+   "station": "desk:60",
+   "spot": "desk:60"
   },
   {
    "type": "mug",
@@ -4825,7 +4739,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:62",
+   "station": "desk:60",
    "spot": null
   },
   {
@@ -4835,12 +4749,52 @@
    "rot": 0,
    "y": 0,
    "variant": 0,
+   "station": "desk:61",
+   "spot": "desk:61"
+  },
+  {
+   "type": "mug",
+   "x": 2.4541250000000003,
+   "z": 9.190350000000002,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:61",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 4.2383750000000004,
+   "z": 8.345550000000003,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:62",
+   "spot": "desk:62"
+  },
+  {
+   "type": "mug",
+   "x": 3.8583750000000006,
+   "z": 9.190350000000002,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:62",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 5.642625000000001,
+   "z": 8.345550000000003,
+   "rot": 0,
+   "y": 0,
+   "variant": 1,
    "station": "desk:63",
    "spot": "desk:63"
   },
   {
    "type": "chair-office",
-   "x": 4.2383750000000004,
+   "x": 7.046875,
    "z": 8.345550000000003,
    "rot": 0,
    "y": 0,
@@ -4850,7 +4804,7 @@
   },
   {
    "type": "mug",
-   "x": 3.8583750000000006,
+   "x": 6.666875,
    "z": 9.190350000000002,
    "rot": 0,
    "y": 0.76,
@@ -4860,53 +4814,13 @@
   },
   {
    "type": "chair-office",
-   "x": 5.642625000000001,
-   "z": 8.345550000000003,
-   "rot": 0,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:65",
-   "spot": "desk:65"
-  },
-  {
-   "type": "chair-office",
-   "x": 7.046875,
-   "z": 8.345550000000003,
-   "rot": 0,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:66",
-   "spot": "desk:66"
-  },
-  {
-   "type": "mug",
-   "x": 6.666875,
-   "z": 9.190350000000002,
-   "rot": 0,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:66",
-   "spot": null
-  },
-  {
-   "type": "chair-office",
    "x": 8.451125000000001,
    "z": 8.345550000000003,
    "rot": 0,
    "y": 0,
    "variant": 0,
-   "station": "desk:67",
-   "spot": "desk:67"
-  },
-  {
-   "type": "mug",
-   "x": 8.071125,
-   "z": 9.190350000000002,
-   "rot": 0,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:67",
-   "spot": null
+   "station": "desk:65",
+   "spot": "desk:65"
   },
   {
    "type": "chair-office",
@@ -4915,12 +4829,52 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
+   "station": "desk:66",
+   "spot": "desk:66"
+  },
+  {
+   "type": "mug",
+   "x": 1.809875,
+   "z": 10.551150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:66",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 2.8341250000000002,
+   "z": 11.395950000000003,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:67",
+   "spot": "desk:67"
+  },
+  {
+   "type": "mug",
+   "x": 3.214125,
+   "z": 10.551150000000003,
+   "rot": 3.141592653589793,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:67",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": 4.2383750000000004,
+   "z": 11.395950000000003,
+   "rot": 3.141592653589793,
+   "y": 0,
+   "variant": 1,
    "station": "desk:68",
    "spot": "desk:68"
   },
   {
    "type": "chair-office",
-   "x": 2.8341250000000002,
+   "x": 5.642625000000001,
    "z": 11.395950000000003,
    "rot": 3.141592653589793,
    "y": 0,
@@ -4930,43 +4884,13 @@
   },
   {
    "type": "chair-office",
-   "x": 4.2383750000000004,
-   "z": 11.395950000000003,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 1,
-   "station": "desk:70",
-   "spot": "desk:70"
-  },
-  {
-   "type": "mug",
-   "x": 4.618375,
-   "z": 10.551150000000003,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:70",
-   "spot": null
-  },
-  {
-   "type": "chair-office",
-   "x": 5.642625000000001,
-   "z": 11.395950000000003,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:71",
-   "spot": "desk:71"
-  },
-  {
-   "type": "chair-office",
    "x": 7.046875,
    "z": 11.395950000000003,
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
-   "station": "desk:72",
-   "spot": "desk:72"
+   "station": "desk:70",
+   "spot": "desk:70"
   },
   {
    "type": "mug",
@@ -4975,7 +4899,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:72",
+   "station": "desk:70",
    "spot": null
   },
   {
@@ -4985,18 +4909,8 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 1,
-   "station": "desk:73",
-   "spot": "desk:73"
-  },
-  {
-   "type": "notebook",
-   "x": 8.091125000000002,
-   "z": 10.491150000000003,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 2,
-   "station": "desk:73",
-   "spot": null
+   "station": "desk:71",
+   "spot": "desk:71"
   },
   {
    "type": "chair-office",
@@ -5005,14 +4919,54 @@
    "rot": 0,
    "y": 0,
    "variant": 1,
-   "station": "desk:74",
-   "spot": "desk:74"
+   "station": "desk:72",
+   "spot": "desk:72"
+  },
+  {
+   "type": "mug",
+   "x": -4.077516666666667,
+   "z": -18.74705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 0,
+   "station": "desk:72",
+   "spot": null
   },
   {
    "type": "chair-office",
    "x": -2.740850000000001,
    "z": -19.59185,
    "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:73",
+   "spot": "desk:73"
+  },
+  {
+   "type": "notebook",
+   "x": -2.380850000000001,
+   "z": -18.68705,
+   "rot": 0,
+   "y": 0.76,
+   "variant": 2,
+   "station": "desk:73",
+   "spot": null
+  },
+  {
+   "type": "chair-office",
+   "x": -1.784183333333335,
+   "z": -19.59185,
+   "rot": 0,
+   "y": 0,
+   "variant": 0,
+   "station": "desk:74",
+   "spot": "desk:74"
+  },
+  {
+   "type": "chair-office",
+   "x": -3.697516666666667,
+   "z": -17.148249999999997,
+   "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
    "station": "desk:75",
@@ -5020,43 +4974,13 @@
   },
   {
    "type": "chair-office",
-   "x": -1.784183333333335,
-   "z": -19.59185,
-   "rot": 0,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:76",
-   "spot": "desk:76"
-  },
-  {
-   "type": "chair-office",
-   "x": -3.697516666666667,
-   "z": -17.148249999999997,
-   "rot": 3.141592653589793,
-   "y": 0,
-   "variant": 0,
-   "station": "desk:77",
-   "spot": "desk:77"
-  },
-  {
-   "type": "mug",
-   "x": -3.317516666666667,
-   "z": -17.993049999999997,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:77",
-   "spot": null
-  },
-  {
-   "type": "chair-office",
    "x": -2.740850000000001,
    "z": -17.148249999999997,
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 0,
-   "station": "desk:78",
-   "spot": "desk:78"
+   "station": "desk:76",
+   "spot": "desk:76"
   },
   {
    "type": "chair-office",
@@ -5065,17 +4989,17 @@
    "rot": 3.141592653589793,
    "y": 0,
    "variant": 1,
-   "station": "desk:79",
-   "spot": "desk:79"
+   "station": "desk:77",
+   "spot": "desk:77"
   },
   {
-   "type": "notebook",
-   "x": -2.144183333333335,
-   "z": -18.05305,
+   "type": "mug",
+   "x": -1.404183333333335,
+   "z": -17.993049999999997,
    "rot": 3.141592653589793,
    "y": 0.76,
-   "variant": 2,
-   "station": "desk:79",
+   "variant": 0,
+   "station": "desk:77",
    "spot": null
   },
   {
@@ -6220,7 +6144,7 @@
   },
   {
    "type": "monitor",
-   "x": -5.224630000000003,
+   "x": -5.059400000000002,
    "z": -13.24105,
    "rot": 0,
    "y": 0.76,
@@ -6230,7 +6154,7 @@
   },
   {
    "type": "keyboard",
-   "x": -5.254630000000003,
+   "x": -5.089400000000002,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6240,7 +6164,7 @@
   },
   {
    "type": "mouse",
-   "x": -4.964630000000003,
+   "x": -4.799400000000002,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6250,7 +6174,7 @@
   },
   {
    "type": "monitor",
-   "x": -4.01759,
+   "x": -3.5219000000000014,
    "z": -13.24105,
    "rot": 0,
    "y": 0.76,
@@ -6260,7 +6184,7 @@
   },
   {
    "type": "keyboard",
-   "x": -4.0475900000000005,
+   "x": -3.551900000000001,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6270,7 +6194,7 @@
   },
   {
    "type": "mouse",
-   "x": -3.7575900000000004,
+   "x": -3.2619000000000016,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6280,7 +6204,7 @@
   },
   {
    "type": "monitor",
-   "x": -2.8105500000000028,
+   "x": -1.9844000000000015,
    "z": -13.24105,
    "rot": 0,
    "y": 0.76,
@@ -6290,7 +6214,7 @@
   },
   {
    "type": "keyboard",
-   "x": -2.8405500000000026,
+   "x": -2.0144000000000015,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6300,7 +6224,7 @@
   },
   {
    "type": "mouse",
-   "x": -2.550550000000003,
+   "x": -1.7244000000000015,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6310,7 +6234,7 @@
   },
   {
    "type": "monitor",
-   "x": -1.6035100000000007,
+   "x": -0.4469000000000014,
    "z": -13.24105,
    "rot": 0,
    "y": 0.76,
@@ -6320,7 +6244,7 @@
   },
   {
    "type": "keyboard",
-   "x": -1.6335100000000007,
+   "x": -0.47690000000000143,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6330,7 +6254,7 @@
   },
   {
    "type": "mouse",
-   "x": -1.3435100000000006,
+   "x": -0.1869000000000014,
    "z": -13.61905,
    "rot": 0,
    "y": 0.76,
@@ -6340,9 +6264,9 @@
   },
   {
    "type": "monitor",
-   "x": -0.396470000000003,
-   "z": -13.24105,
-   "rot": 0,
+   "x": -5.059400000000002,
+   "z": -12.92105,
+   "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
    "station": "desk:28",
@@ -6350,9 +6274,9 @@
   },
   {
    "type": "keyboard",
-   "x": -0.426470000000003,
-   "z": -13.61905,
-   "rot": 0,
+   "x": -5.029400000000002,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
    "station": "desk:28",
@@ -6360,9 +6284,9 @@
   },
   {
    "type": "mouse",
-   "x": -0.13647000000000298,
-   "z": -13.61905,
-   "rot": 0,
+   "x": -5.319400000000002,
+   "z": -12.54305,
+   "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
    "station": "desk:28",
@@ -6370,7 +6294,7 @@
   },
   {
    "type": "monitor",
-   "x": -5.224630000000003,
+   "x": -3.5219000000000014,
    "z": -12.92105,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6380,7 +6304,7 @@
   },
   {
    "type": "keyboard",
-   "x": -5.194630000000003,
+   "x": -3.4919000000000016,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6390,7 +6314,7 @@
   },
   {
    "type": "mouse",
-   "x": -5.484630000000003,
+   "x": -3.781900000000001,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6400,7 +6324,7 @@
   },
   {
    "type": "monitor",
-   "x": -4.01759,
+   "x": -1.9844000000000013,
    "z": -12.92105,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6410,7 +6334,7 @@
   },
   {
    "type": "keyboard",
-   "x": -3.9875900000000004,
+   "x": -1.9544000000000015,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6420,7 +6344,7 @@
   },
   {
    "type": "mouse",
-   "x": -4.27759,
+   "x": -2.2444000000000015,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6430,7 +6354,7 @@
   },
   {
    "type": "monitor",
-   "x": -2.8105500000000028,
+   "x": -0.4469000000000013,
    "z": -12.92105,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6440,7 +6364,7 @@
   },
   {
    "type": "keyboard",
-   "x": -2.780550000000003,
+   "x": -0.41690000000000127,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
@@ -6450,72 +6374,12 @@
   },
   {
    "type": "mouse",
-   "x": -3.0705500000000026,
+   "x": -0.7069000000000013,
    "z": -12.54305,
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
    "station": "desk:31",
-   "spot": null
-  },
-  {
-   "type": "monitor",
-   "x": -1.6035100000000004,
-   "z": -12.92105,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:32",
-   "spot": null
-  },
-  {
-   "type": "keyboard",
-   "x": -1.5735100000000006,
-   "z": -12.54305,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:32",
-   "spot": null
-  },
-  {
-   "type": "mouse",
-   "x": -1.8635100000000007,
-   "z": -12.54305,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:32",
-   "spot": null
-  },
-  {
-   "type": "monitor",
-   "x": -0.3964700000000029,
-   "z": -12.92105,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:33",
-   "spot": null
-  },
-  {
-   "type": "keyboard",
-   "x": -0.36647000000000285,
-   "z": -12.54305,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:33",
-   "spot": null
-  },
-  {
-   "type": "mouse",
-   "x": -0.6564700000000029,
-   "z": -12.54305,
-   "rot": 3.141592653589793,
-   "y": 0.76,
-   "variant": 0,
-   "station": "desk:33",
    "spot": null
   },
   {
@@ -6525,7 +6389,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:34",
+   "station": "desk:32",
    "spot": null
   },
   {
@@ -6535,7 +6399,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:34",
+   "station": "desk:32",
    "spot": null
   },
   {
@@ -6545,7 +6409,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:34",
+   "station": "desk:32",
    "spot": null
   },
   {
@@ -6555,7 +6419,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:35",
+   "station": "desk:33",
    "spot": null
   },
   {
@@ -6565,7 +6429,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:35",
+   "station": "desk:33",
    "spot": null
   },
   {
@@ -6575,7 +6439,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:35",
+   "station": "desk:33",
    "spot": null
   },
   {
@@ -6585,7 +6449,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:36",
+   "station": "desk:34",
    "spot": null
   },
   {
@@ -6595,7 +6459,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:36",
+   "station": "desk:34",
    "spot": null
   },
   {
@@ -6605,7 +6469,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:36",
+   "station": "desk:34",
    "spot": null
   },
   {
@@ -6615,7 +6479,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:37",
+   "station": "desk:35",
    "spot": null
   },
   {
@@ -6625,7 +6489,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:37",
+   "station": "desk:35",
    "spot": null
   },
   {
@@ -6635,7 +6499,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:37",
+   "station": "desk:35",
    "spot": null
   },
   {
@@ -6645,7 +6509,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:38",
+   "station": "desk:36",
    "spot": null
   },
   {
@@ -6655,7 +6519,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:38",
+   "station": "desk:36",
    "spot": null
   },
   {
@@ -6665,7 +6529,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:38",
+   "station": "desk:36",
    "spot": null
   },
   {
@@ -6675,7 +6539,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:39",
+   "station": "desk:37",
    "spot": null
   },
   {
@@ -6685,7 +6549,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:39",
+   "station": "desk:37",
    "spot": null
   },
   {
@@ -6695,7 +6559,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:39",
+   "station": "desk:37",
    "spot": null
   },
   {
@@ -6705,7 +6569,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:40",
+   "station": "desk:38",
    "spot": null
   },
   {
@@ -6715,7 +6579,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:40",
+   "station": "desk:38",
    "spot": null
   },
   {
@@ -6725,7 +6589,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:40",
+   "station": "desk:38",
    "spot": null
   },
   {
@@ -6735,7 +6599,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:41",
+   "station": "desk:39",
    "spot": null
   },
   {
@@ -6745,7 +6609,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:41",
+   "station": "desk:39",
    "spot": null
   },
   {
@@ -6755,7 +6619,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:41",
+   "station": "desk:39",
    "spot": null
   },
   {
@@ -6765,7 +6629,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:42",
+   "station": "desk:40",
    "spot": null
   },
   {
@@ -6775,7 +6639,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:42",
+   "station": "desk:40",
    "spot": null
   },
   {
@@ -6785,7 +6649,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:42",
+   "station": "desk:40",
    "spot": null
   },
   {
@@ -6795,7 +6659,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:43",
+   "station": "desk:41",
    "spot": null
   },
   {
@@ -6805,7 +6669,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:43",
+   "station": "desk:41",
    "spot": null
   },
   {
@@ -6815,7 +6679,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:43",
+   "station": "desk:41",
    "spot": null
   },
   {
@@ -6825,7 +6689,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:44",
+   "station": "desk:42",
    "spot": null
   },
   {
@@ -6835,7 +6699,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:44",
+   "station": "desk:42",
    "spot": null
   },
   {
@@ -6845,7 +6709,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:44",
+   "station": "desk:42",
    "spot": null
   },
   {
@@ -6855,7 +6719,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:45",
+   "station": "desk:43",
    "spot": null
   },
   {
@@ -6865,7 +6729,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:45",
+   "station": "desk:43",
    "spot": null
   },
   {
@@ -6875,7 +6739,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:45",
+   "station": "desk:43",
    "spot": null
   },
   {
@@ -6885,7 +6749,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:46",
+   "station": "desk:44",
    "spot": null
   },
   {
@@ -6895,7 +6759,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:46",
+   "station": "desk:44",
    "spot": null
   },
   {
@@ -6905,7 +6769,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:46",
+   "station": "desk:44",
    "spot": null
   },
   {
@@ -6915,7 +6779,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:47",
+   "station": "desk:45",
    "spot": null
   },
   {
@@ -6925,7 +6789,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:47",
+   "station": "desk:45",
    "spot": null
   },
   {
@@ -6935,7 +6799,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:47",
+   "station": "desk:45",
    "spot": null
   },
   {
@@ -6945,7 +6809,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:48",
+   "station": "desk:46",
    "spot": null
   },
   {
@@ -6955,7 +6819,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:48",
+   "station": "desk:46",
    "spot": null
   },
   {
@@ -6965,7 +6829,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:48",
+   "station": "desk:46",
    "spot": null
   },
   {
@@ -6975,7 +6839,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:49",
+   "station": "desk:47",
    "spot": null
   },
   {
@@ -6985,7 +6849,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:49",
+   "station": "desk:47",
    "spot": null
   },
   {
@@ -6995,7 +6859,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:49",
+   "station": "desk:47",
    "spot": null
   },
   {
@@ -7005,7 +6869,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:50",
+   "station": "desk:48",
    "spot": null
   },
   {
@@ -7015,7 +6879,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:50",
+   "station": "desk:48",
    "spot": null
   },
   {
@@ -7025,7 +6889,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:50",
+   "station": "desk:48",
    "spot": null
   },
   {
@@ -7035,7 +6899,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:51",
+   "station": "desk:49",
    "spot": null
   },
   {
@@ -7045,7 +6909,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:51",
+   "station": "desk:49",
    "spot": null
   },
   {
@@ -7055,7 +6919,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:51",
+   "station": "desk:49",
    "spot": null
   },
   {
@@ -7065,7 +6929,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:52",
+   "station": "desk:50",
    "spot": null
   },
   {
@@ -7075,7 +6939,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:52",
+   "station": "desk:50",
    "spot": null
   },
   {
@@ -7085,7 +6949,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:52",
+   "station": "desk:50",
    "spot": null
   },
   {
@@ -7095,7 +6959,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:53",
+   "station": "desk:51",
    "spot": null
   },
   {
@@ -7105,7 +6969,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:53",
+   "station": "desk:51",
    "spot": null
   },
   {
@@ -7115,7 +6979,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:53",
+   "station": "desk:51",
    "spot": null
   },
   {
@@ -7125,7 +6989,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:54",
+   "station": "desk:52",
    "spot": null
   },
   {
@@ -7135,7 +6999,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:54",
+   "station": "desk:52",
    "spot": null
   },
   {
@@ -7145,7 +7009,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:54",
+   "station": "desk:52",
    "spot": null
   },
   {
@@ -7155,7 +7019,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:55",
+   "station": "desk:53",
    "spot": null
   },
   {
@@ -7165,7 +7029,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:55",
+   "station": "desk:53",
    "spot": null
   },
   {
@@ -7175,7 +7039,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:55",
+   "station": "desk:53",
    "spot": null
   },
   {
@@ -7185,7 +7049,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:56",
+   "station": "desk:54",
    "spot": null
   },
   {
@@ -7195,7 +7059,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:56",
+   "station": "desk:54",
    "spot": null
   },
   {
@@ -7205,7 +7069,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:56",
+   "station": "desk:54",
    "spot": null
   },
   {
@@ -7215,7 +7079,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:57",
+   "station": "desk:55",
    "spot": null
   },
   {
@@ -7225,7 +7089,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:57",
+   "station": "desk:55",
    "spot": null
   },
   {
@@ -7235,7 +7099,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:57",
+   "station": "desk:55",
    "spot": null
   },
   {
@@ -7245,7 +7109,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:58",
+   "station": "desk:56",
    "spot": null
   },
   {
@@ -7255,7 +7119,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:58",
+   "station": "desk:56",
    "spot": null
   },
   {
@@ -7265,7 +7129,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:58",
+   "station": "desk:56",
    "spot": null
   },
   {
@@ -7275,7 +7139,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:59",
+   "station": "desk:57",
    "spot": null
   },
   {
@@ -7285,7 +7149,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:59",
+   "station": "desk:57",
    "spot": null
   },
   {
@@ -7295,7 +7159,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:59",
+   "station": "desk:57",
    "spot": null
   },
   {
@@ -7305,7 +7169,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:60",
+   "station": "desk:58",
    "spot": null
   },
   {
@@ -7315,7 +7179,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:60",
+   "station": "desk:58",
    "spot": null
   },
   {
@@ -7325,7 +7189,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:60",
+   "station": "desk:58",
    "spot": null
   },
   {
@@ -7335,7 +7199,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:61",
+   "station": "desk:59",
    "spot": null
   },
   {
@@ -7345,7 +7209,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:61",
+   "station": "desk:59",
    "spot": null
   },
   {
@@ -7355,7 +7219,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:61",
+   "station": "desk:59",
    "spot": null
   },
   {
@@ -7365,7 +7229,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:62",
+   "station": "desk:60",
    "spot": null
   },
   {
@@ -7375,7 +7239,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:62",
+   "station": "desk:60",
    "spot": null
   },
   {
@@ -7385,7 +7249,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:62",
+   "station": "desk:60",
    "spot": null
   },
   {
@@ -7395,7 +7259,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:63",
+   "station": "desk:61",
    "spot": null
   },
   {
@@ -7405,7 +7269,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:63",
+   "station": "desk:61",
    "spot": null
   },
   {
@@ -7415,7 +7279,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:63",
+   "station": "desk:61",
    "spot": null
   },
   {
@@ -7425,7 +7289,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:64",
+   "station": "desk:62",
    "spot": null
   },
   {
@@ -7435,7 +7299,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:64",
+   "station": "desk:62",
    "spot": null
   },
   {
@@ -7445,7 +7309,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:64",
+   "station": "desk:62",
    "spot": null
   },
   {
@@ -7455,7 +7319,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:65",
+   "station": "desk:63",
    "spot": null
   },
   {
@@ -7465,7 +7329,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:65",
+   "station": "desk:63",
    "spot": null
   },
   {
@@ -7475,7 +7339,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:65",
+   "station": "desk:63",
    "spot": null
   },
   {
@@ -7485,7 +7349,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:66",
+   "station": "desk:64",
    "spot": null
   },
   {
@@ -7495,7 +7359,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:66",
+   "station": "desk:64",
    "spot": null
   },
   {
@@ -7505,7 +7369,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:66",
+   "station": "desk:64",
    "spot": null
   },
   {
@@ -7515,7 +7379,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:67",
+   "station": "desk:65",
    "spot": null
   },
   {
@@ -7525,7 +7389,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:67",
+   "station": "desk:65",
    "spot": null
   },
   {
@@ -7535,7 +7399,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:67",
+   "station": "desk:65",
    "spot": null
   },
   {
@@ -7545,7 +7409,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:68",
+   "station": "desk:66",
    "spot": null
   },
   {
@@ -7555,7 +7419,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:68",
+   "station": "desk:66",
    "spot": null
   },
   {
@@ -7565,7 +7429,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:68",
+   "station": "desk:66",
    "spot": null
   },
   {
@@ -7575,7 +7439,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:69",
+   "station": "desk:67",
    "spot": null
   },
   {
@@ -7585,7 +7449,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:69",
+   "station": "desk:67",
    "spot": null
   },
   {
@@ -7595,7 +7459,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:69",
+   "station": "desk:67",
    "spot": null
   },
   {
@@ -7605,7 +7469,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:70",
+   "station": "desk:68",
    "spot": null
   },
   {
@@ -7615,7 +7479,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:70",
+   "station": "desk:68",
    "spot": null
   },
   {
@@ -7625,7 +7489,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:70",
+   "station": "desk:68",
    "spot": null
   },
   {
@@ -7635,7 +7499,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:71",
+   "station": "desk:69",
    "spot": null
   },
   {
@@ -7645,7 +7509,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:71",
+   "station": "desk:69",
    "spot": null
   },
   {
@@ -7655,7 +7519,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:71",
+   "station": "desk:69",
    "spot": null
   },
   {
@@ -7665,7 +7529,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:72",
+   "station": "desk:70",
    "spot": null
   },
   {
@@ -7675,7 +7539,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:72",
+   "station": "desk:70",
    "spot": null
   },
   {
@@ -7685,7 +7549,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:72",
+   "station": "desk:70",
    "spot": null
   },
   {
@@ -7695,7 +7559,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:73",
+   "station": "desk:71",
    "spot": null
   },
   {
@@ -7705,7 +7569,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:73",
+   "station": "desk:71",
    "spot": null
   },
   {
@@ -7715,7 +7579,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:73",
+   "station": "desk:71",
    "spot": null
   },
   {
@@ -7725,7 +7589,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:74",
+   "station": "desk:72",
    "spot": null
   },
   {
@@ -7735,7 +7599,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:74",
+   "station": "desk:72",
    "spot": null
   },
   {
@@ -7745,7 +7609,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:74",
+   "station": "desk:72",
    "spot": null
   },
   {
@@ -7755,7 +7619,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:75",
+   "station": "desk:73",
    "spot": null
   },
   {
@@ -7765,7 +7629,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:75",
+   "station": "desk:73",
    "spot": null
   },
   {
@@ -7775,7 +7639,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:75",
+   "station": "desk:73",
    "spot": null
   },
   {
@@ -7785,7 +7649,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:76",
+   "station": "desk:74",
    "spot": null
   },
   {
@@ -7795,7 +7659,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:76",
+   "station": "desk:74",
    "spot": null
   },
   {
@@ -7805,7 +7669,7 @@
    "rot": 0,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:76",
+   "station": "desk:74",
    "spot": null
   },
   {
@@ -7815,7 +7679,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:77",
+   "station": "desk:75",
    "spot": null
   },
   {
@@ -7825,7 +7689,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:77",
+   "station": "desk:75",
    "spot": null
   },
   {
@@ -7835,7 +7699,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:77",
+   "station": "desk:75",
    "spot": null
   },
   {
@@ -7845,7 +7709,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:78",
+   "station": "desk:76",
    "spot": null
   },
   {
@@ -7855,7 +7719,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:78",
+   "station": "desk:76",
    "spot": null
   },
   {
@@ -7865,7 +7729,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:78",
+   "station": "desk:76",
    "spot": null
   },
   {
@@ -7875,7 +7739,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:79",
+   "station": "desk:77",
    "spot": null
   },
   {
@@ -7885,7 +7749,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:79",
+   "station": "desk:77",
    "spot": null
   },
   {
@@ -7895,7 +7759,7 @@
    "rot": 3.141592653589793,
    "y": 0.76,
    "variant": 0,
-   "station": "desk:79",
+   "station": "desk:77",
    "spot": null
   },
   {

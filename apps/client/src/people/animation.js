@@ -1,4 +1,5 @@
-import { TAU, angDiff } from '@office/shared';
+import * as THREE from 'three';
+import { ARMS, TAU, angDiff } from '@office/shared';
 import { isLocalPlayer, player } from '../player/player.js';
 import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
@@ -138,14 +139,52 @@ function applyPose(p, dt) {
   b.hips.position.y = hip / b.unit; b.spine.rotation.x = c.lean;
   arm(b.armL, hold?.L, c.lShX, c.lShZ, c.lEl, 1);
   arm(b.armR, hold?.R, c.rShX, c.rShZ, c.rEl, -1);
+  aimHands(p, b); // hands on what they reach for or carry: each arm points at its own place on the item and stretches to touch it
   b.legL.rotation.x = c.lHip; b.legR.rotation.x = c.rHip;
   b.neck.rotation.set(c.headX, c.headY, 0);
   for (const it of b.items) if (it.visible !== !!hold) it.visible = !!hold;
 }
 // One-piece arm: the shoulder takes part of the elbow bend. While carrying a pack item, use the pack's pose for it.
 function arm(node, held, shX, shZ, el, side) {
+  node.scale.set(1, 1, 1); // (aimHands may have stretched it last frame)
   if (held?.pose) node.rotation.set(held.pose.x ?? 0, 0, -(held.pose.z ?? 0) * side);
   else node.rotation.set((shX + el * ARM_BEND) * (held ? held.swing : 1), 0, shZ);
 }
 
-export { applyPose };
+// Hands on things. The rig's arms are one stiff piece, so to put a hand on a place the arm turns to point at it and is stretched or shortened
+// (a little: it is a blocky character) until the hand is there. `target` is a world point, `arm` the shoulder joint and `hand` the joint at the
+// end of it. Reaching for something: both hands go to it, a little apart. Carrying: each hand goes to its own place on the item (the page works
+// those out: render/objects.js), so a TV is held at its two sides and a chair by two places on it, not floated in front with the arms down.
+const _t = new THREE.Vector3(), _q = new THREE.Quaternion(), _L = new THREE.Vector3(), _R = new THREE.Vector3(), DOWN = new THREE.Vector3(0, -1, 0);
+const STRETCH = [ARMS.stretchMin, ARMS.stretchMax]; // how much shorter or longer than its own length an arm may be drawn (shared: the grip is chosen within it)
+function aimArm(arm, hand, target) {
+  const parent = arm?.parent; if (!parent || !hand) return;
+  parent.updateWorldMatrix(true, false);
+  _t.copy(target); parent.worldToLocal(_t); _t.sub(arm.position);
+  const len = _t.length(), own = Math.abs(hand.position.y);
+  if (len < 1e-4 || own < 1e-4) return;
+  arm.quaternion.copy(_q.setFromUnitVectors(DOWN, _t.divideScalar(len)));
+  arm.scale.set(1, Math.max(STRETCH[0], Math.min(STRETCH[1], len / own)), 1);
+}
+function aimHands(p, b) {
+  if (!b.handL || !b.handR) return;
+  const reach = p.reachTo && performance.now() - p.reachTo.t < REACH_MS ? p.reachTo : null;
+  if (reach) {
+    const s = Math.sin(p.face), c = Math.cos(p.face), w = .1; // (left of them is +x of their own frame: (cos, -sin))
+    aimArm(b.armL, b.handL, _L.set(reach.x + c * w, reach.y, reach.z - s * w));
+    aimArm(b.armR, b.handR, _R.set(reach.x - c * w, reach.y, reach.z + s * w));
+  } else if (p.carrying) {
+    if (p.carryL) aimArm(b.armL, b.handL, p.carryL);
+    if (p.carryR) aimArm(b.armR, b.handR, p.carryR);
+  }
+}
+
+/** How far each drawn hand is from the place it should be on what it holds (m), or null when there is none: for checks that the hands really stick. */
+function handErrors(p) {
+  const b = p.body; if (!b?.handL || !p.carrying) return null;
+  b.root.updateMatrixWorld(true);
+  const at = (node, t) => (t ? node.getWorldPosition(_t).distanceTo(_R.set(t.x, t.y, t.z)) : null);
+  return { left: at(b.handL, p.carryL), right: at(b.handR, p.carryR) };
+}
+
+export { applyPose, handErrors };

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
+import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, gripPair, gripSpots, holderCount, inReach, movability, nearestGrip, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
 import { camera, scene } from '../render/renderer.js';
-import { ghostOf, highlightItem, itemAt, shownAt } from '../render/objects.js';
+import { ghostOf, highlightItem, itemAt, shownAt, showGrips } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
@@ -64,18 +64,33 @@ function putTarget(p, held) {
   return { x: p.pos.x + dx, z: p.pos.z + dz, rot: yawOf(held) };
 }
 
+/**
+ * The dots that show where hands would go on this item: blue where the hands will take hold (the grip spots nearest where you aim), orange
+ * where they will not: the point you aim at when it is no place to hold (a flat face), or all of them when it is out of reach.
+ */
+let lastDots = { key: '', list: null };
+function gripDots(o, at, reachable) {
+  const key = `${o.index}|${reachable}|${Math.round(at.x * 25)}|${Math.round(at.y * 25)}|${Math.round(at.z * 25)}`;
+  if (lastDots.key === key) return lastDots.list;
+  const p = player.person, pair = gripPair(o, p, at, carryOf(o.type) === 'one-hand');
+  const list = [pair.right, ...(pair.left ? [pair.left] : [])].map(g => ({ x: g.x, y: g.y, z: g.z, good: reachable }));
+  if (reachable && !gripSpots(o).some(g => Math.hypot(g.x - at.x, g.y - at.y, g.z - at.z) < .1)) list.push({ x: at.x, y: at.y, z: at.z, good: false });
+  lastDots = { key, list };
+  return list;
+}
+
 function refresh() {
   const p = player.person, on = !!p && ctl.active;
   const held = on ? carriedBy(p.id) : undefined;
   state.candidate = null; state.target = null; state.problem = null;
   if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; hideGhost(); hideArc(); }
-  if (!on) { setPrompt('', false); highlightItem(null); return; }
+  if (!on) { setPrompt('', false); highlightItem(null); showGrips(null); return; }
   if (held) {
     const t = putTarget(p, held);
     state.target = t;
     state.problem = !inReach(p, t.x, t.z) ? 'too-far' : placementProblem(held, t.x, t.z, t.rot);
     showGhost(held, t, !state.problem);
-    highlightItem(null);
+    highlightItem(null); showGrips(null);
     const name = labelOf(held);
     if (state.throwing) { hideGhost(); showArc(); setPrompt(`Throwing the ${name}: look up to lob it, level to throw it straight  ·  wheel: how hard  ·  let go of the right button  ·  Esc calls it off`, false); }
     else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
@@ -84,6 +99,9 @@ function refresh() {
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
   state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
   highlightItem(state.candidate); // (the thing G would take hold of: outlined on this page only)
+  if (state.candidate) showGrips(gripDots(state.candidate, state.grip, true));
+  else if (state.far) showGrips(gripDots(state.far, nearestGrip(state.far, p), false));
+  else showGrips(null);
   if (state.candidate) setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (G)` : `Pick up the ${labelOf(state.candidate)}  (G)`, true);
   else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }

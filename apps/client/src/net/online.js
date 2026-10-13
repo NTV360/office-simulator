@@ -4,8 +4,9 @@ import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
 import { initObjectControls, tickObjectControls } from './objects.js';
-import { predictCarried } from '../render/objects.js';
+import { predictCarried, resetCarriedObjects } from '../render/objects.js';
 import { updateCarriedObjects } from '../render/objects.js';
+import { showDeskBeacon } from '../render/deskMarks.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
@@ -150,6 +151,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     live.mode = 'sim'; // (the copy of the server's clock mode: the next welcome says)
     player.person = null; player.sitting = null; player.moving = false;
     if (player.controlling) setView('free');
+    resetCarriedObjects();
     chat.setActive(false);
     showWho();
   }
@@ -161,7 +163,15 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     if (box) {
       let info = document.getElementById('deskInfo');
       if (!info) { info = document.createElement('span'); info.id = 'deskInfo'; box.insertBefore(info, box.children[1] ?? null); }
-      info.textContent = !me ? '' : me.slot ? me.slot.place : 'Guest · no desk yet';
+      info.textContent = !me ? '' : me.slot ? (me.slot.label ?? me.slot.place) : 'Guest · no desk yet'; // (the seat itself: Desk E7, not just the island)
+      let find = document.getElementById('myDeskBtn');
+      if (!find) {
+        find = document.createElement('button'); find.id = 'myDeskBtn'; find.textContent = 'My desk';
+        find.title = "Where's my desk? A beam of light shows it, for you alone";
+        find.addEventListener('click', () => { const mine = net.you !== null ? mirror.people.get(net.you) : null; if (mine?.slot) showDeskBeacon(mine.slot); });
+        box.insertBefore(find, document.getElementById('characterBtn'));
+      }
+      find.hidden = !me?.slot;
     }
     let note = document.getElementById('guestNote');
     const guest = !!me && !me.slot;

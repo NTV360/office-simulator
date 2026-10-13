@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  ARMS, CATALOGUE, DRAG_FROM, STRENGTH, dragOf, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
+  ARMS, CATALOGUE, COOPERATIVE, DRAG_FROM, STRENGTH, dragOf, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents, movementIntent, opposedMotion, oppositionContinues,
   type Hold, type Placing, type Quat, type WorldObject,
 } from '@office/shared';
 import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics';
@@ -25,7 +25,7 @@ const LIFT = .002;
  * long (s), before it slips off; how fast the hands follow the person turning round, and how fast the thing turns when they turn it in their
  * hands (rad/s: a flick of the mouse does not fling it out of their hands).
  */
-const HAND = { stiff: 12, turn: 10, slip: .6, slipAfter: .5, follow: 3, twist: 2.5, fastest: 3 } as const;
+const HAND = { stiff: 12, turn: 10, slip: COOPERATIVE.leash, slipAfter: .5, follow: 3, twist: 2.5, fastest: 3 } as const;
 /** Where things are carried: hands this high, this far in front (m), reached from where they were taken in about a second (gently: a mug on a chair stays on). */
 /** (`hug`: the closest anything is held, against the chest, where two hands bear the most, about 38 kg: the plan's "over 35 kg, not alone") */
 const CARRY = { y: 1.0, out: { oneHand: .38, twoHands: .45 }, hug: .16, ease: 1.2, clear: .25, highest: 1.5 } as const;
@@ -62,7 +62,7 @@ function slerp(a: Quat, b: Quat, t: number): Quat {
 }
 /** A hand as it is now: which way it is round the person (it follows their turning, not faster than it can), the turn it holds the thing at
  *  (following theirs the same way), where it was last tick and how fast it goes, and how long it has been too far from its grip. */
-type HandNow = { face: number; turn: Quat; at: V | null; v: V; away: number };
+type HandNow = { face: number; turn: Quat; at: V | null; v: V; away: number; opposed: number; clear: number };
 
 function turnBetween(from: Quat, to: Quat): V {
   let [x, y, z, w] = mulQuat(to, [-from[0], -from[1], -from[2], from[3]]);
@@ -155,7 +155,7 @@ export class ItemPhysics {
     const p = people.find(q => q.id === h.person);
     if (!p) return;
     let n = this.hands.get(h);
-    if (!n) { n = { face: p.face, turn: [...h.turn] as Quat, at: null, v: { x: 0, y: 0, z: 0 }, away: 0 }; this.hands.set(h, n); }
+    if (!n) { n = { face: p.face, turn: [...h.turn] as Quat, at: null, v: { x: 0, y: 0, z: 0 }, away: 0, opposed: 0, clear: 0 }; this.hands.set(h, n); }
     const da = Math.atan2(Math.sin(p.face - n.face), Math.cos(p.face - n.face)), most = HAND.follow * dt;
     n.face += Math.max(-most, Math.min(most, da));
     const off = between(n.turn, h.turn);
@@ -251,6 +251,7 @@ export class ItemPhysics {
     const b = this.physics.body(o.index);
     if (!b) return;
     const t = b.translation(), r = b.rotation(), q: Quat = [r.x, r.y, r.z, r.w];
+    const velocity = b.linvel();
     if (o.placing) {
       o.placing.t += dt;
       const there = Math.hypot(t.x - o.placing.x, t.y - o.placing.y - LIFT, t.z - o.placing.z) < PLACE.near && between(q, yawQuat(o.placing.rot)) < PLACE.turn;
@@ -258,13 +259,33 @@ export class ItemPhysics {
       return;
     }
     // (a hand slips off only when it has been too far from its grip for a moment: a bump or a quick turn does not knock it out of their hands)
+    const primary = o.holds.find(h => h.person === o.carriedBy);
+    const primaryIntent = primary ? movementIntent(primary.person) : null;
+    // Once the movement system has published intent, a stationary primary is authoritative too:
+    // do not resurrect stale rigid-body velocity as a travel direction.
+    const travel = primaryIntent ?? { x: velocity.x, z: velocity.z };
     const kept = o.holds.filter(h => {
       const hand = this.handOf(h), n = this.hands.get(h);
       if (!hand) return false;
       const g0 = rotate(q, h.at), far = Math.hypot(hand.x - t.x - g0.x, hand.y - t.y - g0.y, hand.z - t.z - g0.z) > HAND.slip;
       if (!n) return !far;
       n.away = far ? n.away + dt : 0;
-      return n.away <= HAND.slipAfter;
+      // A helper who deliberately walks against the object's travel gets a short grace period,
+      // then lets go. The primary holder is governed by the ordinary leash so one stubborn helper
+      // cannot drop the whole object.
+      const helperIntent = movementIntent(h.person);
+      const helperMotion = helperIntent ?? { x: 0, z: 0 };
+      const active = n.opposed > 0;
+      const against = o.holds.length > 1 && h.person !== o.carriedBy
+        && (active ? oppositionContinues(helperMotion, travel) : opposedMotion(helperMotion, travel));
+      if (against) {
+        n.opposed += dt;
+        n.clear = 0;
+      } else {
+        n.clear += dt;
+        if (n.clear >= COOPERATIVE.opposeClear) n.opposed = 0;
+      }
+      return n.away <= HAND.slipAfter && n.opposed <= COOPERATIVE.opposeAfter;
     });
     if (kept.length === o.holds.length) return;
     if (!kept.length) { letGo(o); return; }

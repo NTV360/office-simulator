@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { S, closestPointOnItem, objects, people, simEvents } from '@office/shared';
+import { S, carryOf, closestPointOnItem, fromItemFrame, gripPair, gripsToLocal, nearestGrip, objects, people, regripPair, simEvents } from '@office/shared';
 import { M } from './materials.js';
 import { scene } from './renderer.js';
 import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
@@ -103,6 +103,24 @@ const carried = new Map(); // object index -> the object, for those in somebody'
 const carrierOf = new Map(); // object index -> the ids of the people holding it
 const scratch = new THREE.Matrix4();
 
+function clearPersonCarry(p) {
+  p.carrying = false; p.carryAt = null; p.carryL = p.carryR = null; p.carryGrips = null;
+}
+
+/** Clear presentation-only carry state when a session or person disappears without a final object snapshot. */
+export function resetCarriedObjects(personId = null) {
+  for (const [index, holders] of carrierOf) {
+    const next = personId === null ? [] : holders.filter(id => id !== personId);
+    if (next.length) carrierOf.set(index, next);
+    else { carrierOf.delete(index); carried.delete(index); clearRotationPhase(index); }
+  }
+  for (const o of objects.all()) {
+    const c = shown.get(o.index);
+    if (c) c.mine = null;
+  }
+  for (const p of people) if (personId === null || p.id === personId) clearPersonCarry(p);
+}
+
 function allocate(kind, capacity) {
   for (const p of kind.parts) {
     const old = p.mesh;
@@ -158,7 +176,14 @@ function add(o) {
 // a new page) is just put there.
 const shown = new Map();
 const gliding = new Set();
+// Turning leads regripping: a short, slightly stepped orientation phase leaves the old hand
+// targets in place before they are replaced and settled. This avoids the perfectly smooth,
+// simultaneous spin-and-snap that made large objects look weightless.
+const rotationPhases = new Map();
+const clearRotationPhase = index => rotationPhases.delete(index);
 const UP = new THREE.Vector3(0, 1, 0), GLIDE = 18, JUMP = 1.5;
+const ROTATE_LEAD_MS = 180;
+const REGRIP_AFTER_MS = 260;
 const poseOf = (o, pos, q) => { pos.set(o.x, o.y, o.z); return o.q ? q.set(o.q[0], o.q[1], o.q[2], o.q[3]) : q.setFromAxisAngle(UP, o.rot); };
 function writeShown(index) {
   const s = slotOf.get(index), c = shown.get(index);
@@ -174,7 +199,14 @@ function glideTo(o) {
   if (!c) { c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; shown.set(o.index, c); poseOf(o, c.pos, c.q); writeShown(o.index); return; }
   poseOf(o, want, wantQ);
   // (nothing is gliding things along: offline, where nothing calls updateCarriedObjects. Put it there)
-  if (c.pos.distanceTo(want) > JUMP || performance.now() - lastGlide > 200) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(o.index); writeShown(o.index); return; }
+  if (c.pos.distanceTo(want) > JUMP || performance.now() - lastGlide > 200) {
+    c.pos.copy(want); c.q.copy(wantQ); clearRotationPhase(o.index); gliding.delete(o.index); writeShown(o.index); return;
+  }
+  if (o.carriedBy !== null && c.q.angleTo(wantQ) > .015) {
+    const phase = rotationPhases.get(o.index);
+    if (!phase) rotationPhases.set(o.index, { started: performance.now(), target: wantQ.clone() });
+    else phase.target.copy(wantQ);
+  }
   gliding.add(o.index);
 }
 let lastGlide = -Infinity;
@@ -183,12 +215,16 @@ let lastGlide = -Infinity;
 export function initObjectViews() {
   for (const o of objects.all()) add(o);
   for (const o of objects.all()) { const c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; poseOf(o, c.pos, c.q); shown.set(o.index, c); }
+  simEvents.on('personRemoved', p => resetCarriedObjects(p.id));
   simEvents.on('objectMoved', o => {
     if (!slotOf.has(o.index)) return;
     // (everyone holding it holds their arms out to it; whoever has let go puts them down)
     const now = o.carriedBy === null ? [] : [o.carriedBy, ...o.helpers];
-    for (const id of carrierOf.get(o.index) ?? []) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; } }
-    if (now.length) { carried.set(o.index, o); carrierOf.set(o.index, now); } else { carried.delete(o.index); carrierOf.delete(o.index); }
+    const previous = carrierOf.get(o.index) ?? [];
+    const holderSetChanged = previous.length !== now.length || previous.some(id => !now.includes(id));
+    for (const id of previous) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; q.carryL = q.carryR = null; q.carryGrips = null; } }
+    if (holderSetChanged) clearRotationPhase(o.index);
+    if (now.length) { carried.set(o.index, o); carrierOf.set(o.index, now); } else { carried.delete(o.index); carrierOf.delete(o.index); clearRotationPhase(o.index); }
     const c = shown.get(o.index);
     if (c && c.mine && !(now.length && carrierFrame(o))) { c.mine = null; gliding.add(o.index); return; } // (out of your hands: it glides on from where it is drawn)
     if (now.length && carrierFrame(o)) return; // (yours: drawn with you, every frame)
@@ -209,6 +245,12 @@ const rel = new THREE.Vector3();
 // ahead of them and back)
 function carriedWant(o, f) {
   poseOf(o, want, wantQ);
+  const c = shown.get(o.index);
+  if (c && c.q.angleTo(wantQ) > .015) {
+    const phase = rotationPhases.get(o.index);
+    if (!phase) rotationPhases.set(o.index, { started: performance.now(), target: wantQ.clone() });
+    else phase.target.copy(wantQ);
+  }
   rel.set(want.x - f.serverX, want.y, want.z - f.serverZ);
   want.set(f.x + rel.x, rel.y, f.z + rel.z);
 }
@@ -226,7 +268,14 @@ export function updateCarriedObjects(dt = 1 / 60) {
     carriedWant(o, f);
     if (!c.mine) { c.mine = new THREE.Vector3().subVectors(c.pos, { x: f.x, y: 0, z: f.z }); }
     c.mine.lerp(rel, k); // (the offset from you glides; you do not: so it is never left behind)
-    c.pos.set(f.x + c.mine.x, c.mine.y, f.z + c.mine.z); c.q.slerp(wantQ, k);
+    c.pos.set(f.x + c.mine.x, c.mine.y, f.z + c.mine.z);
+    const phase = rotationPhases.get(o.index);
+    if (phase) {
+      const elapsed = performance.now() - phase.started;
+      const lead = Math.min(1, Math.max(0, (elapsed - ROTATE_LEAD_MS) / 260));
+      if (elapsed >= ROTATE_LEAD_MS) c.q.slerp(phase.target, Math.max(.02, Math.round(lead * 8) / 8));
+      if (lead >= 1 && c.q.angleTo(wantQ) < .01) rotationPhases.delete(o.index);
+    } else c.q.slerp(wantQ, k);
     gliding.delete(o.index);
     writeShown(o.index);
   }
@@ -234,8 +283,21 @@ export function updateCarriedObjects(dt = 1 / 60) {
     const o = objects.at(index), c = shown.get(index);
     if (!o || !c) { gliding.delete(index); continue; }
     poseOf(o, want, wantQ);
-    c.pos.lerp(want, k); c.q.slerp(wantQ, k);
-    if (c.pos.distanceToSquared(want) < 1e-8 && c.q.angleTo(wantQ) < 1e-4) { c.pos.copy(want); c.q.copy(wantQ); gliding.delete(index); }
+    const phase = rotationPhases.get(index);
+    if (phase && o.carriedBy !== null) {
+      const elapsed = performance.now() - phase.started;
+      const lead = Math.min(1, Math.max(0, (elapsed - ROTATE_LEAD_MS) / 260));
+      // Quantise only the interpolation amount, not the final pose: the eye sees small hand-made
+      // steps while the object still arrives continuously and never snaps.
+      const stepped = Math.round(lead * 8) / 8;
+      if (elapsed >= ROTATE_LEAD_MS) c.q.slerp(phase.target, Math.max(.02, stepped));
+      if (elapsed < ROTATE_LEAD_MS) c.pos.lerp(want, k);
+      else c.pos.lerp(want, k * .8);
+      if (lead >= 1 && c.q.angleTo(wantQ) < .01) rotationPhases.delete(index);
+    } else {
+      c.pos.lerp(want, k); c.q.slerp(wantQ, k);
+    }
+    if (c.pos.distanceToSquared(want) < 1e-8 && c.q.angleTo(wantQ) < 1e-4) { c.pos.copy(want); c.q.copy(wantQ); rotationPhases.delete(index); gliding.delete(index); }
     writeShown(index);
   }
   if (rimOn) placeRim();
@@ -247,6 +309,28 @@ export function updateCarriedObjects(dt = 1 / 60) {
     const c = shown.get(o.index), dx = c ? c.pos.x - o.x : 0, dy = c ? c.pos.y - o.y : 0, dz = c ? c.pos.z - o.z : 0;
     const at = closestPointOnItem(o, { x: p.pos.x - dx, y: 1.1 - dy, z: p.pos.z - dz });
     p.carryAt = { x: at.x + dx, y: at.y + dy, z: at.z + dz };
+    // each hand on one of the item's grip spots (a rim, an edge, a rail: never the middle of a flat face), kept in the item's own frame so the
+    // hands go where the item goes. Picked when it is picked up and again when it has settled in the hands; after that, while the item is
+    // turned and raised in the hands, checked a few times a second: while the grip is still a sensible one (each hand within reach of its own
+    // shoulder, the left one on the left) it stays, and when it is not (a chair turned right over) they take a better one. The hands glide.
+    const one = carryOf(o.type) === 'one-hand', now = performance.now();
+    let g = p.carryGrips;
+    if (!g || g.index !== o.index) {
+      g = p.carryGrips = { index: o.index, t0: now, check: now + 700, refined: false, ...gripsToLocal(o, gripPair(o, p, nearestGrip(o, p), one)), sl: null, sr: null };
+    } else if (now >= g.check) {
+      const phase = rotationPhases.get(o.index);
+      // Rotation leads: retain the old local grips until the item has visibly started turning.
+      if (!phase || now - phase.started >= REGRIP_AFTER_MS) {
+        const w = g.refined ? regripPair(o, p, one, g) : gripPair(o, p, nearestGrip(o, p), one); // (once settled: the first pick again, now it is where it is carried)
+        g.refined = true; g.check = now + 120;
+        Object.assign(g, gripsToLocal(o, w));
+      } else g.check = now + 60;
+    }
+    const world = l => { const w = fromItemFrame(o, l); return { x: w.x + dx, y: w.y + dy, z: w.z + dz }; };
+    const wl = g.left ? world(g.left) : null, wr = world(g.right), k2 = 1 - Math.exp(-dt * 18);
+    const glide = (cur, to) => (!to ? null : !cur ? to : { x: cur.x + (to.x - cur.x) * k2, y: cur.y + (to.y - cur.y) * k2, z: cur.z + (to.z - cur.z) * k2 });
+    g.sl = glide(g.sl, wl); g.sr = glide(g.sr, wr);
+    p.carryL = g.sl; p.carryR = g.sr;
   }
 }
 
@@ -278,6 +362,25 @@ const RIM = 1.06, rimScale = new THREE.Vector3(RIM, RIM, RIM);
 function placeRim() {
   const c = rimOn && shown.get(rimOn.index);
   if (c) { rimOn.group.matrix.compose(c.pos, c.q, rimScale); rimOn.group.matrixWorldNeedsUpdate = true; }
+}
+
+/**
+ * Grip markers: small dots, drawn over everything, on the places a hand would take hold of the thing you are looking at. Blue is a good
+ * place (the hands will go there), orange is a bad one (the spot you aim at is a flat face, or the thing is out of reach). `list` is
+ * [{ x, y, z, good }], at most three; `null` takes them away. On this page alone.
+ */
+const gripMats = { good: new THREE.MeshBasicMaterial({ color: 0x2f8cff, depthTest: false, transparent: true, opacity: .95 }), bad: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false, transparent: true, opacity: .95 }) };
+let gripDots = null;
+export function showGrips(list) {
+  if (!gripDots) {
+    const geo = new THREE.SphereGeometry(.035, 14, 10);
+    gripDots = Array.from({ length: 3 }, () => { const m = new THREE.Mesh(geo, gripMats.good); m.renderOrder = 6; m.visible = false; m.frustumCulled = false; scene.add(m); return m; });
+  }
+  gripDots.forEach((m, i) => {
+    const g = list?.[i];
+    if (!g) { if (m.visible) m.visible = false; return; }
+    m.position.set(g.x, g.y, g.z); m.material = g.good ? gripMats.good : gripMats.bad; m.visible = true;
+  });
 }
 
 /**

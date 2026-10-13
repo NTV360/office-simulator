@@ -110,7 +110,7 @@ describe('saving and restoring the world', () => {
     const saved = viaJson();
     saved.deskOrder = saved.deskOrder.slice(0, 10);
     restoreWorld(parseSavedWorld(saved));
-    expect(viaJson().deskOrder).toHaveLength(80);
+    expect(viaJson().deskOrder).toHaveLength(78);
   });
 });
 

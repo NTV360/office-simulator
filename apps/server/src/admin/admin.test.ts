@@ -73,7 +73,7 @@ describe('who may use the admin API', () => {
 
 describe('changing settings', () => {
   it('reports the current settings', async () => {
-    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 80, speed: 1, paused: false, tickRate: 20, clockMode: 'sim', attendance: false });
+    expect(await (await call('GET', '/api/admin/settings')).json()).toEqual({ slots: 40, maxSlots: 78, speed: 1, paused: false, tickRate: 20, clockMode: 'sim', attendance: false });
   });
 
   it('slots cannot fabricate employees outside the authoritative roster', async () => {

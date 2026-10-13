@@ -1,6 +1,6 @@
 import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
-import { initDay, initGrid, initState, lockLayoutCheck, objects, refreshFootprint, setFixedTops } from '@office/shared';
+import { initDay, initGrid, initState, lockLayoutCheck, objects, refreshFootprint, roster, setFixedTops } from '@office/shared';
 import { OBS, TOPS } from './world/helpers.js';
 import { flushLaterObjects } from './world/objects.js';
 import { initLabels } from './render/labels.js';
@@ -75,6 +75,8 @@ export function bootstrap({ simulate = true } = {}) {
   initPlayer();
   initPeopleGroup();
   initPeopleViews(); // before the simulation creates anyone, so each new person gets a body
+  // Offline there is no server to ask for the staff: the scripted checks hand over a roster (window.__OFFICE_ROSTER__); without one the office is empty.
+  if (simulate && Array.isArray(window.__OFFICE_ROSTER__)) { roster.list = window.__OFFICE_ROSTER__; roster.status = 'ready'; }
   if (simulate) { initState(); initDay(); } // online, the server's people arrive in a message instead
   // input and UI
   initCamera();

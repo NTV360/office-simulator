@@ -6,7 +6,7 @@ import { walkPx } from '../nav/grid';
 import { setSeed } from '../util';
 import { initDay } from './day';
 import {
-  RUN_SPEED, SEAT_REACH, WALK_SPEED, isSeated, nearestSeat, sanitizeInput, seatOK, sit, stand, stepAllDriven, stepDriven, type DrivenInput,
+  RUN_SPEED, SEAT_REACH, WALK_SPEED, clearMovementIntent, isSeated, movementIntent, nearestSeat, sanitizeInput, seatOK, sit, stand, stepAllDriven, stepDriven, type DrivenInput,
 } from './driven';
 import { initGrid } from '../nav/grid';
 import { goDo } from './tasks';
@@ -341,6 +341,41 @@ describe('everyone a human drives', () => {
     expect(at(ai)).toEqual(aiAt); // not driven by a human: untouched here
     expect(a.pos.x).toBeGreaterThan(aiAt.x - 100);
     expect(a.walkPhase).toBeGreaterThan(0);
+  });
+
+  it('publishes zero intent for turn-only, missing, and stale input, never a stale walk direction', () => {
+    const g = makeGuest(1, 'g');
+    const inputs = new Map<number, DrivenInput>([[g.id, input({ mx: 0, mz: 0, heading: 1, tick: 0 })]]);
+    stepAllDriven(inputs, DT, 0);
+    expect(movementIntent(g.id)).toEqual({ x: 0, z: 0 });
+
+    inputs.clear();
+    stepAllDriven(inputs, DT, 1);
+    expect(movementIntent(g.id)).toEqual({ x: 0, z: 0 });
+
+    inputs.set(g.id, input({ mx: 1, mz: 0, tick: 0 }));
+    stepAllDriven(inputs, DT, 99);
+    expect(movementIntent(g.id)).toEqual({ x: 0, z: 0 });
+    clearMovementIntent(g.id);
+    expect(movementIntent(g.id)).toBeNull();
+  });
+
+  it('ordinary walking publishes its requested direction without a second movement vector', () => {
+    const g = makeGuest(1, 'g');
+    for (const p of people) if (p !== g) p.state = 'away';
+    const start = at(g);
+    const inputs = new Map<number, DrivenInput>([[g.id, input({ mx: 1, mz: 0, tick: 0 })]]);
+    stepAllDriven(inputs, DT, 0);
+    expect(movementIntent(g.id)).toEqual({ x: 1, z: 0 });
+    expect(Math.hypot(g.pos.x - start.x, g.pos.z - start.z)).toBeCloseTo(WALK_SPEED * DT, 9);
+  });
+
+  it('resetting the simulation clears movement intent before person ids are reused', () => {
+    const g = makeGuest(1, 'g');
+    stepAllDriven(new Map([[g.id, input({ mx: 1, mz: 0, tick: 0 })]]), DT, 0);
+    expect(movementIntent(g.id)).toEqual({ x: 1, z: 0 });
+    resetSim();
+    expect(movementIntent(g.id)).toBeNull();
   });
 
   it('a human-driven person never gets a task from the simulation over a long stretch of time', () => {

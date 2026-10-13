@@ -35,4 +35,23 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .a-panel td { background: #f7f9fb; }
 .a-pw { font-size: 15px; padding: 2px 8px; background: #fffbe0; border: 1px dashed #c9b84a; border-radius: 6px; user-select: all; }
 .a-scroll { max-height: 70vh; overflow: auto; }
+body.admin.admin-dark { background: #111820; color: #e7edf2; }
+body.admin.admin-dark .a-card { background: #1b2530; box-shadow: 0 2px 14px rgba(0, 0, 0, .28); }
+body.admin.admin-dark .a-card p, body.admin.admin-dark .a-stats, body.admin.admin-dark .a-login label, body.admin.admin-dark .a-field { color: #aebdca; }
+body.admin.admin-dark .a-card input[type=text], body.admin.admin-dark .a-card input[type=password], body.admin.admin-dark .a-card textarea, body.admin.admin-dark .a-card select, body.admin.admin-dark .a-search { color: #e7edf2; background: #121a22; border-color: #465563; }
+body.admin.admin-dark .a-btn { color: #e7edf2; background: #273440; border-color: #526271; }
+body.admin.admin-dark .a-btn:hover { background: #334452; }
+body.admin.admin-dark .a-btn.primary { background: #e7edf2; color: #17212a; border-color: #e7edf2; }
+body.admin.admin-dark .a-btn.primary:hover { background: #fff; }
+body.admin.admin-dark .a-table th { color: #b9c7d2; background: #1b2530; border-color: #465563; }
+body.admin.admin-dark .a-table td { border-color: #30404d; }
+body.admin.admin-dark .a-table tr.off td { color: #748390; }
+body.admin.admin-dark .a-chip { background: #30404d; color: #d5e0e8; }
+body.admin.admin-dark .a-chip.on { background: #1f5634; color: #c6f0d2; }
+body.admin.admin-dark .a-chip.warn { background: #604814; color: #ffe3a1; }
+body.admin.admin-dark .a-chip.bad { background: #642d28; color: #ffc8c0; }
+body.admin.admin-dark .a-panel td { background: #202d38; }
+body.admin.admin-dark .a-pw { background: #514b1d; border-color: #92882f; color: #fff3a5; }
+body.admin.admin-dark .a-note { color: #ff9d8e; }
+body.admin.admin-dark .a-ok { color: #8cdda1; }
 @media (max-width: 720px) { .a-table .hide-s { display: none; } }

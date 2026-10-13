@@ -6,6 +6,10 @@ import { player, spawnPlayer } from '../player/player.js';
 import { $ } from '../ui/dom.js';
 import { select } from '../ui/person.js';
 
+// The first-person field of view, in degrees from the top of the screen to the bottom (what Three.js calls fov). 90 is about 120 degrees
+// across a 16:9 screen; it was 68 (about 100 across). Wider sees more of the room but bends the edges.
+const FP_FOV = 90;
+
 /* ================= First person ================= */
 // Camera at the player's eyes. Movement, sitting and input are shared with third person (src/player).
 let eye = 1.6;
@@ -17,7 +21,7 @@ function enterFP() {
   beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit' });
   ctl.pitchMin = -1.2; ctl.pitchMax = 1.2;
   eye = eyeHeight(p.body, player.sitting?.hipY);
-  camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
+  camera.fov = FP_FOV; camera.near = .05; camera.updateProjectionMatrix();
   p.body.root.visible = false; // you can't see your own head
   $('crosshair').hidden = false;
 }

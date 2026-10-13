@@ -13,16 +13,16 @@ const landing = (type: string, power: number, pitch: number) => {
 };
 
 describe('throwing', () => {
-  it('a chair thrown hard, looking up a little, goes in an arc several metres: a few tables away', () => {
+  it('a chair thrown hard, looking up a little, goes in a long arc: from one end of the office to the other (table A to table E is about 13 m)', () => {
     const { far, top, end } = landing('chair-wood', 1, .5);
     expect(end.y).toBe(0);
-    expect(far).toBeGreaterThan(4.5); expect(far).toBeLessThan(9);
+    expect(far).toBeGreaterThan(12); expect(far).toBeLessThan(18);
     expect(top).toBeGreaterThan(1.8); // (an arc: well above where it left the hands)
   });
 
   it('looking level throws it straight and low; looking up lobs it high', () => {
     const level = landing('chair-wood', 1, 0), lob = landing('chair-wood', 1, .9);
-    expect(level.top).toBeLessThan(1.5);
+    expect(level.top).toBeLessThan(2.2); // (it leaves a little above where you look, so it is not flat, but it does not climb)
     expect(lob.top).toBeGreaterThan(level.top + 1);
   });
 
@@ -30,8 +30,8 @@ describe('throwing', () => {
     expect(landing('chair-wood', 1, .5).far).toBeGreaterThan(landing('chair-wood', .3, .5).far + 1);
     const mug = throwVelocity(of('mug'), 1, 0, 0), chair = throwVelocity(of('chair-wood'), 1, 0, 0);
     expect(Math.hypot(mug.vx, mug.vy, mug.vz)).toBeCloseTo(THROW.fastest, 3);
-    expect(Math.hypot(chair.vx, chair.vy, chair.vz)).toBeLessThan(9);
-    expect(landing('mug', 1, .5).far).toBeGreaterThan(landing('chair-wood', 1, .5).far * 2);
+    expect(Math.hypot(chair.vx, chair.vy, chair.vz)).toBeLessThan(14);
+    expect(landing('mug', 1, .5).far).toBeGreaterThan(landing('chair-wood', 1, .5).far * 1.5);
   });
 
   it('goes the way you look', () => {

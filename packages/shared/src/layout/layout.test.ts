@@ -25,12 +25,12 @@ describe('the office layout data', () => {
   it('has the recorded shape', () => {
     const kinds: Record<string, number> = {};
     for (const s of officeLayout.spots) kinds[s.kind] = (kinds[s.kind] || 0) + 1;
-    expect(kinds).toEqual({ desk: 80, whiteboard: 6, conf: 16, lounge: 12, bar: 4, booth: 4, dining: 18, golf: 1, darts: 2, piano: 1, guitar: 1, counter: 2, sink: 2, snack: 1, bucket: 1, storage: 2, locker: 4, exit: 1 });
+    expect(kinds).toEqual({ desk: 78, whiteboard: 6, conf: 16, lounge: 12, bar: 4, booth: 4, dining: 18, golf: 1, darts: 2, piano: 1, guitar: 1, counter: 2, sink: 2, snack: 1, bucket: 1, storage: 2, locker: 4, exit: 1 });
     expect(officeLayout.obstacles).toHaveLength(75); // (113 before 38 pieces of furniture became items: they block where they stand instead)
   });
   it('rebuilds the same spots with the same ids, in the same order', () => {
     expect(interactables.all().map(s => s.id)).toEqual(officeLayout.spots.map(s => s.id));
-    expect(interactables.of('desk')).toHaveLength(80); // islands A to H and the HR office
+    expect(interactables.of('desk')).toHaveLength(78); // islands A to H and the HR office
     expect(interactables.of('music')).toHaveLength(2); // piano and guitar share a group
     expect(interactables.conf(1).length + interactables.conf(2).length + interactables.conf(3).length).toBe(16);
   });

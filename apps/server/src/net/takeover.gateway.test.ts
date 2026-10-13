@@ -40,12 +40,17 @@ const isLeave = (m: Message): m is Extract<Message, { type: 'leave' }> => m.type
 
 type SlotRow = { spot: string; status: string; account: { username: string } | null; person: string };
 const freeDesks = async (): Promise<string[]> => ((await admin('GET', '/api/admin/slots')).body as SlotRow[]).filter(s => s.status === 'unclaimed').map(s => s.spot);
+/** The free desk of the employee named like this account (the seats follow the employees, so the first free desk is nobody in particular). */
+const deskOfEmployee = async (name: string): Promise<string> => {
+  const wanted = name[0].toUpperCase() + name.slice(1) + ' Employee';
+  return ((await admin('GET', '/api/admin/slots')).body as SlotRow[]).find(s => s.status === 'unclaimed' && s.person === wanted)!.spot;
+};
 const deskOf = new Map<string, string>();
 
 /** Register an account and give it a free desk through the admin API (the office seats its people at random desks, so ask which are free). */
 async function playerWithDesk(name: string, _hint?: string) {
   const cookie = await sessionFor(base, name);
-  const [desk] = await freeDesks();
+  const desk = await deskOfEmployee(name);
   const r = await admin('POST', `/api/admin/users/${accountId(name)}/assign-slot`, { spot: desk });
   expect(r.status, JSON.stringify(r.body)).toBe(201);
   deskOf.set(name, desk);
@@ -145,7 +150,7 @@ describe('a player with no desk yet', () => {
     const cookie = await sessionFor(base, 'ivy');
     const c = client(); await c.ready; hello(c, await ticketFor(base, cookie));
     const guestId = (await welcomeOf(c)).you;
-    const r = await admin('POST', `/api/admin/users/${accountId('ivy')}/assign-slot`, { spot: (await freeDesks())[0] });
+    const r = await admin('POST', `/api/admin/users/${accountId('ivy')}/assign-slot`, { spot: await deskOfEmployee('ivy') });
     expect(r.status).toBe(201);
     expect((await c.waitFor(isKick)).reason).toMatch(/your desk was assigned/);
     const again = client(); await again.ready; hello(again, await ticketFor(base, cookie));
@@ -221,12 +226,12 @@ describe('the admin endpoints', () => {
     const slotsNow = (await admin('GET', '/api/admin/slots')).body as SlotRow[];
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, {})).status).toBe(400);
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'chair:1' })).status).toBe(400);
-    expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'desk:80' })).status).toBe(400); // (there are 80 desks, 0 to 79)
+    expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: 'desk:78' })).status).toBe(400); // (there are 78 desks, 0 to 77)
     const [free1, free2] = await freeDesks();
     expect((await admin('POST', `/api/admin/users/99999/assign-slot`, { spot: free1 })).status).toBe(404);
     expect((await admin('POST', `/api/admin/users/abc/assign-slot`, { spot: free1 })).status).toBe(400);
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: deskOf.get('dana') })).status).toBe(409); // dana's
-    const empty = Array.from({ length: 80 }, (_, i) => 'desk:' + i).find(d => !(slotsNow.some(s => s.spot === d)))!;
+    const empty = Array.from({ length: 78 }, (_, i) => 'desk:' + i).find(d => !(slotsNow.some(s => s.spot === d)))!;
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: empty })).status).toBe(409); // nobody sits there
     expect((await admin('POST', `/api/admin/users/${id}/release-slot`)).status).toBe(400); // has no desk
     expect((await admin('POST', `/api/admin/users/${id}/assign-slot`, { spot: free1 })).status).toBe(201);

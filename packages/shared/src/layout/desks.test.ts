@@ -11,13 +11,15 @@ beforeEach(() => { resetSim(); loadLayout(officeLayout); });
 const desks = () => interactables.of('desk');
 
 describe('the desk data', () => {
-  it('has 80 seats: 8 at A, B, C, E and F, 10 at D, 12 at G and H, 6 in the HR office', () => {
+  it('has 78 seats: 8 at A, B, C, D, E and F, 12 at G and H, 6 in the HR office', () => {
     const count = (id: string) => deskSeats().filter(s => s.island.id === id).length;
-    expect(DESK_ISLANDS.map(i => [i.id, count(i.id)])).toEqual([['A', 8], ['B', 8], ['C', 8], ['D', 10], ['E', 8], ['F', 8], ['G', 12], ['H', 12], ['HR', 6]]);
-    expect(deskSeats()).toHaveLength(80);
+    expect(DESK_ISLANDS.map(i => [i.id, count(i.id)])).toEqual([['A', 8], ['B', 8], ['C', 8], ['D', 8], ['E', 8], ['F', 8], ['G', 12], ['H', 12], ['HR', 6]]);
+    expect(deskSeats()).toHaveLength(78);
   });
-  it('seat ids are the island and a number, with the top row numbered first', () => {
-    expect(deskSeats().slice(0, 9).map(s => s.id)).toEqual(['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'B1']);
+  it('seat ids are the island and a number, numbered round the island like the real desks (HR keeps plain rows)', () => {
+    // The facing rows are numbered around the island: 1-4 on the far side right to left, then 5-8 on the near side left to right.
+    expect(deskSeats().slice(0, 9).map(s => s.id)).toEqual(['A4', 'A3', 'A2', 'A1', 'A5', 'A6', 'A7', 'A8', 'B4']);
+    expect(deskSeats().filter(s => s.island.id === 'HR').map(s => s.id)).toEqual(['HR1', 'HR2', 'HR3', 'HR4', 'HR5', 'HR6']);
     expect(deskSeat('HR2')?.label).toBe('HR Office · desk 2');
     expect(deskSeat('A3')?.label).toBe('Desk A3');
     expect(deskSeat('Z9')).toBeNull();

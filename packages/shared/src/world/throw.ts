@@ -7,11 +7,11 @@ import type { WorldObject } from './objects';
 // throw it straight. The air pushes back on fast things (½ ρ Cd A v²). See docs/ITEMS-PHYSICS-PLAN.md, section 9.
 
 /**
- * `energy`: the most a full throw puts in (J; about a strong two-handed heave: a 6 kg chair leaves at 7 m/s and lands 5 to 7 m away);
+ * `energy`: the most a full throw puts in (J; a hard two-handed heave: a 6 kg chair leaves at 13 m/s, and looked at a little above level it lands 12 to 15 m away, about from one desk island to the next but three);
  * `least`: what even a flick puts in (J); `fastest`: the fastest anything leaves the hand (m/s, a hard overarm throw); `lift`: how far above
  * where they look it goes (rad); `low`, `high`: the flattest and steepest it can be thrown (rad).
  */
-export const THROW = { energy: 160, least: 6, fastest: 18, lift: .12, low: -.6, high: 1.3 } as const;
+export const THROW = { energy: 520, least: 6, fastest: 18, lift: .3, low: -.6, high: 1.3 } as const;
 /** Air density (kg/m³). */
 export const AIR = 1.2;
 /** Gravity (m/s²). */

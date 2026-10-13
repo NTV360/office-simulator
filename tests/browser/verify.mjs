@@ -12,10 +12,12 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adminCreate, adminJson, collectErrors, freePort, openPage, personOf, sitDownSomewhere, sleep, startSite, walkTo } from './site.mjs';
+import { adminCreate, adminJson, collectErrors, freePort, openPage, personOf, rosterFile, sitDownSomewhere, sleep, startSite, walkTo } from './site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const goldenDir = path.join(root, 'tests/browser/golden');
+// The recordings hold real employee names, so they are made from the local roster snapshot and stay on this PC (git-ignored).
+const goldenDir = path.join(root, 'tests/browser/golden-local');
+const rosterSize = fs.existsSync(rosterFile) ? JSON.parse(fs.readFileSync(rosterFile, 'utf8')).length : 0;
 const outDir = path.join(root, 'tests/browser/out');
 const record = process.argv.includes('--record');
 const screenshotOf = (page, name) => page.screenshot({ path: path.join(outDir, name) }).catch(() => {});
@@ -76,6 +78,7 @@ const site = await startSite();
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 try {
   console.log(`${record ? 'Recording' : 'Verifying'} the simulation under seeds ${SEEDS.join(', ')} at steps ${CHECKPOINTS.join(', ')}\n`);
+  if (!fs.existsSync(rosterFile)) { console.log('  FAIL  no roster snapshot at ' + path.relative(root, rosterFile) + ': run npm run snapshot:roster (it needs npm run dev:online to have imported the employees)'); process.exit(1); }
   fs.mkdirSync(goldenDir, { recursive: true });
 
   // the committed layout data (what the server loads) must equal what the client's own furniture code builds
@@ -232,15 +235,21 @@ try {
     await sp.keyboard.press('Escape'); await sleep(300);
     ok((await ev(() => window.__sim.viewId())) === 'free' && (await ev(() => !window.__sim.ctl.active)), 'Escape leaves third person');
 
-    // the staff slider adds and removes people
+    // the staff slider removes people and brings the same real employees back (it never makes anyone up)
     const counts = await ev(() => {
-      const s = document.getElementById('staff'), n0 = window.__sim.people.filter(p => p.controller === "ai" && p.slot).length;
+      const ai = () => window.__sim.people.filter(p => p.controller === 'ai' && p.slot);
+      const s = document.getElementById('staff'), n0 = ai().length;
       s.value = 46; s.dispatchEvent(new Event('input', { bubbles: true }));
-      const n1 = window.__sim.people.filter(p => p.controller === "ai" && p.slot).length;
+      const n1 = ai().length, kept = new Set(ai().map(p => p.userId));
       s.value = 40; s.dispatchEvent(new Event('input', { bubbles: true }));
-      return [n0, n1, window.__sim.people.filter(p => p.controller === "ai" && p.slot).length, window.__sim.people.includes(window.__sim.player.person)];
+      const n2 = ai().length;
+      s.value = n0; s.dispatchEvent(new Event('input', { bubbles: true }));
+      const roster = new Set(window.__OFFICE_ROSTER__.map(e => e.userId));
+      const real = ai().every(p => p.userId && roster.has(p.userId));
+      return [n0, n1, n2, ai().length, real, window.__sim.people.includes(window.__sim.player.person), kept.size];
     });
-    ok(counts[0] === 40 && counts[1] === 46 && counts[2] === 40 && counts[3] === true, 'the staff slider adds and removes staff and leaves the player alone (' + counts.join(' to ') + ')');
+    // (everyone who has a desk: some employees may have none, so the start is the roster or a little under it, and it comes back to that)
+    ok(counts[0] > 46 && counts[0] <= rosterSize && counts[1] === 46 && counts[2] === 40 && counts[3] === counts[0] && counts[4] === true && counts[5] === true, 'the staff slider removes and restores real employees and leaves the player alone (' + counts.join(', ') + ')');
 
     // the search box: type part of a name, pick the match, the camera follows them and their card opens
     await ev(() => { const S = window.__sim; let n = 0; while (S.people[0].state === 'away' && n < 5000) { S.advance(50); n += 50; } });

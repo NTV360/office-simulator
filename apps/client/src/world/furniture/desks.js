@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DESK_ISLANDS, S, SEAT_GAP, seededRandom, wx, wz } from '@office/shared';
+import { DESK_ISLANDS, S, SEAT_GAP, seatNumber, seededRandom, wx, wz } from '@office/shared';
 import { M } from '../../render/materials.js';
 import { SCREENS, registerScreen } from '../../render/screens.js';
 import { N, SO, mkSpot } from './basics.js';
@@ -13,7 +13,6 @@ let seatCounter = 0; // numbers the chairs across all islands: the seed for what
 // seat id ('A3') and, for the HR office, the department it belongs to.
 function island(def, gap = SEAT_GAP) {
   const { name, cols, sides } = def, [x1, y1, x2, y2] = def.rect;
-  let seatNo = 0;
   addObs(x1, y1, x2, y2);
   const cx = wx((x1 + x2) / 2), cz = wz((y1 + y2) / 2), w = (x2 - x1) * S, d = (y2 - y1) * S;
   box(staticRoot, w, .04, d, M.deskTop, cx, .74, cz);
@@ -29,7 +28,8 @@ function island(def, gap = SEAT_GAP) {
       const px = x1 + (i + .5) * cw, py = top ? y1 - gap : y2 + gap, face = top ? SO : N;
       const spot = mkSpot('desk', px, py, face, { sit: true, place: name, shared: false });
       spot.index = ++seatCounter;
-      spot.deskId = def.id + (++seatNo); spot.label = def.room ? `${name} · desk ${seatNo}` : `${name}${seatNo}`; spot.department = def.department ?? null;
+      const seatNo = seatNumber(def, side, i);
+      spot.deskId = def.id + seatNo; spot.label = def.room ? `${name} · desk ${seatNo}` : `${name}${seatNo}`; spot.department = def.department ?? null;
       const alt = (i + (top ? 0 : 1)) % 3 === 0;
       placeObject('chair-office', px, py, face, { variant: alt ? 1 : 0, spot: spot.id, station: spot.id });
       const mz = edge + half - .16;

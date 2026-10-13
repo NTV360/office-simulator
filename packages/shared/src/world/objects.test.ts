@@ -9,7 +9,7 @@ import { simEvents } from '../sim/events';
 import { layoutCheck, applyObjectPose, applyObjectPoses, movedObjectPoses } from '../protocol/convert';
 import { setSeed } from '../util';
 import { CATALOGUE, isMovableType } from './catalogue';
-import { addObject, isAtHome, movedObjects, objects, resetAllObjects, resetObject, setObjectPose } from './objects';
+import { addObject, isAtHome, movedObjects, objects, pickUp, resetAllObjects, resetObject, setObjectPose, syncHolders } from './objects';
 
 beforeEach(() => { simEvents.clear(); resetSim(); loadLayout(officeLayout); });
 
@@ -27,29 +27,29 @@ describe('the catalogue', () => {
 });
 
 describe('the starting objects', () => {
-  it('the office has 446 of them: the chairs, the things on the desks, every desk\'s computer, the furniture, and the kitchen counter\'s things', () => {
+  it('the office has 451 of them: the chairs, the things on the desks, every desk\'s computer, the furniture, and the kitchen counter\'s things', () => {
     const kinds: Record<string, number> = {};
     for (const o of objects.all()) kinds[o.type] = (kinds[o.type] || 0) + 1;
-    expect(objects.count()).toBe(460);
+    expect(objects.count()).toBe(451);
     expect(kinds).toEqual({
-      'chair-office': 100, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 9, 'plant-desk': 4, monitor: 80, keyboard: 80, mouse: 80,
+      'chair-office': 98, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 8, 'plant-desk': 4, monitor: 78, keyboard: 78, mouse: 78,
       sofa: 2, couch: 1, armchair: 4, 'table-coffee': 1, cup: 1, console: 1, 'table-bar': 2, 'table-dining': 6, 'plant-floor': 5,
       credenza: 3, 'cabinet-tall': 2, puck: 4, 'coffee-machine': 1, 'water-jug': 1, toaster: 1, 'cup-small': 4, 'fruit-bowl': 1, bananas: 1, apple: 1, orange: 1,
       'tv-stand': 7, whiteboard: 2, 'piano-stand': 1, piano: 1, 'stool-low': 2, 'guitar-stand': 1,
     });
   });
-  it('the first 162 are the ones there were before furniture became items, in the same order: a world saved before puts its things back on the right ones', () => {
+  it('the first 159 are the ones there were before furniture became items, in the same order: a world saved before puts its things back on the right ones', () => {
     const kinds: Record<string, number> = {};
-    for (const o of objects.all().slice(0, 162)) kinds[o.type] = (kinds[o.type] || 0) + 1;
-    expect(kinds).toEqual({ 'chair-office': 100, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 8, 'plant-desk': 4 });
-    expect(objects.all().slice(162, 402).every(o => ['monitor', 'keyboard', 'mouse'].includes(o.type))).toBe(true);
+    for (const o of objects.all().slice(0, 159)) kinds[o.type] = (kinds[o.type] || 0) + 1;
+    expect(kinds).toEqual({ 'chair-office': 98, 'chair-wood': 18, 'stool-bar': 4, mug: 28, notebook: 7, 'plant-desk': 4 });
+    expect(objects.all().slice(159, 393).every(o => ['monitor', 'keyboard', 'mouse'].includes(o.type))).toBe(true);
   });
   it('ids are obj:0, obj:1... in the order of the layout data, and each knows its place in the list', () => {
     objects.all().forEach((o, i) => { expect(o.id).toBe(`obj:${i}`); expect(o.index).toBe(i); expect(objects.byId(o.id)).toBe(o); expect(objects.at(i)).toBe(o); });
   });
   it('every seat of a kind that has a chair is carried by exactly one chair, at the same place and facing the same way', () => {
     const chairs = objects.all().filter(o => o.spot && /^(chair|stool)/.test(o.type));
-    expect(chairs).toHaveLength(100 + 18 + 4 + 2); // (and the music corner's two stools)
+    expect(chairs).toHaveLength(98 + 18 + 4 + 2); // (and the music corner's two stools)
     // and every lounge seat by its sofa or armchair
     for (const s of interactables.of('lounge')) expect(objects.byId(s.object as string)?.type, s.id).toMatch(/^(sofa|couch|armchair)$/);
     for (const o of chairs) {
@@ -72,7 +72,7 @@ describe('the starting objects', () => {
     const first = JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]));
     loadLayout(officeLayout);
     expect(JSON.stringify(objects.all().map(o => [o.id, o.type, o.x, o.z, o.rot, o.y, o.variant, o.station, o.spot]))).toBe(first);
-    expect(objects.count()).toBe(460); // (loading again does not stack them)
+    expect(objects.count()).toBe(451); // (loading again does not stack them)
   });
   it('they start at home, and carry nobody', () => {
     expect(objects.all().every(isAtHome)).toBe(true);
@@ -83,6 +83,15 @@ describe('the starting objects', () => {
 
 describe('moving an object', () => {
   const chair = () => objects.all().find(o => o.spot === 'desk:5')!;
+
+  it('clears the carrier when the last hold is removed before syncing', () => {
+    const o = chair();
+    o.carriedBy = 7;
+    o.helpers = [8];
+    o.holds = [];
+    syncHolders(o);
+    expect([o.carriedBy, o.helpers]).toEqual([null, []]);
+  });
 
   it('puts it somewhere else, and its seat goes with it: same ids, new place, new facing', () => {
     const o = chair(), seat = interactables.all().find(s => s.id === 'desk:5')!;
@@ -106,6 +115,16 @@ describe('moving an object', () => {
     expect(seat.approach.z - seat.pos.z).toBeCloseTo(dz0, 6);
     setObjectPose(o, o.x, o.z, o.rot + Math.PI / 2); // turned a quarter: the offset turns with it, its length does not change
     expect(Math.hypot(seat.approach.x - seat.pos.x, seat.approach.z - seat.pos.z)).toBeCloseTo(Math.hypot(dx0, dz0), 6);
+  });
+
+  it('resetting or picking up after a release discards the old throw velocity', () => {
+    const o = chair();
+    o.released = { vx: 9, vy: 3, vz: -7 };
+    resetObject(o);
+    expect(o.released).toBeUndefined();
+    o.released = { vx: 4, vy: 2, vz: 1 };
+    expect(() => { const p = { person: 1, at: { x: 0, y: 0, z: 0 }, rel: [0, 0, 0, 1] as [number, number, number, number], turn: [0, 0, 0, 1] as [number, number, number, number], lift: 1, out: .3, az: 0, raise: 0 }; pickUp(o, 1, p); }).not.toThrow();
+    expect(o.released).toBeUndefined();
   });
 
   it('putting it back (or resetting everything) restores the seat exactly', () => {

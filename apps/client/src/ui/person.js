@@ -21,11 +21,11 @@ function statusText(p) {
   if (isLocalPlayer(p)) return 'Controlled by you';
   if (p.toiletUntil) return 'Deploying to the toilet';
   if (p.absent) return 'Not in today';
-  if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? `Sitting at ${p.task.spot?.place || 'a seat'}` : p.moving ? 'Walking around' : 'Standing here';
+  if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? `Sitting at ${p.task.spot?.label ?? p.task.spot?.place ?? 'a seat'}` : p.moving ? 'Walking around' : 'Standing here';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;
   const t = p.task; if (!t) return 'Getting settled';
   const going = p.state === 'walking';
-  const where = t.spot?.place;
+  const where = t.spot?.label ?? t.spot?.place;
   switch (t.kind) {
     case 'work': return going ? `Heading back to ${where}` : p.chatWith ? `Chatting with ${p.chatWith.name.split(' ')[0]} at ${where}` : `${VERB[p.role]} at ${where}`;
     case 'meeting': return going ? `Walking to ${where} for ${t.meeting.topic}` : t.meeting.speaker === p ? `Presenting in ${where} (${t.meeting.topic})` : `In ${t.meeting.topic}, ${where}`;

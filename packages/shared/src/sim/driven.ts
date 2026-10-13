@@ -2,9 +2,13 @@ import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
 import { CATALOGUE, carryOf } from '../world/catalogue';
+import { fromItemFrame } from '../world/arms';
+import { COOPERATIVE, followDisplacement } from '../world/cooperative';
 import { carriedBy, holderCount, seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
+import { clearMovementIntent, movementIntent, setMovementIntent } from './movement-intent';
+export { clearMovementIntent, movementIntent } from './movement-intent';
 import type { Person } from './types';
 
 // Moving and sitting a person a human drives. The browser sends inputs (which way, how fast, which way it faces) and asks to
@@ -33,6 +37,7 @@ const DEAD_ZONE = 0.08;
 const MAX_SUBSTEP = 0.25;
 /** How long an input is believed with no newer one, in seconds. */
 export const INPUT_STALE_SECONDS = 0.25;
+
 /** The seat's own furniture stands in the way of the last stretch; a wall must not be anywhere before it. */
 const SEAT_MARGIN = 0.6;
 
@@ -178,10 +183,52 @@ export function stepDriven(p: Person, input: DrivenInput | null, dt: number, tic
 }
 
 /** Everyone a human is driving gets one tick of movement, from the inputs `inputs` holds for them (keyed by person id). */
+/**
+ * Give a lagging cooperative carrier a small, collision-checked nudge toward the grip it is
+ * holding. This is deliberately a grid movement, not a teleport or a physics body impulse.
+ */
+export function followCooperativeCarry(p: Person, others: readonly Person[] = people, allowCorrection = false): number {
+  if (!allowCorrection) return 0;
+  const o = carriedBy(p.id);
+  if (!o || o.holds.length < 2 || p.state === 'away' || isSeated(p)) return 0;
+  const h = o.holds.find(q => q.person === p.id);
+  if (!h) return 0;
+  const grip = fromItemFrame(o, h.at);
+  const a = p.face + h.az;
+  const hand = { x: p.pos.x + Math.sin(a) * h.out, z: p.pos.z + Math.cos(a) * h.out };
+  const n = followDisplacement(
+    { x: hand.x, y: h.lift, z: hand.z },
+    grip,
+    COOPERATIVE.followStep,
+  );
+  if (n.x === 0 && n.z === 0) return 0;
+  // A soft-follow correction must never use the ordinary person-separation nudge to push a
+  // carrier into somebody else. Reject that correction entirely; the normal leash then has
+  // a chance to break the hold instead of leaving overlapping players at a wall.
+  const targetX = p.pos.x + n.x, targetZ = p.pos.z + n.z;
+  if (others.some(q => q !== p && q.state !== 'away'
+    && Math.hypot(targetX - q.pos.x, targetZ - q.pos.z) < .42)) return 0;
+  const ox = p.pos.x, oz = p.pos.z;
+  const moved = stepPlayer(p, n.x, n.z, others, false);
+  // Soft-follow is all-or-nothing: sliding against a wall is not a valid correction.
+  if (Math.abs(p.pos.x - ox - n.x) > 1e-9 || Math.abs(p.pos.z - oz - n.z) > 1e-9) {
+    p.pos.x = ox; p.pos.z = oz;
+    return 0;
+  }
+  return moved;
+}
+
 export function stepAllDriven(inputs: ReadonlyMap<number, DrivenInput>, dt: number, tick: number): void {
   const staleTicks = Math.max(2, Math.ceil(INPUT_STALE_SECONDS / dt)); // a quarter of a second, whatever the tick rate
   for (const p of people) {
     if (p.controller !== 'account') continue;
-    stepDriven(p, inputs.get(p.id) ?? null, dt, tick, people, staleTicks);
+    const current = inputs.get(p.id) ?? null;
+    stepDriven(p, current, dt, tick, people, staleTicks);
+    const live = current !== null && tick - current.tick >= 0 && tick - current.tick <= staleTicks;
+    const moving = live && Math.hypot(current!.mx, current!.mz) > DEAD_ZONE;
+    setMovementIntent(p.id, moving ? { x: current!.mx, z: current!.mz } : { x: 0, z: 0 });
+    // A turn-only live input permits a gentle leash correction; normal walking must not
+    // silently add a second movement vector to the player's requested walk.
+    followCooperativeCarry(p, people, live && !moving);
   }
 }

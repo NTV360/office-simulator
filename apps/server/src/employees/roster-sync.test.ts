@@ -138,11 +138,11 @@ describe('keeping the office in line with the list', () => {
   it('more employees than desks: the ones who fit come in, and the rest wait (the other HR desks are for HR only)', () => {
     const many = Array.from({ length: 90 }, (_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' }));
     fresh(many);
-    expect(staff().length).toBe(74 + 3); // the 74 ordinary desks and the 3 HR desks the 3 HR staff fill
+    expect(staff().length).toBe(72 + 3); // the 72 ordinary desks and the 3 HR desks the 3 HR staff fill
     expect(interactables.of('desk').filter(d => !d.owner).every(d => d.department === 'Human Resources')).toBe(true);
     const result = syncRoster(many.map((_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' })));
-    expect(result.assigned).toBe(74 + 3);
-    expect(result.unassigned).toBe(13);
-    expect(result.unassignedUserIds).toHaveLength(13);
+    expect(result.assigned).toBe(72 + 3);
+    expect(result.unassigned).toBe(15);
+    expect(result.unassignedUserIds).toHaveLength(15);
   });
 });

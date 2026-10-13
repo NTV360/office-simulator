@@ -5,3 +5,8 @@ tests/browser/out/
 .env.*
 !.env.example
 backups/
+
+# real employee names: the roster snapshot and the golden recordings made from it stay on the PC (see scripts/snapshot-roster.mjs)
+tests/fixtures/roster.local.json
+tests/browser/golden-local/
+tests/fixtures/accounts.local.csv

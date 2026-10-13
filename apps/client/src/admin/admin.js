@@ -44,6 +44,11 @@ function download(name, text) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 const when = d => (d ? new Date(d).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'never');
+const setDarkMode = dark => {
+  document.body.classList.toggle('admin-dark', dark);
+  try { localStorage.setItem('officeAdminDark', dark ? '1' : '0'); } catch { /* storage may be blocked */ }
+};
+try { setDarkMode(localStorage.getItem('officeAdminDark') === '1'); } catch { /* use light mode */ }
 
 // ---------------------------------------------------------------- login
 function showLogin(note = '') {
@@ -86,8 +91,8 @@ async function load() {
   movedObjects = mo.status === 200 ? mo.body : null;
   return null;
 }
-/** A desk by name: its island and its number, e.g. "Table B · seat 9" (every desk gets a different one). */
-const deskLabel = s => `${s.place.charAt(0).toUpperCase()}${s.place.slice(1)} · seat ${s.spot.split(":")[1]}`;
+/** A desk by its real seat name: "Desk B3" (the seat painted on the desk), not the internal number. */
+const deskLabel = s => SEATS[Number(s.spot.split(':')[1])]?.label ?? `${s.place.charAt(0).toUpperCase()}${s.place.slice(1)} · seat ${s.spot.split(':')[1]}`;
 const slotOf = spot => slots.find(s => s.spot === spot);
 const freeDesks = () => slots.filter(s => s.status === 'unclaimed');
 
@@ -108,6 +113,7 @@ function showMain() {
   statsHost = el('span', { class: 'a-stats', id: 'adminStats' });
   tableHost = el('div', { id: 'adminAccounts' });
   const refresh = el('button', { type: 'button', class: 'a-btn', id: 'adminRefresh', onclick: async () => { await reload(); } }, 'Refresh');
+  const theme = el('button', { type: 'button', class: 'a-btn', id: 'adminTheme', onclick: () => setDarkMode(!document.body.classList.contains('admin-dark')) }, 'Dark mode');
   const logout = el('button', { type: 'button', class: 'a-btn', id: 'adminLogout', onclick: () => { remember(''); ui.panel.clear(); ui.picked.clear(); accounts = []; audit = []; showLogin(); } }, 'Log out');
   bulkResult = el('div', { id: 'bulkResult' });
   auditHost = el('div', { id: 'adminAudit' });
@@ -115,7 +121,7 @@ function showMain() {
   staffHost = el('section', { class: 'a-card', id: 'adminStaff' });
   objectsHost = el('section', { class: 'a-card', id: 'adminObjects' });
   app.replaceChildren(
-    el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, refresh, logout),
+    el('div', { class: 'a-top' }, el('h1', {}, 'Office Floor Sim · Admin'), statsHost, theme, refresh, logout),
     officeHost,
     staffHost,
     objectsHost,

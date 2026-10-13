@@ -27,10 +27,10 @@ describe('readWorldOptions', () => {
 describe('World', () => {
   it('builds only roster employees and never more than the roster or compatible desks', () => {
     const w = new World({ ...base, slotCount: 12 }); w.init();
-    expect(w.status()).toMatchObject({ staff: 12, desks: 80, tick: 0 });
+    expect(w.status()).toMatchObject({ staff: 12, desks: 78, tick: 0 });
     roster.list = [...rosterFor(74), ...Array.from({ length: 6 }, (_, i) => employee(`hr-${i + 1}`, 'Human Resources'))];
     const many = new World({ ...base, slotCount: 500 }); many.init();
-    expect(many.status().staff).toBe(80);
+    expect(many.status().staff).toBe(78); // (80 employees, 78 desks: the 72 ordinary ones and the 6 HR ones)
     expect(people.filter(hasSlot).every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
   });
 
