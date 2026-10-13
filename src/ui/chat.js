@@ -60,7 +60,7 @@ function send(e) {
 }
 
 // ----- moving the panel: drag it by its header; this browser remembers where. Double-click the header to put
-// it back in the corner. Not on narrow screens, where the panel spans the width.
+// it back in the bottom-right corner. Not on narrow screens, where the panel spans the width.
 const narrow = () => matchMedia('(max-width:760px)').matches;
 function placePanel(x, y) {
   const el = $('chatPanel'), w = el.offsetWidth, h = el.offsetHeight;
@@ -68,11 +68,19 @@ function placePanel(x, y) {
   Object.assign(el.style, { left: left + 'px', top: top + 'px', right: 'auto', bottom: 'auto' });
   return { x: left, y: top };
 }
-function resetPanel() { Object.assign($('chatPanel').style, { left: '', top: '', right: '', bottom: '' }); try { localStorage.removeItem(POS_KEY); } catch (_) {} }
+// The default spot: the bottom-right corner, lifted above the dock only when they would overlap.
+function cornerPanel() {
+  const el = $('chatPanel'); Object.assign(el.style, { left: '', top: '', right: '', bottom: '' });
+  if (narrow()) return;
+  const dock = $('dock').getBoundingClientRect(), right = innerWidth - 16, left = right - el.offsetWidth;
+  const clash = dock.width > 0 && left < dock.right && right > dock.left; // a hidden dock has no size
+  el.style.bottom = clash ? `${Math.round(innerHeight - dock.top + 10)}px` : '16px';
+}
+function resetPanel() { try { localStorage.removeItem(POS_KEY); } catch (_) {} cornerPanel(); }
 function restorePanel() {
-  if (narrow()) { Object.assign($('chatPanel').style, { left: '', top: '', right: '', bottom: '' }); return; }
   let pos = null; try { pos = JSON.parse(localStorage.getItem(POS_KEY)); } catch (_) {}
-  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) placePanel(pos.x, pos.y);
+  if (!narrow() && pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) placePanel(pos.x, pos.y);
+  else cornerPanel();
 }
 function initDrag() {
   const head = $('chatPanel').querySelector('.chat-head');
