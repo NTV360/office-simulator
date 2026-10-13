@@ -10,8 +10,18 @@ import { $ } from './dom.js';
 let selected = null;
 const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }));
 
+// The card sits in the bottom-left corner, lifted above the dock only when they would overlap.
+// (Phones: the stylesheet places it.)
+function placeCard() {
+  const card = $('person'); card.style.bottom = '';
+  if (card.hidden || matchMedia('(max-width:760px)').matches) return;
+  const dock = $('dock').getBoundingClientRect(), r = card.getBoundingClientRect();
+  const clash = dock.width > 0 && r.left < dock.right && r.right > dock.left; // a hidden dock has no size
+  card.style.bottom = clash ? `${Math.round(innerHeight - dock.top + 10)}px` : '16px';
+}
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
+  placeCard();
   if (p) fillAvatar($('pAvatar'), { name: p.name, photo: p.photo, color: p.spec.top.color });
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
@@ -72,6 +82,7 @@ function initPerson() {
   scene.add(selRing);
   $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
+  addEventListener('resize', placeCard);
   $('pEdit').onclick = () => { if (selected?.userId) openCreator(selected.userId); };
 }
 
