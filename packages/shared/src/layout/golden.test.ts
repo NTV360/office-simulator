@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { roster, type Employee } from '../sim/roster';
 import { initDay } from '../sim/day';
 import { interactables } from '../sim/interactables';
 import { hasSlot } from '../sim/person';
@@ -10,8 +11,14 @@ import { drawCount, setSeed } from '../util';
 import { loadLayout } from './layout';
 import { officeLayout } from './office';
 
-// The browser's recorded fingerprints (tests/browser/golden) are the truth for "what the simulation does". The server
-// runs the same code on the same layout data, so for the same seed it must reproduce them exactly.
+// The browser's recorded fingerprints (tests/browser/golden-local) are the truth for "what the simulation does". The server
+// runs the same code on the same layout data, so for the same seed it must reproduce them exactly. Employees come from the
+// external roster snapshot; there is no synthetic fallback roster.
+const rosterFile = path.resolve(__dirname, '../../../../tests/fixtures/roster.local.json');
+const goldenFile = (seed: number) => path.resolve(__dirname, `../../../../tests/browser/golden-local/seed-${seed}.json`);
+// Real employee snapshots are local-only and may no longer match the current Supabase roster. Run this optional check with
+// OFFICE_GOLDEN_LOCAL=1 after recording both files from the same roster snapshot; never make production tests depend on them.
+const available = (seed: number) => process.env.OFFICE_GOLDEN_LOCAL === '1' && fs.existsSync(rosterFile) && fs.existsSync(goldenFile(seed));
 
 const r3 = (v: number) => (Math.round(v * 1000) / 1000) || 0; // (|| 0: JSON cannot store -0)
 const spotIndex = (sp: { kind: string } | undefined | null) => (sp ? `${sp.kind}:${interactables.of(sp.kind).indexOf(sp as never)}` : '');
@@ -29,13 +36,16 @@ function persons() {
   }));
 }
 
-describe.each([1, 2, 3])('seed %i on the server side matches the browser recording', seed => {
-  const golden = JSON.parse(fs.readFileSync(path.resolve(__dirname, `../../../../tests/browser/golden/seed-${seed}.json`), 'utf8'));
+const suite = [1, 2, 3].every(available) ? describe.each([1, 2, 3]) : describe.skip.each([1, 2, 3]);
+suite('seed %i on the server side matches the browser recording', seed => {
+  const golden = available(seed) ? JSON.parse(fs.readFileSync(goldenFile(seed), 'utf8')) : { steps: [], fingerprints: [] };
   const steps: number[] = golden.steps;
   const seen = new Map<number, { persons: ReturnType<typeof persons>; draws: number; t: number; day: number }>();
 
   beforeAll(() => {
     resetSim(); loadLayout(officeLayout);
+    roster.list = JSON.parse(fs.readFileSync(rosterFile, 'utf8')) as Employee[];
+    roster.status = 'ready';
     setSeed(seed); const d0 = drawCount(); initState(); initDay();
     let done = 0;
     for (const cp of steps) {
@@ -43,6 +53,8 @@ describe.each([1, 2, 3])('seed %i on the server side matches the browser recordi
       seen.set(cp, { persons: persons(), draws: drawCount() - d0, t: r3(sim.t), day: sim.day });
     }
     setSeed(null);
+    roster.list = null;
+    roster.status = 'unavailable';
   });
 
   steps.forEach((cp, i) => {

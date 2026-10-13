@@ -73,7 +73,7 @@ function initInput() {
     if (!notched) { pan(-e.deltaX, -e.deltaY); return; }
     zoomAt(clampF(Math.exp(dy * .0005)), e.clientX, e.clientY);
   }, { passive: false });
-  addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; const k = e.key.toLowerCase(); if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); } });
+  addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; const k = e.key.toLowerCase(); if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift', 'control', 'ctrl', 'z', ' ', 'space'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); } });
   addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
   addEventListener('blur', () => keys.clear());
 }

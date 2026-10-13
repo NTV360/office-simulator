@@ -95,6 +95,38 @@ describe('Mirror', () => {
     expect(sawMeeting).toBe(true);
   }, 60000);
 
+  it('applies authoritative mechanics while preserving local input-edge state', () => {
+    connect();
+    const server = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    const client = mirror.people.get(server.id)!;
+    client.mechanics.jumpHeld = true;
+    client.mechanics.proneHeld = true;
+    server.mechanics.posture = 'crouching';
+    server.mechanics.crouchLevel = .6;
+    server.mechanics.grounded = false;
+    server.mechanics.verticalVelocity = 2.5;
+    server.mechanics.health.leftArm = 0;
+    server.mechanics.attack = {
+      kind: 'punch', side: 'left', phase: 'active', sequence: 3,
+      startedAt: 10, releaseAt: 10.2, charge: .5, cooldownUntil: 10.6,
+    };
+    server.mechanics.holdTarget = 'person-2';
+    server.mechanics.heldBy = 'person-1';
+    server.mechanics.struggle = .4;
+    mirror.applySnapshot(decode(bc.snapshot(2)) as Snapshot);
+    expect(client.mechanics.posture).toBe('crouching');
+    expect(client.mechanics.crouchLevel).toBeCloseTo(.6);
+    expect(client.mechanics.grounded).toBe(false);
+    expect(client.mechanics.verticalVelocity).toBeCloseTo(2.5);
+    expect(client.mechanics.health.leftArm).toBe(0);
+    expect(client.mechanics.attack?.sequence).toBe(3);
+    expect(client.mechanics.holdTarget).toBe('person-2');
+    expect(client.mechanics.heldBy).toBe('person-1');
+    expect(client.mechanics.struggle).toBeCloseTo(.4);
+    expect(client.mechanics.jumpHeld).toBe(true);
+    expect(client.mechanics.proneHeld).toBe(true);
+  });
+
   it('props show up as flags the views can read', () => {
     connect();
     const seen = new Set<string>();

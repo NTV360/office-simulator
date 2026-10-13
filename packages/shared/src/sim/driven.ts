@@ -5,6 +5,7 @@ import { CATALOGUE, carryOf } from '../world/catalogue';
 import { carriedBy, holderCount, seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
+import { adjustCrouch, canMove, JUMP, postureSpeedFactor } from './character-state';
 import type { Person } from './types';
 
 // Moving and sitting a person a human drives. The browser sends inputs (which way, how fast, which way it faces) and asks to
@@ -48,6 +49,11 @@ export interface DrivenInput {
   run: boolean;
   /** The server tick it arrived on (set by the server, not the client). */
   tick: number;
+  /** Character posture intents are optional so old clients remain movement-compatible. */
+  crouch?: boolean;
+  crouchWheel?: number;
+  prone?: boolean;
+  jump?: boolean;
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -64,7 +70,12 @@ export function sanitizeInput(raw: unknown, tick: number): DrivenInput | null {
   const len = Math.hypot(mx, mz);
   if (len > 1) { mx /= len; mz /= len; } // never faster than full speed, whatever was sent
   const heading = ((r.heading % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  return { seq: r.seq, mx, mz, heading, run: r.run === true, tick };
+  const out: DrivenInput = { seq: r.seq, mx, mz, heading, run: r.run === true, tick };
+  if (r.crouch === true) out.crouch = true;
+  if (finite(r.crouchWheel) && r.crouchWheel !== 0) out.crouchWheel = r.crouchWheel;
+  if (r.prone === true) out.prone = true;
+  if (r.jump === true) out.jump = true;
+  return out;
 }
 
 // ---- seats
@@ -130,6 +141,12 @@ export function sit(p: Person): boolean {
   spot.occupant = p; // whether the seat is shared or a desk, nobody else sits in it now
   p.pos.x = spot.pos.x; p.pos.z = spot.pos.z;
   p.face = p.faceGoal = spot.face;
+  p.mechanics.posture = 'seated';
+  p.mechanics.seatMode = 'fixed-chair';
+  p.mechanics.seatId = spot.id;
+  p.mechanics.crouchLevel = 0;
+  p.mechanics.grounded = true;
+  p.mechanics.locomotion = 'grid';
   p.task = { kind: 'playerSit', cat: 'work', anim: seatAnim(spot, p), spot, onEnd: putDownProps };
   p.props.pad = !!spot.game; p.props.guitar = spot.kind === 'guitar'; p.props.phone = spot.kind === 'booth'; p.props.mug = spot.kind === 'bar';
   return true;
@@ -143,6 +160,11 @@ export function stand(p: Person): boolean {
   p.pos.x = t.spot.approach.x; p.pos.z = t.spot.approach.z;
   putDownProps(p);
   p.task = null;
+  p.mechanics.posture = 'standing';
+  p.mechanics.seatMode = 'none';
+  p.mechanics.seatId = null;
+  p.mechanics.grounded = true;
+  p.mechanics.locomotion = 'grid';
   return true;
 }
 
@@ -164,10 +186,31 @@ export function stepDriven(p: Person, input: DrivenInput | null, dt: number, tic
     stand(p); // moving gets them out of the chair first
   }
   if (!live) return 0;
+  const mechanics = p.mechanics;
+  if (live.crouch) {
+    mechanics.posture = 'crouching';
+    mechanics.crouchLevel = adjustCrouch(mechanics.crouchLevel, live.crouchWheel ?? 0);
+  } else if (mechanics.posture === 'crouching' && (live.crouchWheel ?? 0) === 0) {
+    mechanics.posture = 'standing'; mechanics.crouchLevel = 0;
+  }
+  if (live.prone && !mechanics.proneHeld) mechanics.posture = mechanics.posture === 'prone' ? 'standing' : 'prone';
+  mechanics.proneHeld = live.prone === true;
+  if (live.jump && !mechanics.jumpHeld && mechanics.grounded && canMove(mechanics) && mechanics.posture !== 'prone') {
+    mechanics.locomotion = 'jump'; mechanics.grounded = false; mechanics.verticalVelocity = JUMP.velocity;
+    mechanics.jumpUntil = tick + Math.ceil(JUMP.duration / Math.max(dt, .001));
+  }
+  mechanics.jumpHeld = live.jump === true;
+  if (mechanics.locomotion === 'jump') {
+    mechanics.verticalVelocity -= 9.8 * dt;
+    if (tick >= mechanics.jumpUntil) {
+      mechanics.locomotion = 'grid'; mechanics.grounded = true; mechanics.verticalVelocity = 0;
+    }
+  }
+  if (!canMove(mechanics)) return 0;
   const len = Math.hypot(live.mx, live.mz);
   if (len <= DEAD_ZONE) { p.face = p.faceGoal = live.heading; return 0; }
   const pace = carryPace(p.id);
-  const speed = (live.run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * Math.min(1, len) * dt;
+  const speed = (live.run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * postureSpeedFactor(mechanics.posture, mechanics.crouchLevel) * Math.min(1, len) * dt;
   // in short steps, so a fast tick cannot jump over a thin wall
   const steps = Math.max(1, Math.ceil(speed / MAX_SUBSTEP));
   let moved = 0;

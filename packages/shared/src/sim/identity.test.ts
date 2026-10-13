@@ -23,7 +23,11 @@ const guest = (account: number): Person => {
     id: allocatePersonId(), name: 'Guest', role: 'Guest', controller: 'account', owner: account, state: 'controlled', shown: true,
     pos: new Vec3(ENTRY.x, 0, ENTRY.z), face: 0, faceGoal: 0, props: { mug: false, phone: false, pad: false, guitar: false, putter: false, bucket: false, rag: false, mop: false },
     task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: 0, animT: 0, pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false,
-    arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0, speed: 1.3, spec: {} as Person['spec'],
+    arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0, speed: 1.3, spec: {} as Person['spec'], mechanics: {
+      posture: 'standing', crouchLevel: 0, seatMode: 'none', seatId: null, locomotion: 'grid', grounded: true,
+      verticalVelocity: 0, jumpUntil: 0, jumpHeld: false, proneHeld: false, knockbackUntil: 0, attack: null, dominantHand: 'right', struggle: 0,
+      health: { head: 40, body: 80, leftArm: 35, rightArm: 35, leftLeg: 45, rightLeg: 45 }, holdTarget: null, heldBy: null, inventoryRevision: 0,
+    },
   } as Person;
   people.push(g);
   return g;

@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  ARMS, CATALOGUE, DRAG_FROM, STRENGTH, dragOf, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setPlacer, shapeOf, simEvents,
+  ARMS, CATALOGUE, DRAG_FROM, STRENGTH, dragOf, carryOf, holdFor, letGo, syncHolders, mulQuat, nearestGrip, objects, people, setObjectPose, setObjectAdded, setPlacer, shapeOf, simEvents,
   type Hold, type Placing, type Quat, type WorldObject,
 } from '@office/shared';
 import { Physics, SUBSTEP, GRAVITY, yawQuat, type StaticShape } from './physics';
@@ -84,6 +84,7 @@ export class ItemPhysics {
   constructor(shapes: readonly StaticShape[]) {
     this.physics = new Physics(shapes);
     for (const o of objects.all()) this.physics.addItem(o, o.q ?? yawQuat(o.rot));
+    setObjectAdded(o => { this.physics.addItem(o, o.q ?? yawQuat(o.rot)); });
     this.stop = simEvents.on('objectMoved', o => this.follow(o));
     setPlacer((o, p) => { o.placing = p; this.physics.setPassThrough(o, true); this.physics.body(o.index)?.wakeUp(); });
   }
@@ -290,5 +291,5 @@ export class ItemPhysics {
     try { setObjectPose(o, x, z, rot, y, q); } finally { this.writing = false; }
   }
 
-  dispose(): void { this.stop(); setPlacer(null); this.physics.free(); }
+  dispose(): void { this.stop(); setPlacer(null); setObjectAdded(null); this.physics.free(); }
 }

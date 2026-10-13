@@ -52,3 +52,8 @@ export * from './sim/persist';
 export * from './sim/takeover';
 export * from './sim/prediction';
 export * from './sim/driven';
+export * from './sim/free-sitting';
+export * from './sim/character-state';
+export * from './sim/combat';
+export * from './sim/character-holds';
+export * from './sim/inventory';

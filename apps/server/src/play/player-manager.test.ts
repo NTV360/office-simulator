@@ -348,6 +348,26 @@ describe('moving and sitting', () => {
     expect(manager.act(ana.id, 'sit', 11)).toBe(true);
   });
 
+  it('posture inputs are sanitized and applied by the authoritative step', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    g.pos.x = 450; g.pos.z = 450;
+    expect(manager.setInput(ana.id, { seq: 1, mx: 0, mz: 0, heading: 0, crouch: true, crouchWheel: 6 }, 0)).toBe(true);
+    manager.stepAll(.05, 1);
+    expect(g.mechanics.posture).toBe('crouching');
+    expect(g.mechanics.crouchLevel).toBeCloseTo(.6);
+    expect(g.mechanics.locomotion).toBe('grid');
+    expect(manager.setInput(ana.id, { seq: 2, mx: 0, mz: 0, heading: 0, crouch: false, prone: true }, 1)).toBe(true);
+    manager.stepAll(.05, 2);
+    expect(g.mechanics.posture).toBe('prone');
+    expect(manager.setInput(ana.id, { seq: 3, mx: 0, mz: 0, heading: 0, prone: false }, 2)).toBe(true);
+    manager.stepAll(.05, 3);
+    expect(manager.setInput(ana.id, { seq: 4, mx: 0, mz: 0, heading: 0, prone: true, jump: true }, 3)).toBe(true);
+    manager.stepAll(.05, 4);
+    expect(g.mechanics.locomotion).toBe('jump');
+    expect(g.mechanics.grounded).toBe(false);
+  });
+
   it('one person is moved by their own input and only theirs, with the grace period keeping them still', async () => {
     const a = await account('ana'), b = await account('bob');
     const ga = await manager.attach(a), gb = await manager.attach(b);

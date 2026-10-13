@@ -94,6 +94,20 @@ describe('Broadcaster', () => {
     expect(asWhole.length - bytes.length, 'what sending them whole would have cost in addition').toBeGreaterThan(s.moves!.length * 25);
   });
 
+  it('a mechanics-only change is sent as a whole record, not a short move', () => {
+    snapshot(2);
+    const p = people.filter(hasSlot).find(q => q.state === 'doing')!;
+    p.pos.x += .5;
+    snapshot(4);
+    p.mechanics.posture = 'crouching';
+    p.mechanics.crouchLevel = .5;
+    p.pos.x += .25;
+    const s = snapshot(6);
+    expect(s.people.some(x => x.id === p.id)).toBe(true);
+    expect(s.people.find(x => x.id === p.id)?.mechanics?.posture).toBe('crouching');
+    expect((s.moves ?? []).some(x => x.id === p.id)).toBe(false);
+  });
+
   it('a change in only the clocked-in or the toilet flag still shows up (they are not position or task changes)', () => {
     snapshot(2);
     const p = people.filter(hasSlot).find(q => q.state === 'doing')!;

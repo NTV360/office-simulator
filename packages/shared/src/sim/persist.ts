@@ -9,6 +9,7 @@ import { newProps } from './props';
 import type { Shift } from './schedule';
 import { counters, deskPool, meetings, people, resetSim, sim } from './state';
 import { movedObjects, objects, resetAllObjects, setObjectPose, type Quat } from '../world/objects';
+import { defaultCharacterMechanics } from './character-state';
 import type { Person } from './types';
 
 // Saving and restoring the world. Only what cannot be recomputed is kept: who is in the office, where they sit and
@@ -53,6 +54,7 @@ export interface SavedPerson {
   absent: boolean;
   /** Out of the building on the toilet run until this time. */
   toiletUntil: number | null;
+  /** Mechanics are session-only until the versioned character save format is finalized. */
 }
 
 /** A world object that is not where it started. (Only these are saved: everything else is at home, which the layout data says.) */
@@ -215,6 +217,7 @@ export function restoreWorld(saved: SavedWorld): void {
       walkPhase: s.walkPhase, animT: 0, pose: {}, arriveAt: s.arriveAt, leaveAt: s.leaveAt, lunchAt: s.lunchAt, hadLunch: s.hadLunch,
       arrivedAt: s.arrivedAt, coffees: s.coffees, chatWith: null, meeting: null, screenKind: s.screenKind, screenVariant: s.screenVariant,
       userId: s.userId, title: s.title, department: s.department, shift: s.shift, shiftStart: s.shiftStart, absent: s.absent, toiletUntil: s.toiletUntil,
+      mechanics: defaultCharacterMechanics(),
     };
     if (s.toiletUntil !== null) p.props.bucket = true; // out on the toilet run: with the one bucket
     if (slot) slot.owner = p;

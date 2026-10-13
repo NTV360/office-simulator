@@ -92,26 +92,36 @@ export function startOnline() {
   const chat = initChat({ send: text => send({ type: 'say', text }), sendEmote: kind => send({ type: 'emote', kind }), personById: id => mirror.people.get(id) });
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
-  let seq = 1, lastSentAt = 0, lastSent = null;
+  let seq = 1, lastSentAt = 0, lastSent = null, lastPosture = null;
   const reconciler = new Reconciler();
   // ?nopredict switches prediction off (the person then moves only when the server says so): for comparing
   const predicting = !new URLSearchParams(location.search).has('nopredict');
   const INPUT_MS = 50, URGENT_MS = 33;
-  function sendInput(mx, mz, heading, run) {
-    if (!net.joined || !Number.isFinite(mx + mz + heading)) return;
+  function sendInput(mx, mz, heading, run, posture = {}) {
+    if (!net.joined || !Number.isFinite(mx + mz + heading)) return false;
     const moving = Math.hypot(mx, mz) > .08;
     const was = lastSent !== null && lastSent.moving;
     const turned = lastSent === null ? true : Math.abs(angDiff(lastSent.heading, heading)) > .03;
-    if (!moving && !was && !turned) return; // standing still and not turning: nothing to say (the server stands you still)
+    // Posture is state, not just an action. In particular, send the all-false state when a key is
+    // released so the server can clear its held edges while the person is standing still.
+    const nextPosture = {
+      crouch: posture.crouch === true,
+      prone: posture.prone === true,
+      jump: posture.jump === true,
+      crouchWheel: Number.isFinite(posture.crouchWheel) ? Math.trunc(posture.crouchWheel) : 0,
+    };
+    const postureChanged = lastPosture === null || Object.keys(nextPosture).some(k => nextPosture[k] !== lastPosture[k]);
+    if (!moving && !was && !turned && !postureChanged) return false; // no movement, turn, or posture transition to report
     const now = performance.now(), since = now - lastSentAt;
     // while moving, repeat every 50 ms so the server keeps believing it (it stops you after a quarter second of silence);
     // starting or stopping is sent at once
-    if (!(since >= INPUT_MS || (moving !== was && since >= URGENT_MS))) return;
-    lastSentAt = now; lastSent = { moving, heading };
+    if (!(since >= INPUT_MS || (moving !== was && since >= URGENT_MS))) return false;
+    lastSentAt = now; lastSent = { moving, heading }; lastPosture = nextPosture;
     const n = seq++;
-    send({ type: 'input', seq: n, mx, mz, heading, run: !!run });
+    send({ type: 'input', seq: n, mx, mz, heading, run: !!run, ...nextPosture });
     const me = player.person;
     if (me) reconciler.record(n, me.pos.x + net.pred.owed.x, me.pos.z + net.pred.owed.z); // where the prediction is when this input goes out (with any correction still being glided in)
+    return true;
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
   initObjectControls({ send });
@@ -251,7 +261,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
         }
         mirror.applyWelcome(msg);
         applyObjectPoses(msg.objects); // chairs and things that are not where they started
-        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastSentAt = 0; reconciler.reset(); net.pred.owed = { x: 0, z: 0 }; // (a new connection numbers its messages from the start)
+        net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastPosture = null; lastSentAt = 0; reconciler.reset(); net.pred.owed = { x: 0, z: 0 }; // (a new connection numbers its messages from the start)
         player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
         reassignOccupants();

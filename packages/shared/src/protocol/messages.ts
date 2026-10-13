@@ -1,11 +1,12 @@
 import type { CharacterSpec } from '../character/spec';
 import type { ScreenKind } from '../sim/data';
 import type { PersonState } from '../sim/types';
+import type { AttackKind, AttackPhase, AttackSide, LocomotionMode, Posture, SeatMode } from '../sim/character-state';
 
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 18;
+export const WIRE_VERSION = 19;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -47,6 +48,25 @@ export interface PersonInfo {
 }
 
 /** The things about a person that change as the simulation runs. Sent in snapshots. */
+export interface PersonMechanicsSnap {
+  posture: Posture;
+  crouchLevel: number;
+  seatMode: SeatMode;
+  seatId: string | null;
+  locomotion: LocomotionMode;
+  grounded: boolean;
+  verticalVelocity: number;
+  jumpUntil: number;
+  knockbackUntil: number;
+  attack: { kind: AttackKind; side: AttackSide; phase: Exclude<AttackPhase, 'idle'>; sequence: number; startedAt: number; releaseAt?: number; charge: number; cooldownUntil: number } | null;
+  dominantHand: AttackSide;
+  struggle: number;
+  health: { head: number; body: number; leftArm: number; rightArm: number; leftLeg: number; rightLeg: number };
+  holdTarget: string | null;
+  heldBy: string | null;
+  inventoryRevision: number;
+}
+
 export interface PersonSnap {
   id: number;
   state: PersonState;
@@ -81,6 +101,8 @@ export interface PersonSnap {
   leaveAt: number;
   /** Coffees today, up to 255. */
   coffees: number;
+  /** Optional for source compatibility with legacy test/tools; wire snapshots always carry it. */
+  mechanics?: PersonMechanicsSnap;
 }
 
 export interface MeetingSnap {
@@ -157,7 +179,10 @@ export interface GameEvent { type: 'event'; kind: EventKind; simTime: number; te
 /** The first thing a client says: its protocol version and the one-time ticket from POST /api/play/ticket. */
 export interface Hello { type: 'hello'; version: number; ticket: string }
 /** What the player wants to do this moment: which way to go (a fraction of full speed, in world x and z), which way to face, run or walk. */
-export interface Input { type: 'input'; seq: number; mx: number; mz: number; heading: number; run: boolean }
+export interface Input {
+  type: 'input'; seq: number; mx: number; mz: number; heading: number; run: boolean;
+  crouch?: boolean; crouchWheel?: number; prone?: boolean; jump?: boolean;
+}
 /** Sit in the nearest seat, or stand up. The server decides whether it is allowed. */
 export type ActKind = 'sit' | 'stand';
 export interface Act { type: 'act'; kind: ActKind }

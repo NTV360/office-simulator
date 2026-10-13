@@ -1,6 +1,6 @@
 import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
-import { FULL_H, LOW_H, RUN_SPEED, WALK_SPEED, angDiff, carryPace, people, stepPlayer } from '@office/shared';
+import { FULL_H, LOW_H, JUMP, RUN_SPEED, WALK_SPEED, adjustCrouch, angDiff, canMove, carryPace, people, postureSpeedFactor, stepPlayer } from '@office/shared';
 import { renderer } from '../render/renderer.js';
 import { $ } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';
@@ -16,6 +16,7 @@ const ctl = {
   stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
   keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
   faceTo: null, // turning to face something before taking hold of it (net/objects.js): the way to turn, or null
+  crouchWheel: 0,
 };
 
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
@@ -119,26 +120,49 @@ function driveOnline(dt, p) {
   if (ctl.faceTo !== null && ctl.mode === 'fp') ctl.yaw += angDiff(ctl.yaw, ctl.faceTo) * (1 - Math.exp(-dt * 14));
   const heading = ctl.mode === 'fp' ? ctl.yaw : (ctl.faceTo !== null ? p.face : len > .08 ? Math.atan2(mx, mz) : p.face);
   const run = keys.has('shift');
+  const crouch = keys.has('control') || keys.has('ctrl');
+  const prone = keys.has('z');
+  const jump = keys.has(' ') || keys.has('space');
   const seat = p.task && p.task.kind === 'playerSit' ? p.task.spot : null;
   if (seat && !player.sitting) { ctl.yaw = seat.face; ctl.pitch = -.12; } // just sat down: look the way the seat faces
   player.sitting = seat;
-  // predict: move now, exactly as the server will (the direction, the speed, in steps no longer than a quarter of a metre)
+  // Predict the same state edges and speed factor as shared stepDriven. The server remains authoritative;
+  // this only makes the local copy respond immediately while the ack reconciler corrects divergence.
+  const mechanics = p.mechanics;
+  if (crouch) {
+    mechanics.posture = 'crouching';
+    mechanics.crouchLevel = adjustCrouch(mechanics.crouchLevel, ctl.crouchWheel);
+  } else if (mechanics.posture === 'crouching' && ctl.crouchWheel === 0) {
+    mechanics.posture = 'standing'; mechanics.crouchLevel = 0;
+  }
+  if (prone && !mechanics.proneHeld) mechanics.posture = mechanics.posture === 'prone' ? 'standing' : 'prone';
+  mechanics.proneHeld = prone;
+  if (jump && !mechanics.jumpHeld && mechanics.grounded && canMove(mechanics) && mechanics.posture !== 'prone') {
+    mechanics.locomotion = 'jump'; mechanics.grounded = false; mechanics.verticalVelocity = JUMP.velocity;
+    mechanics.jumpUntil = (p._predictionTick ?? 0) + Math.ceil(JUMP.duration / Math.max(dt, .001));
+  }
+  mechanics.jumpHeld = jump;
+  p._predictionTick = (p._predictionTick ?? 0) + 1;
+  if (mechanics.locomotion === 'jump' && p._predictionTick >= mechanics.jumpUntil) {
+    mechanics.locomotion = 'grid'; mechanics.grounded = true; mechanics.verticalVelocity = 0;
+  }
   let moved = 0;
   const stick = Math.hypot(mx, mz);
-  // The server walks you in real time; the page limits one frame to 0.05 s (dt). When frames are slow (a busy computer) that would make
-  // the prediction slower than the server, so use the time that really passed, up to a quarter of a second.
+  // The server walks you in real time; use elapsed wall time (up to a quarter second) so a slow frame does not lag behind it.
   const nowMs = performance.now(), elapsed = lastDriveAt === null ? dt : Math.min(.25, Math.max(dt, (nowMs - lastDriveAt) / 1000));
   lastDriveAt = nowMs;
-  if (!seat && stick > .08 && player.online.predicting) {
-    const pace = carryPace(p.id); // (slower with something heavy, as the server has it)
-    const speed = (run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * Math.min(1, stick) * elapsed;
+  if (!seat && stick > .08 && player.online.predicting && canMove(mechanics)) {
+    const pace = carryPace(p.id);
+    const speed = (run && pace.run ? RUN_SPEED : WALK_SPEED) * pace.factor * postureSpeedFactor(mechanics.posture, mechanics.crouchLevel) * Math.min(1, stick) * elapsed;
     const steps = Math.max(1, Math.ceil(speed / .25));
     for (let i = 0; i < steps; i++) moved += stepPlayer(p, mx / stick * speed / steps, mz / stick * speed / steps, people);
     if (moved > 0) player.online.movedNow();
   }
   player.moving = moved > 1e-4 || (seat === null && performance.now() - player.online.lastMovedAt < 150);
   p.walkPhase += moved * 4.6;
-  player.online.input(mx, mz, heading, run); // after moving: the position recorded with the input is where the prediction is
+  const wheel = ctl.crouchWheel;
+  const sent = player.online.input(mx, mz, heading, run, { crouch, prone, jump, crouchWheel: wheel }); // after moving: the position recorded with the input is where the prediction is
+  if (sent && wheel) ctl.crouchWheel = 0; // wheel input is an edge; do not apply the same notch on every repeat
   return { moved, dx: mx, dz: mz };
 }
 
@@ -148,6 +172,11 @@ function tickPrompts(dt) { promptAcc += dt; if (promptAcc > .2) { promptAcc = 0;
 
 function initControl() {
   ctl.coarse = matchMedia('(pointer: coarse)').matches;
+  el.addEventListener('wheel', e => {
+    if (!ctl.active || !keys.has('control') && !keys.has('ctrl')) return;
+    ctl.crouchWheel += e.deltaY > 0 ? -1 : 1;
+    e.preventDefault();
+  }, { passive: false });
   $('fpAct').onclick = toggleSit;
   // losing the window (or a cancelled touch) must not leave the stick held: online that is a stream of walking orders
   addEventListener('blur', releaseSticks);

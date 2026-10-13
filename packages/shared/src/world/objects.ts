@@ -82,6 +82,7 @@ export interface Link { spot: Spot; px: number; pz: number; ax: number; az: numb
 
 const list: WorldObject[] = [];
 const byId = new Map<string, WorldObject>();
+let objectAdded: ((o: WorldObject) => void) | null = null;
 
 // frame(px, py, face) in the page turns local (lx, lz) into world (lx cos f + lz sin f, -lx sin f + lz cos f)
 const toWorld = (f: number, lx: number, lz: number) => ({ x: lx * Math.cos(f) + lz * Math.sin(f), z: -lx * Math.sin(f) + lz * Math.cos(f) });
@@ -95,6 +96,9 @@ export const objects = {
   /** Forget every object (a new layout is being loaded, or a test starts over). */
   clear(): void { list.length = 0; byId.clear(); },
 };
+
+/** Observe objects created after the physics world was initialized. */
+export const setObjectAdded = (fn: ((o: WorldObject) => void) | null): void => { objectAdded = fn; };
 
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
@@ -110,6 +114,7 @@ export function addObject(rec: ObjectRecord): WorldObject {
   o.link = o.links[0] ?? null;
   list.push(o);
   byId.set(o.id, o);
+  objectAdded?.(o);
   return o;
 }
 

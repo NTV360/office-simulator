@@ -1,6 +1,7 @@
 import {
   CATALOGUE, canReach, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
+  addObject, findInventoryDropPlacement, removeItem, type InventoryState, type InventoryDropPlacement,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -11,6 +12,28 @@ import {
 export type ObjectResult = { ok: true; changed: number } | { ok: false; reason: Refusal };
 const no = (reason: Refusal): ObjectResult => ({ ok: false, reason });
 const yes = (changed = 1): ObjectResult => ({ ok: true, changed });
+
+export type InventoryDropResult =
+  | { ok: true; changed: 1; inventory: InventoryState; object: WorldObject; placement: InventoryDropPlacement }
+  | { ok: false; reason: Refusal };
+
+/**
+ * Materialize one inventory item in front of a character. Placement is resolved before either side effect;
+ * the item is removed only after the world object has been created successfully.
+ */
+export function dropInventoryItem(person: Person, inventory: InventoryState, itemId: string): InventoryDropResult {
+  const item = inventory.items.find(candidate => candidate.id === itemId);
+  if (!item) return { ok: false, reason: 'not-movable' };
+  const placement = findInventoryDropPlacement(item, person, { rotation: item.rotation });
+  if (!placement) return { ok: false, reason: 'blocked' };
+  let object: WorldObject;
+  try {
+    object = addObject({ type: item.type, x: placement.x, z: placement.z, rot: placement.rot, y: placement.y, variant: 0, station: null, spot: null });
+  } catch {
+    return { ok: false, reason: 'blocked' };
+  }
+  return { ok: true, changed: 1, inventory: removeItem(inventory, item.id), object, placement };
+}
 
 /** Take hold of the object with this index, at the point of it the player aimed at (or, if they did not say, the point nearest them). */
 export function grab(person: Person, index: number, at?: readonly number[]): ObjectResult {

@@ -7,6 +7,7 @@ import { allocatePersonId, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
 import { endTask, putBucketBack } from './tasks';
 import { releaseCarried } from '../world/objects';
+import { defaultCharacterMechanics } from './character-state';
 import type { Person } from './types';
 
 // A human taking over a person, handing them back, and a guest (a human with no desk). See docs/PHASE-3-BREAKDOWN.md, step 3.
@@ -73,6 +74,7 @@ export function makeGuest(accountId: number, name: string, spec?: unknown): Pers
     state: 'controlled', shown: true, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],
     walkPhase: 0, animT: 0, pose: {}, arriveAt: sim.t, leaveAt: 24 * 60, lunchAt: 0, hadLunch: true, arrivedAt: sim.t, coffees: 0,
     chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0,
+    mechanics: defaultCharacterMechanics(),
   };
   people.push(guest);
   simEvents.emit('personAdded', guest);

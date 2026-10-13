@@ -13,7 +13,7 @@ import { WIRE_ANIMS, WIRE_CATS, WIRE_KINDS, decode, decodeClient, encode } from 
 import { layoutCheck, meetingSnap, personInfo, personSnap } from './convert';
 import {
   NONE, ONE_OFF_SPOT, WIRE_VERSION,
-  type ClientMessage, type Message, type PersonInfo, type PersonSnap, type Snapshot, type Welcome,
+  type ClientMessage, type Message, type PersonInfo, type PersonMechanicsSnap, type PersonSnap, type Snapshot, type Welcome,
 } from './messages';
 
 const TAU = Math.PI * 2;
@@ -50,6 +50,39 @@ const welcome = (): Welcome => ({
 });
 
 describe('round trips', () => {
+  it('round-trips non-default character mechanics without losing nested state', () => {
+    const mechanics: PersonMechanicsSnap = {
+      posture: 'crouching', crouchLevel: .7, seatMode: 'none', seatId: null,
+      locomotion: 'jump', grounded: false, verticalVelocity: 3.25, jumpUntil: 18, knockbackUntil: 0,
+      attack: { kind: 'punch', side: 'left', phase: 'active', sequence: 12, startedAt: 4.5, releaseAt: 5.1, charge: .66, cooldownUntil: 5.4 },
+      dominantHand: 'left', struggle: .4,
+      health: { head: 40, body: 71, leftArm: 0, rightArm: 35, leftLeg: 20, rightLeg: 45 },
+      holdTarget: 'person-2', heldBy: 'person-1', inventoryRevision: 9,
+    };
+    const got = decode(encode({ type: 'person', info: info(), snap: snap({ mechanics }) })) as { snap: PersonSnap };
+    const decoded = got.snap.mechanics!;
+    expect(decoded.posture).toBe(mechanics.posture);
+    expect(decoded.crouchLevel).toBeCloseTo(mechanics.crouchLevel, 5);
+    expect(decoded.seatMode).toBe(mechanics.seatMode);
+    expect(decoded.seatId).toBe(mechanics.seatId);
+    expect(decoded.locomotion).toBe(mechanics.locomotion);
+    expect(decoded.grounded).toBe(mechanics.grounded);
+    expect(decoded.verticalVelocity).toBeCloseTo(mechanics.verticalVelocity, 5);
+    expect(decoded.jumpUntil).toBeCloseTo(mechanics.jumpUntil, 5);
+    expect(decoded.knockbackUntil).toBeCloseTo(mechanics.knockbackUntil, 5);
+    expect(decoded.attack).toMatchObject({ kind: 'punch', side: 'left', phase: 'active', sequence: 12 });
+    expect(decoded.attack!.charge).toBeCloseTo(mechanics.attack!.charge, 5);
+    expect(decoded.attack!.startedAt).toBeCloseTo(mechanics.attack!.startedAt, 5);
+    expect(decoded.attack!.releaseAt).toBeCloseTo(mechanics.attack!.releaseAt!, 5);
+    expect(decoded.attack!.cooldownUntil).toBeCloseTo(mechanics.attack!.cooldownUntil, 5);
+    expect(decoded.dominantHand).toBe(mechanics.dominantHand);
+    expect(decoded.struggle).toBeCloseTo(mechanics.struggle, 5);
+    expect(decoded.health).toEqual(mechanics.health);
+    expect(decoded.holdTarget).toBe(mechanics.holdTarget);
+    expect(decoded.heldBy).toBe(mechanics.heldBy);
+    expect(decoded.inventoryRevision).toBe(mechanics.inventoryRevision);
+  });
+
   it('hello, ping, pong, kick, leave', () => {
     for (const m of [{ type: 'hello', version: 4, ticket: 'abc_DEF-123' }, { type: 'input', seq: 4000000000, mx: 0.5, mz: -1, heading: 3.25, run: true }, { type: 'act', kind: 'sit' }, { type: 'act', kind: 'stand' }, { type: 'ping', ts: 1234567.5 }, { type: 'pong', ts: 99.25 }, { type: 'kick', reason: 'another login (ünï)' }, { type: 'leave', id: 41 }, { type: 'ack', seq: 4000000000, tick: 123456, x: -12.5, z: 33.25, face: -2.5 }, { type: 'say', text: 'héllo wörld 你好' }, { type: 'chat', from: 41, name: 'Ana_B', text: 'hi <b>there</b> ✓' }, { type: 'emote', kind: 'cheer' }, { type: 'emoted', from: 7, kind: 'nod' }, { type: 'object', pose: { index: 12, x: 3.25, z: -8.5, rot: 1.25, y: .75, q: null, carriedBy: NONE, helpers: [] } }, { type: 'object', pose: { index: 65534, x: -1, z: 1, rot: 3, y: .125, q: [0, .5, -.5, .75], carriedBy: 300, helpers: [301] } }] as Message[]) {
       expect(decode(encode(m))).toEqual(m);

@@ -17,7 +17,7 @@ import { parseSavedWorld, serializeWorld } from '../sim/persist';
 import { ENTRY } from '../sim/spots';
 import { CATALOGUE, DESK_TOP } from './catalogue';
 import { addObject, objects, putDown, resetAllObjects, seatUnusable, setObjectPose, wrapAngle, type WorldObject } from './objects';
-import { REACH, inReach, movability, nearestMovable, placementProblem, restHeightAt, seatInUse, setFixedTops, stationOwner } from './placement';
+import { CHARACTER_CLEARANCE_RADIUS, REACH, findInventoryDropPlacement, inReach, movability, nearestMovable, placementProblem, restHeightAt, seatInUse, setFixedTops, stationOwner } from './placement';
 
 // The rules for moving things: where a chair or a small thing may be put, and when it may not be moved at all.
 
@@ -38,6 +38,25 @@ function freePlaceNear(o: WorldObject): { x: number; z: number } {
   }
   throw new Error('no free place near ' + o.id);
 }
+
+describe('inventory drag-out placement', () => {
+  it('finds a reachable point in front of a character and computes its support height', () => {
+    const mug = ofType('mug')[0];
+    const person = { pos: { x: mug.x - .8, z: mug.z }, face: Math.PI / 2 };
+    const placement = findInventoryDropPlacement({ type: 'mug', rotation: 0 }, person);
+    expect(placement).not.toBeNull();
+    expect(Math.hypot(placement!.x - person.pos.x, placement!.z - person.pos.z)).toBeLessThanOrEqual(REACH);
+    expect(placement!.y).toBeCloseTo(DESK_TOP, 6);
+  });
+
+  it('rejects a target overlapping the character and searches a deterministic fallback', () => {
+    const chair = ofType('chair-wood')[0];
+    const person = { pos: { x: chair.x, z: chair.z }, face: 0 };
+    const placement = findInventoryDropPlacement({ type: chair.type, rotation: 0 }, person, { distance: 0, maxFallbackRadius: .2 });
+    expect(placement).toBeNull();
+    expect(CHARACTER_CLEARANCE_RADIUS).toBeGreaterThan(0);
+  });
+});
 
 describe('where things may be put', () => {
   it('every object may be at its starting place (back where it started is always allowed)', () => {

@@ -11,8 +11,12 @@ const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
-  if (isLocalPlayer(p)) return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
-  if (p.state === 'controlled') return p.task?.kind === 'playerSit' ? (p.task.anim || 'listenSit') : (p.moving ? 'walk' : 'stand'); // a human somewhere else (online)
+  const posture = p.mechanics?.posture;
+  if (posture === 'prone') return 'prone';
+  if (posture === 'ragdoll') return 'ragdoll';
+  if (posture === 'recovering') return 'recovering';
+  if (isLocalPlayer(p)) return player.sitting || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (player.moving ? 'walk' : 'stand'));
+  if (p.state === 'controlled') return p.task?.kind === 'playerSit' || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (p.moving ? 'walk' : 'stand')); // a human somewhere else (online)
   if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
@@ -51,6 +55,28 @@ function targetPose(p, k, T) {
       o.lKnee = .08 + .65 * Math.max(0, c); o.rKnee = .08 + .65 * Math.max(0, -c);
       o.lShX = .42 * s; o.rShX = -.42 * s; o.lEl = o.rEl = -.3;
       o.hipY = .87 + .022 * Math.abs(Math.cos(p.walkPhase)); o.lean = .05;
+      break;
+    }
+    case 'crouch': {
+      const level = Math.max(0, Math.min(1, p.mechanics?.crouchLevel || 0));
+      o.hipY = .88 - .28 * level; o.lean = .08 * level;
+      o.lHip = o.rHip = -.22 * level; o.lKnee = o.rKnee = .32 * level;
+      o.lShX = o.rShX = -.18 * level; o.lEl = o.rEl = -.25;
+      break;
+    }
+    case 'prone': {
+      o.hipY = .18; o.lean = 1.35; o.lHip = o.rHip = -.9; o.lKnee = o.rKnee = .15;
+      o.lShX = o.rShX = -.55; o.lEl = o.rEl = -.65; o.headX = .3;
+      break;
+    }
+    case 'ragdoll': {
+      o.hipY = .4; o.lean = .7; o.lHip = -.8; o.rHip = .55; o.lKnee = .5; o.rKnee = -.35;
+      o.lShX = -.65; o.rShX = .35; o.lEl = -.8; o.rEl = .4; o.headY = .35;
+      break;
+    }
+    case 'recovering': {
+      o.hipY = .68; o.lean = .35; o.lHip = o.rHip = -.55; o.lKnee = o.rKnee = .65;
+      o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.7;
       break;
     }
     case 'run': {

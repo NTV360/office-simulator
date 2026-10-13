@@ -15,6 +15,7 @@ import { allocatePersonId, counters, deskPool, meetings, people, sim } from './s
 import { ENTRY } from './spots';
 import { endTask, goWork } from './tasks';
 import type { Person } from './types';
+import { defaultCharacterMechanics } from './character-state';
 
 /** What the choice of a desk depends on. */
 type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'>;
@@ -42,7 +43,7 @@ function createPerson(who: Who | ReturnType<typeof helperIdentity>, slot: Spot |
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null, meeting: null,
-    screenKind, screenVariant: 0,
+    screenKind, screenVariant: 0, mechanics: defaultCharacterMechanics(),
   };
   p.screenVariant = Math.floor(random() * SCREEN_VARIANTS[screenKind]); // same single draw as picking from the list
   if (slot) slot.owner = p;

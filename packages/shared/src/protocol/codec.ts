@@ -1,14 +1,21 @@
 import { normalizeSpec, type CharacterSpec } from '../character/spec';
+import { defaultCharacterMechanics } from '../sim/character-state';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
   EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, PHOTO_URL, WIRE_VERSION, type ObjectPose,
-  type ActKind, type ClientMessage, type MoveSnap, type ResetScope, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type ServerMessage,
+  type ActKind, type ClientMessage, type MoveSnap, type ResetScope, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type PersonMechanicsSnap, type ServerMessage,
 } from './messages';
 
 // Binary encoding of every message. One byte of message type, then a compact body. See messages.ts for the meaning.
 
 const STATES: PersonState[] = ['away', 'idle', 'walking', 'doing', 'controlled'];
+const POSTURES = ['standing', 'crouching', 'prone', 'seated', 'ragdoll', 'recovering'] as const;
+const SEAT_MODES = ['none', 'fixed-chair', 'free-legs-down', 'free-crossed'] as const;
+const LOCOMOTION = ['grid', 'jump', 'knockback', 'ragdoll'] as const;
+const ATTACK_KINDS = ['punch', 'kick', 'bash'] as const;
+const ATTACK_SIDES = ['left', 'right'] as const;
+const ATTACK_PHASES = ['charging', 'active', 'cooldown'] as const;
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
 const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
@@ -57,6 +64,7 @@ function writeName(w: Writer, table: readonly string[], value: string): void {
 }
 const MAX_NAME = 64;
 const MAX_TICKET = 128;
+const MAX_HOLD_ID = 64;
 function readName(r: Reader, table: readonly string[], what: string): string {
   const i = r.u8();
   if (i === CUSTOM) { const s = r.str(); if (s.length > MAX_NAME) throw new DecodeError(`${what} name too long`); return s; }
@@ -79,9 +87,43 @@ const quantAngle = (a: number): number => {
 };
 const unquantAngle = (q: number): number => q / 65536 * TAU;
 
+function writeMechanics(w: Writer, m: PersonMechanicsSnap): void {
+  w.u8(index(POSTURES, m.posture, 'posture')).f32(m.crouchLevel).u8(index(SEAT_MODES, m.seatMode, 'seat mode'));
+  if (m.seatId !== null) { if (m.seatId.length > 64) throw new RangeError('seat id too long'); w.u8(1).str(m.seatId); } else w.u8(0);
+  w.u8(index(LOCOMOTION, m.locomotion, 'locomotion')).u8(m.grounded ? 1 : 0).f32(m.verticalVelocity).f32(m.jumpUntil).f32(m.knockbackUntil);
+  if (m.attack) {
+    const a = m.attack;
+    w.u8(1).u8(index(ATTACK_KINDS, a.kind, 'attack kind')).u8(index(ATTACK_SIDES, a.side, 'attack side')).u8(index(ATTACK_PHASES, a.phase, 'attack phase')).u16(a.sequence).f32(a.startedAt).u8(a.releaseAt === undefined ? 0 : 1);
+    if (a.releaseAt !== undefined) w.f32(a.releaseAt);
+    w.f32(a.charge).f32(a.cooldownUntil);
+  } else w.u8(0);
+  w.u8(index(ATTACK_SIDES, m.dominantHand, 'dominant hand')).f32(m.struggle);
+  for (const limb of ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const) w.f32(m.health[limb]);
+  for (const id of [m.holdTarget, m.heldBy]) { if (id === null) w.u8(0); else { if (id.length > 64) throw new RangeError('hold id too long'); w.u8(1).str(id); } }
+  w.u32(m.inventoryRevision);
+}
+function readMechanics(r: Reader): PersonMechanicsSnap {
+  const posture = readIndex(r, POSTURES, 'posture'), crouchLevel = r.f32(), seatMode = readIndex(r, SEAT_MODES, 'seat mode');
+  const seatId = r.u8() ? r.str() : null;
+  if (seatId !== null && seatId.length > MAX_HOLD_ID) throw new DecodeError('seat id too long');
+  const locomotion = readIndex(r, LOCOMOTION, 'locomotion'), grounded = !!r.u8(), verticalVelocity = r.f32(), jumpUntil = r.f32(), knockbackUntil = r.f32();
+  let attack: PersonMechanicsSnap['attack'] = null;
+  if (r.u8()) {
+    const kind = readIndex(r, ATTACK_KINDS, 'attack kind'), side = readIndex(r, ATTACK_SIDES, 'attack side'), phase = readIndex(r, ATTACK_PHASES, 'attack phase'), sequence = r.u16(), startedAt = r.f32();
+    const releaseAt = r.u8() ? r.f32() : undefined;
+    attack = { kind, side, phase, sequence, startedAt, ...(releaseAt === undefined ? {} : { releaseAt }), charge: r.f32(), cooldownUntil: r.f32() };
+  }
+  const dominantHand = readIndex(r, ATTACK_SIDES, 'dominant hand'), struggle = r.f32();
+  const health = { head: r.f32(), body: r.f32(), leftArm: r.f32(), rightArm: r.f32(), leftLeg: r.f32(), rightLeg: r.f32() };
+  const holdTarget = r.u8() ? r.str() : null, heldBy = r.u8() ? r.str() : null;
+  if ((holdTarget !== null && holdTarget.length > MAX_HOLD_ID) || (heldBy !== null && heldBy.length > MAX_HOLD_ID)) throw new DecodeError('hold id too long');
+  const inventoryRevision = r.u32();
+  return { posture, crouchLevel, seatMode, seatId, locomotion, grounded, verticalVelocity, jumpUntil, knockbackUntil, attack, dominantHand, struggle, health, holdTarget, heldBy, inventoryRevision };
+}
+
 function writeSnap(w: Writer, s: PersonSnap): void {
   w.u16(s.id);
-  w.u8((s.shown ? 1 : 0) | (s.absent ? 2 : 0) | (s.toilet ? 4 : 0));
+  w.u8((s.shown ? 1 : 0) | (s.absent ? 2 : 0) | (s.toilet ? 4 : 0) | (s.mechanics ? 8 : 0));
   w.u8(index(STATES, s.state, 'state'));
   w.f32(s.x).f32(s.z);
   w.u16(quantAngle(s.face)).u16(quantAngle(s.walkPhase));
@@ -95,6 +137,7 @@ function writeSnap(w: Writer, s: PersonSnap): void {
   if (s.meeting !== NONE && s.meeting >= NO_U8) throw new RangeError('meeting index too big for the protocol');
   w.u16(toU16(s.partner)).u16(toU16(s.chatWith)).u8(s.meeting === NONE ? NO_U8 : s.meeting);
   w.u8(s.props).f32(s.arrivedAt).f32(s.arriveAt).f32(s.leaveAt).u8(Math.min(255, s.coffees));
+  if (s.mechanics) writeMechanics(w, s.mechanics);
 }
 function readSnap(r: Reader): PersonSnap {
   const id = r.u16();
@@ -109,7 +152,8 @@ function readSnap(r: Reader): PersonSnap {
   const partner = fromU16(r.u16()), chatWith = fromU16(r.u16());
   const m = r.u8();
   const props = r.u8(), arrivedAt = r.f32(), arriveAt = r.f32(), leaveAt = r.f32(), coffees = r.u8();
-  const snap: PersonSnap = { id, state, shown: !!(flags & 1), absent: !!(flags & 2), toilet: !!(flags & 4), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees };
+  const mechanics = flags & 8 ? readMechanics(r) : undefined;
+  const snap: PersonSnap = { id, state, shown: !!(flags & 1), absent: !!(flags & 2), toilet: !!(flags & 4), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees, ...(mechanics ? { mechanics } : {}) };
   if (oneOff) snap.oneOff = oneOff;
   return snap;
 }
@@ -181,7 +225,11 @@ export function encode(msg: Message): Uint8Array {
     case 'emote': w.u8(T.emote).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'emoted': w.u8(T.emoted).u16(msg.from).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
-    case 'input': w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(msg.run ? 1 : 0); break;
+    case 'input': {
+      const flags = (msg.run ? 1 : 0) | (msg.crouch ? 2 : 0) | (msg.prone ? 4 : 0) | (msg.jump ? 8 : 0);
+      w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(flags).f32(msg.crouchWheel ?? 0);
+      break;
+    }
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
     case 'grab': w.u8(T.grab).u16(toU16(msg.object)).u8(msg.at ? 1 : 0); if (msg.at) w.f32(msg.at[0]).f32(msg.at[1]).f32(msg.at[2]); break;
     case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
@@ -234,7 +282,17 @@ export function decode(bytes: Uint8Array): Message {
     case T.emote: msg = { type: 'emote', kind: readIndex(r, EMOTE_KINDS, 'emote') }; break;
     case T.emoted: { const from = r.u16(); msg = { type: 'emoted', from, kind: readIndex(r, EMOTE_KINDS, 'emote') }; break; }
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
-    case T.input: { const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(); msg = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) }; break; }
+    case T.input: {
+      const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(), crouchWheel = r.f32();
+      if ((flags & 0xf0) !== 0 || Math.abs(crouchWheel) > 20) throw new DecodeError('invalid posture input');
+      const input: Extract<ClientMessage, { type: 'input' }> = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) };
+      if (flags & 2) input.crouch = true;
+      if (flags & 4) input.prone = true;
+      if (flags & 8) input.jump = true;
+      if (crouchWheel !== 0) input.crouchWheel = crouchWheel;
+      msg = input;
+      break;
+    }
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
     case T.grab: { const object = fromU16(r.u16()); msg = r.u8() ? { type: 'grab', object, at: [r.f32(), r.f32(), r.f32()] } : { type: 'grab', object }; break; }
     case T.place: { const x = r.f32(), z = r.f32(), rot = r.f32(); msg = { type: 'place', x, z, rot }; break; }

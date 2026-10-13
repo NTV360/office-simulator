@@ -2,6 +2,7 @@ import { PROP_KEYS } from '../sim/props';
 import { interactables } from '../sim/interactables';
 import { movedObjects, objects, resetAllObjects, setObjectPose, type WorldObject } from '../world/objects';
 import type { Meeting, Person } from '../sim/types';
+import type { PersonMechanicsSnap } from './messages';
 import { NONE, ONE_OFF_SPOT, PHOTO_URL, type LayoutCheck, type MeetingSnap, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
 
 // Turning simulation objects into protocol records (server side).
@@ -65,6 +66,20 @@ export function meetingSnap(m: Meeting): MeetingSnap {
 }
 
 /** The changing part of a person. `meetings` is the list being sent alongside, so the person can point into it. */
+function mechanicsSnap(p: Person): PersonMechanicsSnap | undefined {
+  const m = p.mechanics;
+  const full = m.health.head === 40 && m.health.body === 80 && m.health.leftArm === 35 && m.health.rightArm === 35 && m.health.leftLeg === 45 && m.health.rightLeg === 45;
+  if (m.posture === 'standing' && m.crouchLevel === 0 && m.seatMode === 'none' && m.seatId === null && m.locomotion === 'grid'
+    && m.grounded && m.verticalVelocity === 0 && m.jumpUntil === 0 && m.knockbackUntil === 0 && m.attack === null && m.dominantHand === 'right'
+    && m.struggle === 0 && full && m.holdTarget === null && m.heldBy === null && m.inventoryRevision === 0) return undefined;
+  return {
+    posture: m.posture, crouchLevel: m.crouchLevel, seatMode: m.seatMode, seatId: m.seatId,
+    locomotion: m.locomotion, grounded: m.grounded, verticalVelocity: m.verticalVelocity, jumpUntil: m.jumpUntil, knockbackUntil: m.knockbackUntil,
+    attack: m.attack ? { ...m.attack } : null, dominantHand: m.dominantHand, struggle: m.struggle, health: { ...m.health },
+    holdTarget: m.holdTarget, heldBy: m.heldBy, inventoryRevision: m.inventoryRevision,
+  };
+}
+
 export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap {
   const t = p.task;
   let spot = 0, oneOff: PersonSnap['oneOff'];
@@ -81,6 +96,7 @@ export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap 
     meeting: meeting ? meetings.indexOf(meeting) : NONE,
     props: PROP_KEYS.reduce((bits, k, i) => bits | (p.props[k] ? 1 << i : 0), 0),
     arrivedAt: p.arrivedAt == null ? NONE : p.arrivedAt, arriveAt: p.arriveAt, leaveAt: p.leaveAt, coffees: p.coffees,
+    mechanics: mechanicsSnap(p),
   };
   if (oneOff) snap.oneOff = oneOff;
   return snap;

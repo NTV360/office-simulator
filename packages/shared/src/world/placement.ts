@@ -8,6 +8,7 @@ import { people } from '../sim/state';
 import { Vec3 } from '../vec3';
 import { CATALOGUE, DESK_TOP, isMovableType, shapeOf } from './catalogue';
 import { footprintOf } from './footprint';
+import { normalizeInventoryRotation } from '../sim/inventory';
 import { isAtHome, objects, type Link, type WorldObject } from './objects';
 
 // Where a world object may be put, and whether it may be moved at all. Plain functions over the shared data, so the server decides with
@@ -184,3 +185,71 @@ export function nearestMovable(x: number, z: number, reach = REACH): WorldObject
 }
 
 export { isAtHome };
+
+/** The radius reserved around a person while an item is introduced from inventory. */
+export const CHARACTER_CLEARANCE_RADIUS = .35;
+
+export interface InventoryDropPerson {
+  pos: { x: number; z: number };
+  face: number;
+}
+
+export interface InventoryDropPlacement {
+  x: number;
+  z: number;
+  rot: number;
+  y: number;
+}
+
+/** A side-effect-free object shape used to run the same placement rules before creating a world object. */
+function placementProbe(type: string, x: number, z: number, rot: number): WorldObject {
+  const home = { x: x + 10000, z: z + 10000, rot: rot + 1, y: 0 };
+  return {
+    id: 'inventory-probe', index: -1, type, x, z, rot, y: 0, variant: 0, station: null, spot: null,
+    home, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [],
+  };
+}
+
+function characterClear(o: WorldObject, x: number, z: number, person: InventoryDropPerson): boolean {
+  const radius = CHARACTER_CLEARANCE_RADIUS + CATALOGUE[o.type].radius;
+  // Include every live character: a drop must not materialize inside the player or an NPC.
+  return people.every(other => Math.hypot(other.pos.x - x, other.pos.z - z) >= radius)
+    && Math.hypot(person.pos.x - x, person.pos.z - z) >= radius;
+}
+
+/**
+ * Find a safe place to drag an inventory item out in front of a character. This only reads shared world state;
+ * callers can preview it on the client and re-run it authoritatively on the server. Candidates are deterministic:
+ * the point in front first, then expanding rings around it. No inventory or world object is changed here.
+ */
+export function findInventoryDropPlacement(
+  item: { type: string; rotation?: number },
+  person: InventoryDropPerson,
+  options: { distance?: number; maxFallbackRadius?: number; rotation?: number } = {},
+): InventoryDropPlacement | null {
+  const distance = Number.isFinite(options.distance) ? Math.max(0, options.distance!) : .8;
+  const maxFallbackRadius = Number.isFinite(options.maxFallbackRadius) ? Math.max(0, options.maxFallbackRadius!) : 1.5;
+  const rotation = options.rotation ?? item.rotation ?? 0;
+  if (!CATALOGUE[item.type] || !Number.isFinite(person.pos.x) || !Number.isFinite(person.pos.z) || !Number.isFinite(person.face)) return null;
+  if (rotation !== 0 && rotation !== 90) return null;
+  const normalizedRotation = normalizeInventoryRotation(item.type, rotation);
+  const rot = person.face + normalizedRotation * Math.PI / 180;
+  const fx = Math.sin(person.face), fz = Math.cos(person.face);
+  const candidates: Array<{ x: number; z: number }> = [{ x: person.pos.x + fx * distance, z: person.pos.z + fz * distance }];
+  for (let radius = .15; radius <= maxFallbackRadius + 1e-9; radius += .15) {
+    for (let i = 0; i < 16; i++) {
+      const angle = i * Math.PI / 8;
+      candidates.push({ x: person.pos.x + fx * distance + Math.cos(angle) * radius, z: person.pos.z + fz * distance + Math.sin(angle) * radius });
+    }
+  }
+  const probe = placementProbe(item.type, 0, 0, rot);
+  for (const candidate of candidates) {
+    probe.x = candidate.x; probe.z = candidate.z; probe.rot = rot;
+    if (!inReach(person, candidate.x, candidate.z) || !characterClear(probe, candidate.x, candidate.z, person)) continue;
+    if (placementProblem(probe, candidate.x, candidate.z, rot) !== null) continue;
+    const y = restHeightAt(probe, candidate.x, candidate.z);
+    if (y === null) continue;
+    return { x: candidate.x, z: candidate.z, rot, y };
+  }
+  return null;
+}

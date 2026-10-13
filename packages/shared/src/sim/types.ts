@@ -5,6 +5,7 @@ import type { Controller } from './person';
 import type { HeldProps } from './props';
 import type { ScreenKind } from './data';
 import type { Shift } from './schedule';
+import type { CharacterMechanicsState } from './character-state';
 
 /** What a person is doing right now. 'controlled' people are driven by a human, not by the simulation. */
 export type PersonState = 'away' | 'idle' | 'walking' | 'doing' | 'controlled';
@@ -99,4 +100,6 @@ export interface Person {
   /** The client's mesh rig for this person, attached by the client's people views. The simulation never reads it. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any;
+  /** Character mechanics state; absent on legacy records and normalized at creation/restore. */
+  mechanics: CharacterMechanicsState;
 }

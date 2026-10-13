@@ -20,7 +20,10 @@ function syncBody(p, dt) {
   updateBubble(p);
   if (p.state === 'away') return;
   if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)
-  const b = p.body; b.root.position.set(p.pos.x, 0, p.pos.z); b.root.rotation.y = p.face;
+  const b = p.body;
+  const crouch = p.mechanics?.posture === 'crouching' ? (p.mechanics.crouchLevel || 0) : 0;
+  const vertical = p.mechanics?.locomotion === 'jump' ? (p.mechanics.verticalVelocity || 0) * .08 : 0;
+  b.root.position.set(p.pos.x, vertical, p.pos.z); b.root.rotation.y = p.face;
   b.ring.position.set(p.pos.x, .015, p.pos.z);
   const cat = p.state === 'walking' ? 'walk' : (p.task?.kind === 'work' && p.chatWith ? 'chat' : p.task?.cat || 'walk');
   if (b.ring.material !== ringMats[cat]) b.ring.material = ringMats[cat];

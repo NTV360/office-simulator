@@ -1,6 +1,7 @@
 import { Vec3 } from '../vec3';
 import { RUNNING_KINDS } from '../sim/data';
 import { NEVER } from '../sim/schedule';
+import { defaultCharacterMechanics } from '../sim/character-state';
 import { PROP_KEYS, newProps } from '../sim/props';
 import type { Spot } from '../sim/interactables';
 import type { Meeting, Person, TaskSpot } from '../sim/types';
@@ -118,6 +119,7 @@ export class Mirror {
       state: snap.state, shown: snap.shown, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],
       walkPhase: snap.walkPhase, animT: 0, pose: {}, arriveAt: info.arriveAt, leaveAt: 0, lunchAt: 0, hadLunch: false,
       arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: info.screenKind, screenVariant: info.screenVariant,
+      mechanics: defaultCharacterMechanics(),
     };
     this.people.set(p.id, p);
     this.fill(p, snap);
@@ -144,6 +146,17 @@ export class Mirror {
     p.arrivedAt = snap.arrivedAt === NONE ? null : snap.arrivedAt;
     p.leaveAt = snap.leaveAt;
     p.coffees = snap.coffees;
+    const previousEdges = { jumpHeld: p.mechanics.jumpHeld, proneHeld: p.mechanics.proneHeld };
+    p.mechanics = snap.mechanics ? {
+      ...p.mechanics,
+      ...snap.mechanics,
+      ...previousEdges,
+      attack: snap.mechanics.attack ? { ...snap.mechanics.attack } : null,
+      health: { ...snap.mechanics.health },
+    } : {
+      ...defaultCharacterMechanics(),
+      ...previousEdges,
+    };
     PROP_KEYS.forEach((k, i) => { p.props[k] = !!(snap.props & (1 << i)); });
     if (snap.kind === '') { p.task = null; return; }
     const spot: TaskSpot | undefined = snap.spot === ONE_OFF_SPOT

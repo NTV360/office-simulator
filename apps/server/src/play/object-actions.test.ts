@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
-  resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
+  createInventory, placeItem, resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
 import { OBJECT_BUCKET, PlayerManager } from './player-manager';
@@ -34,6 +34,33 @@ async function guest(name: string): Promise<{ id: number; person: Person }> {
 const stand = (p: Person, o: { x: number; z: number }, dx = .5) => { p.pos.x = o.x + dx; p.pos.z = o.z; };
 const diningChair = (n = 0): WorldObject => objects.all().filter(o => o.type === 'chair-wood')[n];
 const free = (o: WorldObject, from = .5) => { for (let r = from; r < 3; r += .15) for (let a = 0; a < 6.3; a += .4) { const x = o.x + Math.cos(a) * r, z = o.z + Math.sin(a) * r; if (placementProblem(o, x, z, o.rot) === null) return { x, z }; } throw new Error('no place'); };
+
+describe('inventory drag-out', () => {
+  it('removes an item only after a safe world placement succeeds', async () => {
+    const { id, person } = await guest('ana');
+    const mug = objects.all().find(o => o.type === 'mug')!;
+    stand(person, mug, .8);
+    const inventory = placeItem(createInventory(), { id: 'mug-inventory', type: 'mug', x: 0, y: 0, rotation: 0 });
+    const before = objects.count();
+    const { dropInventoryItem } = await import('./object-actions');
+    const result = dropInventoryItem(person, inventory, 'mug-inventory');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.inventory.items).toEqual([]);
+      expect(result.object.type).toBe('mug');
+      expect(objects.count()).toBe(before + 1);
+    }
+  });
+
+  it('keeps the inventory unchanged when the requested item is absent', async () => {
+    const { person } = await guest('ana');
+    const inventory = placeItem(createInventory(), { id: 'chair-inventory', type: 'chair-wood', x: 0, y: 0, rotation: 0 });
+    const { dropInventoryItem } = await import('./object-actions');
+    const result = dropInventoryItem(person, inventory, 'missing-item');
+    expect(result.ok).toBe(false);
+    expect(inventory.items).toHaveLength(1);
+  });
+});
 
 describe('taking hold where you aim', () => {
   it('takes a chair by the point aimed at, turning to face it, and keeps the angle it has to the person: hands there, chair as it stands', async () => {
