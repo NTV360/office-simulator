@@ -202,8 +202,17 @@ const CLEAN = {
 const at = (px, py, face, place) => { const v = W(px, py); return { kind: 'clean', pos: v, approach: v, face, shared: false, place }; };
 function cleanSpot(job) {
   if (job === 'table') {
-    const s = shuffle(['conf', 'dining', 'bar'].flatMap(k => interactables.of(k)).filter(x => !x.occupant))[0];
-    return s && { kind: 'clean', pos: s.pos.clone(), approach: s.approach, face: s.face, shared: false, place: s.place || 'a table' };
+    // stand beside a free chair (not in it), facing the table: about half a metre to either side of the seat
+    const chairs = ['conf', 'dining', 'bar', 'lounge', 'desk'].flatMap(k => interactables.of(k)).map(c => toPx(c.pos));
+    const clearOfChairs = (px, py) => chairs.every(([cx, cy]) => Math.hypot(cx - px, cy - py) > 10); // > 0.4 m from any chair
+    for (const s of shuffle(['conf', 'dining', 'bar'].flatMap(k => interactables.of(k)).filter(x => !x.occupant)).slice(0, 12)) {
+      const [sx, sy] = toPx(s.pos), side = [Math.cos(s.face), -Math.sin(s.face)], fwd = [Math.sin(s.face), Math.cos(s.face)];
+      for (const d of shuffle([1, -1])) {
+        const px = sx + side[0] * 12 * d + fwd[0] * 3, py = sy + side[1] * 12 * d + fwd[1] * 3;
+        if (walkPx(px, py) && clearOfChairs(px, py)) return at(px, py, s.face, s.place || 'a table');
+      }
+    }
+    return null;
   }
   if (job === 'organize') { const s = shuffle([...interactables.of('storage'), ...interactables.of('locker')])[0]; return s && { ...s, kind: 'clean', shared: false }; }
   for (let i = 0; i < 12; i++) {
