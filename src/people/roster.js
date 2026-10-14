@@ -10,12 +10,16 @@ function simRole(department) { return ROLE_WORDS.find(([, re]) => re.test(depart
 
 const fullName = e => `${e.firstName} ${e.lastName}`.trim();
 
-// What the person card says they are: "UI/UX Department", "HR Department", or "Intern UI/UX".
-const SHORT = { 'Human Resources': 'HR', 'Internet of Things (IoT)': 'IoT', 'Frontend (FE)': 'Frontend' };
+// What the person card says they are: their department, abbreviated ("RND", "QA", "Software Dev"), or "Intern QA".
+const SHORT = {
+  'Human Resources': 'HR', 'Internet of Things (IoT)': 'IoT', 'Frontend (FE)': 'Frontend', 'Research and Development': 'RND',
+  'Software Development': 'Software Dev', 'Website Development': 'Web Dev', 'Quality Assurance': 'QA', 'Project Management': 'PM',
+  'Graphics Design': 'Graphics',
+};
 function jobTitle(e) {
   const dept = e.department ? SHORT[e.department] ?? e.department : null;
   if (e.intern) return dept ? `Intern ${dept}` : 'Intern';
-  return dept ? `${dept} Department` : 'Staff';
+  return dept ?? 'Staff';
 }
 
 // Employees not yet in the office, in list order.

@@ -70,9 +70,9 @@ function renderPerson() {
   const p = selected; if (!p) return;
   $('pName').textContent = p.name; $('pRole').textContent = p.seat ? `${p.title ?? p.role} · ${p.seat.label ?? p.seat.place}` : p.title ?? p.role;
   $('pStatus').textContent = statusText(p);
-  // Live mode: someone still clocked in has no leaving time until they clock out
-  const leaves = Number.isFinite(p.leaveAt) ? `leaves ~${fmt(p.leaveAt)}` : p.absent ? 'not in today' : 'until clock-out';
-  $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · ${leaves} · coffee ×${p.coffees}`;
+  // just the time in; nothing when they have not arrived (the status line already says so)
+  $('pMeta').textContent = Number.isFinite(p.arrivedAt) ? `Time in ${fmt(p.arrivedAt)}` : '';
+  $('pMeta').hidden = !Number.isFinite(p.arrivedAt);
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
   $('pEdit').hidden = !p.userId; // only real employees have a saved character
 }
