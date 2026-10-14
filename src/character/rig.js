@@ -40,39 +40,64 @@ function fitHead(character) {
   head.scale.multiplyScalar(CHIBI_HEAD); head.position.y *= CHIBI_HEAD; // keep it sitting on the neck
 }
 
-// Build a character for a CharacterSpec. The pack draws it; we take over its joints (people/animation.js
-// poses them every frame, the pack's own clips are not used) and attach the activity props.
-// Returns the joints, the props, and measurements the cameras need. `sockets` are attach points for items.
-function buildBody(spec) {
+// Hazel (people/hazel.js): the regular cube model at HAZEL_SCALE, with the model's own eyes, brows and mouth
+// taken off so only her angry face (addAngry, from spec.angry) is drawn on the cube.
+const HAZEL_SCALE = .8;
+function hazelize(character, skinHex) {
+  character.root.scale.setScalar(HAZEL_SCALE);
+  character.root.updateMatrixWorld(true);
+  const head = character.root.getObjectByName(HEAD_NODE[character.type]);
+  const face = boundsOf(head.children.filter(o => o.isMesh && o.material.color?.getHex() === skinHex)), b = new THREE.Box3(), size = new THREE.Vector3();
+  for (const m of [...head.children]) {
+    if (!m.isMesh || m.material.color?.getHex() === skinHex) continue;
+    b.setFromObject(m).getSize(size);
+    // thin, small pieces on the front of the face (eyes, brows, mouth, lashes, freckles); not hair or ears
+    if (size.z < .03 && size.x < .1 && b.min.z > face.max.z - .03) head.remove(m);
+  }
+}
+
+// A pack character's joints and measurements.
+function packParts(spec) {
   const character = new Character(THREE, spec, CHARACTER_SIZES);
   character.mixer.stopAllAction();
   fitHead(character);
   const skinHex = new THREE.Color(character.inner.config.skin).getHex();
+  if (spec.special === 'hazel') hazelize(character, skinHex);
   const geometries = mergeJoints(character.root, skinHex);
   const root = new THREE.Group(); root.add(character.root);
   root.updateMatrixWorld(true);
   const node = name => character.root.getObjectByName(name);
-  const hips = node('Hips'), spine = node('Spine'), neck = node('Neck'), head = node(HEAD_NODE[character.type]);
-  const armL = node('ArmL'), armR = node('ArmR'), legL = node('LegL'), legR = node('LegR'), handL = node('HandL'), handR = node('HandR');
-  const items = [node('ItemL'), node('ItemR')].filter(Boolean);
-
+  const hips = node('Hips'), head = node(HEAD_NODE[character.type]);
   // world metres per unit of the pack's skeleton, and the standing hip height in metres
-  const unit = hips.parent.getWorldScale(v).y, standHip = hips.position.y * unit;
+  const unit = hips.parent.getWorldScale(v).y;
   const skinMeshes = []; root.traverse(o => { if (o.isMesh && o.material.color?.getHex() === skinHex) { o.userData.baseMat = o.material; skinMeshes.push(o); } });
-  const faceMeshes = head.children.filter(o => o.isMesh && skinMeshes.includes(o)), face = boundsOf(faceMeshes);
+  const face = boundsOf(head.children.filter(o => o.isMesh && skinMeshes.includes(o)));
+  return {
+    root, character, geometries, hips, spine: node('Spine'), neck: node('Neck'), head,
+    armL: node('ArmL'), armR: node('ArmR'), legL: node('LegL'), legR: node('LegR'), handL: node('HandL'), handR: node('HandR'),
+    items: [node('ItemL'), node('ItemR')].filter(Boolean), hold: heldItems(character),
+    unit, standHip: hips.position.y * unit, eyeY: face.getCenter(v).y + (face.max.y - face.min.y) * .1, skinMeshes,
+  };
+}
+
+// Build a character for a CharacterSpec. The pack draws it; we take over its joints (people/animation.js
+// poses them every frame, the pack's own clips are not used) and attach the activity props.
+// Returns the joints, the props, and measurements the cameras need. `sockets` are attach points for items.
+function buildBody(spec) {
+  const parts = packParts(spec);
+  const { root, character, geometries, hips, spine, neck, head, armL, armR, legL, legR, handL, handR, items, hold, unit, standHip, eyeY, skinMeshes } = parts;
   const chest = boundsOf(spine.children.filter(o => o.isMesh));
-  const eyeY = face.getCenter(v).y + (face.max.y - face.min.y) * .1;
 
   // props are placed in world space around the resting hand, then attached so they follow it
   const held = makeHeldProps(), hand = handR.getWorldPosition(new THREE.Vector3());
   for (const prop of Object.values(held)) { prop.position.add(hand); handR.attach(prop); }
   const guitar = makeGuitar(); guitar.position.set(-.04, chest.getCenter(v).y, chest.max.z + .07); guitar.rotation.z = .35; guitar.scale.setScalar(.85); guitar.visible = false; spine.attach(guitar);
-  if (spec.angry) addAngry(head, faceMeshes);
+  if (spec.angry) addAngry(head, head.children.filter(o => o.isMesh && skinMeshes.includes(o)));
 
   const ring = new THREE.Mesh(ringGeo, ringMats.work); ring.rotation.x = -Math.PI / 2; ring.position.y = .015; ring.renderOrder = 2;
   const sockets = { head, torso: spine, leftHand: handL, rightHand: handR };
   return {
-    root, character, hips, spine, neck, head, armL, armR, legL, legR, items, hold: heldItems(character),
+    root, character, hips, spine, neck, head, armL, armR, legL, legR, items, hold,
     unit, standHip, eyeY, ...held, guitar, ring, skinMeshes, sockets, geometries,
   };
 }

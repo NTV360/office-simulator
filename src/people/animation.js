@@ -12,7 +12,7 @@ const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so 
 const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
   if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
-  if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
+  if (p.state === 'walking') return p.task?.run || p.hazel ? 'run' : 'walk'; // Hazel always runs
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
   if (t.kind === 'meeting') return t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
@@ -34,7 +34,8 @@ function targetPose(p, k, T) {
     }
     case 'run': {
       const s = Math.sin(p.walkPhase), c = Math.cos(p.walkPhase);
-      o.lHip = -.85 * s; o.rHip = .85 * s;
+      const stride = p.hazel ? .55 : .85; // Hazel: quick, short steps
+      o.lHip = -stride * s; o.rHip = stride * s;
       o.lKnee = .2 + 1.1 * Math.max(0, c); o.rKnee = .2 + 1.1 * Math.max(0, -c);
       o.lShX = .8 * s; o.lEl = -1.2; o.rShX = p.body.bucket.visible ? -.1 * s : -.8 * s; o.rEl = p.body.bucket.visible ? -.1 : -1.2; // the bucket hand stays down
       o.hipY = .86 + .05 * Math.abs(Math.cos(p.walkPhase)); o.lean = .22;

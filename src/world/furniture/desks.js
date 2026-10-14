@@ -1,11 +1,30 @@
 import * as THREE from 'three';
-import { DESK_ISLANDS, SEAT_GAP } from '../../config/desks.js';
+import { DESK_ISLANDS, HAZEL_DESK, SEAT_GAP } from '../../config/desks.js';
 import { S, wx, wz } from '../../config/plan.js';
 import { pick } from '../../core/util.js';
 import { M } from '../../render/materials.js';
 import { SCREENS } from '../../render/screens.js';
 import { N, SO, mkSpot, officeChair } from './basics.js';
 import { addObs, box, cyl, dynamic, frame, staticRoot } from '../helpers.js';
+
+// A baby high chair, the kind toddlers eat in: splayed legs, a raised padded seat, a footrest and a tray.
+// Hazel's seat (config/desks.js HAZEL_DESK). Local frame like officeChair: +z faces the desk.
+const HIGH = { frame: new THREE.MeshStandardMaterial({ color: 0xf4f3ef, roughness: .45 }), pad: new THREE.MeshStandardMaterial({ color: 0x9fd0e4, roughness: .8 }) };
+function highChair(f) {
+  const g = new THREE.Group(); f.add(g);
+  [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+    const leg = box(g, .035, .74, .035, HIGH.frame, sx * .2, .36, sz * .18); leg.rotation.set(-sz * .14, 0, sx * .14); // feet splayed out wider than the seat
+  });
+  box(g, .5, .03, .03, HIGH.frame, 0, .02, .23); box(g, .5, .03, .03, HIGH.frame, 0, .02, -.23); // floor bars between the feet
+  box(g, .3, .03, .04, HIGH.frame, 0, .32, .2);                   // footrest
+  box(g, .36, .05, .32, HIGH.frame, 0, .66, 0);                   // seat
+  box(g, .32, .03, .28, HIGH.pad, 0, .695, 0);                    // seat cushion
+  box(g, .34, .34, .05, HIGH.frame, 0, .86, -.15); box(g, .3, .3, .02, HIGH.pad, 0, .86, -.12); // padded back
+  [-1, 1].forEach(s => box(g, .03, .14, .26, HIGH.frame, s * .18, .76, .0));                     // side rails
+  box(g, .42, .025, .2, HIGH.frame, 0, .84, .22);                 // the eating tray
+  box(g, .42, .03, .02, HIGH.frame, 0, .855, .32);                // tray lip
+  return g;
+}
 
 // Shared desk islands, from the static desk data (config/desks.js). Each chair is a 'desk' spot that knows its
 // seat id ('A3') and, for the HR office, the department it belongs to.
@@ -25,10 +44,11 @@ function island(def, gap = SEAT_GAP) {
     const top = side === 'top';
     for (let i = 0; i < cols; i++) {
       const px = x1 + (i + .5) * cw, py = top ? y1 - gap : y2 + gap, face = top ? SO : N;
-      const spot = mkSpot('desk', px, py, face, { sit: true, place: name, shared: false });
+      const deskId = def.id + (seatNo + 1), baby = deskId === HAZEL_DESK;
+      const spot = mkSpot('desk', px, py, face, { sit: true, place: name, shared: false, hipY: baby ? .7 : undefined });
       spot.deskId = def.id + (++seatNo); spot.label = def.room ? `${name} · desk ${seatNo}` : `${name}${seatNo}`; spot.department = def.department ?? null;
       const f = frame(px, py, face);
-      officeChair(f, (i + (top ? 0 : 1)) % 3 === 0 ? M.chairSeat2 : M.chairSeat);
+      if (baby) highChair(f); else officeChair(f, (i + (top ? 0 : 1)) % 3 === 0 ? M.chairSeat2 : M.chairSeat);
       const mz = edge + half - .16;
       box(f, .22, .012, .16, M.monitor, 0, .766, mz);
       box(f, .05, .14, .04, M.monitor, 0, .84, mz + .02);

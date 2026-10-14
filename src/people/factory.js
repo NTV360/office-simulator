@@ -1,6 +1,6 @@
 import { TAU, pick, rnd, seededRandom } from '../core/util.js';
 import { buildBody, disposeBody } from '../character/rig.js';
-import { normalizeSpec, randomSpec } from '../character/spec.js';
+import { randomSpec } from '../character/spec.js';
 import { FIRST, LAST, roleBag } from './data.js';
 import { HAZEL_NAME, applyHazel } from './hazel.js';
 import { helperIdentity } from './helper.js';
@@ -8,6 +8,7 @@ import { fullName, jobTitle, roster, simRole, unplacedEmployees } from './roster
 import { SCREENS } from '../render/screens.js';
 import { deskPool, people, peopleGroup } from '../sim/state.js';
 import { liveSchedule, usesAttendance } from '../sim/live.js';
+import { HAZEL_DESK } from '../config/desks.js';
 import { DAY_END, shiftWindow } from '../sim/schedule.js';
 import { endTask, goWork } from '../sim/tasks.js';
 import { ENTRY } from '../world/entrance.js';
@@ -38,6 +39,7 @@ function createPerson(who, seat) {
     screenKind: role.includes('Designer') ? 'design' : role === 'DevOps' ? 'dash' : 'code',
   };
   p.screenMat = pick(SCREENS[p.screenKind]);
+  p.hazel = name === HAZEL_NAME;
   if (seat) seat.owner = p;
   body.root.traverse(o => { if (o.isMesh) o.userData.person = p; });
   body.root.visible = false; body.ring.visible = false;
@@ -52,7 +54,7 @@ function employee(e) {
   const role = simRole(e.department), title = jobTitle(e);
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ?? randomSpec(role, seededRandom(e.userId));
-  if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
+  if (hazel) { spec = applyHazel().spec; e.desk = HAZEL_DESK; } // her own model, always at her own desk
   return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
 }
 // The next employee not yet in the office who has a desk to go to (one without a free desk is skipped).
@@ -64,15 +66,17 @@ function nextSeated() {
 function madeUp() {
   let role = pick(roleBag), spec = randomSpec(role);
   let first = FIRST[nameIdx % FIRST.length], last = LAST[(nameIdx * 7 + 3) % LAST.length] + '.';
-  if (nameIdx === 0) ({ first, last, role, spec } = applyHazel());
+  const hazel = nameIdx === 0;
+  if (hazel) ({ first, last, role, spec } = applyHazel());
   nameIdx++;
-  return { name: `${first} ${last}`, role, title: role, userId: null, department: null, desk: null, shift: null, spec };
+  return { name: `${first} ${last}`, role, title: role, userId: null, department: null, desk: hazel ? HAZEL_DESK : null, shift: null, spec };
 }
 
 // Where someone sits: the desk they chose, else a free one. Department desks (the HR office) are only for
 // that department, and desks other employees chose stay free for them.
 function seatFor(who) {
   const chosen = new Set((roster.list ?? []).filter(e => e.desk && e.userId !== who.userId).map(e => e.desk));
+  if (who.name !== HAZEL_NAME) chosen.add(HAZEL_DESK); // Hazel's high chair is hers
   const open = s => !s.owner && !chosen.has(s.deskId);
   return deskPool.find(s => s.deskId === who.desk && !s.owner)
     ?? deskPool.find(s => open(s) && s.department && s.department === who.department)

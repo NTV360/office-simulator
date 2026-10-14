@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB } from '../people/data.js';
+import { HAZEL_LOCKED } from '../people/hazel.js';
 import { scene } from '../render/renderer.js';
 import { openCreator } from './creator.js';
 import { fillAvatar } from './avatar.js';
@@ -74,7 +75,7 @@ function renderPerson() {
   $('pMeta').textContent = Number.isFinite(p.arrivedAt) ? `Time in ${fmt(p.arrivedAt)}` : '';
   $('pMeta').hidden = !Number.isFinite(p.arrivedAt);
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
-  $('pEdit').hidden = !p.userId; // only real employees have a saved character
+  $('pEdit').hidden = !p.userId && !p.hazel; // only real employees have a saved character (Hazel's button just says no)
 }
 
 
@@ -86,7 +87,10 @@ function initPerson() {
   $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
   addEventListener('resize', placeCard);
-  $('pEdit').onclick = () => { if (selected?.userId) openCreator(selected.userId); };
+  $('pEdit').onclick = () => {
+    if (selected?.hazel) alert(HAZEL_LOCKED); // her look is fixed
+    else if (selected?.userId) openCreator(selected.userId);
+  };
 }
 
 export { fmt, renderPerson, selRing, select, selected, statusText, initPerson };

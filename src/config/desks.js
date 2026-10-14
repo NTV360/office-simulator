@@ -17,6 +17,9 @@ const DESK_ISLANDS = [
   { id: 'HR', name: 'HR Office', rect: [296, 112, 366, 146], cols: 3, sides: ['top', 'bottom'], department: 'Human Resources', room: true },
 ];
 
+// Hazel Sellote's seat (people/hazel.js): always hers, with a baby high chair instead of an office chair.
+const HAZEL_DESK = 'C1';
+
 // How far a chair sits from the edge of its desk island, in plan pixels.
 const SEAT_GAP = 12.8;
 
@@ -33,4 +36,4 @@ function deskSeats() {
 }
 function deskSeat(id) { return deskSeats().find(s => s.id === id) ?? null; }
 
-export { DESK_ISLANDS, SEAT_GAP, deskSeat, deskSeats };
+export { DESK_ISLANDS, HAZEL_DESK, SEAT_GAP, deskSeat, deskSeats };

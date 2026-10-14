@@ -6,7 +6,7 @@ import { DESK_ISLANDS, deskSeat, deskSeats } from '../config/desks.js';
 import { seededRandom } from '../core/util.js';
 import { TYPES, normalizeSpec, presetList, randomSpec, specOptions } from '../character/spec.js';
 import { moveToDesk, restylePerson, seatById } from '../people/factory.js';
-import { HAZEL_NAME } from '../people/hazel.js';
+import { HAZEL_LOCKED, HAZEL_NAME } from '../people/hazel.js';
 import { employeeById, fullName, jobTitle, roster, simRole } from '../people/roster.js';
 import { saveCharacter } from '../persistence/store.js';
 import { fillAvatar } from './avatar.js';
@@ -215,6 +215,7 @@ function avatarOf(e) {
   return box;
 }
 function pickEmployee(userId) {
+  if (fullName(employeeById(userId)).toLowerCase() === HAZEL_NAME.toLowerCase()) { alert(HAZEL_LOCKED); return; } // her look is fixed
   creator.target = userId;
   creator.draft = lookOf(userId); creator.desk = deskOf(userId); creator.deskIsland = null;
   rebuild();

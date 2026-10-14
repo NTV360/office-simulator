@@ -25,7 +25,7 @@ function stepPerson(p, dt, sdt) {
       if (d <= step) { p.pos.x = tg.x; p.pos.z = tg.z; step -= d; moved += d; p.pi++; }
       else { p.pos.x += dx / d * step; p.pos.z += dz / d * step; moved += step; step = 0; }
     }
-    p.walkPhase += moved * 4.6;
+    p.walkPhase += moved * 4.6 * (p.hazel ? 2.4 : 1); // Hazel's short legs: quick running steps, same speed
     // gentle avoidance while in open floor
     if (p.pi < p.path.length - 1 && moved > 0) {
       for (const q of people) {

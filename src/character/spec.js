@@ -98,6 +98,7 @@ function normalizeSpec(raw = {}) {
   };
   if (toHex(r.lips)) spec.lips = toHex(r.lips);
   if (spec.body === 'male' && spec.top.style === 'dress') spec.top.style = 'tshirt';
+  if (r.special === 'hazel') spec.special = 'hazel'; // Hazel: smaller, only her angry face (character/rig.js)
   return spec;
 }
 
