@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CATS } from '../people/data.js';
 import { Character, STYLES } from './pack/characters.js';
 import { mergeJoints } from './gfx.js';
-import { addAngry } from './parts.js';
+import { addFaces } from './parts.js';
 import { makeGuitar, makeHeldProps } from './props.js';
 
 const ringGeo = new THREE.RingGeometry(.27, .33, 32);
@@ -41,7 +41,7 @@ function fitHead(character) {
 }
 
 // Hazel (people/hazel.js): the regular cube model at HAZEL_SCALE, with the model's own eyes, brows and mouth
-// taken off so only her angry face (addAngry, from spec.angry) is drawn on the cube.
+// taken off so only her angry face (parts.js addFaces, from spec.angry) is drawn on the cube.
 const HAZEL_SCALE = .8;
 function hazelize(character, skinHex) {
   character.root.scale.setScalar(HAZEL_SCALE);
@@ -92,15 +92,18 @@ function buildBody(spec) {
   const held = makeHeldProps(), hand = handR.getWorldPosition(new THREE.Vector3());
   for (const prop of Object.values(held)) { prop.position.add(hand); handR.attach(prop); }
   const guitar = makeGuitar(); guitar.position.set(-.04, chest.getCenter(v).y, chest.max.z + .07); guitar.rotation.z = .35; guitar.scale.setScalar(.85); guitar.visible = false; spine.attach(guitar);
-  if (spec.angry) addAngry(head, head.children.filter(o => o.isMesh && skinMeshes.includes(o)));
+  const faces = spec.angry ? addFaces(head, head.children.filter(o => o.isMesh && skinMeshes.includes(o))) : null;
 
   const ring = new THREE.Mesh(ringGeo, ringMats.work); ring.rotation.x = -Math.PI / 2; ring.position.y = .015; ring.renderOrder = 2;
   const sockets = { head, torso: spine, leftHand: handL, rightHand: handR };
   return {
     root, character, hips, spine, neck, head, armL, armR, legL, legR, items, hold,
-    unit, standHip, eyeY, ...held, guitar, ring, skinMeshes, sockets, geometries,
+    unit, standHip, eyeY, ...held, guitar, ring, skinMeshes, sockets, geometries, faces,
   };
 }
+
+// Show one of Hazel's faces (parts.js addFaces): 'angry', 'laugh' or 'worried'. Others have just their own.
+function showFace(body, name) { if (body.faces) for (const k in body.faces) body.faces[k].visible = k === name; }
 
 // Eye height in metres: standing, or seated with the hips at `seatHipY`.
 function eyeHeight(body, seatHipY = null) { return seatHipY == null ? body.eyeY : body.eyeY - body.standHip + seatHipY; }
@@ -108,4 +111,4 @@ function eyeHeight(body, seatHipY = null) { return seatHipY == null ? body.eyeY 
 // Free the pack's geometry and materials and the merged geometry (shared materials and the props stay).
 function disposeBody(body) { body.character.dispose(); body.geometries.forEach(g => g.dispose()); }
 
-export { CHARACTER_SIZES, buildBody, disposeBody, eyeHeight, fitHead, ringMats };
+export { CHARACTER_SIZES, buildBody, disposeBody, eyeHeight, fitHead, ringMats, showFace };

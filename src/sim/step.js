@@ -2,6 +2,7 @@ import { OX, OY, S } from '../config/plan.js';
 import { angDiff } from '../core/util.js';
 import { walkPx } from '../nav/grid.js';
 import { SCREENS } from '../render/screens.js';
+import { hazelSlack } from '../people/hazel.js';
 import { arriveNow } from './day.js';
 import { breakIndex } from './schedule.js';
 import { people, sim } from './state.js';
@@ -17,6 +18,7 @@ function stepPerson(p, dt, sdt) {
     return;
   }
   p.animT += dt * Math.min(sim.speed, 2.5);
+  if (p.hazel) hazelSlack(p, dt * Math.min(sim.speed, 2.5)); // movies at her desk
   if (p.state === 'walking' && p.path) {
     let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1), moved = 0; // running for the bucket
     while (step > 1e-6 && p.pi < p.path.length) {
@@ -54,7 +56,7 @@ function updateScreens() {
   for (const s of interactables.of('desk')) {
     const p = s.owner;
     let m = SCREENS.off;
-    if (p && p.state !== 'away') m = (p.state === 'doing' && p.task?.spot === s && (p.task.kind === 'work')) ? p.screenMat : SCREENS.lock;
+    if (p && p.state !== 'away') m = (p.state === 'doing' && p.task?.spot === s && (p.task.kind === 'work')) ? p.slack?.screen ?? p.screenMat : SCREENS.lock;
     if (s.screen.material !== m) s.screen.material = m;
   }
 }

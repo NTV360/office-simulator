@@ -17,6 +17,7 @@ function animKey(p) {
   const t = p.task;
   if (t.kind === 'meeting') return t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
   if (t.kind === 'work' && p.chatWith) return 'listenSit';
+  if (t.kind === 'work' && p.slack && p.slack.mode !== 'work') return p.slack.mode === 'movie' ? 'watch' : 'peek'; // Hazel (people/hazel.js)
   return t.anim;
 }
 function targetPose(p, k, T) {
@@ -46,6 +47,12 @@ function targetPose(p, k, T) {
     case 'windowWipe': o.rShX = -2.5 + Math.cos(T * 5) * .15; o.rShZ = -.25 + Math.sin(T * 5) * .4; o.rEl = -.2; o.lShX = -.3; o.lEl = -.4; o.headX = -.3; o.lean = -.04; break;
     case 'mop': { const s = Math.sin(T * 3); o.lean = .18; o.lShX = -.75; o.lEl = -.5; o.rShX = -.55; o.rEl = -.4; o.lShZ = .1 + s * .3; o.rShZ = -.1 + s * .3; o.headX = .3; o.headY = s * .2; break; }
     case 'type': sit(); o.lean = .12; o.lShX = -.6; o.rShX = -.6; o.lEl = -1.2 + Math.sin(T * 13) * .06; o.rEl = -1.2 + Math.sin(T * 13 + 2) * .06; o.lShZ = -.05; o.rShZ = .05; o.headX = .1 + Math.sin(T * .4) * .05; o.headY = Math.sin(T * .23) * .15; break;
+    // Hazel's movie: leaning back with her hands on the desk; laughing shakes her
+    case 'watch': { sit(); o.lean = -.08; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; o.headX = .05;
+      if (p.slack.face === 'laugh') { o.lean = -.14 + Math.sin(T * 16) * .04; o.headX = -.15 + Math.sin(T * 16) * .06; }
+      break; }
+    // alt-tabbed: hands back on the keys, looking over one shoulder, then the other (worried; people/hazel.js)
+    case 'peek': sit(); o.lean = .12; o.lShX = o.rShX = -.6; o.lEl = o.rEl = -1.2; o.headX = -.05; o.headY = Math.sin(T * 4.5) * 1.0; break;
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;
     case 'listen': sit(); o.lean = -.03; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -1.0; o.headX = Math.sin(T * 2.1) * .04; break;
     case 'listenSit': sit(); o.lean = -.02; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; break;

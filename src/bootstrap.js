@@ -2,6 +2,7 @@ import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
 import { initGrid } from './nav/grid.js';
 import { initLabels } from './render/labels.js';
+import { initMovie } from './render/screens.js';
 import { initDay } from './sim/day.js';
 import { initState } from './sim/state.js';
 import { initControls } from './ui/controls.js';
@@ -63,6 +64,7 @@ export function bootstrap() {
   buildEntrance();
   buildBake();
   initLabels();
+  initMovie();
   // navigation reads the obstacles registered by the world
   initGrid();
   // simulation; the player's saved look is loaded before anything could spawn them

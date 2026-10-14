@@ -1,9 +1,12 @@
+import { showFace } from '../character/rig.js';
 import { normalizeSpec } from '../character/spec.js';
+import { rnd } from '../core/util.js';
+import { movieAt } from '../render/screens.js';
 
 // Hazel Sellote: the one hand-written character. With the real staff list she is whoever has that name;
 // without it she is the first person created (see makePerson). She is a smaller cube character with only her
 // furious face (character/rig.js hazelize), runs everywhere (at walking speed), sits in a baby high chair at
-// her own desk (HAZEL_DESK), and always leaves last. Her look can't be edited in the character lab.
+// her own desk (HAZEL_DESK), watches movies there instead of working (hazelSlack), and always leaves last. Her look can't be edited in the character lab.
 const HAZEL_NAME = 'Hazel Sellote';
 const HAZEL_LOCKED = "Sorry, you can't make Hazel taller than she is now.";
 
@@ -19,4 +22,23 @@ function applyHazel() {
   return { first: 'Hazel', last: 'Sellote', role: 'UX/UI Designer', spec: normalizeSpec(HAZEL_LOOK) };
 }
 
-export { HAZEL_LOCKED, HAZEL_NAME, applyHazel };
+// At her desk she mostly watches a movie, which makes her laugh, and every so often she alt-tabs back to work and
+// checks over her shoulders, worried someone saw, before going back to it (or doing a bit of real work).
+// `p.slack` holds the mode ('work', 'movie' or 'peek'), the seconds left in it, her face, which movie, and what her screen
+// shows (null: her usual work screen; sim/step.js updateScreens). Poses: 'watch' and 'peek' in animation.js.
+const PEEK = 2.4; // seconds to alt-tab and look around
+function hazelSlack(p, dt) {
+  const s = p.slack ??= { mode: 'work', t: 0, face: 'angry', ft: 0, screen: null, movie: 0 };
+  const atDesk = p.state === 'doing' && p.task?.kind === 'work' && p.task.spot === p.seat && !p.chatWith;
+  if (!atDesk) { s.mode = 'work'; s.t = rnd(2, 6); s.face = 'angry'; s.screen = null; showFace(p.body, 'angry'); return; }
+  if ((s.t -= dt) <= 0) {
+    if (s.mode === 'movie') { s.mode = 'peek'; s.t = PEEK; s.face = 'worried'; } // alt-tab and look around: did anyone see?
+    else if (s.mode === 'work' || Math.random() < .65) { if (s.mode === 'work') s.movie = Math.floor(Math.random() * 100); s.mode = 'movie'; s.t = rnd(12, 24); s.ft = rnd(1.5, 3); s.face = 'angry'; } // after a peek she goes back to the same one
+    else { s.mode = 'work'; s.t = rnd(6, 14); s.face = 'angry'; }
+  }
+  if (s.mode === 'movie' && (s.ft -= dt) <= 0) { s.face = s.face === 'laugh' ? 'angry' : 'laugh'; s.ft = rnd(2.5, 5); }
+  s.screen = s.mode === 'movie' ? movieAt(s.movie, p.animT) : null;
+  showFace(p.body, s.face);
+}
+
+export { HAZEL_LOCKED, HAZEL_NAME, applyHazel, hazelSlack };
