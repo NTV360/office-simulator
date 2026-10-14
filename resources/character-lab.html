@@ -1,0 +1,2446 @@
+<title>Character Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: grid-paper stage on the left, a scrolling "build sheet" panel on the right; stacks on phones */
+:root {
+  --paper: #f2f5f9; --grid: #dde6f1; --panel: #ffffff; --ink: #1c2130; --muted: #6a7386;
+  --line: #e2e7ef; --chip: #f1f4f8; --accent: #d9466a; --accent-ink: #ffffff; --warn: #b35a00;
+  --pixel: "Silkscreen", ui-monospace, monospace;
+  --ui: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #14161c; --grid: #20242e; --panel: #1b1e26; --ink: #eef1f6; --muted: #98a1b3;
+  --line: #2b303c; --chip: #242833; --accent: #ff7a98; --accent-ink: #1b0d08; --warn: #ffb35a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #14161c; --grid: #20242e; --panel: #1b1e26; --ink: #eef1f6; --muted: #98a1b3;
+  --line: #2b303c; --chip: #242833; --accent: #ff7a98; --accent-ink: #1b0d08; --warn: #ffb35a; color-scheme: dark }
+
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--ui); }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 400px; height: 100%; }
+.stage { position: relative; min-width: 0; overflow: hidden;
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px; }
+#canvas { position: absolute; inset: 0; }
+.stage-top { position: absolute; top: 16px; left: 16px; right: 16px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.stage-top > * { pointer-events: auto; }
+h1 { font: 400 clamp(18px, 2.4vw, 24px)/1.1 var(--pixel); margin: 0; letter-spacing: .02em; }
+.sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.stage-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 6px;
+  align-items: center; justify-content: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 6px; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(20, 24, 36, .08); }
+.stage-bar label { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); padding: 0 6px; }
+.stage-bar input[type=range] { width: 80px; accent-color: var(--accent); }
+.stage-bar output { font: 500 12px var(--mono); color: var(--ink); min-width: 3.4em; font-variant-numeric: tabular-nums; }
+.hint { position: absolute; left: 16px; bottom: 76px; font-size: 12px; color: var(--muted); }
+
+.panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 16px 40px; padding-inline: 18px; min-width: 0; }
+.panel section { padding-block: 14px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.panel section:last-child { border-bottom: 0; }
+.panel h2 { font: 400 11px var(--pixel); letter-spacing: .08em; text-transform: uppercase; margin: 0; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: start; }
+.row > .lbl { font-size: 12.5px; color: var(--muted); padding-top: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+button { font: 500 12.5px var(--ui); color: var(--ink); background: var(--chip); border: 1px solid transparent; border-radius: 8px;
+  padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--line); }
+button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-strong { background: var(--ink); color: var(--panel); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sw { width: 24px; height: 24px; border-radius: 6px; padding: 0; border: 2px solid var(--line); }
+.sw[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--panel) inset; background-clip: padding-box; }
+input[type=color] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+.colorline { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.presets button { text-align: left; }
+.accgroup { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; }
+.acc-active { display: grid; gap: 6px; }
+.acc-active .item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; background: var(--chip); border-radius: 8px; padding: 4px 6px 4px 10px; }
+.acc-active .item span { flex: 1; min-width: 0; }
+.acc-active .item .side { padding: 3px 8px; }
+.warn { color: var(--warn); font-size: 12px; }
+textarea { width: 100%; box-sizing: border-box; min-height: 160px; resize: vertical; font: 12px/1.5 var(--mono); color: var(--ink);
+  background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggle { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+.toggle input { accent-color: var(--accent); }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage { height: 62vh; min-height: 380px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; padding-inline: 16px; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="canvas"></div>
+    <div class="stage-top">
+      <div>
+        <h1>Character Lab</h1>
+        <div class="sub" id="who">Blocky + Chibi</div>
+      </div>
+      <button id="crowdBtn" aria-pressed="false">Show all presets</button>
+    </div>
+    <div class="hint" id="hint">Drag to orbit · scroll to zoom</div>
+    <div class="stage-bar">
+      <span class="chips" id="clipBtns"></span>
+      <label for="speed">Speed <input id="speed" type="range" min="0" max="2" step="0.05" value="1"><output id="speedOut">1.00×</output></label>
+      <button id="spinBtn" aria-pressed="false">Turntable</button>
+    </div>
+  </div>
+  <aside class="panel" id="panel" aria-label="Character settings"></aside>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const BlockyNS = (() => {
+// ---- blocky-character.js
+// BlockyCharacter — mix-and-match voxel-style characters for three.js
+// --------------------------------------------------------------------
+//   import * as THREE from 'three';
+//   import { BlockyCharacter, PRESETS } from './blocky-character.js';
+//
+//   const hero = new BlockyCharacter(THREE, { body: 'female', hair: { style: 'bun', color: '#2b1b14' },
+//                                            top: { style: 'hoodie', color: '#4e7bd8' },
+//                                            accessories: ['headphones', 'phone'] });
+//   scene.add(hero.root);
+//   hero.play('Walk');                 // 'Walk' | 'Idle' | 'Ride' (see hero.clipNames)
+//   // every frame: hero.update(delta)
+//
+//   hero.set({ top: { style: 'jacket' } });    // rebuilds in place, keeps position & animation
+//   new BlockyCharacter(THREE, PRESETS.skater);
+//
+// All sizes are in "pixels" (px). Default px = 0.056 → an average adult is ~1.8 units tall.
+// Characters face +Z with feet on y = 0.
+
+// ---------------------------------------------------------------- palettes
+const SKIN_TONES = {
+  porcelain: '#ffe0cc', fair: '#f6c9a6', light: '#eab38c', medium: '#d39b72',
+  olive: '#c08a5c', tan: '#a8704a', brown: '#87573a', dark: '#653f29', deep: '#46291b',
+};
+const HAIR_COLORS = {
+  black: '#1f1a18', darkBrown: '#3b2519', brown: '#5e3b24', auburn: '#8a3a22', ginger: '#b8402b',
+  blonde: '#d9b25f', platinum: '#ece0c0', grey: '#9a9a9a', white: '#eeeeee',
+  pink: '#e86fa3', blue: '#4a7fe0', green: '#3fae6c', purple: '#8a5ad8',
+};
+const EYE_COLORS = { brown: '#3b2416', dark: '#1d1411', hazel: '#6b5a2e', green: '#3f7a4a', blue: '#3e6fb0', grey: '#6d7b86' };
+
+// ---------------------------------------------------------------- body shapes
+const BUILDS = {
+  skinny:  { tw: 7,  td: 3.5, legW: 3.5, armDelta: -0.5 },
+  average: { tw: 8,  td: 4,   legW: 4,   armDelta: 0 },
+  chubby:  { tw: 10, td: 5.5, legW: 4.5, armDelta: 0.5 },
+};
+const HEIGHTS = {
+  short:   { th: 10, legL: 11 },
+  average: { th: 12, legL: 12 },
+  tall:    { th: 13, legL: 14.5 },
+};
+
+// ---------------------------------------------------------------- defaults
+const DEFAULT_MALE = {
+  name: 'Default Male', body: 'male', build: 'average', height: 'average',
+  skin: SKIN_TONES.light, eyes: EYE_COLORS.brown, freckles: false,
+  hair: { style: 'short', color: HAIR_COLORS.brown },
+  facialHair: { style: 'none' },
+  top: { style: 'tshirt', color: '#4f86d9' },
+  bottom: { style: 'pants', color: '#3b4357' },
+  shoes: { style: 'simple', color: '#2d2a2a' },
+  accessories: [],
+};
+const DEFAULT_FEMALE = {
+  ...DEFAULT_MALE, name: 'Default Female', body: 'female',
+  hair: { style: 'long', color: HAIR_COLORS.brown },
+};
+
+// ---------------------------------------------------------------- color helpers
+function toColorNum(THREE, c, fallback = 0xff00ff) {
+  if (c === undefined || c === null) return fallback;
+  if (typeof c === 'number') return c;
+  const named = SKIN_TONES[c] || HAIR_COLORS[c] || EYE_COLORS[c];
+  return new THREE.Color(named || c).getHex();
+}
+function shade(THREE, c, f) {
+  const col = new THREE.Color(c);
+  if (f < 1) col.multiplyScalar(f);
+  else col.lerp(new THREE.Color(0xffffff), f - 1);
+  return col.getHex();
+}
+function mix(THREE, a, b, t) { return new THREE.Color(a).lerp(new THREE.Color(b), t).getHex(); }
+
+// ---------------------------------------------------------------- registries
+// Every part gets a context `k` with: box(), joint(), nodes, d (body dims), cfg, color helpers.
+// Add your own entries to these objects (or use BlockyCharacter.register*) to extend the library.
+
+const HAIR_STYLES = {
+  none: () => {},
+  buzz: (k, c) => {
+    k.box(k.n.head, 8.3, 0.8, 8.3, 0, 8.25, 0, c);
+    k.box(k.n.head, 8.3, 3.5, 0.5, 0, 6.5, -4.05, c);
+  },
+  short: (k, c) => shortBase(k, c),
+  quiff: (k, c) => {
+    shortBase(k, c);
+    if (k.flags.hat) return;
+    k.box(k.n.head, 6, 1.5, 4, 0.5, 9.5, 1.5, c);
+    k.box(k.n.head, 4, 1, 2.8, 1, 10.5, 1.9, k.shade(c, 0.78));
+  },
+  spiky: (k, c) => {
+    shortBase(k, c);
+    if (k.flags.hat) return;
+    [[-2.5, 1.5], [0, 2.2], [2.5, 1.2], [-1.2, -1.5], [1.5, -1.8]].forEach(([x, z], i) =>
+      k.box(k.n.head, 1.6, 1.6 + (i % 2) * 0.6, 1.6, x, 9.6 + (i % 2) * 0.3, z, i % 2 ? k.shade(c, 0.85) : c));
+  },
+  afro: (k, c) => {
+    if (k.flags.hat) return shortBase(k, c);
+    k.box(k.n.head, 10, 4.5, 10, 0, 9.25, -0.5, c);
+    k.box(k.n.head, 10, 5, 6, 0, 5, -2.5, c);
+  },
+  long: (k, c) => {
+    shortBase(k, c);
+    for (const s of [1, -1]) k.box(k.n.head, 1, 8.5, 5.5, 4.4 * s, 4.25, -1.75, c);
+    k.box(k.n.head, 8.6, 8, 1.2, 0, 4.5, -4.65, c);
+    k.box(k.n.head, 8, 4, 1, 0, -1.5, -(k.d.td / 2 + 0.6), k.shade(c, 0.92));
+  },
+  bob: (k, c) => {
+    shortBase(k, c);
+    for (const s of [1, -1]) k.box(k.n.head, 1, 6, 7, 4.4 * s, 5, -0.5, c);
+    k.box(k.n.head, 8.8, 6, 1, 0, 5, -4.4, c);
+  },
+  ponytail: (k, c) => {
+    shortBase(k, c);
+    k.box(k.n.head, 2.2, 1.2, 1.4, 0, 6.5, -5.2, k.shade(c, 0.7));
+    k.box(k.n.head, 2, 6, 1.6, 0, 3, -5.5, c);
+  },
+  bun: (k, c) => {
+    shortBase(k, c);
+    if (k.flags.hat) return;
+    k.box(k.n.head, 4, 3, 4, 0, 10.4, -1.5, c);
+    k.box(k.n.head, 4.3, 0.6, 4.3, 0, 9.2, -1.5, k.shade(c, 0.7));
+  },
+  pigtails: (k, c) => {
+    shortBase(k, c);
+    for (const s of [1, -1]) {
+      k.box(k.n.head, 1.6, 5, 1.6, 5.2 * s, 3.5, -1.5, c);
+      k.box(k.n.head, 1.9, 0.6, 1.9, 5.2 * s, 6.2, -1.5, k.shade(c, 0.7));
+    }
+  },
+  mohawk: (k, c) => {
+    k.box(k.n.head, 8.2, 0.4, 8.2, 0, 8.6, 0, k.mix(c, k.skin, 0.55));
+    if (k.flags.hat) return;
+    k.box(k.n.head, 2, 3, 8.6, 0, 10.3, 0, c);
+  },
+};
+function shortBase(k, c) {
+  const h = k.n.head;
+  k.box(h, 8.5, 1.5, 8.5, 0, 8.25, 0, c);
+  k.box(h, 8.4, 4.8, 1, 0, 5.9, -4.1, c);
+  for (const s of [1, -1]) k.box(h, 1, 3.5, 4.5, 3.65 * s, 6.25, -1.9, c);
+  k.box(h, 8.5, 1, 1, 0, 7.5, 3.8, c);
+}
+
+const FACIAL_HAIR = {
+  none: () => {},
+  stubble: (k, c) => {
+    const col = k.mix(c, k.skin, 0.5);
+    k.box(k.n.head, 7, 2.5, 0.2, 0, 1.85, 4.1, col);
+    for (const s of [1, -1]) k.box(k.n.head, 0.2, 2.5, 4, 4.1 * s, 1.85, 1.5, col);
+  },
+  moustache: (k, c) => k.box(k.n.head, 4, 0.7, 0.35, 0, 3.95, 4.15, c),
+  goatee: (k, c) => {
+    k.box(k.n.head, 4, 0.7, 0.35, 0, 3.95, 4.15, c);
+    k.box(k.n.head, 2.5, 2.5, 0.35, 0, 1.9, 4.15, c);
+  },
+  beard: (k, c) => {
+    k.box(k.n.head, 8.5, 3.25, 8.5, 0, 1.875, 0, c);
+    k.box(k.n.head, 4, 1, 1, 0, 1.1, 4.2, k.shade(c, 0.78));
+    k.box(k.n.head, 4, 0.6, 0.3, 0, 3.9, 4.15, c);
+  },
+};
+
+// tops: torso + sleeves. `long` sleeves end in a cuff, `short` stop at the bicep.
+function torso(k, c) { return k.box(k.n.spine, k.d.tw, k.d.th, k.d.td, 0, k.d.th / 2, 0, c); }
+function sleeves(k, len, c, cuff) {
+  const { armW: w, armTop, handTop } = k.d;
+  for (const arm of [k.n.armL, k.n.armR]) {
+    if (len === 'long') {
+      const h = armTop + 0.15 - handTop;
+      k.box(arm, w + 0.3, h, w + 0.3, 0, armTop + 0.15 - h / 2, 0, c);
+      k.box(arm, w + 0.5, 1.05, w + 0.5, 0, handTop + 0.45, 0, cuff ?? c);
+    } else if (len === 'short') {
+      k.box(arm, w + 0.3, 4.65, w + 0.3, 0, armTop + 0.15 - 2.325, 0, c);
+    }
+  }
+}
+const front = (k) => k.d.td / 2 + 0.1;
+// finger blocks: each entry is [x, y, z, w, h, d] in the hand item's space
+function grip(k, item, ...fingers) {
+  const col = k.shade(k.skin, 0.95);
+  for (const [x, y, z, w, h, d] of fingers) k.box(item, w, h, d, x, y, z, col);
+}
+
+const TOPS = {
+  tshirt: (k, c, a) => {
+    torso(k, c); sleeves(k, 'short', c);
+    k.box(k.n.spine, 3, 0.6, 0.2, 0, k.d.th - 0.4, front(k), k.shade(c, 0.8));
+  },
+  polo: (k, c, a) => {
+    torso(k, c); sleeves(k, 'short', c);
+    k.box(k.n.spine, 4, 0.9, 0.25, 0, k.d.th - 0.45, front(k), a ?? k.shade(c, 1.35));
+    k.box(k.n.spine, 0.8, 3, 0.2, 0, k.d.th - 1.8, front(k), k.shade(c, 0.8));
+  },
+  longsleeve: (k, c) => { torso(k, c); sleeves(k, 'long', c, k.shade(c, 0.88)); },
+  tanktop: (k, c) => {
+    torso(k, c);
+    k.box(k.n.spine, 3, 1.5, 0.2, 0, k.d.th - 0.75, front(k), k.skin);
+  },
+  hoodie: (k, c, a) => {
+    torso(k, c); sleeves(k, 'long', c, k.shade(c, 0.85));
+    const { th, td, tw } = k.d;
+    k.box(k.n.spine, Math.min(7, tw - 1), 4.5, 1.4, 0, th, -(td / 2 + 2.1), k.shade(c, 0.9)); // hood
+    k.box(k.n.spine, tw - 2, 2.5, 0.25, 0, 3, front(k), k.shade(c, 0.85));                    // pocket
+    for (const s of [1, -1]) k.box(k.n.spine, 0.4, 2.5, 0.25, s, th - 2.5, front(k) + 0.02, a ?? 0xf2f2f2);
+    k.box(k.n.spine, tw + 0.2, 1.2, td + 0.35, 0, 0.55, 0, k.shade(c, 0.85));                  // waistband
+  },
+  jacket: (k, c, a) => {
+    torso(k, c); sleeves(k, 'long', c, a ?? 0xfff6ea);
+    const { th, td, tw } = k.d, z = front(k);
+    k.box(k.n.spine, 2.4, th - 0.5, 0.2, 0, th / 2 + 0.25, z, a ?? 0xfff6ea);                 // shirt
+    for (const s of [1, -1]) k.box(k.n.spine, 0.5, th - 2, 0.25, 1.45 * s, th / 2 + 0.5, z + 0.02, k.shade(c, 0.78));
+    k.box(k.n.spine, tw + 0.1, 3, td + 0.35, 0, 1.45, 0, c);                                      // hem
+    k.box(k.n.spine, 2, 1, 0.3, -(tw / 4 + 0.5), 3.5, td / 2 + 0.25, k.shade(c, 0.78));      // pocket flap
+  },
+  sweater: (k, c, a) => {
+    torso(k, c); sleeves(k, 'long', c, k.shade(c, 0.85));
+    const { th, td, tw } = k.d;
+    k.box(k.n.spine, tw + 0.2, 1.2, td + 0.35, 0, 0.55, 0, k.shade(c, 0.85));
+    k.box(k.n.spine, tw + 0.2, 1.2, td + 0.35, 0, th * 0.58, 0, a ?? k.shade(c, 1.4));
+  },
+  dress: (k, c, a) => {
+    torso(k, c); sleeves(k, 'short', c);
+    const { tw, td } = k.d;
+    k.box(k.n.hips, tw + 1, 5.5, td + 1.2, 0, -2.25, 0, c);
+    k.box(k.n.hips, tw + 1.6, 2.5, td + 1.8, 0, -4.25, 0, c);
+    k.box(k.n.spine, tw + 0.2, 0.8, td + 0.35, 0, 0.9, 0, a ?? k.shade(c, 0.75));
+  },
+};
+TOPS.dress.coversLegs = true;
+
+const BOTTOMS = {
+  bare: () => {},
+  pants: (k, c) => legs(k, (leg) => k.box(leg, k.d.legW + 0.2, k.d.legL - 2.4, k.d.legW + 0.2, 0, -(k.d.legL - 2.4) / 2, 0, c)),
+  widePants: (k, c) => legs(k, (leg) => {
+    const L = k.d.legL - 2.4, w = k.d.legW + 0.2;
+    k.box(leg, w, L, w, 0, -L / 2, 0, c);
+    k.box(leg, w + 0.05, 1, w + 0.05, 0, -L + 0.5, 0, k.shade(c, 0.75));
+  }),
+  jeans: (k, c) => {
+    legs(k, (leg) => {
+      const L = k.d.legL - 2.4, w = k.d.legW + 0.2;
+      k.box(leg, w, L, w, 0, -L / 2, 0, c);
+      k.box(leg, w + 0.15, 1, w + 0.15, 0, -L + 0.4, 0, k.shade(c, 1.25));
+    });
+    k.box(k.n.spine, k.d.tw + 0.14, 0.8, k.d.td + 0.25, 0, 0.38, 0, 0x3b2a20);
+    k.box(k.n.spine, 1.2, 0.6, 0.2, 0, 0.4, k.d.td / 2 + 0.2, 0xd9b25f);
+  },
+  joggers: (k, c, a) => legs(k, (leg, s) => {
+    const L = k.d.legL - 2.4, w = k.d.legW + 0.2;
+    k.box(leg, w, L, w, 0, -L / 2, 0, c);
+    k.box(leg, w + 0.1, 1, w + 0.1, 0, -L + 0.5, 0, k.shade(c, 0.8));
+    k.box(leg, 0.2, L - 1.5, 1, (w / 2 + 0.05) * s, -L / 2 + 0.75, 0, a ?? 0xf2f2f2);
+  }),
+  shorts: (k, c) => legs(k, (leg) => k.box(leg, k.d.legW + 0.2, k.d.legL * 0.38, k.d.legW + 0.2, 0, -k.d.legL * 0.19, 0, c)),
+  skirt: (k, c) => k.box(k.n.hips, k.d.tw + 1, k.d.legL * 0.42, k.d.td + 1, 0, -k.d.legL * 0.21 + 0.2, 0, c),
+  leggings: (k, c) => legs(k, (leg) => k.box(leg, k.d.legW + 0.1, k.d.legL - 2, k.d.legW + 0.1, 0, -(k.d.legL - 2) / 2, 0, c)),
+};
+function legs(k, fn) { fn(k.n.legL, 1); fn(k.n.legR, -1); }
+
+const SHOES = {
+  bare: () => {},
+  simple: (k, c) => legs(k, (leg) => {
+    const w = k.d.legW, L = k.d.legL;
+    k.box(leg, w + 0.25, 2.2, w + 0.25, 0, -L + 1.1, 0, c);
+    k.box(leg, w + 0.3, 0.5, w + 0.9, 0, -L + 0.2, 0.35, k.shade(c, 0.7));
+  }),
+  sneakers: (k, c, a) => legs(k, (leg, s) => {
+    const w = k.d.legW, L = k.d.legL, sole = a ?? 0xfbe9e7;
+    k.box(leg, w + 0.1, 2, w + 0.1, 0, -L + 1, 0, c);
+    k.box(leg, w + 0.28, 0.6, w + 1.2, 0, -L + 0.25, 0.6, sole);
+    k.box(leg, w + 0.2, 1.3, 1.2, 0, -L + 0.9, w / 2 + 0.65, sole);
+    k.box(leg, w / 2, 0.4, 1.6, 0, -L + 2.15, w / 2 - 0.85, sole);
+  }),
+  hightops: (k, c, a) => legs(k, (leg, s) => {
+    const w = k.d.legW, L = k.d.legL, sole = a ?? 0xfbe9e7;
+    k.box(leg, w + 0.25, 3.2, w + 0.25, 0, -L + 1.6, 0, c);
+    k.box(leg, w + 0.32, 0.6, w + 1.2, 0, -L + 0.25, 0.6, sole);
+    k.box(leg, w + 0.29, 1.3, 1.2, 0, -L + 0.9, w / 2 + 0.65, sole);
+    k.box(leg, 0.2, 1, 1, (w / 2 + 0.2) * s, -L + 2.2, -1, sole);
+  }),
+  boots: (k, c) => legs(k, (leg) => {
+    const w = k.d.legW, L = k.d.legL;
+    k.box(leg, w + 0.3, 3.6, w + 0.3, 0, -L + 1.8, 0, c);
+    k.box(leg, w + 0.36, 0.7, w + 1, 0, -L + 0.3, 0.45, k.shade(c, 0.6));
+    k.box(leg, 1.2, 2.5, 0.2, 0, -L + 2.3, w / 2 + 0.25, k.shade(c, 0.7));
+  }),
+};
+
+// Accessories. slot: head | face | body | back | hand | ride
+// hand items: hand 'L' | 'R' | 'both', pose = arm angles while holding, upright = keep item level.
+const ACCESSORIES = {
+  cap: { slot: 'head', hat: true, color: '#d64545', build: (k, c) => {
+    k.box(k.n.head, 8.7, 2.6, 8.7, 0, 8.6, 0, c);
+    k.box(k.n.head, 8, 0.5, 4, 0, 7.6, 5.8, k.shade(c, 0.82));
+    k.box(k.n.head, 1, 0.4, 1, 0, 10.05, 0, k.shade(c, 0.82));
+  } },
+  beanie: { slot: 'head', hat: true, color: '#e0a23a', build: (k, c, a) => {
+    k.box(k.n.head, 8.8, 3.8, 8.8, 0, 9.1, 0, c);
+    k.box(k.n.head, 9.1, 1.3, 9.1, 0, 7.6, 0, k.shade(c, 0.82));
+    k.box(k.n.head, 2, 1.5, 2, 0, 11.75, 0, a ?? 0xf5f0e6);
+  } },
+  headphones: { slot: 'head', color: '#2a2d34', build: (k, c, a) => {
+    const y = k.has('beanie') ? 11.5 : k.has('cap') ? 10.4 : k.cfg.hair.style === 'afro' ? 12 : (k.flags.tallHair ? 11.2 : 9.55);
+    k.box(k.n.head, 10.2, 1, 1.6, 0, y, 0, c);
+    for (const s of [1, -1]) {
+      k.box(k.n.head, 0.8, y - 6.6, 1.4, 4.75 * s, (y + 6.6) / 2, 0, c);
+      k.box(k.n.head, 1.5, 3.2, 3, 4.95 * s, 5.2, 0.5, a ?? 0xe25563);
+    }
+  } },
+  glasses: { slot: 'face', color: '#2a2320', build: (k, c) => {
+    k.box(k.n.head, 7.6, 0.45, 0.3, 0, 6.35, 4.65, c);
+    for (const s of [1, -1]) {
+      k.box(k.n.head, 2.8, 2, 0.2, 1.7 * s, 5.35, 4.62, 0xcfe8ff, { opacity: 0.35 });
+      k.box(k.n.head, 0.3, 0.4, 4.6, 4.3 * s, 6.35, 2.35, c);
+    }
+  } },
+  sunglasses: { slot: 'face', color: '#15161b', build: (k, c) => {
+    k.box(k.n.head, 7.8, 0.5, 0.3, 0, 6.45, 4.65, c);
+    for (const s of [1, -1]) {
+      k.box(k.n.head, 3, 2, 0.25, 1.75 * s, 5.45, 4.6, c);
+      k.box(k.n.head, 0.3, 0.4, 4.6, 4.3 * s, 6.45, 2.35, c);
+    }
+  } },
+  earrings: { slot: 'face', color: '#e8c25a', build: (k, c) => {
+    for (const s of [1, -1]) k.box(k.n.head, 0.5, 0.8, 0.5, 4.25 * s, 3.4, 0.9, c);
+  } },
+  watch: { slot: 'body', color: '#1d2633', build: (k, c) => {
+    const arm = k.flags.handL ? k.n.armR : k.n.armL, s = arm === k.n.armL ? 1 : -1, w = k.d.armW;
+    k.box(arm, w + 0.6, 0.8, w + 0.6, 0, k.d.handTop - 0.5, 0, c);
+    k.box(arm, 0.3, 1.2, 1.4, (w / 2 + 0.45) * s, k.d.handTop - 0.5, 0, 0x9fb4c8);
+  } },
+  scarf: { slot: 'body', color: '#c9473f', build: (k, c, a) => {
+    const { th, td, tw } = k.d;
+    k.box(k.n.spine, Math.min(tw + 0.6, 9.2), 1.6, td + 0.6, 0, th - 0.7, 0, c);
+    k.box(k.n.spine, 1.8, 5, 0.6, 1.8, th - 3.5, td / 2 + 0.5, c);
+    k.box(k.n.spine, 1.9, 0.6, 0.65, 1.8, th - 4.5, td / 2 + 0.5, a ?? 0xf5f0e6);
+  } },
+  tie: { slot: 'body', color: '#2f3d6e', build: (k, c) => {
+    const { th } = k.d, z = front(k) + 0.1;
+    k.box(k.n.spine, 1.4, 1, 0.4, 0, th - 0.7, z, c);
+    k.box(k.n.spine, 1.2, 6, 0.3, 0, th - 4.2, z, c);
+  } },
+  camera: { slot: 'body', color: '#2b2b30', build: (k, c) => {
+    const { th, td } = k.d, z = td / 2 + 0.9;
+    k.box(k.n.spine, 3.6, 2.4, 1.6, 0, th * 0.45, z, c);
+    k.box(k.n.spine, 1.6, 1.6, 0.8, 0, th * 0.45, z + 1.1, 0x50555e);
+    k.box(k.n.spine, 0.8, 0.5, 0.4, -1.2, th * 0.45 + 1.4, z, 0xd64545);
+    for (const s of [1, -1]) {
+      const strap = k.box(k.n.spine, 0.4, th * 0.6, 0.3, 1.6 * s, th * 0.75, td / 2 + 0.2, 0x3b2a20);
+      strap.rotation.z = 0.25 * s;
+    }
+  } },
+  backpack: { slot: 'back', color: '#3f7a5a', build: (k, c) => {
+    const { th, td } = k.d, z = -(td / 2 + 1.6);
+    k.box(k.n.spine, 6.5, th * 0.62, 3, 0, th * 0.54, z, c);
+    k.box(k.n.spine, 4.5, th * 0.25, 0.4, 0, th * 0.37, z - 1.7, k.shade(c, 0.8));
+    for (const s of [1, -1]) k.box(k.n.spine, 1, th * 0.8, 0.3, 2.5 * s, th * 0.55, td / 2 + 0.15, k.shade(c, 0.7));
+  } },
+  guitar: { slot: 'back', color: '#c9702e', build: (k, c) => {
+    const { th, td } = k.d;
+    const gz = -(td / 2 + 2.6) - (k.has('backpack') ? 2.2 : 0);
+    const g = k.joint(k.n.spine, 'Guitar', 0, th / 2, gz);
+    g.rotation.z = 0.55;
+    k.box(g, 6, 6.5, 1.8, 0, -2, 0, c);
+    k.box(g, 7, 3.5, 1.8, 0, -4.5, 0, c);
+    k.box(g, 1.6, 1.6, 0.2, 0, -1.2, -1, 0x2a1a12);
+    k.box(g, 1.2, 10, 0.8, 0, 6, 0, 0x5a3a22);
+    k.box(g, 1.8, 2, 0.9, 0, 12, 0, 0x3a2416);
+    const strap = k.box(k.n.spine, 1, th * 1.15, 0.3, 0, th / 2, td / 2 + 0.25, 0x2b1d18);
+    strap.rotation.z = 0.6;
+  } },
+  briefcase: { slot: 'hand', hand: 'R', swing: 0.25, color: '#4a1f1c', build: (k, c, a, hand) => {
+    const dk = k.shade(c, 0.64);
+    for (const z of [-1.5, 1.5]) k.box(hand, 1, 2, 1, 0, -1.5, z, dk);
+    k.box(hand, 1, 1, 4, 0, -0.5, 0, dk);
+    k.box(hand, 2.5, 6, 9, 0, -5.5, 0, c);
+    k.box(hand, 2.75, 2.1, 9.25, 0, -3.45, 0, dk);
+    k.box(hand, 3, 1, 1.5, 0, -4.5, 0, 0xfbe9e7);
+  } },
+  // Hand items sit beside or in front of the hand (never inside it). `grip()` adds skin-colored
+  // finger blocks over the item so it reads as held. Items are a little oversized on purpose.
+  book: { slot: 'hand', hand: 'L', swing: 0.4, color: '#3a6ea5', build: (k, c, a, hand, s) => {
+    const w = k.d.armW, x = (w / 2 + 1.0) * s;
+    k.box(hand, 2, 7, 5.6, x, -1, 0, c);
+    k.box(hand, 1.7, 6.6, 5.2, x + 0.1 * s, -1, 0.35, 0xf7f2e6);
+    k.box(hand, 0.3, 7.2, 0.6, x - 0.85 * s, -1, -2.6, k.shade(c, 0.7));    // spine
+    grip(k, hand, [x + 1.1 * s, 0.4, 0, 0.25, 2, 2.4]);                      // fingers over the cover
+  } },
+  phone: { slot: 'hand', hand: 'R', pose: { x: -1.0, z: 0.25 }, upright: 0.9, color: '#3d7bf2', build: (k, c, a, hand) => {
+    const z = k.d.armW / 2 + 0.55;
+    k.box(hand, 2.8, 4.8, 0.6, 0, 1.6, z, c);                                // case (faces outward)
+    k.box(hand, 0.9, 0.9, 0.2, 0.7, 3.3, z + 0.35, 0x1d2026);                // camera bump
+    k.box(hand, 2.5, 4.4, 0.1, 0, 1.6, z - 0.33, a ?? 0x7fd4ff, { emissive: 0.8 }); // screen (faces you)
+    grip(k, hand, [1.55, 0.6, z, 0.3, 1.8, 0.9], [-1.55, 0.6, z, 0.3, 1.8, 0.9]);
+  } },
+  tablet: { slot: 'hand', hand: 'both', pose: { x: -0.95, z: 0.1 }, upright: 0.75, color: '#e8ecf2', build: (k, c, a, hand, s) => {
+    const hx = k.d.sx - k.d.th * 0.1, x = -hx * s, z = k.d.armW / 2 + 1.0;
+    k.box(hand, 10, 7, 0.6, x, 2.4, z, c);                                   // bezel
+    k.box(hand, 8.8, 5.8, 0.1, x, 2.4, z - 0.33, a ?? 0x7fd4ff, { emissive: 0.7 }); // screen toward the holder
+    k.box(hand, 8.8, 5.8, 0.1, x, 2.4, z + 0.33, k.shade(c, 0.85));         // back plate
+    for (const hxl of [0, -2 * hx * s]) grip(k, hand, [hxl, 0.2, z + 0.5, 1.4, 1.8, 0.3], [hxl, 0.2, z - 0.5, 1.4, 1.8, 0.3]);
+  } },
+  coffee: { slot: 'hand', hand: 'L', pose: { x: -0.75, z: 0.1 }, upright: 1, color: '#f7f2ea', build: (k, c, a, hand, s) => {
+    const w = k.d.armW, x = -(w / 2 + 1.5) * s;
+    k.box(hand, 2.8, 3.8, 2.8, x, 0.6, 0.4, c);                              // cup
+    k.box(hand, 3.1, 0.7, 3.1, x, 2.85, 0.4, 0x3b2a20);                      // lid
+    k.box(hand, 0.8, 0.5, 0.8, x, 3.4, 0.4, 0x3b2a20);                       // sip spout
+    k.box(hand, 2.95, 1.5, 2.95, x, 0.4, 0.4, a ?? 0xd9653b);                // sleeve
+    grip(k, hand, [x + 0.7 * s, 0.5, 0.4 + 1.6, 1.6, 1.4, 0.3], [x + 0.7 * s, 0.5, 0.4 - 1.6, 1.6, 1.4, 0.3]);
+  } },
+  skateboard: { slot: 'ride', color: '#d9653b', build: (k, c, a) => {
+    const r = k.n.ride;
+    k.box(r, 5, 0.6, 18, 0, 2.9, 0, c);
+    k.box(r, 4.8, 0.1, 17.6, 0, 3.25, 0, 0x2a2a2e);
+    for (const s of [1, -1]) {
+      const tail = k.box(r, 5, 0.6, 3, 0, 3.35, 10.2 * s, c);
+      tail.rotation.x = -0.35 * s;
+      k.box(r, 3.5, 0.8, 1.2, 0, 2.2, 6 * s, 0x9aa0a8);
+      for (const x of [2.3, -2.3]) k.box(r, 1.2, 1.6, 1.6, x, 0.8, 6 * s, a ?? 0xf2efe6);
+    }
+    return 3.35;
+  } },
+  hoverboard: { slot: 'ride', hover: true, color: '#e8ecf2', build: (k, c, a) => {
+    const r = k.n.board;
+    k.box(r, 6, 1.2, 16, 0, 3.6, 0, c);
+    k.box(r, 6.2, 0.3, 14, 0, 3.6, 0, a ?? 0x37d6ff, { emissive: 1 });
+    k.box(r, 4.5, 0.3, 13, 0, 2.85, 0, a ?? 0x37d6ff, { emissive: 1.2 });
+    return 4.2;
+  } },
+};
+
+// ---------------------------------------------------------------- the class
+class BlockyCharacter {
+  constructor(THREE, config = {}, { px = 0.056 } = {}) {
+    this.THREE = THREE;
+    this.px = px;
+    this.root = new THREE.Group();
+    this.root.name = 'Character';
+    this.mixer = new THREE.AnimationMixer(this.root);
+    this.current = null;
+    this.set(config, true);
+  }
+
+  static normalize(config = {}) {
+    const base = config.body === 'female' ? DEFAULT_FEMALE : DEFAULT_MALE;
+    const part = (v, def) => (typeof v === 'string' ? { ...def, style: v } : { ...def, ...(v || {}) });
+    const out = {
+      ...base, ...config,
+      hair: part(config.hair, base.hair),
+      facialHair: part(config.facialHair, base.facialHair),
+      top: part(config.top, base.top),
+      bottom: part(config.bottom, base.bottom),
+      shoes: part(config.shoes, base.shoes),
+      accessories: (config.accessories ?? base.accessories).map((a) => (typeof a === 'string' ? { type: a } : { ...a })),
+    };
+    return out;
+  }
+
+  /** Change any part of the config and rebuild in place. */
+  set(patch = {}, replace = false) {
+    const prev = this.config ?? {};
+    const merged = replace ? patch : { ...prev, ...patch };
+    this.config = BlockyCharacter.normalize(merged);
+    const playing = this.current?.getClip().name;
+    this._clear();
+    this._build();
+    this.play(playing && this.clipNames.includes(playing) ? playing : this.defaultClip, 0);
+    return this;
+  }
+
+  toJSON() { return JSON.parse(JSON.stringify(this.config)); }
+
+  get clipNames() { return this.clips.map((c) => c.name); }
+
+  play(name = this.defaultClip, fade = 0.25) {
+    const clip = this.clips.find((c) => c.name === name);
+    if (!clip) return this;
+    const next = this.mixer.clipAction(clip);
+    if (this.current === next) return this;
+    next.reset().play();
+    if (this.current && fade > 0) this.current.crossFadeTo(next, fade, false);
+    else if (this.current) this.current.stop();
+    this.current = next;
+    return this;
+  }
+
+  update(dt) { this.mixer.update(dt); }
+
+  dispose() { this._clear(); }
+
+  _clear() {
+    this.mixer.stopAllAction();
+    this.current = null;
+    if (this.clips) this.clips.forEach((c) => this.mixer.uncacheClip(c));
+    this.mixer.uncacheRoot(this.root);
+    for (const child of [...this.root.children]) this.root.remove(child);
+    (this._geoms || []).forEach((g) => g.dispose());
+    (this._mats ? [...this._mats.values()] : []).forEach((m) => m.dispose());
+    this._geoms = [];
+    this._mats = new Map();
+  }
+
+  _build() {
+    const THREE = this.THREE, px = this.px, cfg = this.config;
+    const female = cfg.body === 'female';
+    const B = BUILDS[cfg.build] ?? BUILDS.average, H = HEIGHTS[cfg.height] ?? HEIGHTS.average;
+    const armW = (female ? 3 : 4) + B.armDelta;
+    const d = {
+      ...B, ...H, armW,
+      legX: B.tw / 4 + 0.15,
+      sx: B.tw / 2 + armW / 2 + 0.15,
+      armTop: 2, handTop: -(H.th - 2) + 3, // arm runs from +2 (above shoulder) to -(th-2)
+    };
+    d.handY = d.handTop - 1.5;
+
+    const mat = (color, o = {}) => {
+      const key = `${color}|${o.opacity ?? 1}|${o.emissive ?? 0}`;
+      if (!this._mats.has(key)) {
+        const m = new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, flatShading: true });
+        if (o.opacity !== undefined) { m.transparent = true; m.opacity = o.opacity; m.depthWrite = false; }
+        if (o.emissive) { m.emissive = new THREE.Color(color); m.emissiveIntensity = o.emissive; }
+        this._mats.set(key, m);
+      }
+      return this._mats.get(key);
+    };
+    const box = (parent, w, h, dd, x, y, z, color, o) => {
+      const g = new THREE.BoxGeometry(w * px, h * px, dd * px);
+      this._geoms.push(g);
+      const m = new THREE.Mesh(g, mat(color, o));
+      m.position.set(x * px, y * px, z * px);
+      m.castShadow = o?.opacity === undefined;
+      m.receiveShadow = true;
+      parent.add(m);
+      return m;
+    };
+    const joint = (parent, name, x = 0, y = 0, z = 0) => {
+      const g = new THREE.Group();
+      g.name = name;
+      g.position.set(x * px, y * px, z * px);
+      parent.add(g);
+      return g;
+    };
+
+    // resolve colors
+    const C = (c, f) => toColorNum(THREE, c, f);
+    const skinNum = C(cfg.skin);
+
+    // accessories → slots
+    const acc = cfg.accessories
+      .map((a) => ({ ...a, def: ACCESSORIES[a.type] }))
+      .filter((a) => a.def);
+    const hands = {};
+    const warnings = [];
+    let ride = null;
+    for (const a of acc) {
+      if (a.def.slot === 'hand') {
+        const want = a.def.hand === 'both' ? ['L', 'R'] : [a.side ?? a.def.hand];
+        for (const h of want) {
+          if (hands[h]) warnings.push(`${a.type} replaced ${hands[h].type} in hand ${h}`);
+          hands[h] = a;
+        }
+      }
+      if (a.def.slot === 'ride') { if (ride) warnings.push(`${a.type} replaced ${ride.type}`); ride = a; }
+    }
+    this.warnings = warnings;
+    const flags = {
+      hat: acc.some((a) => a.def.hat),
+      tallHair: ['quiff', 'spiky', 'afro', 'bun', 'mohawk'].includes(cfg.hair.style),
+      handL: !!hands.L, handR: !!hands.R, ride: ride?.type, hover: !!ride?.def.hover,
+    };
+
+    // skeleton
+    const n = {};
+    n.ride = joint(this.root, 'Ride');
+    n.board = joint(n.ride, 'Board');
+    n.body = joint(n.ride, 'Body');
+    n.hips = joint(n.body, 'Hips', 0, d.legL, 0);
+    n.legL = joint(n.hips, 'LegL', d.legX, 0, 0);
+    n.legR = joint(n.hips, 'LegR', -d.legX, 0, 0);
+    n.spine = joint(n.hips, 'Spine');
+    n.neck = joint(n.spine, 'Neck', 0, d.th - 0.5, 0);
+    n.head = joint(n.neck, 'Head');
+    n.armL = joint(n.spine, 'ArmL', d.sx, d.th - 2, 0);
+    n.armR = joint(n.spine, 'ArmR', -d.sx, d.th - 2, 0);
+    n.handL = joint(n.armL, 'HandL', 0, d.handY, 0);
+    n.handR = joint(n.armR, 'HandR', 0, d.handY, 0);
+
+    const k = {
+      THREE, n, d, cfg, flags, box, joint, skin: skinNum,
+      shade: (c, f) => shade(THREE, c, f), mix: (a, b, t) => mix(THREE, a, b, t),
+      has: (type) => acc.some((a) => a.type === type),
+    };
+
+    // skin base
+    const skin = skinNum, skinShade = shade(THREE, skin, 0.86);
+    for (const leg of [n.legL, n.legR]) box(leg, d.legW, d.legL, d.legW, 0, -d.legL / 2, 0, skin);
+    for (const arm of [n.armL, n.armR]) {
+      const len = d.armTop - (d.handTop - 3);
+      box(arm, armW, len, armW, 0, d.armTop - len / 2, 0, skin);
+    }
+    box(n.head, 8, 8, 8, 0, 4.5, 0, skin);
+
+    // clothes
+    const topFn = TOPS[cfg.top.style] ?? TOPS.tshirt;
+    topFn(k, C(cfg.top.color), cfg.top.accent !== undefined ? C(cfg.top.accent) : undefined);
+    let bottomStyle = cfg.bottom.style;
+    if (topFn.coversLegs && !['leggings', 'bare'].includes(bottomStyle)) bottomStyle = 'bare';
+    (BOTTOMS[bottomStyle] ?? BOTTOMS.pants)(k, C(cfg.bottom.color), cfg.bottom.accent !== undefined ? C(cfg.bottom.accent) : undefined);
+    (SHOES[cfg.shoes.style] ?? SHOES.simple)(k, C(cfg.shoes.color), cfg.shoes.accent !== undefined ? C(cfg.shoes.accent) : undefined);
+
+    // face
+    const hairC = C(cfg.hair.color);
+    const fhStyle = cfg.facialHair.style;
+    (HAIR_STYLES[cfg.hair.style] ?? HAIR_STYLES.short)(k, hairC);
+    (FACIAL_HAIR[fhStyle] ?? FACIAL_HAIR.none)(k, C(cfg.facialHair.color ?? cfg.hair.color));
+    const brow = cfg.hair.style === 'none' ? shade(THREE, skin, 0.55) : shade(THREE, hairC, 0.8);
+    for (const s of [1, -1]) {
+      box(n.head, 1, 1, 0.3, 1.5 * s, 5.5, 4.1, C(cfg.eyes));
+      box(n.head, 0.5, 1, 0.3, 2.25 * s, 5.5, 4.08, 0xfff6ea);
+      box(n.head, 1.5, 0.4, 0.3, 1.6 * s, 6.6, 4.1, brow);
+      box(n.head, 0.4, 1.5, 1.2, 4.1 * s, 4.6, 0.9, skinShade);
+      if (female) box(n.head, 0.5, 0.4, 0.3, 2.6 * s, 6.1, 4.12, 0x2a1512);
+      if (cfg.freckles) for (const [x, y] of [[2.4, 4.2], [3.1, 4.6], [2.9, 3.8]]) box(n.head, 0.4, 0.4, 0.22, x * s, y, 4.05, shade(THREE, skin, 0.72));
+    }
+    box(n.head, 1, 1.4, 0.6, 0, 4.6, 4.2, skinShade);
+    if (fhStyle === 'beard') box(n.head, 3, 0.5, 0.3, 0, 3.4, 4.2, skinShade);
+    else if (fhStyle !== 'goatee') box(n.head, 2, 0.4, 0.25, 0, 3.0, 4.1, female ? C(cfg.lips ?? '#c4566a') : shade(THREE, skin, 0.7));
+
+    // accessories
+    const itemNodes = {};
+    let boardTop = 0;
+    for (const a of acc) {
+      const c = C(a.color ?? a.def.color), ac = a.accent !== undefined ? C(a.accent) : undefined;
+      if (a.def.slot === 'hand') {
+        const sides = a.def.hand === 'both' ? ['L'] : [a.side ?? a.def.hand];
+        for (const h of sides) {
+          if (hands[h] !== a) continue;
+          const item = joint(n['hand' + h], 'Item' + h);
+          if (a.def.upright) item.rotation.set(-(a.def.pose?.x ?? 0) * a.def.upright, 0, (a.def.pose?.z ?? 0) * (h === 'L' ? 1 : -1));
+          itemNodes[h] = item;
+          a.def.build(k, c, ac, item, h === 'L' ? 1 : -1);
+        }
+      } else if (a.def.slot === 'ride') {
+        if (ride === a) boardTop = a.def.build(k, c, ac) ?? 0;
+      } else {
+        a.def.build(k, c, ac);
+      }
+    }
+
+    // stance on a board: stand sideways and look forward
+    if (ride) {
+      n.body.position.y = boardTop * px;
+      n.body.rotation.y = 1.35;
+    }
+
+    // animation
+    const rig = { d, px, hands, ride, flags, itemNodes };
+    this.clips = ride
+      ? [rideClip(THREE, rig, true), rideClip(THREE, rig, false)]
+      : [walkClip(THREE, rig), idleClip(THREE, rig), waveClip(THREE, rig)];
+    this.defaultClip = this.clips[0].name;
+  }
+
+  // ---- registry helpers
+  static registerAccessory(name, def) { ACCESSORIES[name] = def; }
+  static registerHair(name, fn) { HAIR_STYLES[name] = fn; }
+  static registerTop(name, fn) { TOPS[name] = fn; }
+  static registerBottom(name, fn) { BOTTOMS[name] = fn; }
+  static registerShoes(name, fn) { SHOES[name] = fn; }
+
+  static get options() {
+    return {
+      body: ['male', 'female'], build: Object.keys(BUILDS), height: Object.keys(HEIGHTS),
+      hair: Object.keys(HAIR_STYLES), facialHair: Object.keys(FACIAL_HAIR),
+      top: Object.keys(TOPS), bottom: Object.keys(BOTTOMS), shoes: Object.keys(SHOES),
+      accessories: Object.keys(ACCESSORIES),
+    };
+  }
+
+  /** Random but coherent character. Pass a seed for repeatable results. */
+  static random(seed = Math.random() * 1e9) {
+    let s = Math.floor(seed) || 1;
+    const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    const pick = (arr) => arr[Math.floor(r() * arr.length)];
+    const body = pick(['male', 'female']);
+    const hairPool = body === 'female' ? ['long', 'bob', 'ponytail', 'bun', 'pigtails', 'afro', 'short'] : ['short', 'quiff', 'buzz', 'spiky', 'afro', 'none', 'mohawk', 'long'];
+    const colors = ['#4f86d9', '#d64545', '#3fae6c', '#e0a23a', '#8a5ad8', '#2d2d33', '#f2ece2', '#e86fa3', '#2f8f8f', '#b3213d'];
+    const acc = [];
+    const head = pick([null, null, 'cap', 'beanie', 'headphones']);
+    if (head) acc.push(head);
+    if (r() < 0.3) acc.push(pick(['glasses', 'sunglasses']));
+    if (r() < 0.35) acc.push(pick(['backpack', 'scarf', 'watch', 'camera']));
+    if (r() < 0.45) acc.push(pick(['phone', 'coffee', 'book', 'tablet', 'briefcase']));
+    if (r() < 0.12) acc.push(pick(['skateboard', 'hoverboard']));
+    return {
+      name: 'Random', body,
+      build: pick(['skinny', 'average', 'average', 'chubby']), height: pick(['short', 'average', 'average', 'tall']),
+      skin: pick(Object.values(SKIN_TONES)), eyes: pick(Object.values(EYE_COLORS)), freckles: r() < 0.15,
+      hair: { style: pick(hairPool), color: pick(Object.values(HAIR_COLORS).slice(0, r() < 0.15 ? 13 : 9)) },
+      facialHair: { style: body === 'male' ? pick(['none', 'none', 'stubble', 'moustache', 'goatee', 'beard']) : 'none' },
+      top: { style: pick(body === 'female' ? Object.keys(TOPS) : Object.keys(TOPS).filter((t) => t !== 'dress')), color: pick(colors) },
+      bottom: { style: pick(['pants', 'jeans', 'joggers', 'shorts', 'widePants', ...(body === 'female' ? ['skirt', 'leggings'] : [])]), color: pick(['#3b4357', '#2f4e7a', '#3b1714', '#5b5b5b', '#2a2a2e', '#c7b28a']) },
+      shoes: { style: pick(['simple', 'sneakers', 'hightops', 'boots']), color: pick(colors) },
+      accessories: acc,
+    };
+  }
+}
+
+// ---------------------------------------------------------------- animation
+function track(THREE, name, duration, N, fn, kind = 'q') {
+  const times = Array.from({ length: N + 1 }, (_, i) => (i / N) * duration);
+  const v = [];
+  const q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (const t of times) {
+    const p = (t / duration) * Math.PI * 2;
+    const r = fn(p);
+    if (kind === 'q') { q.setFromEuler(e.set(r[0], r[1], r[2])); v.push(q.x, q.y, q.z, q.w); }
+    else v.push(...r);
+  }
+  return kind === 'q'
+    ? new THREE.QuaternionKeyframeTrack(`${name}.quaternion`, times, v)
+    : new THREE.VectorKeyframeTrack(`${name}.position`, times, v);
+}
+
+function armTrack(THREE, rig, side, dur, N, freeFn) {
+  const s = side === 'L' ? 1 : -1;
+  const item = rig.hands[side];
+  if (item?.def.pose) {
+    const { x = 0, z = 0 } = item.def.pose;
+    return track(THREE, 'Arm' + side, dur, N, (p) => [x + Math.sin(p * 2) * 0.03, 0, z * -s]);
+  }
+  return track(THREE, 'Arm' + side, dur, N, (p) => freeFn(p, item?.def.swing ?? 1, s));
+}
+
+function walkClip(THREE, rig) {
+  const { d, px } = rig, D = 1, N = 16, sin = Math.sin;
+  const tracks = [
+    track(THREE, 'Hips', D, N, (p) => [0, (d.legL + Math.abs(sin(p)) * 0.4) * px, 0], 'v'),
+    track(THREE, 'Spine', D, N, (p) => [0.04, -sin(p) * 0.06, 0]),
+    track(THREE, 'Neck', D, N, (p) => [-0.04 + Math.abs(sin(p)) * 0.05, sin(p) * 0.08, 0]),
+    track(THREE, 'LegL', D, N, (p) => [-sin(p) * 0.6, 0, 0]),
+    track(THREE, 'LegR', D, N, (p) => [sin(p) * 0.6, 0, 0]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.65 * sw, 0, 0.05 * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.65 * sw, 0, 0.05 * s]),
+  ];
+  for (const side of ['L', 'R']) {
+    const it = rig.hands[side];
+    if (it && !it.def.pose && rig.itemNodes[side]) tracks.push(track(THREE, 'Item' + side, D, N, (p) => [sin(p - 0.6) * 0.15 * (side === 'L' ? -1 : 1), 0, 0]));
+  }
+  return new THREE.AnimationClip('Walk', D, tracks);
+}
+
+function idleClip(THREE, rig) {
+  const { d, px } = rig, D = 3, N = 24, sin = Math.sin;
+  return new THREE.AnimationClip('Idle', D, [
+    track(THREE, 'Hips', D, N, (p) => [0, (d.legL - Math.abs(sin(p)) * 0.12) * px, 0], 'v'),
+    track(THREE, 'Spine', D, N, (p) => [sin(p * 2) * 0.012, 0, 0]),
+    track(THREE, 'Neck', D, N, (p) => [0.02, sin(p) * 0.25, sin(p * 2) * 0.02]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.02]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.02]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.03, 0, (0.06 + sin(p * 2) * 0.015) * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.03, 0, (0.06 + sin(p * 2) * 0.015) * s]),
+  ]);
+}
+
+function waveClip(THREE, rig) {
+  const { d, px } = rig, D = 1.2, N = 24, sin = Math.sin;
+  const side = rig.hands.R && !rig.hands.L ? 'L' : rig.hands.R ? null : 'R';
+  const sg = side === 'L' ? 1 : -1;
+  const wave = (s) => track(THREE, 'Arm' + s, D, N, (p) => [-0.2, 0, (2.5 + sin(p * 2) * 0.3) * (s === 'L' ? 1 : -1)]);
+  const still = (s) => armTrack(THREE, rig, s, D, N, (p, sw, k) => [0, 0, 0.06 * k]);
+  return new THREE.AnimationClip('Wave', D, [
+    track(THREE, 'Hips', D, N, (p) => [0, (d.legL + Math.abs(sin(p)) * 0.1) * px, 0], 'v'),
+    track(THREE, 'Spine', D, N, (p) => [0, 0, sin(p * 2) * 0.03 * sg]),
+    track(THREE, 'Neck', D, N, (p) => [0.04, 0, 0.1 * sg + sin(p * 2) * 0.03]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.02]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.02]),
+    side === 'L' ? wave('L') : still('L'),
+    side === 'R' ? wave('R') : still('R'),
+  ]);
+}
+
+function rideClip(THREE, rig, moving) {
+  const { d, px, ride } = rig, D = 2, N = 24, sin = Math.sin;
+  const hover = ride.def.hover;
+  const bob = hover ? 0.7 : moving ? 0.08 : 0;
+  const tracks = [
+    track(THREE, 'Ride', D, N, (p) => [0, (hover ? 1.5 : 0) * px + sin(p * (hover ? 1 : 8)) * bob * px, 0], 'v'),
+    track(THREE, 'Hips', D, N, (p) => [0, (d.legL * Math.cos(0.18) + 0.05 + Math.abs(sin(p * 2)) * 0.15) * px, 0], 'v'),
+    track(THREE, 'Spine', D, N, (p) => [0.05, 0, (moving ? sin(p) * 0.05 : 0)]),
+    track(THREE, 'Neck', D, N, (p) => [0, -1.15 + (moving ? 0 : sin(p) * 0.2), 0]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.18]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.18]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.1, 0, (0.45 + sin(p * 2) * 0.08) * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.1, 0, (0.45 + sin(p * 2 + 1) * 0.08) * s]),
+  ];
+  if (hover) tracks.push(track(THREE, 'Board', D, N, (p) => [sin(p) * 0.03, 0, sin(p * 2) * 0.02]));
+  return new THREE.AnimationClip(moving ? 'Ride' : 'Idle', D, tracks);
+}
+
+// ---- blocky-presets.js
+const S = SKIN_TONES, H = HAIR_COLORS, E = EYE_COLORS;
+// Preset library. Every entry is a plain config for `new BlockyCharacter(THREE, preset)`.
+// Mix and match: spread a preset and override parts, e.g.
+//   { ...PRESETS.student, body: 'female', hair: { style: 'bun', color: '#1f1a18' } }
+
+const PRESETS = {
+  defaultMale: DEFAULT_MALE,
+  defaultFemale: DEFAULT_FEMALE,
+
+  briefcaseWalker: {
+    name: 'Briefcase Walker', body: 'male', skin: S.fair,
+    hair: { style: 'quiff', color: H.ginger }, facialHair: { style: 'beard' },
+    top: { style: 'jacket', color: '#b3213d' }, bottom: { style: 'widePants', color: '#3b1714' },
+    shoes: { style: 'sneakers', color: '#b32642' }, accessories: ['watch', 'briefcase'],
+  },
+  skater: {
+    name: 'Skater', body: 'male', build: 'skinny', skin: S.tan,
+    hair: { style: 'short', color: H.black },
+    top: { style: 'hoodie', color: '#2f8f8f' }, bottom: { style: 'shorts', color: '#c7b28a' },
+    shoes: { style: 'hightops', color: '#2a2a2e' },
+    accessories: [{ type: 'beanie', color: '#e0a23a' }, 'skateboard'],
+  },
+  hoverRider: {
+    name: 'Hover Rider', body: 'female', skin: S.medium,
+    hair: { style: 'mohawk', color: H.pink },
+    top: { style: 'jacket', color: '#2d2d33', accent: '#37d6ff' }, bottom: { style: 'leggings', color: '#1f2230' },
+    shoes: { style: 'boots', color: '#e8ecf2' }, accessories: ['sunglasses', 'hoverboard'],
+  },
+  musician: {
+    name: 'Musician', body: 'male', build: 'average', height: 'tall', skin: S.olive,
+    hair: { style: 'long', color: H.darkBrown }, facialHair: { style: 'goatee' },
+    top: { style: 'jacket', color: '#1f1f22', accent: '#d64545' }, bottom: { style: 'jeans', color: '#2f4e7a' },
+    shoes: { style: 'boots', color: '#3b2a20' }, accessories: ['guitar'],
+  },
+  student: {
+    name: 'Student', body: 'female', build: 'skinny', height: 'short', skin: S.porcelain, freckles: true,
+    eyes: E.green, hair: { style: 'pigtails', color: H.auburn },
+    top: { style: 'sweater', color: '#e8d6a8', accent: '#3a6ea5' }, bottom: { style: 'skirt', color: '#3a3f5c' },
+    shoes: { style: 'simple', color: '#3b2a20' }, accessories: ['glasses', 'backpack', 'book'],
+  },
+  coffeeLover: {
+    name: 'Coffee Lover', body: 'female', skin: S.light,
+    hair: { style: 'bob', color: H.blonde },
+    top: { style: 'longsleeve', color: '#a3b18a' }, bottom: { style: 'jeans', color: '#41608f' },
+    shoes: { style: 'sneakers', color: '#f2ece2', accent: '#c9473f' },
+    accessories: [{ type: 'scarf', color: '#c9473f' }, 'coffee'],
+  },
+  developer: {
+    name: 'Developer', body: 'male', build: 'chubby', skin: S.brown,
+    hair: { style: 'afro', color: H.black }, facialHair: { style: 'stubble' },
+    top: { style: 'hoodie', color: '#3b3f4a' }, bottom: { style: 'joggers', color: '#2a2a2e' },
+    shoes: { style: 'sneakers', color: '#e8e8ea', accent: '#2a2a2e' }, accessories: ['headphones', 'tablet'],
+  },
+  designer: {
+    name: 'Designer', body: 'female', height: 'tall', skin: S.dark,
+    hair: { style: 'bun', color: H.black }, eyes: E.dark,
+    top: { style: 'longsleeve', color: '#f2ece2' }, bottom: { style: 'widePants', color: '#2d2d33' },
+    shoes: { style: 'simple', color: '#d64545' }, accessories: ['glasses', 'earrings', 'tablet'],
+  },
+  runner: {
+    name: 'Runner', body: 'male', build: 'skinny', height: 'tall', skin: S.deep,
+    hair: { style: 'buzz', color: H.black },
+    top: { style: 'tanktop', color: '#e86f3a' }, bottom: { style: 'shorts', color: '#1f2230' },
+    shoes: { style: 'sneakers', color: '#37d6ff', accent: '#ffffff' },
+    accessories: [{ type: 'headphones', color: '#f2f2f2', accent: '#37d6ff' }, 'watch'],
+  },
+  executive: {
+    name: 'Executive', body: 'female', skin: S.fair,
+    hair: { style: 'bun', color: H.darkBrown },
+    top: { style: 'jacket', color: '#2f3d6e' }, bottom: { style: 'skirt', color: '#2f3d6e' },
+    shoes: { style: 'simple', color: '#1d1d22' }, accessories: ['earrings', 'phone', 'watch'],
+  },
+  grandpa: {
+    name: 'Grandpa', body: 'male', build: 'chubby', height: 'short', skin: S.light,
+    hair: { style: 'none' }, facialHair: { style: 'moustache', color: H.white },
+    top: { style: 'sweater', color: '#7a5a3a', accent: '#c9a76a' }, bottom: { style: 'pants', color: '#5b5b5b' },
+    shoes: { style: 'simple', color: '#3b2a20' }, accessories: [{ type: 'cap', color: '#5c6b4a' }, 'glasses', 'book'],
+  },
+  grandma: {
+    name: 'Grandma', body: 'female', build: 'chubby', height: 'short', skin: S.fair,
+    hair: { style: 'bun', color: H.grey },
+    top: { style: 'dress', color: '#8a5ad8', accent: '#f2ece2' }, bottom: { style: 'bare' },
+    shoes: { style: 'simple', color: '#5e3b24' }, accessories: ['glasses', 'coffee'],
+  },
+  dj: {
+    name: 'DJ', body: 'male', skin: S.dark,
+    hair: { style: 'short', color: H.black }, facialHair: { style: 'beard', color: H.black },
+    top: { style: 'tshirt', color: '#8a5ad8' }, bottom: { style: 'joggers', color: '#1f1f22', accent: '#8a5ad8' },
+    shoes: { style: 'hightops', color: '#f2f2f2', accent: '#8a5ad8' },
+    accessories: [{ type: 'cap', color: '#1f1f22' }, 'headphones', 'sunglasses'],
+  },
+  hiker: {
+    name: 'Hiker', body: 'female', build: 'average', skin: S.tan,
+    hair: { style: 'ponytail', color: H.brown },
+    top: { style: 'tshirt', color: '#d9653b' }, bottom: { style: 'shorts', color: '#5c6b4a' },
+    shoes: { style: 'boots', color: '#6b4a2e' }, accessories: [{ type: 'cap', color: '#3f7a5a' }, 'backpack', 'watch'],
+  },
+  officeWorker: {
+    name: 'Office Worker', body: 'male', build: 'average', height: 'tall', skin: S.porcelain,
+    hair: { style: 'short', color: H.blonde }, eyes: E.blue,
+    top: { style: 'longsleeve', color: '#eef2f7' }, bottom: { style: 'pants', color: '#2d2d33' },
+    shoes: { style: 'simple', color: '#3b2a20' }, accessories: ['tie', 'glasses', 'phone'],
+  },
+  teen: {
+    name: 'Teen', body: 'female', build: 'skinny', height: 'short', skin: S.olive,
+    hair: { style: 'pigtails', color: H.blue },
+    top: { style: 'hoodie', color: '#e86fa3' }, bottom: { style: 'jeans', color: '#41608f' },
+    shoes: { style: 'hightops', color: '#f2f2f2', accent: '#e86fa3' }, accessories: ['phone', 'earrings'],
+  },
+  photographer: {
+    name: 'Photographer', body: 'male', build: 'skinny', skin: S.medium,
+    hair: { style: 'spiky', color: H.darkBrown },
+    top: { style: 'polo', color: '#3f7a5a' }, bottom: { style: 'pants', color: '#c7b28a' },
+    shoes: { style: 'sneakers', color: '#3b3f4a' }, accessories: ['camera', 'backpack'],
+  },
+  summer: {
+    name: 'Summer Day', body: 'female', skin: S.brown,
+    hair: { style: 'afro', color: H.darkBrown },
+    top: { style: 'dress', color: '#f2c94c', accent: '#e86f3a' }, bottom: { style: 'bare' },
+    shoes: { style: 'simple', color: '#f2ece2' }, accessories: ['sunglasses', 'earrings', 'coffee'],
+  },
+  streetSkater: {
+    name: 'Street Skater', body: 'female', skin: S.light,
+    hair: { style: 'ponytail', color: H.platinum },
+    top: { style: 'tshirt', color: '#2d2d33' }, bottom: { style: 'widePants', color: '#5b5b5b' },
+    shoes: { style: 'hightops', color: '#d64545' }, accessories: [{ type: 'cap', color: '#d64545' }, { type: 'skateboard', color: '#3fae6c' }],
+  },
+  gamer: {
+    name: 'Gamer', body: 'male', build: 'chubby', height: 'short', skin: S.fair,
+    hair: { style: 'spiky', color: H.green },
+    top: { style: 'tshirt', color: '#2d2d33' }, bottom: { style: 'joggers', color: '#3b4357' },
+    shoes: { style: 'sneakers', color: '#3fae6c' }, accessories: ['headphones', 'glasses', 'phone'],
+  },
+  futurist: {
+    name: 'Futurist', body: 'male', height: 'tall', skin: S.deep,
+    hair: { style: 'mohawk', color: H.platinum }, facialHair: { style: 'goatee', color: H.platinum },
+    top: { style: 'hoodie', color: '#e8ecf2', accent: '#37d6ff' }, bottom: { style: 'joggers', color: '#2d2d33', accent: '#37d6ff' },
+    shoes: { style: 'hightops', color: '#e8ecf2', accent: '#37d6ff' }, accessories: ['sunglasses', { type: 'hoverboard', color: '#2d2d33' }],
+  },
+  teacher: {
+    name: 'Teacher', body: 'female', build: 'chubby', skin: S.medium,
+    hair: { style: 'bob', color: H.black },
+    top: { style: 'sweater', color: '#3a6ea5', accent: '#f2ece2' }, bottom: { style: 'pants', color: '#5b5b5b' },
+    shoes: { style: 'simple', color: '#2d2a2a' }, accessories: ['glasses', { type: 'book', side: 'R' }, 'coffee'],
+  },
+  traveler: {
+    name: 'Traveler', body: 'male', skin: S.olive,
+    hair: { style: 'short', color: H.brown }, facialHair: { style: 'stubble' },
+    top: { style: 'polo', color: '#f2ece2', accent: '#2f8f8f' }, bottom: { style: 'shorts', color: '#2f8f8f' },
+    shoes: { style: 'sneakers', color: '#f2ece2' }, accessories: [{ type: 'cap', color: '#f2ece2' }, 'sunglasses', 'backpack', 'camera'],
+  },
+};
+
+return { SKIN_TONES, HAIR_COLORS, EYE_COLORS, BUILDS, HEIGHTS, DEFAULT_MALE, DEFAULT_FEMALE, HAIR_STYLES, FACIAL_HAIR, TOPS, BOTTOMS, SHOES, ACCESSORIES, BlockyCharacter, PRESETS };
+})();
+const ChibiNS = (() => {
+// ---- chibi-character.js
+// ChibiCharacter — procedural low-poly chibi characters for three.js
+// --------------------------------------------------------------------
+//   import * as THREE from 'three';
+//   import { ChibiCharacter } from './chibi-character.js';
+//   import { CHIBI_PRESETS } from './chibi-presets.js';
+//
+//   const c = new ChibiCharacter(THREE, { body: 'female', hair: { style: 'bob', color: '#3b2519' },
+//                                         top: { style: 'hoodie', color: '#e86fa3' }, accessories: ['balloon'] });
+//   scene.add(c.root);
+//   c.play('Walk');            // 'Walk' | 'Idle' | 'Wave'   (riders: 'Ride' | 'Idle')
+//   // every frame: c.update(delta)
+//   c.set({ hair: { style: 'afro', color: '#1f1a18' } });   // rebuild in place
+//
+// Built in "units" (u). A character is ~21u tall; default scale 0.06 → about 1.25 world units.
+// Faces +Z, feet on y = 0. Shapes are smooth, high-resolution primitives with soft shading.
+// survives GLB export and any renderer.
+
+const SKIN_TONES = {
+  porcelain: '#fbd9c8', fair: '#f2c2a8', light: '#e8b59a', peach: '#e3a785', medium: '#cf9772',
+  olive: '#b9845a', tan: '#a06c48', brown: '#7e5236', dark: '#603b27', deep: '#43281a',
+};
+const HAIR_COLORS = {
+  black: '#1c1715', darkBrown: '#3a2418', brown: '#5b3a22', chestnut: '#7a4425', auburn: '#94381f',
+  ginger: '#c4552a', blonde: '#f2c94c', platinum: '#efe4c4', grey: '#a5a5a5', white: '#f4f4f4',
+  pink: '#ee7fb0', blue: '#4a86e8', teal: '#2fb5a8', purple: '#8f63dd',
+};
+const EYE_COLORS = { black: '#1b1514', brown: '#5a3216', hazel: '#7a6a2e', green: '#3f8a50', blue: '#2f6fd6', grey: '#6d7b86' };
+const BUILDS = {
+  skinny: { tr: 1.35, limb: 0.38, belly: 0 },
+  average: { tr: 1.65, limb: 0.46, belly: 0 },
+  chubby: { tr: 2.15, limb: 0.56, belly: 0.3 },
+};
+const HEIGHTS = {
+  short: { legL: 3.6, th: 4.3 },
+  average: { legL: 4.6, th: 4.9 },
+  tall: { legL: 5.9, th: 5.5 },
+};
+const EYE_STYLES = ['round', 'big', 'closed', 'dots'];
+
+const DEFAULT_MALE = {
+  name: 'Default Male', body: 'male', build: 'average', height: 'average',
+  skin: SKIN_TONES.light, eyes: { style: 'round', color: EYE_COLORS.black }, cheeks: false,
+  hair: { style: 'short', color: HAIR_COLORS.brown }, facialHair: { style: 'none' },
+  top: { style: 'tshirt', color: '#4f86d9' }, bottom: { style: 'pants', color: '#2f3f63' },
+  shoes: { style: 'simple', color: '#2b2522' }, accessories: [],
+};
+const DEFAULT_FEMALE = {
+  ...DEFAULT_MALE, name: 'Default Female', body: 'female', cheeks: true,
+  hair: { style: 'long', color: HAIR_COLORS.brown },
+};
+
+const R = 4.3; // head radius
+
+// ---------------------------------------------------------------- helpers
+const named = (c) => SKIN_TONES[c] || HAIR_COLORS[c] || EYE_COLORS[c] || c;
+function num(THREE, c, fb = 0xff00ff) { return c === undefined || c === null ? fb : typeof c === 'number' ? c : new THREE.Color(named(c)).getHex(); }
+function shade(THREE, c, f) { const k = new THREE.Color(c); if (f < 1) k.multiplyScalar(f); else k.lerp(new THREE.Color(0xffffff), f - 1); return k.getHex(); }
+function mixc(THREE, a, b, t) { return new THREE.Color(a).lerp(new THREE.Color(b), t).getHex(); }
+
+// ---------------------------------------------------------------- registries
+// Builders receive the kit `k` (see _build) and draw with k.add(parent, geometry, color, opts).
+
+const HAIR_STYLES = {
+  none: () => {},
+  buzz: (k, c) => k.cap(k.mix(c, k.skin, 0.35), 1.025, 0.5),
+  short: (k, c) => { k.cap(c); if (!k.flags.hat) k.onHead(k.G.ico(1.6, 0), c, 0.15, 0.62, 0.9, { s: [1.8, 0.7, 1] }); },
+  spiky: (k, c) => {
+    k.cap(c);
+    if (k.flags.hat) return;
+    [[-0.55, 0.55], [-0.2, 0.62], [0.2, 0.6], [0.55, 0.52], [-0.35, 0.95], [0.1, 1.0], [0.45, 0.9], [0, 1.35]].forEach(([u, v], i) =>
+      k.spike(c, u, v, 0.95, 2.4 + (i % 3) * 0.5, 0.35));
+  },
+  swept: (k, c) => {
+    k.cap(c);
+    if (k.flags.hat) return;
+    for (let i = 0; i < 6; i++) k.spike(i % 2 ? k.shade(c, 0.9) : c, -0.75 + i * 0.27, 0.42 + (i % 2) * 0.08, 1.0, 2.6, 0.9, { side: 0.9 });
+  },
+  quiff: (k, c) => { k.cap(c); if (!k.flags.hat) k.onHead(k.G.ico(2, 1), c, 0, 0.7, 1.2, { s: [1.6, 0.9, 1.1] }); },
+  curly: (k, c) => {
+    k.cap(c);
+    if (k.flags.hat) return;
+    for (let i = 0; i < 14; i++) { const u = (i / 14) * Math.PI * 2, v = 0.45 + (i % 3) * 0.3; k.onHead(k.G.ico(1.15, 0), i % 2 ? k.shade(c, 0.9) : c, u, v, 0.95); }
+  },
+  afro: (k, c) => {
+    k.cap(c, 1.12);
+    if (k.flags.hat) return;
+    for (let i = 0; i < 22; i++) {
+      const u = (i / 11) * Math.PI * 2 * (i < 11 ? 1 : 1) + (i >= 11 ? 0.3 : 0), v = i < 11 ? 0.35 : 0.9;
+      if (i < 11 && Math.cos(u) > 0.55) continue; // keep the face clear
+      k.onHead(k.G.ico(2.1, 0), i % 2 ? k.shade(c, 0.88) : c, u, v, 1.2, {});
+    }
+    k.onHead(k.G.ico(2.3, 0), c, 0, 1.45, 1.0);
+  },
+  long: (k, c) => { k.cap(c); k.bangs(c); k.locks(c, R * 2.1, 1.3, 11); },
+  bob: (k, c) => { k.cap(c); k.bangs(c); k.locks(c, R * 1.15, 1.25, 11); },
+  ponytail: (k, c) => {
+    k.cap(c);
+    k.onHead(k.G.ico(0.8, 0), k.shade(c, 0.6), Math.PI, 0.25, 0.9);
+    k.add(k.headShape, k.G.cone(1.35, 5.5, 6), c, { p: [0, R * 0.05 - 1.6, -R - 1.3], r: [Math.PI - 0.35, 0, 0]});
+  },
+  bun: (k, c) => {
+    k.cap(c); k.bangs(c);
+    if (!k.flags.hat) k.onHead(k.G.ico(1.9, 1), c, Math.PI, 1.05, 1.0);
+  },
+  pigtails: (k, c) => {
+    k.cap(c); k.bangs(c);
+    for (const s of [1, -1]) {
+      k.onHead(k.G.ico(0.7, 0), k.shade(c, 0.6), 1.75 * s, 0.05, 0.6);
+      k.add(k.headShape, k.G.cone(1.3, 4.6, 6), c, { p: [(R + 1.2) * s, -1.6, -0.6], r: [0, 0, Math.PI + 0.35 * s]});
+    }
+  },
+  mohawk: (k, c) => {
+    k.cap(k.mix(c, k.skin, 0.7), 1.02, 0.5);
+    if (k.flags.hat) return;
+    for (let i = 0; i < 6; i++) k.spike(c, 0, 0.35 + i * 0.35, 0.6, 2.6 - Math.abs(i - 2.5) * 0.3, 0);
+  },
+};
+
+const FACIAL_HAIR = {
+  none: () => {},
+  stubble: (k, c) => k.shell(k.mix(c, k.skin, 0.55), 1.015, 0.58, 0.98, 1.5),
+  moustache: (k, c) => k.moustache(c, 1),
+  goatee: (k, c) => { k.moustache(c, 0.8); k.onHead(k.G.ico(1.1, 0), c, 0, -0.62, -0.1, { s: [1, 1.1, 0.8] }); },
+  beard: (k, c) => { k.shell(c, 1.06, 0.55, 0.97, 1.45); k.moustache(c, 1); },
+  fullBeard: (k, c) => {
+    k.shell(c, 1.12, 0.5, 1, 1.55);
+    k.add(k.headShape, k.G.ico(R * 0.75, 1), c, { p: [0, -R * 0.78, R * 0.42], s: [1.15, 0.95, 0.75]});
+    k.moustache(c, 1.35);
+  },
+};
+
+// tops: torso + sleeves ('short' | 'long' | null)
+const TOPS = {
+  tshirt: (k, c) => { k.torso(c); k.sleeves(c, 'short'); k.collar(k.shade(c, 0.85)); },
+  polo: (k, c, a) => { k.torso(c); k.sleeves(c, 'short'); k.collar(a ?? k.shade(c, 1.3), 1.3); },
+  longsleeve: (k, c) => { k.torso(c); k.sleeves(c, 'long', k.shade(c, 0.88)); k.collar(k.shade(c, 0.85)); },
+  tanktop: (k, c) => { k.torso(c); k.sleeves(c, null); },
+  hoodie: (k, c, a) => {
+    k.torso(c); k.sleeves(c, 'long', k.shade(c, 0.85));
+    const { th, tr } = k.d;
+    k.add(k.n.spine, k.G.ico(R * 0.62, 1), k.shade(c, 0.9), { p: [0, th - 0.2, -tr * 0.75], s: [1.2, 0.7, 0.7] });
+    k.add(k.n.spine, k.G.box(tr * 1.2, 1.4, 0.3), k.shade(c, 0.85), { p: [0, th * 0.28, k.frontZ(th * 0.28)] });
+    for (const s of [1, -1]) k.add(k.n.spine, k.G.box(0.18, 1.4, 0.18), a ?? 0xf2f2f2, { p: [0.4 * s, th * 0.72, k.frontZ(th * 0.72) + 0.05] });
+  },
+  jacket: (k, c, a) => {
+    k.torso(c); k.sleeves(c, 'long', a ?? 0xf6f1ea);
+    const { th } = k.d, acc = a ?? 0xf6f1ea;
+    k.add(k.n.spine, k.G.box(0.45, th * 0.95, 0.3), acc, { p: [0, th * 0.48, k.frontZ(th * 0.45) - 0.05] });
+    k.collar(acc, 1.2);
+  },
+  sweater: (k, c, a) => {
+    k.torso(c); k.sleeves(c, 'long', k.shade(c, 0.85));
+    k.band(a ?? k.shade(c, 1.35), k.d.th * 0.55, 0.9);
+    k.band(k.shade(c, 0.85), 0.35, 0.7);
+    k.collar(k.shade(c, 0.85), 1.2);
+  },
+  dress: (k, c, a) => {
+    k.torso(c); k.sleeves(c, 'short');
+    const { tr, legL } = k.d;
+    k.add(k.n.hips, k.G.cyl(tr * 0.95, tr * 1.75, legL * 0.55, 9), c, { p: [0, -legL * 0.27 + 0.2, 0], s: [1, 1, 0.9] });
+    k.band(a ?? k.shade(c, 0.75), 0.5, 0.6);
+  },
+};
+TOPS.dress.coversLegs = true;
+
+const BOTTOMS = {
+  bare: (k) => k.hips(k.skin),
+  pants: (k, c) => { k.hips(c); k.legWear(c, 1); },
+  jeans: (k, c) => { k.hips(c); k.legWear(c, 1); k.legRing(k.shade(c, 1.25), 0.97); },
+  joggers: (k, c, a) => { k.hips(c); k.legWear(c, 1); k.legRing(a ?? k.shade(c, 0.75), 0.95); },
+  shorts: (k, c) => { k.hips(c); k.legWear(c, 0.42); },
+  skirt: (k, c) => {
+    const { tr, legL } = k.d;
+    k.hips(c);
+    k.add(k.n.hips, k.G.cyl(tr * 1.0, tr * 1.6, legL * 0.42, 9), c, { p: [0, -legL * 0.2 + 0.2, 0], s: [1, 1, 0.9] });
+  },
+  leggings: (k, c) => { k.hips(c); k.legWear(c, 1, 0.07); },
+};
+
+const SHOES = {
+  bare: (k) => k.feet((leg, y) => k.add(leg, k.G.sph(k.d.limb * 1.25, 6, 4), k.skin, { p: [0, y + 0.25, 0.3], s: [1, 0.55, 1.5] })),
+  simple: (k, c) => k.feet((leg, y) => k.add(leg, k.G.sph(k.d.limb * 1.55, 7, 5), c, { p: [0, y + 0.4, 0.35], s: [1, 0.6, 1.45] })),
+  sneakers: (k, c, a) => k.feet((leg, y) => {
+    const r = k.d.limb * 1.6;
+    k.add(leg, k.G.sph(r, 7, 5), c, { p: [0, y + 0.5, 0.35], s: [1, 0.62, 1.45] });
+    k.add(leg, k.G.cyl(r * 1.02, r * 1.02, 0.32, 8), a ?? 0xf7f4ee, { p: [0, y + 0.16, 0.35], s: [1, 1, 1.45] });
+    k.add(leg, k.G.box(r * 0.8, 0.15, 0.7), a ?? 0xf7f4ee, { p: [0, y + r * 0.62 + 0.45, 0.55], r: [-0.4, 0, 0] });
+  }),
+  boots: (k, c) => k.feet((leg, y) => {
+    const r = k.d.limb * 1.6;
+    k.add(leg, k.G.cyl(k.d.limb * 1.35, k.d.limb * 1.45, 1.9, 7), c, { p: [0, y + 1.0, 0] });
+    k.add(leg, k.G.sph(r, 7, 5), c, { p: [0, y + 0.45, 0.4], s: [1, 0.6, 1.45] });
+    k.add(leg, k.G.cyl(r * 1.02, r * 1.02, 0.3, 8), k.shade(c, 0.55), { p: [0, y + 0.15, 0.4], s: [1, 1, 1.45] });
+  }),
+};
+
+// accessories — slot: head | face | body | back | hand | ride
+const ACCESSORIES = {
+  cap: { slot: 'head', hat: true, color: '#d64545', build: (k, c) => {
+    k.add(k.headShape, k.G.sph(R * 1.1, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.42), c, { r: [-0.25, 0, 0], double: true });
+    k.add(k.headShape, k.G.cyl(R * 1.05, R * 1.1, 0.3, 10, -Math.PI * 0.32, Math.PI * 0.64), k.shade(c, 0.82), { p: [0, R * 0.42, 0], s: [1, 1, 1.45], r: [0.12, 0, 0] });
+    k.add(k.headShape, k.G.ico(0.45, 0), k.shade(c, 0.82), { p: [0, R * 1.08, -R * 0.27] });
+  } },
+  beanie: { slot: 'head', hat: true, color: '#2fb5a8', build: (k, c, a) => {
+    k.add(k.headShape, k.G.sph(R * 1.13, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), c, { r: [-0.15, 0, 0], double: true });
+    k.add(k.headShape, k.G.cyl(R * 1.16, R * 1.16, 1.4, 10, 0, Math.PI * 2, true), k.shade(c, 0.82), { p: [0, R * 0.07, -R * 0.15], r: [-0.15, 0, 0], double: true });
+    k.add(k.headShape, k.G.ico(1.1, 1), a ?? 0xf5f0e6, { p: [0, R * 1.12, -R * 0.15] });
+  } },
+  santaHat: { slot: 'head', hat: true, color: '#c8262f', build: (k, c, a) => {
+    const hat = k.joint(k.headShape, 'Hat', 0, R * 0.55, -R * 0.1);
+    hat.rotation.set(-0.25, 0, 0.35);
+    k.add(hat, k.G.cone(R * 1.1, R * 1.9, 9), c, { p: [0, R * 0.95, 0]});
+    k.add(hat, k.G.torus(R * 1.05, 0.75, 6, 12), a ?? 0xf8f6f2, { r: [Math.PI / 2, 0, 0] });
+    k.add(hat, k.G.ico(1.0, 1), a ?? 0xf8f6f2, { p: [0, R * 1.95, 0] });
+  } },
+  headphones: { slot: 'head', color: '#2a2d34', build: (k, c, a) => {
+    const lift = k.flags.hat ? 1.18 : k.flags.tallHair ? 1.22 : 1.1;
+    k.add(k.headShape, k.G.torus(R * lift, 0.35, 5, 14, Math.PI), c, { p: [0, 0, 0] });
+    for (const s of [1, -1]) k.add(k.headShape, k.G.cyl(1.25, 1.25, 0.9, 8), a ?? 0xe25563, { p: [R * 1.05 * s, 0, 0], r: [0, 0, Math.PI / 2] });
+  } },
+  glasses: { slot: 'face', color: '#2a2320', build: (k, c) => {
+    for (const s of [1, -1]) k.onHead(k.G.torus(0.95, 0.14, 4, 10), c, 0.38 * s, 0.0, 0.55);
+    k.onHead(k.G.box(0.8, 0.14, 0.14), c, 0, 0.08, 0.7);
+    for (const s of [1, -1]) k.add(k.headShape, k.G.box(0.14, 0.14, R * 0.75), c, { p: [R * 0.93 * s, 0.05, R * 0.18] });
+  } },
+  sunglasses: { slot: 'face', color: '#15161b', build: (k, c) => {
+    for (const s of [1, -1]) k.onHead(k.G.cyl(1.05, 1.05, 0.2, 8), c, 0.38 * s, 0.0, 0.55, { r: [Math.PI / 2, 0, 0], s: [1.1, 1, 0.85] });
+    k.onHead(k.G.box(1.0, 0.22, 0.2), c, 0, 0.06, 0.7);
+    for (const s of [1, -1]) k.add(k.headShape, k.G.box(0.14, 0.18, R * 0.75), c, { p: [R * 0.93 * s, 0.05, R * 0.18] });
+  } },
+  earrings: { slot: 'face', color: '#e8c25a', build: (k, c) => { for (const s of [1, -1]) k.onHead(k.G.ico(0.38, 0), c, 1.5 * s, -0.4, 0.15); } },
+  scarf: { slot: 'body', color: '#c9473f', build: (k, c, a) => {
+    const { th, tr } = k.d;
+    k.add(k.n.spine, k.G.torus(tr * 0.75, 0.7, 6, 10), c, { p: [0, th - 0.1, 0.05], r: [Math.PI / 2, 0, 0], s: [1, 0.85, 1] });
+    k.add(k.n.spine, k.G.box(1.0, th * 0.55, 0.4), c, { p: [tr * 0.35, th * 0.65, k.frontZ(th * 0.65) + 0.25], r: [0.1, 0, 0.08] });
+    k.add(k.n.spine, k.G.box(1.05, 0.35, 0.45), a ?? 0xf5f0e6, { p: [tr * 0.38, th * 0.45, k.frontZ(th * 0.45) + 0.28], r: [0.1, 0, 0.08] });
+  } },
+  tie: { slot: 'body', color: '#2f3d6e', build: (k, c) => {
+    const { th } = k.d;
+    k.add(k.n.spine, k.G.ico(0.38, 0), c, { p: [0, th - 0.55, k.frontZ(th - 0.55) + 0.1] });
+    k.add(k.n.spine, k.G.box(0.55, th * 0.55, 0.15), c, { p: [0, th * 0.58, k.frontZ(th * 0.58) + 0.08] });
+  } },
+  bowtie: { slot: 'body', color: '#c8262f', build: (k, c) => {
+    const y = k.d.th - 0.5, z = k.frontZ(y) + 0.2;
+    for (const s of [1, -1]) k.add(k.n.spine, k.G.cone(0.45, 0.9, 4), c, { p: [0.45 * s, y, z], r: [0, 0, (Math.PI / 2) * s] });
+    k.add(k.n.spine, k.G.ico(0.25, 0), k.shade(c, 0.8), { p: [0, y, z + 0.05] });
+  } },
+  belt: { slot: 'body', color: '#1d1a19', build: (k, c, a) => {
+    const r = k.torsoR(0.75) * 1.05;
+    k.add(k.n.spine, k.G.cyl(r, r, 0.55, 9), c, { p: [0, 0.75, 0], s: [1, 1, k.d.depth] });
+    k.add(k.n.spine, k.G.box(0.9, 0.7, 0.2), a ?? 0xe8c25a, { p: [0, 0.75, r * k.d.depth + 0.05] });
+  } },
+  gloves: { slot: 'body', color: '#1d1a19', build: (k, c) => {
+    for (const h of [k.n.handL, k.n.handR]) k.add(h, k.G.ico(k.d.limb * 1.5, 0), c);
+  } },
+  watch: { slot: 'body', color: '#1d2633', build: (k, c) => {
+    const arm = k.flags.handL ? k.n.armR : k.n.armL;
+    k.add(arm, k.G.cyl(k.d.limb * 1.2, k.d.limb * 1.2, 0.35, 7), c, { p: [0, -k.d.armLen + 0.9, 0] });
+    k.add(arm, k.G.box(0.15, 0.5, 0.5), 0x9fb4c8, { p: [k.d.limb * 1.2 * (arm === k.n.armL ? 1 : -1), -k.d.armLen + 0.9, 0] });
+  } },
+  backpack: { slot: 'back', color: '#3f7a5a', build: (k, c) => {
+    const { th, tr } = k.d;
+    k.add(k.n.spine, k.G.box(tr * 1.5, th * 0.75, 1.6), c, { p: [0, th * 0.55, -tr * 0.82 - 0.8]});
+    k.add(k.n.spine, k.G.box(tr * 1.0, th * 0.25, 0.5), k.shade(c, 0.8), { p: [0, th * 0.35, -tr * 0.82 - 1.75] });
+    for (const s of [1, -1]) k.add(k.n.spine, k.G.box(0.35, th * 0.75, 0.15), k.shade(c, 0.7), { p: [tr * 0.45 * s, th * 0.55, k.frontZ(th * 0.55) + 0.05] });
+  } },
+  // hand items: sit against the round hand (never through it); arms pose while holding
+  briefcase: { slot: 'hand', hand: 'R', swing: 0.3, color: '#5a2a1e', build: (k, c, a, h) => {
+    const r = k.d.limb * 1.35;
+    k.add(h, k.G.torus(0.55, 0.13, 4, 8, Math.PI), k.shade(c, 0.6), { p: [0, -r * 0.6, 0], r: [0, Math.PI / 2, Math.PI] });
+    k.add(h, k.G.box(1.1, 2.4, 3.6), c, { p: [0, -r - 1.4, 0]});
+    k.add(h, k.G.box(1.2, 0.3, 0.6), 0xe8c25a, { p: [0, -r - 0.5, 0] });
+  } },
+  book: { slot: 'hand', hand: 'L', swing: 0.4, color: '#3a6ea5', build: (k, c, a, h, s) => {
+    const r = k.d.limb * 1.35, x = (r + 0.3) * s;
+    k.add(h, k.G.box(0.65, 3.0, 2.3), c, { p: [x, -0.4, 0.2] });
+    k.add(h, k.G.box(0.5, 2.8, 2.15), 0xf7f2e6, { p: [x + 0.1 * s, -0.4, 0.3] });
+  } },
+  phone: { slot: 'hand', hand: 'R', pose: { x: -1.05, z: 0.25 }, upright: 0.9, color: '#3d7bf2', build: (k, c, a, h) => {
+    const r = k.d.limb * 1.35;
+    k.add(h, k.G.box(1.5, 2.6, 0.3), c, { p: [0, r + 0.7, 0.15] });
+    k.add(h, k.G.box(1.3, 2.3, 0.05), a ?? 0x8fe0ff, { p: [0, r + 0.75, -0.02], emissive: 0.8 });
+  } },
+  coffee: { slot: 'hand', hand: 'L', pose: { x: -0.8, z: 0.1 }, upright: 1, color: '#f7f2ea', build: (k, c, a, h, s) => {
+    const r = k.d.limb * 1.35, x = -(r + 0.55) * s;
+    k.add(h, k.G.cyl(0.75, 0.6, 1.9, 8), c, { p: [x, 0.35, 0] });
+    k.add(h, k.G.cyl(0.82, 0.82, 0.35, 8), 0x3b2a20, { p: [x, 1.45, 0] });
+    k.add(h, k.G.cyl(0.74, 0.68, 0.75, 8), a ?? 0xd9653b, { p: [x, 0.3, 0] });
+  } },
+  tablet: { slot: 'hand', hand: 'both', pose: { x: -0.95, z: 0.12 }, upright: 0.75, color: '#e8ecf2', build: (k, c, a, h, s) => {
+    const hx = k.d.sx - (k.d.armLen) * 0.12, x = -hx * s, r = k.d.limb * 1.35;
+    k.add(h, k.G.box(hx * 2 + 1.4, 3.4, 0.3), c, { p: [x, r + 1.2, r * 0.6] });
+    k.add(h, k.G.box(hx * 2 + 0.9, 2.9, 0.05), a ?? 0x8fe0ff, { p: [x, r + 1.2, r * 0.6 - 0.17], emissive: 0.7 });
+  } },
+  icecream: { slot: 'hand', hand: 'L', pose: { x: -0.7, z: -0.45 }, upright: 1, color: '#f4a7c4', build: (k, c, a, h) => {
+    const r = k.d.limb * 1.35;
+    k.add(h, k.G.cone(0.85, 2.6, 6), 0xd9a35a, { p: [0, r + 0.75, 0.6], r: [Math.PI, 0, 0] });
+    k.add(h, k.G.ico(1.15, 1), c, { p: [0, r + 2.4, 0.6] });
+    k.add(h, k.G.ico(0.38, 0), 0xc8262f, { p: [0, r + 3.6, 0.6] });
+  } },
+  balloon: { slot: 'hand', hand: 'L', pose: { x: -0.25, z: -0.55 }, upright: 1, color: '#e2453b', build: (k, c, a, h, s) => {
+    const lean = 0.42 * s, L = 11;                        // string leans away from the head
+    k.add(h, k.G.cyl(0.05, 0.05, L, 3), 0xdddddd, { p: [Math.sin(lean) * L / 2, Math.cos(lean) * L / 2, 0], r: [0, 0, -lean] });
+    const tx = Math.sin(lean) * L, ty = Math.cos(lean) * L;
+    k.add(h, k.G.cone(0.35, 0.5, 5), c, { p: [tx, ty + 0.1, 0], r: [Math.PI, 0, 0] });
+    k.add(h, k.G.ico(2.2, 1), c, { p: [tx, ty + 2.6, 0], s: [1, 1.15, 1]});
+  } },
+  skateboard: { slot: 'ride', color: '#d9653b', build: (k, c, a) => {
+    const b = k.n.board;
+    k.add(b, k.G.box(3.2, 0.35, 10), c, { p: [0, 1.55, 0] });
+    k.add(b, k.G.box(3.0, 0.08, 9.6), 0x2a2a2e, { p: [0, 1.75, 0] });
+    for (const s of [1, -1]) {
+      k.add(b, k.G.box(3.2, 0.35, 1.6), c, { p: [0, 1.8, 5.6 * s], r: [-0.4 * s, 0, 0] });
+      k.add(b, k.G.box(2.2, 0.4, 0.7), 0x9aa0a8, { p: [0, 1.15, 3.4 * s] });
+      for (const x of [1.4, -1.4]) k.add(b, k.G.cyl(0.5, 0.5, 0.55, 7), a ?? 0xf2efe6, { p: [x, 0.5, 3.4 * s], r: [0, 0, Math.PI / 2] });
+    }
+    return 1.8;
+  } },
+  hoverboard: { slot: 'ride', hover: true, color: '#e8ecf2', build: (k, c, a) => {
+    const b = k.n.board;
+    k.add(b, k.G.cyl(2.2, 2.0, 0.7, 8), c, { p: [0, 2.0, 0], s: [1, 1, 2.3] });
+    k.add(b, k.G.cyl(1.6, 1.6, 0.2, 8), a ?? 0x37d6ff, { p: [0, 1.55, 0], s: [1, 1, 2.3], emissive: 1.2 });
+    return 2.35;
+  } },
+};
+
+// ---------------------------------------------------------------- class
+class ChibiCharacter {
+  constructor(THREE, config = {}, { scale = 0.06 } = {}) {
+    this.THREE = THREE;
+    this.scale = scale;
+    this.root = new THREE.Group();
+    this.root.name = 'ChibiCharacter';
+    this.mixer = new THREE.AnimationMixer(this.root);
+    this.current = null;
+    this.set(config, true);
+  }
+
+  static normalize(config = {}) {
+    const base = config.body === 'female' ? DEFAULT_FEMALE : DEFAULT_MALE;
+    const part = (v, def) => (typeof v === 'string' ? { ...def, style: v } : { ...def, ...(v || {}) });
+    return {
+      ...base, ...config,
+      eyes: typeof config.eyes === 'string' && !EYE_STYLES.includes(config.eyes) ? { ...base.eyes, color: config.eyes } : part(config.eyes, base.eyes),
+      hair: part(config.hair, base.hair),
+      facialHair: part(config.facialHair, base.facialHair),
+      top: part(config.top, base.top),
+      bottom: part(config.bottom, base.bottom),
+      shoes: part(config.shoes, base.shoes),
+      accessories: (config.accessories ?? base.accessories).map((a) => (typeof a === 'string' ? { type: a } : { ...a })),
+    };
+  }
+
+  set(patch = {}, replace = false) {
+    this.config = ChibiCharacter.normalize(replace ? patch : { ...(this.config ?? {}), ...patch });
+    const playing = this.current?.getClip().name;
+    this._clear();
+    this._build();
+    this.play(playing && this.clipNames.includes(playing) ? playing : this.defaultClip, 0);
+    return this;
+  }
+  toJSON() { return JSON.parse(JSON.stringify(this.config)); }
+  get clipNames() { return this.clips.map((c) => c.name); }
+  play(name = this.defaultClip, fade = 0.25) {
+    const clip = this.clips.find((c) => c.name === name);
+    if (!clip) return this;
+    const next = this.mixer.clipAction(clip);
+    if (this.current === next) return this;
+    next.reset().play();
+    if (this.current && fade > 0) this.current.crossFadeTo(next, fade, false);
+    else if (this.current) this.current.stop();
+    this.current = next;
+    return this;
+  }
+  update(dt) { this.mixer.update(dt); }
+  dispose() { this._clear(); }
+
+  _clear() {
+    this.mixer.stopAllAction();
+    this.current = null;
+    (this.clips || []).forEach((c) => this.mixer.uncacheClip(c));
+    this.mixer.uncacheRoot(this.root);
+    for (const ch of [...this.root.children]) this.root.remove(ch);
+    (this._geoms || []).forEach((g) => g.dispose());
+    (this._mats ? [...this._mats.values()] : []).forEach((m) => m.dispose());
+    this._geoms = []; this._mats = new Map();
+  }
+
+  _build() {
+    const THREE = this.THREE, cfg = this.config;
+    const female = cfg.body === 'female';
+    const B = BUILDS[cfg.build] ?? BUILDS.average, H = HEIGHTS[cfg.height] ?? HEIGHTS.average;
+    const tr = B.tr * (female ? 0.92 : 1), limb = B.limb * (female ? 0.9 : 1);
+    const d = { ...B, ...H, tr, limb, armLen: H.th * 0.82 + 0.3, depth: 0.82 };
+    d.sx = tr * 0.92 + limb * 0.7;
+    const C = (c, fb) => num(THREE, c, fb);
+    const skin = C(cfg.skin);
+
+    // geometry factory (all in units)
+    // primitives are authored at low counts and scaled up here for smooth, rounded shapes
+    const up = (n, f, min) => Math.max(min, Math.round(n * f));
+    const G = {
+      ico: (r, det = 1) => new THREE.SphereGeometry(r, det ? 26 : 18, det ? 18 : 12),
+      sph: (r, w = 8, h = 6, ps = 0, pl = Math.PI * 2, ts = 0, tl = Math.PI) => new THREE.SphereGeometry(r, up(w, 3, 20), up(h, 3, 12), ps, pl, ts, tl),
+      cyl: (rt, rb, h, seg = 7, ts = 0, tl = Math.PI * 2, open = false) => new THREE.CylinderGeometry(rt, rb, h, up(seg, 3, 18), 1, open, ts, tl),
+      cone: (r, h, seg = 6) => new THREE.ConeGeometry(r, h, up(seg, 3, 14)),
+      box: (w, h, dd) => new THREE.BoxGeometry(w, h, dd),
+      torus: (r, t, rs = 5, ts = 10, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, up(rs, 2.5, 10), up(ts, 3, 28), arc),
+      lathe: (pts, seg = 8) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), up(seg, 3, 24)),
+    };
+    const mat = (color, o = {}) => {
+      const key = `${color}|${o.double ? 1 : 0}|${o.emissive ?? 0}`;
+      if (!this._mats.has(key)) {
+        const m = new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0, side: o.double ? THREE.DoubleSide : THREE.FrontSide });
+        if (o.emissive) { m.emissive = new THREE.Color(color); m.emissiveIntensity = o.emissive; }
+        this._mats.set(key, m);
+      }
+      return this._mats.get(key);
+    };
+    const finish = (geo) => {
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      this._geoms.push(geo);
+      return geo;
+    };
+    const add = (parent, geo, color, o = {}) => {
+      const m = new THREE.Mesh(finish(geo), mat(color, o));
+      if (o.p) m.position.set(...o.p);
+      if (o.r) m.rotation.set(...o.r);
+      if (o.s) typeof o.s === 'number' ? m.scale.setScalar(o.s) : m.scale.set(...o.s);
+      if (o.q) m.quaternion.premultiply(o.q);
+      m.castShadow = true; m.receiveShadow = true;
+      parent.add(m);
+      return m;
+    };
+    const joint = (parent, name, x = 0, y = 0, z = 0) => {
+      const g = new THREE.Group(); g.name = name; g.position.set(x, y, z); parent.add(g); return g;
+    };
+
+    // accessories → slots
+    const acc = cfg.accessories.map((a) => ({ ...a, def: ACCESSORIES[a.type] })).filter((a) => a.def);
+    const hands = {}, warnings = [];
+    let ride = null;
+    for (const a of acc) {
+      if (a.def.slot === 'hand') for (const h of a.def.hand === 'both' ? ['L', 'R'] : [a.side ?? a.def.hand]) {
+        if (hands[h]) warnings.push(`${a.type} replaced ${hands[h].type} in the ${h === 'L' ? 'left' : 'right'} hand`);
+        hands[h] = a;
+      }
+      if (a.def.slot === 'ride') { if (ride) warnings.push(`${a.type} replaced ${ride.type}`); ride = a; }
+    }
+    this.warnings = warnings;
+    const flags = {
+      hat: acc.some((a) => a.def.hat),
+      tallHair: ['spiky', 'quiff', 'afro', 'bun', 'mohawk', 'curly'].includes(cfg.hair.style),
+      handL: !!hands.L, handR: !!hands.R,
+    };
+
+    // skeleton (rig is scaled; everything inside is in units)
+    const n = {};
+    n.rig = joint(this.root, 'Rig'); n.rig.scale.setScalar(this.scale);
+    n.ride = joint(n.rig, 'Ride');
+    n.board = joint(n.ride, 'Board');
+    n.body = joint(n.ride, 'Body');
+    n.hips = joint(n.body, 'Hips', 0, d.legL, 0);
+    const legX = tr * 0.48;
+    n.legL = joint(n.hips, 'LegL', legX, 0, 0);
+    n.legR = joint(n.hips, 'LegR', -legX, 0, 0);
+    n.spine = joint(n.hips, 'Spine', 0, 0.4, 0);
+    n.neck = joint(n.spine, 'Neck', 0, d.th, 0);
+    n.armL = joint(n.spine, 'ArmL', d.sx, d.th - 0.75, 0);
+    n.armR = joint(n.spine, 'ArmR', -d.sx, d.th - 0.75, 0);
+    n.handL = joint(n.armL, 'HandL', 0, -d.armLen, 0);
+    n.handR = joint(n.armR, 'HandR', 0, -d.armLen, 0);
+    const headShape = joint(n.neck, 'HeadShape', 0, R * 0.8, 0.15);
+    headShape.scale.set(1, 0.95, 0.93);
+
+    // torso profile radius at height y (spine space), used to place things on the chest
+    const ctrl = [[tr * 1.02, -0.2], [tr * (1 + B.belly), d.th * 0.4], [tr * 0.95, d.th * 0.8], [tr * 0.55, d.th]];
+    // a curved outline through the control points (no ridge at the belly)
+    const prof = new THREE.SplineCurve(ctrl.map(([r, y]) => new THREE.Vector2(r, y))).getPoints(16).map((v) => [v.x, v.y]);
+    const torsoR = (y) => {
+      for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) {
+        const [r0, y0] = prof[i - 1], [r1, y1] = prof[i]; return r0 + ((r1 - r0) * (y - y0)) / (y1 - y0);
+      }
+      return prof[prof.length - 1][0];
+    };
+    const dirOf = (u, v) => new THREE.Vector3(Math.sin(u) * Math.cos(v), Math.sin(v), Math.cos(u) * Math.cos(v));
+
+    const k = {
+      THREE, G, n, d, cfg, flags, skin, headShape, add, joint,
+      shade: (c, f) => shade(THREE, c, f), mix: (a, b, t) => mixc(THREE, a, b, t),
+      has: (t) => acc.some((a) => a.type === t),
+      frontZ: (y) => torsoR(y) * d.depth,
+      torsoR,
+      // place geometry on the head surface at angles u (around, + = character's left) and v (up), pushed out by `out`
+      onHead(geo, color, u, v, out = 0, o = {}) {
+        const dir = dirOf(u, v);
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, o.up ? 1 : 0, o.up ? 0 : 1), dir);
+        if (o.tilt) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), o.tilt));
+        const m = add(headShape, geo, color, { ...o, p: dir.multiplyScalar(R + out).toArray(), r: undefined, q });
+        if (o.r) { const e = new THREE.Quaternion().setFromEuler(new THREE.Euler(...o.r)); m.quaternion.multiply(e); }
+        return m;
+      },
+      spike(color, u, v, out, len, lean = 0.3, o = {}) {
+        const m = k.onHead(G.cone(0.85, len, 4), color, u, v, out + len * 0.3, { up: true});
+        m.rotateX(-lean * 0.4); if (o.side) m.rotateZ(-o.side * 0.6);
+        return m;
+      },
+      cap(color, scale = 1.07, theta = 0.5) {
+        if (flags.hat) scale = Math.min(scale, 1.035);
+        add(headShape, G.sph(R * scale, 10, 7, 0, Math.PI * 2, 0, Math.PI * theta), color, { r: [-0.38, 0, 0], double: true});
+      },
+      bangs(color) {
+        add(headShape, G.sph(R * (flags.hat ? 1.04 : 1.09), 8, 3, Math.PI / 2 - 0.85, 1.7, Math.PI * 0.2, Math.PI * 0.2), color, { double: true});
+      },
+      // chunky hanging locks around the sides and back (u from +uMin around the back to -uMin)
+      locks(color, len, uMin, count) {
+        for (let i = 0; i < count; i++) {
+          const u = uMin + ((Math.PI * 2 - 2 * uMin) * i) / (count - 1);
+          const r = R * 0.9 + 0.45, x = Math.sin(u) * r, z = Math.cos(u) * r;
+          add(headShape, G.ico(1.5, 0), i % 2 ? k.shade(color, 0.9) : color,
+            { p: [x, R * 0.3 - len / 2, z], s: [0.95, len / 3.0, 0.8], r: [0, u, 0]});
+        }
+      },
+      shell(color, scale, t0, t1, phiLen) {
+        add(headShape, G.sph(R * scale, 10, 6, Math.PI / 2 - (phiLen * Math.PI) / 2, phiLen * Math.PI, Math.PI * t0, Math.PI * (t1 - t0)), color, { double: true});
+      },
+      moustache(color, size) {
+        for (const s of [1, -1]) k.onHead(G.ico(0.75 * size, 0), color, 0.2 * s, -0.27, 0.15 * size, { s: [1.5, 0.6, 0.8], r: [0, 0, -0.35 * s] });
+      },
+      torso(color) {
+        add(n.spine, G.lathe([[0, -0.2], ...prof, [0, d.th]], 8), color, { s: [1, 1, d.depth] });
+      },
+      sleeves(color, len, cuff) {
+        for (const arm of [n.armL, n.armR]) {
+          add(arm, G.ico(limb * 1.45, 0), len ? color : skin, { p: [0, 0.1, 0] });
+          if (!len) continue;
+          const L = len === 'long' ? d.armLen - limb * 1.2 : d.armLen * 0.4;
+          add(arm, G.cyl(limb * 1.32, limb * 1.25, L, 7), color, { p: [0, -L / 2 + 0.1, 0] });
+          if (len === 'long') add(arm, G.cyl(limb * 1.42, limb * 1.42, 0.45, 7), cuff ?? color, { p: [0, -L + 0.3, 0] });
+        }
+      },
+      collar(color, size = 1) {
+        add(n.spine, G.torus(tr * 0.5, 0.2 * size, 4, 9), color, { p: [0, d.th - 0.05, 0], r: [Math.PI / 2, 0, 0], s: [1, d.depth * 1.05, 1] });
+      },
+      band(color, y, h) {
+        add(n.spine, G.cyl(torsoR(y + h / 2) * 1.04, torsoR(y - h / 2) * 1.04, h, 8), color, { p: [0, y, 0], s: [1, 1, d.depth] });
+      },
+      hips(color) {
+        add(n.hips, G.lathe([[0, -0.8], [tr * 0.9, -0.8], [tr * 0.93, 0.15], [tr * 0.8, 1.1], [0, 1.1]], 8), color, { s: [1, 1, d.depth * 0.97] });
+      },
+      legWear(color, frac, extra = 0.14) {
+        const L = (d.legL - 0.9) * frac;
+        for (const leg of [n.legL, n.legR]) add(leg, G.cyl(limb * 1.18 + extra, limb * 1.05 + extra, L + 0.2, 7), color, { p: [0, -L / 2 + 0.1, 0] });
+      },
+      legRing(color, frac) {
+        const y = -(d.legL - 0.9) * frac;
+        for (const leg of [n.legL, n.legR]) add(leg, G.cyl(limb * 1.3, limb * 1.3, 0.4, 7), color, { p: [0, y + 0.2, 0] });
+      },
+      feet(fn) { fn(n.legL, -d.legL); fn(n.legR, -d.legL); },
+    };
+
+    // base body (skin)
+    for (const leg of [n.legL, n.legR]) add(leg, G.cyl(limb * 1.1, limb, d.legL - 0.5, 7), skin, { p: [0, -(d.legL - 0.5) / 2, 0] });
+    for (const arm of [n.armL, n.armR]) add(arm, G.cyl(limb, limb * 0.92, d.armLen, 7), skin, { p: [0, -d.armLen / 2, 0] });
+    for (const h of [n.handL, n.handR]) add(h, G.ico(limb * 1.35, 0), skin, {});
+    add(n.neck, G.cyl(limb * 1.6, limb * 1.8, 1.2, 7), skin, { p: [0, 0.3, 0] });
+    add(headShape, G.ico(R, 1), skin, {});
+
+    // face
+    const eyeC = C(cfg.eyes.color), dark = 0x2a1a16;
+    for (const s of [1, -1]) {
+      const style = cfg.eyes.style;
+      if (style === 'closed') k.onHead(G.box(0.95, 0.2, 0.25), dark, 0.36 * s, -0.02, -0.05, { r: [0, 0, 0.18 * s] });
+      else if (style === 'dots') k.onHead(G.sph(0.32, 6, 4), dark, 0.34 * s, 0, -0.08);
+      else if (style === 'big') {
+        k.onHead(G.sph(0.85, 7, 5), 0xfbf7f2, 0.37 * s, -0.02, -0.3, { s: [0.9, 1.1, 0.5] });
+        k.onHead(G.sph(0.6, 7, 5), eyeC, 0.37 * s, -0.03, -0.1, { s: [0.9, 1.1, 0.5] });
+        k.onHead(G.sph(0.18, 4, 3), 0xffffff, 0.34 * s, 0.05, 0.12);
+      } else {
+        k.onHead(G.sph(0.55, 7, 5), eyeC, 0.36 * s, -0.02, -0.12, { s: [0.85, 1.1, 0.5] });
+        k.onHead(G.sph(0.15, 4, 3), 0xffffff, 0.33 * s, 0.05, 0.05);
+      }
+      const browC = cfg.hair.style === 'none' ? shade(THREE, skin, 0.55) : shade(THREE, C(cfg.hair.color), 0.85);
+      k.onHead(G.box(1.05, 0.26, 0.25), browC, 0.38 * s, 0.27, -0.02, { r: [0, 0, -0.12 * s] });
+      if (female && style !== 'closed') k.onHead(G.box(0.45, 0.16, 0.2), dark, 0.56 * s, 0.1, -0.02, { r: [0, 0, 0.6 * s] });
+      if (cfg.cheeks) k.onHead(G.sph(0.6, 6, 4), mixc(THREE, skin, 0xe86f8a, 0.55), 0.62 * s, -0.17, -0.12, { s: [1.2, 0.7, 0.3] });
+      k.onHead(G.ico(1, 0), shade(THREE, skin, 0.9), (Math.PI / 2) * 0.98 * s, -0.02, -0.25, { s: [0.45, 0.95, 0.75] });
+    }
+    const noseC = mixc(THREE, skin, 0xd0505a, 0.3);
+    k.onHead(G.sph(0.62, 8, 6), noseC, 0, -0.1, 0.05, { s: [1, 0.85, 0.9] });
+    const fh = cfg.facialHair.style;
+    const mouthOut = fh === 'fullBeard' ? 0.6 : fh === 'beard' ? 0.3 : 0;
+    if (fh !== 'goatee') k.onHead(G.box(fh === 'none' ? 0.9 : 1.1, 0.18, 0.25), female ? C(cfg.lips ?? '#b8505e') : 0x6b2e2a, 0, -0.36, mouthOut - 0.03);
+
+    // clothes
+    const topFn = TOPS[cfg.top.style] ?? TOPS.tshirt;
+    const acol = (p) => (p.accent !== undefined ? C(p.accent) : undefined);
+    topFn(k, C(cfg.top.color), acol(cfg.top));
+    let bottom = cfg.bottom.style;
+    if (topFn.coversLegs && !['leggings', 'bare'].includes(bottom)) bottom = 'bare';
+    (BOTTOMS[bottom] ?? BOTTOMS.pants)(k, C(cfg.bottom.color), acol(cfg.bottom));
+    (SHOES[cfg.shoes.style] ?? SHOES.simple)(k, C(cfg.shoes.color), acol(cfg.shoes));
+
+    // hair
+    (HAIR_STYLES[cfg.hair.style] ?? HAIR_STYLES.short)(k, C(cfg.hair.color));
+    (FACIAL_HAIR[fh] ?? FACIAL_HAIR.none)(k, C(cfg.facialHair.color ?? cfg.hair.color));
+
+    // accessories
+    const itemNodes = {};
+    let boardTop = 0;
+    for (const a of acc) {
+      const c = C(a.color ?? a.def.color), ac = a.accent !== undefined ? C(a.accent) : undefined;
+      if (a.def.slot === 'hand') {
+        for (const h of a.def.hand === 'both' ? ['L'] : [a.side ?? a.def.hand]) {
+          if (hands[h] !== a) continue;
+          const item = joint(n['hand' + h], 'Item' + h);
+          const sgn = h === 'L' ? 1 : -1;
+          if (a.def.upright) item.rotation.set(-(a.def.pose?.x ?? 0) * a.def.upright, 0, (a.def.pose?.z ?? 0) * sgn);
+          itemNodes[h] = item;
+          a.def.build(k, c, ac, item, sgn);
+        }
+      } else if (a.def.slot === 'ride') { if (ride === a) boardTop = a.def.build(k, c, ac) ?? 0; }
+      else a.def.build(k, c, ac);
+    }
+    if (ride) { n.body.position.y = boardTop; n.body.rotation.y = 1.35; }
+
+    const rig = { d, hands, ride, itemNodes };
+    this.clips = ride ? [rideClip(THREE, rig, true), rideClip(THREE, rig, false)] : [walkClip(THREE, rig), idleClip(THREE, rig), waveClip(THREE, rig)];
+    this.defaultClip = this.clips[0].name;
+  }
+
+  static registerAccessory(name, def) { ACCESSORIES[name] = def; }
+  static registerHair(name, fn) { HAIR_STYLES[name] = fn; }
+  static registerFacialHair(name, fn) { FACIAL_HAIR[name] = fn; }
+  static registerTop(name, fn) { TOPS[name] = fn; }
+  static registerBottom(name, fn) { BOTTOMS[name] = fn; }
+  static registerShoes(name, fn) { SHOES[name] = fn; }
+  static get options() {
+    return {
+      body: ['male', 'female'], build: Object.keys(BUILDS), height: Object.keys(HEIGHTS), eyes: EYE_STYLES,
+      hair: Object.keys(HAIR_STYLES), facialHair: Object.keys(FACIAL_HAIR), top: Object.keys(TOPS),
+      bottom: Object.keys(BOTTOMS), shoes: Object.keys(SHOES), accessories: Object.keys(ACCESSORIES),
+    };
+  }
+  static random(seed = Math.random() * 1e9) {
+    let s = Math.floor(seed) || 1;
+    const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    const pick = (a) => a[Math.floor(r() * a.length)];
+    const body = pick(['male', 'female']);
+    const colors = ['#4f86d9', '#d64545', '#3fae6c', '#f2b43c', '#8f63dd', '#2d2d33', '#f2ece2', '#ee7fb0', '#2fb5a8', '#c8262f', '#e86f3a'];
+    const acc = [];
+    if (r() < 0.35) acc.push(pick(['cap', 'beanie', 'headphones', 'santaHat']));
+    if (r() < 0.3) acc.push(pick(['glasses', 'sunglasses']));
+    if (r() < 0.35) acc.push(pick(['backpack', 'scarf', 'watch', 'bowtie', 'belt']));
+    if (r() < 0.45) acc.push(pick(['phone', 'coffee', 'book', 'tablet', 'briefcase', 'icecream', 'balloon']));
+    if (r() < 0.1) acc.push(pick(['skateboard', 'hoverboard']));
+    return {
+      name: 'Random', body,
+      build: pick(['skinny', 'average', 'average', 'chubby']), height: pick(['short', 'average', 'average', 'tall']),
+      skin: pick(Object.values(SKIN_TONES)), cheeks: body === 'female' ? r() < 0.8 : r() < 0.2,
+      eyes: { style: pick(['round', 'round', 'big', 'closed', 'dots']), color: pick(Object.values(EYE_COLORS)) },
+      hair: { style: pick(body === 'female' ? ['long', 'bob', 'ponytail', 'bun', 'pigtails', 'curly', 'afro'] : ['short', 'spiky', 'swept', 'quiff', 'buzz', 'curly', 'afro', 'none', 'mohawk']), color: pick(Object.values(HAIR_COLORS).slice(0, r() < 0.15 ? 14 : 10)) },
+      facialHair: { style: body === 'male' ? pick(['none', 'none', 'stubble', 'moustache', 'goatee', 'beard', 'fullBeard']) : 'none' },
+      top: { style: pick(Object.keys(TOPS).filter((t) => body === 'female' || t !== 'dress')), color: pick(colors) },
+      bottom: { style: pick(['pants', 'jeans', 'joggers', 'shorts', ...(body === 'female' ? ['skirt', 'leggings'] : [])]), color: pick(['#2f3f63', '#2f4e7a', '#3b2a20', '#5b5b5b', '#2a2a2e', '#c7b28a', '#2d5ca8']) },
+      shoes: { style: pick(['simple', 'sneakers', 'boots']), color: pick(colors) },
+      accessories: acc,
+    };
+  }
+}
+
+// ---------------------------------------------------------------- animation
+function track(THREE, name, D, N, fn, kind = 'q') {
+  const times = Array.from({ length: N + 1 }, (_, i) => (i / N) * D), v = [];
+  const q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (const t of times) {
+    const r = fn((t / D) * Math.PI * 2);
+    if (kind === 'q') { q.setFromEuler(e.set(r[0], r[1], r[2])); v.push(q.x, q.y, q.z, q.w); } else v.push(...r);
+  }
+  return kind === 'q' ? new THREE.QuaternionKeyframeTrack(`${name}.quaternion`, times, v) : new THREE.VectorKeyframeTrack(`${name}.position`, times, v);
+}
+function armTrack(THREE, rig, side, D, N, free) {
+  const s = side === 'L' ? 1 : -1, item = rig.hands[side];
+  if (item?.def.pose) { const { x = 0, z = 0 } = item.def.pose; return track(THREE, 'Arm' + side, D, N, (p) => [x + Math.sin(p * 2) * 0.04, 0, -z * s]); }
+  return track(THREE, 'Arm' + side, D, N, (p) => free(p, item?.def.swing ?? 1, s));
+}
+function walkClip(THREE, rig) {
+  const { d } = rig, D = 0.9, N = 16, sin = Math.sin;
+  const tracks = [
+    track(THREE, 'Hips', D, N, (p) => [0, d.legL + Math.abs(sin(p)) * 0.45, 0], 'v'),
+    track(THREE, 'Body', D, N, (p) => [0, 0, sin(p) * 0.04]),
+    track(THREE, 'Spine', D, N, (p) => [0.05, -sin(p) * 0.08, 0]),
+    track(THREE, 'Neck', D, N, (p) => [-0.04 + Math.abs(sin(p)) * 0.06, sin(p) * 0.08, -sin(p) * 0.05]),
+    track(THREE, 'LegL', D, N, (p) => [-sin(p) * 0.55, 0, 0]),
+    track(THREE, 'LegR', D, N, (p) => [sin(p) * 0.55, 0, 0]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.6 * sw, 0, 0.12 * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.6 * sw, 0, 0.12 * s]),
+  ];
+  for (const side of ['L', 'R']) {
+    const it = rig.hands[side];
+    if (it && !it.def.pose && rig.itemNodes[side]) tracks.push(track(THREE, 'Item' + side, D, N, (p) => [sin(p - 0.6) * 0.15 * (side === 'L' ? -1 : 1), 0, 0]));
+  }
+  return new THREE.AnimationClip('Walk', D, tracks);
+}
+function idleClip(THREE, rig) {
+  const { d } = rig, D = 3, N = 24, sin = Math.sin;
+  return new THREE.AnimationClip('Idle', D, [
+    track(THREE, 'Hips', D, N, (p) => [0, d.legL - Math.abs(sin(p)) * 0.1, 0], 'v'),
+    track(THREE, 'Body', D, N, () => [0, 0, 0]),
+    track(THREE, 'Spine', D, N, (p) => [sin(p * 2) * 0.015, 0, 0]),
+    track(THREE, 'Neck', D, N, (p) => [0.03, sin(p) * 0.3, sin(p * 2) * 0.04]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.03]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.03]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.04, 0, (0.14 + sin(p * 2) * 0.02) * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.04, 0, (0.14 + sin(p * 2) * 0.02) * s]),
+  ]);
+}
+function waveClip(THREE, rig) {
+  const { d } = rig, D = 1.2, N = 24, sin = Math.sin;
+  const waveSide = rig.hands.R && !rig.hands.L ? 'L' : rig.hands.R ? null : 'R';
+  const wave = (side) => track(THREE, 'Arm' + side, D, N, (p) => [-0.25, 0, (2.1 + sin(p * 2) * 0.3) * (side === 'L' ? 1 : -1)]);
+  return new THREE.AnimationClip('Wave', D, [
+    track(THREE, 'Hips', D, N, (p) => [0, d.legL + Math.abs(sin(p)) * 0.12, 0], 'v'),
+    track(THREE, 'Body', D, N, () => [0, 0, 0]),
+    track(THREE, 'Spine', D, N, (p) => [0, 0, sin(p * 2) * 0.03 * (waveSide === 'L' ? 1 : -1)]),
+    track(THREE, 'Neck', D, N, (p) => [0.05, 0, (waveSide === 'L' ? 0.12 : -0.12) + sin(p * 2) * 0.04]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.03]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.03]),
+    waveSide === 'L' ? wave('L') : armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [0, 0, 0.14 * s]),
+    waveSide === 'R' ? wave('R') : armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [0, 0, 0.14 * s]),
+  ]);
+}
+function rideClip(THREE, rig, moving) {
+  const { d, ride } = rig, D = 2, N = 24, sin = Math.sin, hover = ride.def.hover;
+  const tracks = [
+    track(THREE, 'Ride', D, N, (p) => [0, (hover ? 1.2 : 0) + sin(p * (hover ? 1 : 8)) * (hover ? 0.6 : moving ? 0.06 : 0), 0], 'v'),
+    track(THREE, 'Hips', D, N, (p) => [0, d.legL * Math.cos(0.2) + Math.abs(sin(p * 2)) * 0.15, 0], 'v'),
+    track(THREE, 'Spine', D, N, (p) => [0.05, 0, moving ? sin(p) * 0.06 : 0]),
+    track(THREE, 'Neck', D, N, (p) => [0, -1.15 + (moving ? 0 : sin(p) * 0.25), 0]),
+    track(THREE, 'LegL', D, N, () => [0, 0, 0.2]),
+    track(THREE, 'LegR', D, N, () => [0, 0, -0.2]),
+    armTrack(THREE, rig, 'L', D, N, (p, sw, s) => [sin(p) * 0.1, 0, (0.6 + sin(p * 2) * 0.1) * s]),
+    armTrack(THREE, rig, 'R', D, N, (p, sw, s) => [-sin(p) * 0.1, 0, (0.6 + sin(p * 2 + 1) * 0.1) * s]),
+  ];
+  if (hover) tracks.push(track(THREE, 'Board', D, N, (p) => [sin(p) * 0.04, 0, sin(p * 2) * 0.03]));
+  return new THREE.AnimationClip(moving ? 'Ride' : 'Idle', D, tracks);
+}
+
+// ---- chibi-presets.js
+const S = SKIN_TONES, H = HAIR_COLORS, E = EYE_COLORS;
+// Chibi preset library — spread and override to make variations:
+//   { ...CHIBI_PRESETS.barista, body: 'male', hair: 'quiff' }
+
+const CHIBI_PRESETS = {
+  defaultMale: DEFAULT_MALE,
+  defaultFemale: DEFAULT_FEMALE,
+
+  // inspired by the original pack
+  santa: {
+    name: 'Santa', body: 'male', build: 'chubby', height: 'short', skin: S.fair, cheeks: true,
+    eyes: { style: 'dots' }, hair: { style: 'none' }, facialHair: { style: 'fullBeard', color: H.white },
+    top: { style: 'jacket', color: '#8e1b2a', accent: '#f6f1ea' }, bottom: { style: 'pants', color: '#8e1b2a' },
+    shoes: { style: 'boots', color: '#1d1a19' }, accessories: ['santaHat', 'belt', 'gloves'],
+  },
+  beardedGuy: {
+    name: 'Bearded Guy', body: 'male', skin: S.peach, eyes: { style: 'closed' },
+    hair: { style: 'short', color: H.black }, facialHair: { style: 'beard', color: H.black },
+    top: { style: 'longsleeve', color: '#1f1f22' }, bottom: { style: 'jeans', color: '#252c3d' },
+    shoes: { style: 'simple', color: '#1d1a19' }, accessories: [],
+  },
+  blondeKid: {
+    name: 'Blonde Kid', body: 'male', build: 'skinny', height: 'short', skin: S.fair,
+    eyes: { style: 'round', color: E.blue }, hair: { style: 'swept', color: H.blonde },
+    top: { style: 'tshirt', color: '#c8262f' }, bottom: { style: 'shorts', color: '#2d5ca8' },
+    shoes: { style: 'sneakers', color: '#1d1a19' }, accessories: [],
+  },
+  girlNextDoor: {
+    name: 'Girl Next Door', body: 'female', build: 'skinny', height: 'short', skin: S.fair, cheeks: true,
+    eyes: { style: 'big', color: E.brown }, hair: { style: 'long', color: H.darkBrown },
+    top: { style: 'tanktop', color: '#b8479b' }, bottom: { style: 'shorts', color: '#2d5ca8' },
+    shoes: { style: 'simple', color: '#f2c94c' }, accessories: [],
+  },
+
+  // variety
+  barista: {
+    name: 'Barista', body: 'female', skin: S.olive, cheeks: true, eyes: { style: 'round', color: E.hazel },
+    hair: { style: 'bun', color: H.chestnut }, top: { style: 'polo', color: '#2f6b4f', accent: '#f6f1ea' },
+    bottom: { style: 'pants', color: '#2a2a2e' }, shoes: { style: 'sneakers', color: '#f6f1ea' }, accessories: ['coffee'],
+  },
+  skater: {
+    name: 'Skater', body: 'male', build: 'skinny', skin: S.tan, hair: { style: 'curly', color: H.black },
+    top: { style: 'hoodie', color: '#2fb5a8' }, bottom: { style: 'shorts', color: '#c7b28a' },
+    shoes: { style: 'sneakers', color: '#2a2a2e' }, accessories: [{ type: 'beanie', color: '#f2b43c' }, 'skateboard'],
+  },
+  hoverKid: {
+    name: 'Hover Kid', body: 'female', height: 'short', skin: S.medium, cheeks: true, eyes: { style: 'big', color: E.green },
+    hair: { style: 'pigtails', color: H.pink }, top: { style: 'jacket', color: '#2d2d33', accent: '#37d6ff' },
+    bottom: { style: 'leggings', color: '#1f2230' }, shoes: { style: 'boots', color: '#e8ecf2' }, accessories: ['sunglasses', 'hoverboard'],
+  },
+  developer: {
+    name: 'Developer', body: 'male', build: 'chubby', skin: S.brown, hair: { style: 'afro', color: H.black },
+    facialHair: { style: 'stubble' }, top: { style: 'hoodie', color: '#3b3f4a' }, bottom: { style: 'joggers', color: '#2a2a2e' },
+    shoes: { style: 'sneakers', color: '#e8e8ea', accent: '#2a2a2e' }, accessories: ['headphones', 'tablet'],
+  },
+  officeLady: {
+    name: 'Office Lady', body: 'female', height: 'tall', skin: S.light, eyes: { style: 'round', color: E.grey },
+    hair: { style: 'bob', color: H.black }, top: { style: 'jacket', color: '#2f3d6e' }, bottom: { style: 'skirt', color: '#2f3d6e' },
+    shoes: { style: 'simple', color: '#1d1a19' }, accessories: ['earrings', 'phone', 'watch'],
+  },
+  businessman: {
+    name: 'Businessman', body: 'male', height: 'tall', skin: S.porcelain, eyes: { style: 'round', color: E.blue },
+    hair: { style: 'quiff', color: H.ginger }, facialHair: { style: 'beard', color: H.ginger },
+    top: { style: 'jacket', color: '#8e1b2a' }, bottom: { style: 'pants', color: '#3b1714' },
+    shoes: { style: 'sneakers', color: '#b32642' }, accessories: ['watch', 'briefcase'],
+  },
+  grandpa: {
+    name: 'Grandpa', body: 'male', build: 'chubby', height: 'short', skin: S.light, eyes: { style: 'closed' },
+    hair: { style: 'none' }, facialHair: { style: 'moustache', color: H.white },
+    top: { style: 'sweater', color: '#7a5a3a', accent: '#c9a76a' }, bottom: { style: 'pants', color: '#5b5b5b' },
+    shoes: { style: 'simple', color: '#3b2a20' }, accessories: [{ type: 'cap', color: '#5c6b4a' }, 'glasses', 'book'],
+  },
+  grandma: {
+    name: 'Grandma', body: 'female', build: 'chubby', height: 'short', skin: S.fair, cheeks: true, eyes: { style: 'closed' },
+    hair: { style: 'bun', color: H.grey }, top: { style: 'dress', color: '#8f63dd', accent: '#f2ece2' },
+    bottom: { style: 'bare' }, shoes: { style: 'simple', color: '#5e3b24' }, accessories: ['glasses', 'coffee'],
+  },
+  musician: {
+    name: 'Musician', body: 'male', height: 'tall', skin: S.olive, hair: { style: 'long', color: H.darkBrown },
+    facialHair: { style: 'goatee' }, top: { style: 'jacket', color: '#1f1f22', accent: '#d64545' },
+    bottom: { style: 'jeans', color: '#2f4e7a' }, shoes: { style: 'boots', color: '#3b2a20' }, accessories: ['headphones', 'sunglasses'],
+  },
+  student: {
+    name: 'Student', body: 'female', build: 'skinny', skin: S.porcelain, cheeks: true, eyes: { style: 'big', color: E.green },
+    hair: { style: 'ponytail', color: H.auburn }, top: { style: 'sweater', color: '#e8d6a8', accent: '#3a6ea5' },
+    bottom: { style: 'skirt', color: '#3a3f5c' }, shoes: { style: 'simple', color: '#3b2a20' }, accessories: ['glasses', 'backpack', 'book'],
+  },
+  runner: {
+    name: 'Runner', body: 'male', build: 'skinny', height: 'tall', skin: S.deep, hair: { style: 'buzz', color: H.black },
+    top: { style: 'tanktop', color: '#e86f3a' }, bottom: { style: 'shorts', color: '#1f2230' },
+    shoes: { style: 'sneakers', color: '#37d6ff', accent: '#ffffff' }, accessories: [{ type: 'headphones', color: '#f2f2f2', accent: '#37d6ff' }, 'watch'],
+  },
+  partyKid: {
+    name: 'Party Kid', body: 'male', build: 'chubby', height: 'short', skin: S.peach, cheeks: true, eyes: { style: 'big', color: E.brown },
+    hair: { style: 'spiky', color: H.chestnut }, top: { style: 'tshirt', color: '#f2b43c' }, bottom: { style: 'shorts', color: '#4f86d9' },
+    shoes: { style: 'sneakers', color: '#d64545' }, accessories: ['bowtie', 'balloon'],
+  },
+  icecreamGirl: {
+    name: 'Ice Cream Day', body: 'female', height: 'short', skin: S.brown, cheeks: true, eyes: { style: 'big', color: E.black },
+    hair: { style: 'afro', color: H.black }, top: { style: 'dress', color: '#ee7fb0', accent: '#f6f1ea' },
+    bottom: { style: 'bare' }, shoes: { style: 'sneakers', color: '#f6f1ea' }, accessories: [{ type: 'icecream', color: '#8fdcc0' }],
+  },
+  punk: {
+    name: 'Punk', body: 'male', skin: S.fair, hair: { style: 'mohawk', color: H.teal }, facialHair: { style: 'stubble' },
+    top: { style: 'tanktop', color: '#1f1f22' }, bottom: { style: 'jeans', color: '#2a2a2e' },
+    shoes: { style: 'boots', color: '#1d1a19' }, accessories: ['sunglasses', 'belt', 'gloves'],
+  },
+  hiker: {
+    name: 'Hiker', body: 'female', skin: S.tan, eyes: { style: 'round', color: E.brown }, hair: { style: 'ponytail', color: H.brown },
+    top: { style: 'tshirt', color: '#d9653b' }, bottom: { style: 'shorts', color: '#5c6b4a' },
+    shoes: { style: 'boots', color: '#6b4a2e' }, accessories: [{ type: 'cap', color: '#3f7a5a' }, 'backpack', 'watch'],
+  },
+  winterWalker: {
+    name: 'Winter Walker', body: 'female', build: 'average', height: 'tall', skin: S.light, cheeks: true,
+    hair: { style: 'long', color: H.platinum }, top: { style: 'sweater', color: '#3a6ea5', accent: '#f6f1ea' },
+    bottom: { style: 'leggings', color: '#2a2a2e' }, shoes: { style: 'boots', color: '#7a4425' }, accessories: [{ type: 'beanie', color: '#c9473f' }, 'scarf'],
+  },
+  gamer: {
+    name: 'Gamer', body: 'male', build: 'chubby', skin: S.fair, eyes: { style: 'round', color: E.green },
+    hair: { style: 'curly', color: H.purple }, top: { style: 'tshirt', color: '#2d2d33' }, bottom: { style: 'joggers', color: '#3b4357' },
+    shoes: { style: 'sneakers', color: '#3fae6c' }, accessories: ['headphones', 'glasses', 'phone'],
+  },
+  teacher: {
+    name: 'Teacher', body: 'female', build: 'chubby', skin: S.medium, eyes: { style: 'round', color: E.brown },
+    hair: { style: 'bob', color: H.chestnut }, top: { style: 'longsleeve', color: '#5b8f6a' }, bottom: { style: 'pants', color: '#5b5b5b' },
+    shoes: { style: 'simple', color: '#2b2522' }, accessories: ['glasses', { type: 'book', side: 'R' }, 'coffee'],
+  },
+  gentleman: {
+    name: 'Gentleman', body: 'male', height: 'tall', skin: S.dark, hair: { style: 'short', color: H.black },
+    facialHair: { style: 'moustache', color: H.black }, top: { style: 'longsleeve', color: '#f2f2f2' },
+    bottom: { style: 'pants', color: '#1f2230' }, shoes: { style: 'simple', color: '#1d1a19' }, accessories: ['tie', 'watch', 'briefcase'],
+  },
+};
+
+return { SKIN_TONES, HAIR_COLORS, EYE_COLORS, BUILDS, HEIGHTS, EYE_STYLES, DEFAULT_MALE, DEFAULT_FEMALE, HAIR_STYLES, FACIAL_HAIR, TOPS, BOTTOMS, SHOES, ACCESSORIES, ChibiCharacter, CHIBI_PRESETS };
+})();
+const Blocky = BlockyNS, Chibi = ChibiNS, BLOCKY_PRESETS = Blocky.PRESETS, CHIBI_PRESETS = Chibi.CHIBI_PRESETS;
+// Character — one API for both styles: 'blocky' (voxel) and 'chibi' (smooth, big-headed)
+// --------------------------------------------------------------------------------------
+//   import * as THREE from 'three';
+//   import { Character, PRESETS } from './characters.js';
+//
+//   const c = new Character(THREE, { type: 'chibi', body: 'female', hair: 'bun' });
+//   scene.add(c.root);
+//   c.play('Walk');                 // see c.clipNames
+//   // each frame: c.update(delta)
+//
+//   c.set({ type: 'blocky' });      // same design, other style — root, position and animation stay
+//   new Character(THREE, PRESETS.chibi.santa);
+//   new Character(THREE, { ...PRESETS.blocky.skater, type: 'chibi' });
+//
+// Any config works in either style. Parts a style doesn't have are swapped for the closest
+// match (see FALLBACKS) or skipped; the original config is kept, so switching back restores them.
+
+// Both styles stand the same height by default (top of head ≈ 1.05 units for an average-height
+// character). Blocky is scaled down from its own 0.056 default to match chibi.
+const DEFAULT_SIZES = { chibi: { scale: 0.06 }, blocky: { px: 0.0327 } };
+
+const STYLES = {
+  chibi: { label: 'Chibi', Class: Chibi.ChibiCharacter, lib: Chibi },
+  blocky: { label: 'Blocky', Class: Blocky.BlockyCharacter, lib: Blocky },
+};
+
+// closest equivalent when a part doesn't exist in the target style (null = leave it out)
+const FALLBACKS = {
+  blocky: {
+    hair: { swept: 'short', curly: 'afro' },
+    facialHair: { fullBeard: 'beard' },
+    accessories: { santaHat: 'beanie', bowtie: 'tie', icecream: 'coffee', balloon: null, belt: null, gloves: null },
+  },
+  chibi: {
+    bottom: { widePants: 'pants' },
+    shoes: { hightops: 'sneakers' },
+    accessories: { camera: null, guitar: 'backpack' },
+  },
+};
+
+const PRESETS = {
+  chibi: Object.fromEntries(Object.entries(CHIBI_PRESETS).map(([k, p]) => [k, { type: 'chibi', ...p }])),
+  blocky: Object.fromEntries(Object.entries(BLOCKY_PRESETS).map(([k, p]) => [k, { type: 'blocky', ...p }])),
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o ?? {}));
+const PARTS = ['hair', 'facialHair', 'top', 'bottom', 'shoes'];
+
+/** Shared config shape: parts are objects, eyes are { style, color }, accessories are objects. */
+function toUniversal(config = {}) {
+  const c = clone(config);
+  for (const k of PARTS) if (typeof c[k] === 'string') c[k] = { style: c[k] };
+  if (typeof c.eyes === 'string') c.eyes = { color: c.eyes };
+  if (c.accessories) c.accessories = c.accessories.map((a) => (typeof a === 'string' ? { type: a } : a));
+  return c;
+}
+
+/** Turn a universal config into one the given style understands. Returns { config, notes }. */
+function adapt(config, type) {
+  const { Class, lib } = STYLES[type];
+  const opts = Class.options, fb = FALLBACKS[type] ?? {}, notes = [];
+  const c = toUniversal(config);
+  delete c.type;
+  for (const k of PARTS) {
+    const p = c[k];
+    if (!p?.style || opts[k].includes(p.style)) continue;
+    const alt = fb[k]?.[p.style];
+    notes.push(`${p.style} ${alt ? `shown as ${alt}` : 'not available'} in ${STYLES[type].label}`);
+    c[k] = alt ? { ...p, style: alt } : { ...p, style: undefined };
+    if (!alt) delete c[k].style;
+  }
+  if (c.accessories) {
+    const seen = new Set();
+    c.accessories = c.accessories.flatMap((a) => {
+      let t = a.type;
+      if (!lib.ACCESSORIES[t]) {
+        const alt = fb.accessories?.[t];
+        notes.push(`${t} ${alt ? `shown as ${alt}` : 'not available'} in ${STYLES[type].label}`);
+        if (!alt) return [];
+        t = alt;
+        // keep the original item's look (e.g. a red Santa hat → red beanie)
+        if (a.color === undefined) {
+          const src = Blocky.ACCESSORIES[a.type] ?? Chibi.ACCESSORIES[a.type];
+          if (src?.color) return seen.has(t) ? [] : (seen.add(t), [{ ...a, type: t, color: src.color }]);
+        }
+      }
+      if (seen.has(t)) return [];
+      seen.add(t);
+      return [{ ...a, type: t }];
+    });
+  }
+  if (type === 'blocky') {
+    if (c.eyes) c.eyes = c.eyes.color;
+    if (!c.eyes) delete c.eyes;
+    delete c.cheeks;
+  } else {
+    delete c.freckles;
+  }
+  // drop undefined so the style's defaults apply
+  for (const k of PARTS) if (c[k] && c[k].style === undefined) delete c[k].style;
+  for (const k of Object.keys(c)) if (c[k] === undefined) delete c[k];
+  return { config: c, notes };
+}
+
+class Character {
+  /**
+   * @param THREE  the three.js module
+   * @param config any config; `type` picks the style (default 'chibi')
+   * @param sizes  optional { blocky: { px }, chibi: { scale } } — defaults to DEFAULT_SIZES (equal heights)
+   */
+  constructor(THREE, config = {}, sizes = {}) {
+    this.THREE = THREE;
+    this.sizes = { chibi: { ...DEFAULT_SIZES.chibi, ...sizes.chibi }, blocky: { ...DEFAULT_SIZES.blocky, ...sizes.blocky } };
+    this.root = new THREE.Group();
+    this.root.name = 'Character';
+    this.inner = null;
+    this.set(config, true);
+  }
+
+  set(patch = {}, replace = false) {
+    const next = toUniversal(replace ? patch : { ...this.config, ...patch });
+    next.type = STYLES[next.type] ? next.type : 'chibi';
+    const { Class } = STYLES[next.type];
+    const { config, notes } = adapt(next, next.type);
+    const playing = this.inner?.current?.getClip().name;
+    if (this.inner instanceof Class) this.inner.set(config, true);
+    else {
+      if (this.inner) { this.root.remove(this.inner.root); this.inner.dispose(); }
+      const size = this.sizes[next.type] ?? {};
+      this.inner = new Class(this.THREE, config, size);
+      this.root.add(this.inner.root);
+      if (playing && this.inner.clipNames.includes(playing)) this.inner.play(playing, 0);
+    }
+    this.config = next;
+    this.notes = notes;
+    return this;
+  }
+
+  get type() { return this.config.type; }
+  /** The config as the current style actually draws it (defaults filled in). */
+  get resolved() {
+    const r = toUniversal(this.inner.toJSON());
+    if (this.type === 'blocky' && typeof this.inner.config.eyes === 'string') r.eyes = { ...(this.config.eyes ?? {}), color: this.inner.config.eyes };
+    return { type: this.type, ...r };
+  }
+  toJSON() { return clone(this.config); }
+  get clipNames() { return this.inner.clipNames; }
+  get defaultClip() { return this.inner.defaultClip; }
+  get current() { return this.inner.current; }
+  get mixer() { return this.inner.mixer; }
+  get clips() { return this.inner.clips; }
+  get warnings() { return [...(this.inner.warnings ?? []), ...(this.notes ?? [])]; }
+  play(name, fade) { this.inner.play(name, fade); return this; }
+  update(dt) { this.inner.update(dt); }
+  dispose() { this.inner?.dispose(); }
+
+  static options(type) { return STYLES[type].Class.options; }
+  static random(type = 'chibi', seed) { return { type, ...STYLES[type].Class.random(seed) }; }
+}
+
+// ---------------------------------------------------------------- Character Lab (blocky + chibi)
+const $ = (s) => document.querySelector(s);
+const words = (s) => s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+const deepCopy = (o) => JSON.parse(JSON.stringify(o));
+const SLOT_LABELS = { head: 'Head', face: 'Face', body: 'Body', back: 'Back', hand: 'Hands', ride: 'Ride' };
+const FRAMING = {
+  chibi: { cam: [2.2, 1.25, 3.3], target: [0, 0.68, 0], min: 1.4, max: 9, shadow: 2 },
+  blocky: { cam: [2.2, 1.25, 3.3], target: [0, 0.68, 0], min: 1.4, max: 9, shadow: 2 },
+};
+const totalPresets = Object.keys(PRESETS.chibi).length + Object.keys(PRESETS.blocky).length;
+
+// ---------------- three.js stage
+const host = $('#canvas');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.52;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcfd6e2, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(4, 8, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun, sun.target);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+scene.add(ground);
+function fitShadow(size) {
+  Object.assign(sun.shadow.camera, { left: -size, right: size, top: size, bottom: -size, near: 0.5, far: 40 });
+  sun.shadow.camera.updateProjectionMatrix();
+}
+
+// ---------------- state
+let cfg = toUniversal(PRESETS.chibi.defaultMale);
+const hero = new Character(THREE, cfg);
+scene.add(hero.root);
+let view = hero.resolved, framedType = null, speed = 1, spin = false, crowd = null;
+
+function frame(type) {
+  const f = FRAMING[type];
+  camera.position.set(...f.cam); controls.target.set(...f.target);
+  controls.minDistance = f.min; controls.maxDistance = f.max; fitShadow(f.shadow);
+  framedType = type;
+}
+
+function rebuild(refreshPanel = true) {
+  hero.set(cfg, true);
+  view = hero.resolved;
+  if (framedType !== cfg.type && !crowd) frame(cfg.type);
+  $('#who').textContent = `${cfg.name || 'Custom'} · ${STYLES[cfg.type].label}`;
+  renderClips();
+  if (refreshPanel) renderPanel(); else updateExport();
+}
+
+// ---------------- panel helpers
+const panel = $('#panel');
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'on') for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn);
+    else if (k === 'style') e.style.cssText = v;
+    else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return e;
+}
+const chipBtn = (label, pressed, onclick, title) => el('button', { 'aria-pressed': String(!!pressed), on: { click: onclick }, title }, label);
+const row = (label, ...content) => el('div', { class: 'row' }, el('div', { class: 'lbl' }, label), el('div', {}, ...content));
+const section = (title, ...content) => el('section', {}, el('h2', {}, title), ...content);
+const segmented = (values, current, onPick) => el('div', { class: 'chips' }, values.map((v) => chipBtn(words(v), v === current, () => onPick(v))));
+const toHex = (c, lib) => (typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : (lib.SKIN_TONES[c] || lib.HAIR_COLORS[c] || lib.EYE_COLORS[c] || c || '#888888'));
+function colorInput(id, value, onInput, onChange) {
+  return el('input', { type: 'color', id, value: toHex(value, lib()), 'aria-label': id, on: {
+    input: (e) => onInput(e.target.value), change: (e) => (onChange || onInput)(e.target.value) } });
+}
+function swatches(id, palette, current, onPick) {
+  const cur = toHex(current, lib()).toLowerCase();
+  return el('div', { class: 'swatches' },
+    Object.entries(palette).map(([name, c]) => el('button', {
+      class: 'sw', title: words(name), 'aria-label': words(name), 'aria-pressed': String(cur === c.toLowerCase()),
+      style: `background:${c}`, on: { click: () => onPick(c) } })),
+    colorInput(id, current, (v) => onPick(v, true), (v) => onPick(v)));
+}
+const live = (fn) => (v, isLive) => { fn(v); custom(); rebuild(!isLive); };
+const lib = () => STYLES[cfg.type].lib;
+const OPT = () => Character.options(cfg.type);
+// edit one field of a part, starting from what's on screen and keeping fields the other style uses
+function setPart(part, key, value) { cfg[part] = { ...(view[part] || {}), ...(cfg[part] || {}), [key]: value }; }
+function custom() {
+  const all = [...Object.values(PRESETS.chibi), ...Object.values(PRESETS.blocky)];
+  if (all.some((p) => p.name === cfg.name)) cfg.name = 'Custom';
+}
+function load(preset, keepStyle = false) {
+  cfg = toUniversal({ ...preset, type: keepStyle ? cfg.type : preset.type });
+  rebuild();
+}
+
+// ---------------- panel
+function renderPanel() {
+  const scroll = panel.scrollTop, o = OPT(), L = lib();
+  const notes = hero.notes ?? [];
+  panel.replaceChildren(
+    section('Style',
+      row('Type', segmented(Object.keys(STYLES), cfg.type, (v) => { cfg.type = v; rebuild(); })),
+      notes.length ? el('div', { class: 'warn', style: 'color:var(--muted)' }, 'In this style: ' + notes.join(' · ') + '. Switch back to restore.') : null),
+
+    section('Presets',
+      ...Object.entries(PRESETS).map(([type, set]) => el('div', { style: 'display:grid;gap:6px' },
+        el('div', { class: 'lbl', style: 'font-size:12px;color:var(--muted)' }, `${STYLES[type].label} designs`),
+        el('div', { class: 'presets' }, Object.values(set).map((p) => chipBtn(p.name, cfg.name === p.name && cfg.type === type, () => load(p, keepBox.checked)))))),
+      el('label', { class: 'toggle', for: 'keepStyle' }, keepBox, 'Load presets in the current style'),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn-strong', on: { click: () => { cfg = toUniversal(Character.random(cfg.type)); cfg.name = 'Random'; rebuild(); } } }, 'Randomize'),
+        el('button', { on: { click: () => load(PRESETS[cfg.type].defaultMale) } }, 'Default male'),
+        el('button', { on: { click: () => load(PRESETS[cfg.type].defaultFemale) } }, 'Default female'))),
+
+    section('Body',
+      row('Body', segmented(o.body, view.body, (v) => { cfg.body = v; if (v === 'male' && view.top.style === 'dress') setPart('top', 'style', 'tshirt'); custom(); rebuild(); })),
+      row('Build', segmented(o.build, view.build, (v) => { cfg.build = v; custom(); rebuild(); })),
+      row('Height', segmented(o.height, view.height, (v) => { cfg.height = v; custom(); rebuild(); })),
+      row('Skin', swatches('skin', L.SKIN_TONES, view.skin, live((v) => { cfg.skin = v; }))),
+      o.eyes ? row('Eyes', segmented(o.eyes, view.eyes?.style, (v) => { cfg.eyes = { ...(view.eyes || {}), ...(cfg.eyes || {}), style: v }; custom(); rebuild(); })) : null,
+      (o.eyes && ['closed', 'dots'].includes(view.eyes?.style)) ? null
+        : row('Eye color', swatches('eyes', L.EYE_COLORS, view.eyes?.color, live((v) => { cfg.eyes = { ...(view.eyes || {}), ...(cfg.eyes || {}), color: v }; }))),
+      row('Details',
+        cfg.type === 'chibi'
+          ? el('label', { class: 'toggle', for: 'cheeks' }, el('input', { type: 'checkbox', id: 'cheeks', checked: view.cheeks, on: { change: (e) => { cfg.cheeks = e.target.checked; custom(); rebuild(); } } }), 'Rosy cheeks')
+          : el('label', { class: 'toggle', for: 'freckles' }, el('input', { type: 'checkbox', id: 'freckles', checked: view.freckles, on: { change: (e) => { cfg.freckles = e.target.checked; custom(); rebuild(); } } }), 'Freckles'),
+        view.body === 'female' ? el('div', { class: 'colorline', style: 'margin-top:6px' }, 'Lips',
+          colorInput('lips', cfg.lips ?? '#c4566a', (v) => { cfg.lips = v; custom(); rebuild(false); }, (v) => { cfg.lips = v; rebuild(); })) : null)),
+
+    section('Hair',
+      row('Style', segmented(o.hair, view.hair.style, (v) => { setPart('hair', 'style', v); custom(); rebuild(); })),
+      row('Color', swatches('hairColor', L.HAIR_COLORS, view.hair.color, live((v) => setPart('hair', 'color', v)))),
+      row('Facial', segmented(o.facialHair, view.facialHair.style, (v) => { setPart('facialHair', 'style', v); custom(); rebuild(); })),
+      view.facialHair.style !== 'none' ? row('Beard color', el('div', { class: 'colorline' },
+        colorInput('beardColor', view.facialHair.color ?? view.hair.color, (v) => { setPart('facialHair', 'color', v); custom(); rebuild(false); }, (v) => { setPart('facialHair', 'color', v); rebuild(); }),
+        el('button', { on: { click: () => { cfg.facialHair = { ...(cfg.facialHair || {}) }; delete cfg.facialHair.color; rebuild(); } } }, 'Match hair'))) : null),
+
+    clothing('Top', 'top', o.top.filter((t) => view.body === 'female' || t !== 'dress')),
+    view.top.style === 'dress' ? null : clothing('Bottom', 'bottom', o.bottom),
+    clothing('Shoes', 'shoes', o.shoes),
+
+    section('Accessories',
+      ...Object.entries(groupBySlot(L.ACCESSORIES)).map(([slot, items]) => el('div', { class: 'accgroup' },
+        el('div', { class: 'lbl', style: 'font-size:12.5px;color:var(--muted);padding-top:5px' }, SLOT_LABELS[slot] ?? words(slot)),
+        el('div', { class: 'chips' }, items.map((type) => chipBtn(words(type), hasAcc(type), () => toggleAcc(type)))))),
+      activeAccessories(),
+      (hero.inner.warnings ?? []).length ? el('div', { class: 'warn' }, hero.inner.warnings.join(' · ')) : null),
+
+    section('Use it in three.js',
+      el('div', { class: 'row' }, el('div', { class: 'lbl' }, 'Name'), el('input', {
+        id: 'cname', value: cfg.name ?? '', style: 'font:inherit;color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:5px 8px;width:100%;box-sizing:border-box',
+        on: { change: (e) => { cfg.name = e.target.value || 'Custom'; rebuild(); } } })),
+      el('textarea', { id: 'json', readonly: true, 'aria-label': 'Character config' }),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn-strong', id: 'copyJson', on: { click: () => copy($('#json').value, '#copyJson', 'Copy config') } }, 'Copy config'),
+        el('button', { id: 'copyCode', on: { click: () => copy(codeSnippet(), '#copyCode', 'Copy code') } }, 'Copy code'),
+        el('button', { on: { click: pasteConfig } }, 'Load config from text'))),
+  );
+  updateExport();
+  panel.scrollTop = scroll;
+}
+const keepBox = el('input', { type: 'checkbox', id: 'keepStyle' });
+
+function clothing(title, key, styles) {
+  const part = view[key];
+  const accent = cfg[key]?.accent;
+  return section(title,
+    row('Style', segmented(styles, part.style, (v) => { setPart(key, 'style', v); custom(); rebuild(); })),
+    part.style === 'bare' ? null : row('Color', el('div', { class: 'colorline' },
+      colorInput(key + 'Color', part.color, (v) => { setPart(key, 'color', v); custom(); rebuild(false); }, (v) => { setPart(key, 'color', v); rebuild(); }),
+      el('span', {}, 'Accent'),
+      colorInput(key + 'Accent', accent ?? '#ffffff', (v) => { setPart(key, 'accent', v); custom(); rebuild(false); }, (v) => { setPart(key, 'accent', v); rebuild(); }),
+      accent !== undefined ? el('button', { on: { click: () => { cfg[key] = { ...(cfg[key] || {}) }; delete cfg[key].accent; rebuild(); } } }, 'Default accent') : null)));
+}
+
+function groupBySlot(defs) {
+  const g = {};
+  for (const [type, def] of Object.entries(defs)) (g[def.slot] ??= []).push(type);
+  const order = Object.keys(SLOT_LABELS);
+  return Object.fromEntries(Object.entries(g).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])));
+}
+const accs = () => (cfg.accessories ??= deepCopy(view.accessories ?? []));
+const hasAcc = (type) => accs().some((a) => a.type === type);
+function toggleAcc(type) {
+  const L = lib(), def = L.ACCESSORIES[type];
+  if (hasAcc(type)) cfg.accessories = accs().filter((a) => a.type !== type);
+  else {
+    const others = accs();
+    const keep = others.filter((a) => {
+      const d = L.ACCESSORIES[a.type];
+      if (!d) return true; // other style's item: keep it for when you switch back
+      if (def.slot === 'ride' && d.slot === 'ride') return false;
+      if (def.hat && d.hat) return false;
+      if (['glasses', 'sunglasses'].includes(type) && ['glasses', 'sunglasses'].includes(a.type)) return false;
+      if (def.slot === 'hand' && d.slot === 'hand') {
+        const need = def.hand === 'both' ? ['L', 'R'] : [def.hand];
+        const uses = d.hand === 'both' ? ['L', 'R'] : [a.side ?? d.hand];
+        if (!uses.some((h) => need.includes(h))) return true;
+        if (d.hand !== 'both' && def.hand !== 'both') { a.side = uses[0] === 'L' ? 'R' : 'L'; return true; }
+        return false;
+      }
+      return true;
+    });
+    cfg.accessories = [...keep, { type }];
+  }
+  custom(); rebuild();
+}
+function activeAccessories() {
+  const list = accs();
+  if (!list.length) return el('div', { class: 'warn', style: 'color:var(--muted)' }, 'No accessories yet. Hand items and rides swap automatically when they clash.');
+  const L = lib();
+  return el('div', { class: 'acc-active' }, list.map((a, i) => {
+    const def = L.ACCESSORIES[a.type];
+    const oneHand = def?.slot === 'hand' && def.hand !== 'both', side = a.side ?? def?.hand;
+    return el('div', { class: 'item', style: def ? '' : 'opacity:.6' },
+      el('span', {}, words(a.type), def ? '' : ` (${cfg.type === 'chibi' ? 'Blocky' : 'Chibi'} only)`),
+      oneHand ? el('button', { class: 'side', title: 'Switch hand', on: { click: () => { a.side = side === 'L' ? 'R' : 'L'; custom(); rebuild(); } } }, side === 'L' ? 'Left hand' : 'Right hand') : null,
+      def ? colorInput('acc' + i, a.color ?? def.color ?? '#888888', (v) => { a.color = v; custom(); rebuild(false); }, (v) => { a.color = v; rebuild(); }) : null,
+      el('button', { title: 'Remove', 'aria-label': 'Remove ' + a.type, on: { click: () => { list.splice(i, 1); custom(); rebuild(); } } }, '✕'));
+  }));
+}
+
+// ---------------- export
+function exportConfig() {
+  const c = deepCopy(cfg);
+  if (c.accessories) c.accessories = c.accessories.map((a) => (Object.keys(a).length === 1 ? a.type : a));
+  return c;
+}
+function updateExport() { const t = $('#json'); if (t) t.value = JSON.stringify(exportConfig(), null, 2); }
+function codeSnippet() {
+  return `import * as THREE from 'three';\nimport { Character } from './characters.js';\n\nconst character = new Character(THREE, ${JSON.stringify(exportConfig(), null, 2)});\nscene.add(character.root);\ncharacter.play('${hero.current?.getClip().name ?? hero.defaultClip}');\n// in your render loop: character.update(delta);\n// switch style any time: character.set({ type: '${cfg.type === 'chibi' ? 'blocky' : 'chibi'}' });\n`;
+}
+async function copy(text, sel, label) {
+  const b = $(sel);
+  try { await navigator.clipboard.writeText(text); b.textContent = 'Copied'; }
+  catch { const t = $('#json'); t.value = text; t.select(); b.textContent = 'Selected, press Ctrl+C'; }
+  setTimeout(() => { b.textContent = label; updateExport(); }, 1600);
+}
+function pasteConfig() {
+  const t = $('#json');
+  t.readOnly = false; t.value = ''; t.placeholder = 'Paste a config JSON here, then click outside the box';
+  t.focus();
+  t.addEventListener('blur', () => {
+    try { const p = JSON.parse(t.value); cfg = toUniversal({ type: cfg.type, ...p }); rebuild(); }
+    catch { t.readOnly = true; updateExport(); }
+  }, { once: true });
+}
+
+// ---------------- stage controls
+function renderClips() {
+  const box = $('#clipBtns');
+  const names = crowd ? ['Walk', 'Idle', 'Wave'] : hero.clipNames;
+  const cur = crowd ? crowd.clip : hero.current?.getClip().name;
+  box.replaceChildren(...names.map((n) => chipBtn(n, n === cur, () => {
+    if (crowd) { crowd.clip = n; crowd.list.forEach(({ c }) => c.play(c.clipNames.includes(n) ? n : c.defaultClip)); }
+    else hero.play(n);
+    renderClips();
+  })));
+}
+$('#speed').addEventListener('input', (e) => { speed = +e.target.value; $('#speedOut').textContent = speed.toFixed(2) + '×'; });
+$('#spinBtn').addEventListener('click', (e) => { spin = !spin; e.target.setAttribute('aria-pressed', String(spin)); });
+
+// crowd: every preset in its own style; click one to edit it
+$('#crowdBtn').addEventListener('click', () => (crowd ? closeCrowd() : openCrowd()));
+function openCrowd() {
+  hero.root.visible = false;
+  const all = [...Object.values(PRESETS.chibi), ...Object.values(PRESETS.blocky)];
+  const cols = 10, gap = 1.3;
+  crowd = { clip: 'Walk', list: all.map((p, i) => {
+    const c = new Character(THREE, p);
+    const r = Math.floor(i / cols), col = i % cols;
+    c.root.position.set((col - (cols - 1) / 2) * gap, 0, (r - 2) * -gap * 1.3);
+    c.mixer.setTime(Math.random());
+    scene.add(c.root);
+    return { p, c };
+  }) };
+  camera.position.set(0, 8, 15); controls.target.set(0, 0.6, 0);
+  controls.maxDistance = 40; fitShadow(10); framedType = null;
+  $('#crowdBtn').setAttribute('aria-pressed', 'true'); $('#crowdBtn').textContent = 'Back to editor';
+  $('#hint').textContent = 'Chibi in front, blocky behind · click one to edit it';
+  renderClips();
+}
+function closeCrowd() {
+  crowd.list.forEach(({ c }) => { scene.remove(c.root); c.dispose(); });
+  crowd = null; hero.root.visible = true; frame(cfg.type);
+  $('#crowdBtn').setAttribute('aria-pressed', 'false'); $('#crowdBtn').textContent = 'Show all presets';
+  $('#hint').textContent = 'Drag to orbit · scroll to zoom';
+  renderClips();
+}
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!crowd || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(crowd.list.map(({ c }) => c.root), true)[0];
+  if (!hit) return;
+  const found = crowd.list.find(({ c }) => { let o = hit.object; while (o) { if (o === c.root) return true; o = o.parent; } return false; });
+  if (!found) return;
+  closeCrowd(); load(found.p);
+});
+
+// ---------------- loop
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false);
+  renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host);
+resize();
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { speed = 0; $('#speed').value = 0; $('#speedOut').textContent = '0.00×'; }
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta() * speed;
+  if (crowd) crowd.list.forEach(({ c }) => c.update(dt));
+  else { hero.update(dt); if (spin) hero.root.rotation.y += dt * 0.7; }
+  controls.update();
+  renderer.render(scene, camera);
+});
+rebuild();
+
+</script>
