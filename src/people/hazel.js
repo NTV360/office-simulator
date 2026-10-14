@@ -28,12 +28,12 @@ function applyHazel() {
 // shows (null: her usual work screen; sim/step.js updateScreens). Poses: 'watch' and 'peek' in animation.js.
 const PEEK = 2.4; // seconds to alt-tab and look around
 function hazelSlack(p, dt) {
-  const s = p.slack ??= { mode: 'work', t: 0, face: 'angry', ft: 0, screen: null, movie: 0 };
+  const s = p.slack ??= { mode: 'work', t: 0, face: 'angry', ft: 0, screen: null, movie: Math.floor(Math.random() * 100) };
   const atDesk = p.state === 'doing' && p.task?.kind === 'work' && p.task.spot === p.seat && !p.chatWith;
   if (!atDesk) { s.mode = 'work'; s.t = rnd(2, 6); s.face = 'angry'; s.screen = null; showFace(p.body, 'angry'); return; }
   if ((s.t -= dt) <= 0) {
     if (s.mode === 'movie') { s.mode = 'peek'; s.t = PEEK; s.face = 'worried'; } // alt-tab and look around: did anyone see?
-    else if (s.mode === 'work' || Math.random() < .65) { if (s.mode === 'work') s.movie = Math.floor(Math.random() * 100); s.mode = 'movie'; s.t = rnd(12, 24); s.ft = rnd(1.5, 3); s.face = 'angry'; } // after a peek she goes back to the same one
+    else if (s.mode === 'work' || Math.random() < .65) { s.movie++; s.mode = 'movie'; s.t = rnd(12, 24); s.ft = rnd(1.5, 3); s.face = 'angry'; } // the next movie each time
     else { s.mode = 'work'; s.t = rnd(6, 14); s.face = 'angry'; }
   }
   if (s.mode === 'movie' && (s.ft -= dt) <= 0) { s.face = s.face === 'laugh' ? 'angry' : 'laugh'; s.ft = rnd(2.5, 5); }
