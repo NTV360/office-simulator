@@ -24,7 +24,7 @@ async function fetchAttendance() {
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
-// The attendance card's lists: { today, yesterday, absent: [userId], noTapOut: [{ userId, clockIn, clockOut, automatic }] }.
+// The attendance tab's list: { today, absent: [userId] }.
 async function fetchAttendanceSummary() {
   try {
     const res = await fetch('/api/attendance/summary', { signal: AbortSignal.timeout(8000) });

@@ -26,7 +26,8 @@ function select(p) {
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }
-const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
+// Sim minutes as HH:MM. No time (still clocked in, not in today) shows as a dash.
+const fmt = t => { if (!Number.isFinite(t)) return '—'; const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (p.state === 'player') return 'Controlled by you';
   if (p.toiletUntil) return 'Deploying to the toilet';
@@ -69,7 +70,9 @@ function renderPerson() {
   const p = selected; if (!p) return;
   $('pName').textContent = p.name; $('pRole').textContent = p.seat ? `${p.title ?? p.role} · ${p.seat.label ?? p.seat.place}` : p.title ?? p.role;
   $('pStatus').textContent = statusText(p);
-  $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
+  // Live mode: someone still clocked in has no leaving time until they clock out
+  const leaves = Number.isFinite(p.leaveAt) ? `leaves ~${fmt(p.leaveAt)}` : p.absent ? 'not in today' : 'until clock-out';
+  $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · ${leaves} · coffee ×${p.coffees}`;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
   $('pEdit').hidden = !p.userId; // only real employees have a saved character
 }
