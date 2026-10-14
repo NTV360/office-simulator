@@ -77,7 +77,7 @@ const TV_MATS = { slides: [0, 1, 2].map(i => screenMat(slidesScreen(i))), dash: 
 
 // The movies on Hazel's monitor: the files below in public/movies/ that are there (a gif plays, a still image
 // just shows), else the drawn one above. Loaded once at start (bootstrap.js); each sitting she picks one.
-const MOVIE_FILES = ['movies/cartoon.gif', 'movies/drama.jpg'];
+const MOVIE_FILES = ['movies/images1.jpeg', 'movies/images2.jpeg']; // the cartoon, the drama
 const movies = [];
 // A file's frames as bitmaps with their start times (null: missing). Gifs are decoded frame by frame with the
 // browser's ImageDecoder; without it (or for a still) the file is one frame.
