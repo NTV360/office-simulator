@@ -24,6 +24,13 @@ async function fetchAttendance() {
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
+// The attendance card's lists: { today, yesterday, absent: [userId], noTapOut: [{ userId, clockIn, clockOut, automatic }] }.
+async function fetchAttendanceSummary() {
+  try {
+    const res = await fetch('/api/attendance/summary', { signal: AbortSignal.timeout(8000) });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
 // Store an employee's look and desk (character_information). Returns { ok, error }.
 async function saveCharacter(userId, character, desk) {
   try {
@@ -32,4 +39,4 @@ async function saveCharacter(userId, character, desk) {
   } catch (_) { return { ok: false, error: 'the server could not be reached' }; }
 }
 
-export { fetchAttendance, fetchEmployees, loadLocalSpec, saveCharacter, saveLocalSpec };
+export { fetchAttendance, fetchAttendanceSummary, fetchEmployees, loadLocalSpec, saveCharacter, saveLocalSpec };
