@@ -137,6 +137,21 @@ export class PlayerManager {
     return person;
   }
 
+  /**
+   * A guest who leaves is not kept over a restart, so what they stored goes on the floor around them (a few things may find no room and
+   * are lost). Somebody with a desk keeps their inventory.
+   */
+  private dropGuestInventory(person: Person): void {
+    if (person.slot) return;
+    let lost = 0;
+    for (const item of [...person.inventory.items]) {
+      const result = dropInventoryItem(person, person.inventory, item.id);
+      if (result.ok) person.inventory = result.inventory; else lost++;
+    }
+    person.mechanics.inventoryRevision++;
+    if (lost > 0) this.log.warn(`${person.name} left; ${lost} stored item(s) found no room on the floor and were lost`);
+  }
+
   /** The connection is gone. The person stays where they are for the grace period, then goes back to autopilot (a guest leaves). */
   detach(accountId: number): void {
     const s = this.sessions.get(accountId);
@@ -145,6 +160,7 @@ export class PlayerManager {
       this.sessions.delete(accountId);
       this.inputs.delete(s.person.id);
       releaseCharacterPerson(s.person.id);
+      this.dropGuestInventory(s.person);
       handBack(s.person); // a guest has no desk, so this removes them
     }, this.graceMs);
   }
@@ -495,6 +511,7 @@ export class PlayerManager {
       this.sessions.delete(accountId);
       this.inputs.delete(guest.person.id);
       releaseCharacterPerson(guest.person.id);
+      this.dropGuestInventory(guest.person);
       removeGuest(guest.person);
       this.kick?.(accountId, 'your desk was assigned, log in again');
     }
@@ -534,6 +551,7 @@ export class PlayerManager {
       this.sessions.delete(accountId);
       this.inputs.delete(guest.person.id);
       releaseCharacterPerson(guest.person.id);
+      this.dropGuestInventory(guest.person);
       removeGuest(guest.person);
       this.kick?.(accountId, 'you were linked to an employee, log in again');
     }
@@ -558,7 +576,7 @@ export class PlayerManager {
       this.sessions.delete(accountId);
       this.inputs.delete(session.person.id);
       releaseCharacterPerson(session.person.id);
-      if (session.person.slot) handBack(session.person); else removeGuest(session.person);
+      if (session.person.slot) handBack(session.person); else { this.dropGuestInventory(session.person); removeGuest(session.person); }
       this.kick?.(accountId, 'you were unlinked from your employee by an admin');
     }
     if (person && person.owner === accountId) this.unclaim(person);
@@ -584,7 +602,7 @@ export class PlayerManager {
       this.sessions.delete(accountId);
       this.inputs.delete(session.person.id);
       releaseCharacterPerson(session.person.id);
-      if (session.person.slot) handBack(session.person); else removeGuest(session.person);
+      if (session.person.slot) handBack(session.person); else { this.dropGuestInventory(session.person); removeGuest(session.person); }
       this.kick?.(accountId, 'your desk was taken away by an admin');
     }
     if (person && person.owner === accountId) this.unclaim(person);

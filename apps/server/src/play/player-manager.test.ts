@@ -286,6 +286,24 @@ describe('a login', () => {
     expect(manager.isOnline(ana.id)).toBe(false);
   });
 
+  it('drops what a guest stored onto the floor when they leave', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    const desk = interactables.of('desk')[0]; // (the test office is open floor, so a thing can be put down a few metres from a desk)
+    g.pos.x = desk.pos.x + 3; g.pos.z = desk.pos.z + 3; g.face = 0;
+    g.inventory = placeItem(createInventory(), { id: 'mug-1', type: 'mug', x: 0, y: 0, rotation: 0 });
+    const before = objects.count();
+    manager.detach(ana.id);
+    timers.advance(30_001);
+    expect(people).not.toContain(g);
+    expect(objects.count()).toBe(before + 1);
+    const dropped = objects.at(before)!;
+    expect(dropped.type).toBe('mug');
+    expect(dropped.removed).toBeFalsy();
+    expect(Math.hypot(dropped.x - g.pos.x, dropped.z - g.pos.z)).toBeLessThan(3);
+    expect(g.inventory.items).toEqual([]);
+  });
+
   it('reconnecting inside the grace period gets the same guest back, not a new one', async () => {
     const ana = await account('ana');
     const g = await manager.attach(ana);
