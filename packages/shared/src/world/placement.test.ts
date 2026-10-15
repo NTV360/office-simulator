@@ -11,13 +11,13 @@ import { stepSim } from '../sim/step';
 import { Vec3 } from '../vec3';
 import { setSeed } from '../util';
 import { findPath } from '../nav/astar';
-import { walkPx } from '../nav/grid';
+import { initGrid, setBlocker, walkPx } from '../nav/grid';
 import { toPx } from '../plan';
 import { parseSavedWorld, serializeWorld } from '../sim/persist';
 import { ENTRY } from '../sim/spots';
 import { CATALOGUE, DESK_TOP } from './catalogue';
 import { addObject, objects, putDown, resetAllObjects, seatUnusable, setObjectPose, wrapAngle, type WorldObject } from './objects';
-import { CHARACTER_CLEARANCE_RADIUS, REACH, findInventoryDropPlacement, inReach, movability, nearestMovable, placementProblem, restHeightAt, seatInUse, setFixedTops, stationOwner } from './placement';
+import { CHARACTER_CLEARANCE_RADIUS, REACH, findInventoryDropPlacement, hasLineOfSight, inReach, movability, nearestMovable, placementProblem, restHeightAt, seatInUse, setFixedTops, stationOwner } from './placement';
 
 // The rules for moving things: where a chair or a small thing may be put, and when it may not be moved at all.
 
@@ -38,6 +38,23 @@ function freePlaceNear(o: WorldObject): { x: number; z: number } {
   }
   throw new Error('no free place near ' + o.id);
 }
+
+describe('line of sight', () => {
+  it('accepts a clear segment and rejects a segment through a blocker', () => {
+    initGrid([]);
+    const a = { x: (430 - 397.85) * .041, z: (600 - 577.05) * .041 };
+    const b = { x: (500 - 397.85) * .041, z: (600 - 577.05) * .041 };
+    expect(hasLineOfSight(a, b)).toBe(true);
+    setBlocker(77, [460, 590, 470, 610]);
+    expect(hasLineOfSight(a, b)).toBe(false);
+    setBlocker(77, null);
+  });
+
+  it('rejects non-finite endpoints and accepts coincident endpoints', () => {
+    expect(hasLineOfSight({ x: NaN, z: 0 }, { x: 0, z: 0 })).toBe(false);
+    expect(hasLineOfSight({ x: 1, z: 2 }, { x: 1, z: 2 })).toBe(true);
+  });
+});
 
 describe('inventory drag-out placement', () => {
   it('finds a reachable point in front of a character and computes its support height', () => {

@@ -16,6 +16,8 @@ import { ENTRY } from './spots';
 import { endTask, goWork } from './tasks';
 import type { Person } from './types';
 import { defaultCharacterMechanics } from './character-state';
+import { releaseCharacterPerson } from './character-hold-actions';
+import { createInventory } from './inventory';
 
 /** What the choice of a desk depends on. */
 type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'>;
@@ -43,7 +45,7 @@ function createPerson(who: Who | ReturnType<typeof helperIdentity>, slot: Spot |
     pos: at.pos.clone(), face: at.face, faceGoal: at.face, speed: rnd(1.15, 1.45),
     state: 'away', shown: false, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [], walkPhase: random() * TAU, animT: random() * 10,
     pose: {}, arriveAt: 0, leaveAt: 0, lunchAt: 0, hadLunch: false, arrivedAt: null, coffees: 0, chatWith: null, meeting: null,
-    screenKind, screenVariant: 0, mechanics: defaultCharacterMechanics(),
+    screenKind, screenVariant: 0, mechanics: defaultCharacterMechanics(), inventory: createInventory(),
   };
   p.screenVariant = Math.floor(random() * SCREEN_VARIANTS[screenKind]); // same single draw as picking from the list
   if (slot) slot.owner = p;
@@ -130,6 +132,7 @@ export function removePerson(p: Person): boolean {
 
 function takeOut(i: number): Person {
   const [p] = people.splice(i, 1);
+  releaseCharacterPerson(p.id);
   endTask(p); if (p.slot) p.slot.owner = null;
   // nobody may keep pointing at someone who has gone: take them out of the meetings and any chat at their desk
   for (const m of meetings) { m.members = m.members.filter(x => x !== p); if (m.speaker === p) m.speaker = null; }
@@ -146,10 +149,11 @@ export function applyEmployee(p: Person, e: Employee): boolean {
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase();
   let changed = false;
   const set = <K extends keyof Person>(key: K, value: Person[K]): void => { if (p[key] !== value) { p[key] = value; changed = true; } };
-  set('name', hazel ? HAZEL_NAME : fullName(e)); set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department)); set('photo', e.photo ?? null);
+  if (p.owner === undefined) set('name', hazel ? HAZEL_NAME : fullName(e));
+  set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department)); set('photo', e.photo ?? null);
   const a = p.shift ?? null, b = e.shift;
   if (a === null || b === null ? a !== b : a.code !== b.code || a.start !== b.start || a.end !== b.end) { p.shift = b; changed = true; }
-  if (e.character) {
+  if (e.character && p.owner === undefined) {
     const spec = normalizeSpec(hazel ? { ...e.character, angry: true } : e.character);
     if (JSON.stringify(spec) !== JSON.stringify(p.spec)) { p.spec = spec; changed = true; }
   }

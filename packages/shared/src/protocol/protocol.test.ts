@@ -50,6 +50,15 @@ const welcome = (): Welcome => ({
 });
 
 describe('round trips', () => {
+  it('round-trips attack intents and rejects them as server messages', () => {
+    for (const intent of [
+      { type: 'attack', phase: 'begin', kind: 'punch' },
+      { type: 'attack', phase: 'release', kind: 'kick', side: 'left' },
+    ] as const) {
+      expect(decodeClient(encode(intent))).toEqual(intent);
+    }
+  });
+
   it('round-trips non-default character mechanics without losing nested state', () => {
     const mechanics: PersonMechanicsSnap = {
       posture: 'crouching', crouchLevel: .7, seatMode: 'none', seatId: null,
@@ -57,7 +66,7 @@ describe('round trips', () => {
       attack: { kind: 'punch', side: 'left', phase: 'active', sequence: 12, startedAt: 4.5, releaseAt: 5.1, charge: .66, cooldownUntil: 5.4 },
       dominantHand: 'left', struggle: .4,
       health: { head: 40, body: 71, leftArm: 0, rightArm: 35, leftLeg: 20, rightLeg: 45 },
-      holdTarget: 'person-2', heldBy: 'person-1', inventoryRevision: 9,
+      holdTarget: 'person-2', heldBy: 'person-1', holdAz: -.4, holdLift: 1.25, inventoryRevision: 9,
     };
     const got = decode(encode({ type: 'person', info: info(), snap: snap({ mechanics }) })) as { snap: PersonSnap };
     const decoded = got.snap.mechanics!;
@@ -81,6 +90,17 @@ describe('round trips', () => {
     expect(decoded.holdTarget).toBe(mechanics.holdTarget);
     expect(decoded.heldBy).toBe(mechanics.heldBy);
     expect(decoded.inventoryRevision).toBe(mechanics.inventoryRevision);
+  });
+
+  it('round-trips a medical use intent with optional target', () => {
+    const intent = { type: 'inventory', action: 'use', itemId: 'bandage-1', limb: 'leftArm', target: 17, revision: 4 } as const;
+    expect(decodeClient(encode(intent))).toEqual(intent);
+    const self = { ...intent, target: undefined };
+    expect(decodeClient(encode(self))).toEqual(self);
+  });
+
+  it('rejects malformed medical use intents', () => {
+    expect(() => encode({ type: 'inventory', action: 'use', itemId: 'bandage', limb: 'nope' as never, revision: 0 })).toThrow();
   });
 
   it('hello, ping, pong, kick, leave', () => {

@@ -28,6 +28,15 @@ export async function logout(base) {
  * Returns { ticket }, or { loggedOut: true } when the session is no longer valid (401), or { retryable: true } for anything else
  * that is probably temporary (the server busy, a rate limit, no network): the caller should wait and try again.
  */
+export async function mintVoiceToken(base) {
+  try {
+    const r = await post(base, '/api/voice/token');
+    if (r.ok) return r.json;
+    if (r.status === 401 || (r.status === 403 && r.json.code === 'must-change-password')) return { loggedOut: true };
+    return { unavailable: true };
+  } catch { return { unavailable: true }; }
+}
+
 export async function mintTicket(base) {
   try {
     const r = await post(base, '/api/play/ticket');

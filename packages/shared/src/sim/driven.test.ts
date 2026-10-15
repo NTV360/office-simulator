@@ -6,7 +6,7 @@ import { walkPx } from '../nav/grid';
 import { setSeed } from '../util';
 import { initDay } from './day';
 import {
-  RUN_SPEED, SEAT_REACH, WALK_SPEED, isSeated, nearestSeat, sanitizeInput, seatOK, sit, stand, stepAllDriven, stepDriven, type DrivenInput,
+  RUN_SPEED, SEAT_REACH, WALK_SPEED, freeSitSupport, isSeated, nearestSeat, sanitizeInput, seatOK, sit, stand, stepAllDriven, stepDriven, type DrivenInput,
 } from './driven';
 import { initGrid } from '../nav/grid';
 import { goDo } from './tasks';
@@ -110,6 +110,54 @@ describe('moving', () => {
     for (let tick = 1; tick <= 12; tick++) moved += stepDriven(p, input({ tick: 0 }), DT, tick, people); // the same old input, never refreshed
     expect(moved).toBeCloseTo(5 * WALK_SPEED * DT, 6); // five more ticks of grace, then still
     expect(stepDriven(p, input({ tick: 0 }), DT, 99, people)).toBe(0);
+  });
+
+  it('clears held crouch and jump edges when input becomes stale', () => {
+    const p = driven(); startOnFloor(p);
+    stepDriven(p, input({ crouch: true, jump: true, tick: 0 }), DT, 0, people);
+    expect(p.mechanics.posture).toBe('crouching');
+    stepDriven(p, null, DT, 20, people);
+    expect(p.mechanics.posture).toBe('standing');
+    expect(p.mechanics.crouchLevel).toBe(0);
+    expect(p.mechanics.proneHeld).toBe(false);
+    expect(p.mechanics.jumpHeld).toBe(false);
+  });
+
+  it('ignores crouch and prone input while ragdolled or recovering', () => {
+    for (const posture of ['ragdoll', 'recovering'] as const) {
+      const p = driven(); startOnFloor(p);
+      p.mechanics.posture = posture;
+      p.mechanics.locomotion = posture === 'ragdoll' ? 'ragdoll' : 'grid';
+      stepDriven(p, input({ crouch: true, tick: 0 }), DT, 0, people);
+      expect(p.mechanics.posture).toBe(posture);
+      stepDriven(p, input({ prone: true, tick: 1 }), DT, 1, people);
+      expect(p.mechanics.posture).toBe(posture);
+    }
+  });
+
+  it('continues and completes a jump when input packets stop', () => {
+    const g = driven(); startOnFloor(g);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 0 }), DT, 0, people);
+    expect(g.mechanics.locomotion).toBe('jump');
+    stepDriven(g, null, DT, 1, people);
+    expect(g.mechanics.locomotion).toBe('jump');
+    stepDriven(g, null, DT, 18, people);
+    expect(g.mechanics.locomotion).toBe('grid');
+    expect(g.mechanics.grounded).toBe(true);
+    expect(g.mechanics.verticalVelocity).toBe(0);
+  });
+
+  it('enforces the configured jump cooldown after landing', () => {
+    const g = driven(); startOnFloor(g);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 0 }), DT, 0, people);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: false, tick: 1 }), DT, 1, people);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: false, tick: 18 }), DT, 18, people);
+    expect(g.mechanics.locomotion).toBe('grid');
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 19 }), DT, 19, people);
+    expect(g.mechanics.locomotion).toBe('grid');
+    stepDriven(g, input({ mx: 0, mz: 0, jump: false, tick: 20 }), DT, 20, people);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 28 }), DT, 28, people);
+    expect(g.mechanics.locomotion).toBe('jump');
   });
 
   it('no input at all means no movement', () => {
@@ -305,6 +353,42 @@ describe('review fixes', () => {
     for (let n = 0; n < 6; n++) stepDriven(g, input({ mx: 1, mz: 0, run: true, tick: n }), 0.5, n, people, 5); // 1.5 m per step
     expect(g.pos.x).toBeLessThan(wallX);
     initGrid([]);
+  });
+
+  it('applies crouch depth while held and stands on release', () => {
+    const g = guestAt(0, 0);
+    stepDriven(g, input({ mx: 0, mz: 0, crouch: true, crouchWheel: 3, tick: 0 }), DT, 0, people);
+    expect(g.mechanics.posture).toBe('crouching');
+    expect(g.mechanics.crouchLevel).toBeCloseTo(.3);
+    stepDriven(g, input({ mx: 0, mz: 0, crouch: true, tick: 1 }), DT, 1, people);
+    expect(g.mechanics.crouchLevel).toBeCloseTo(.3);
+    stepDriven(g, input({ mx: 0, mz: 0, tick: 2 }), DT, 2, people);
+    expect(g.mechanics.posture).toBe('standing');
+    expect(g.mechanics.crouchLevel).toBe(0);
+  });
+
+  it('toggles prone once per key press', () => {
+    const g = guestAt(0, 0);
+    stepDriven(g, input({ mx: 0, mz: 0, prone: true, tick: 0 }), DT, 0, people);
+    expect(g.mechanics.posture).toBe('prone');
+    stepDriven(g, input({ mx: 0, mz: 0, prone: true, tick: 1 }), DT, 1, people);
+    expect(g.mechanics.posture).toBe('prone');
+    stepDriven(g, input({ mx: 0, mz: 0, tick: 2 }), DT, 2, people);
+    stepDriven(g, input({ mx: 0, mz: 0, prone: true, tick: 3 }), DT, 3, people);
+    expect(g.mechanics.posture).toBe('standing');
+  });
+
+  it('starts a jump only on a press and lands after its fixed duration', () => {
+    const g = guestAt(0, 0);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 0 }), DT, 0, people);
+    expect(g.mechanics.locomotion).toBe('jump');
+    expect(g.mechanics.grounded).toBe(false);
+    stepDriven(g, input({ mx: 0, mz: 0, jump: true, tick: 1 }), DT, 1, people);
+    expect(g.mechanics.locomotion).toBe('jump');
+    for (let tick = 2; tick <= 18; tick++) stepDriven(g, input({ mx: 0, mz: 0, tick }), DT, tick, people);
+    expect(g.mechanics.locomotion).toBe('grid');
+    expect(g.mechanics.grounded).toBe(true);
+    expect(g.mechanics.verticalVelocity).toBe(0);
   });
 
   it('an input from the future (after a world reset) is not believed', () => {

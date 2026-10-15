@@ -16,7 +16,7 @@ beforeAll(async () => { await loadPhysics(); });
 beforeEach(() => { simEvents.clear(); resetSim(); loadLayout(officeLayout); });
 
 describe('the office at rest', () => {
-  it('every one of the 162 items stands where the layout put it: nothing floats, sinks or overlaps, so nothing moves when physics starts', () => {
+  it('every layout item stands where the layout put it: nothing floats, sinks or overlaps, so nothing moves when physics starts', () => {
     const p = new Physics(OFFICE);
     for (const o of objects.all()) p.addItem(o);
     run(p, 3);

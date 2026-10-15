@@ -150,5 +150,5 @@ The third-person camera runs an "arm" from the head to the wanted camera spot an
 
 - The simulation still imports Three.js: a person carries its meshes and some activities toggle props. You cannot run the sim without a browser yet.
 - The third-person camera collides with walls only, not furniture.
-- Automated tests exist only for `packages/shared` and `apps/server` (`npm test`). The browser app has none yet and is verified by a manual checklist; there is no linting yet.
+- Conventional unit tests exist mainly in `packages/shared` and `apps/server` (`npm test`); browser behavior is also checked by automated Playwright scripts (`npm run verify:browser`, `npm run verify:browser:thorough`, and the `npm run e2e*` suites). There is no linting yet.
 - The production build is a single ~600 KB chunk.

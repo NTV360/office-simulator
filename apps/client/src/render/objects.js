@@ -14,6 +14,7 @@ import { drawTable } from '../world/furniture/conference.js';
 import { drawConsole } from '../world/furniture/game.js';
 import { drawSofa } from '../world/furniture/lounge.js';
 import { box, cyl } from '../world/helpers.js';
+import { unregisterScreen } from './screens.js';
 
 // Drawing the movable objects (chairs, stools and the small things on desks), fast. Every kind of object is built once, from the same
 // furniture code as before, merged into one geometry per material, and drawn with one InstancedMesh per material: a hundred chairs cost
@@ -120,7 +121,8 @@ function allocate(kind, capacity) {
 
 const tilt = new THREE.Quaternion(), at = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
 function write(kind, slot, o) {
-  if (o.q) scratch.compose(at.set(o.x, o.y, o.z), tilt.set(o.q[0], o.q[1], o.q[2], o.q[3]), one); // (knocked over, or tilted)
+  if (o.removed) scratch.makeScale(0, 0, 0);
+  else if (o.q) scratch.compose(at.set(o.x, o.y, o.z), tilt.set(o.q[0], o.q[1], o.q[2], o.q[3]), one); // (knocked over, or tilted)
   else scratch.makeRotationY(o.rot).setPosition(o.x, o.y, o.z);
   for (const p of kind.parts) { p.mesh.setMatrixAt(slot, scratch); p.mesh.instanceMatrix.needsUpdate = true; p.mesh.boundingSphere = null; } // (re-measured when next aimed at)
   const att = attached.get(o.index ?? -1);
@@ -185,6 +187,20 @@ export function initObjectViews() {
   for (const o of objects.all()) { const c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() }; poseOf(o, c.pos, c.q); shown.set(o.index, c); }
   simEvents.on('objectMoved', o => {
     if (!slotOf.has(o.index)) return;
+    if (o.removed) {
+      const s = slotOf.get(o.index);
+      for (const p of s.kind.parts) { p.mesh.setMatrixAt(s.slot, new THREE.Matrix4().makeScale(0, 0, 0)); p.mesh.instanceMatrix.needsUpdate = true; }
+      const attachments = attached.get(o.index) ?? [];
+      for (const { mesh } of attachments) {
+        scene.remove(mesh);
+        unregisterScreen(o.station, mesh);
+        mesh.geometry?.dispose();
+      }
+      attached.delete(o.index);
+      shown.delete(o.index);
+      carried.delete(o.index); carrierOf.delete(o.index); gliding.delete(o.index);
+      return;
+    }
     // (everyone holding it holds their arms out to it; whoever has let go puts them down)
     const now = o.carriedBy === null ? [] : [o.carriedBy, ...o.helpers];
     for (const id of carrierOf.get(o.index) ?? []) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; } }
@@ -321,8 +337,14 @@ export function itemAt(raycaster, skip = -1, from = 0) {
 /** Where an item is drawn now (smoothed), or undefined. */
 export const shownAt = index => shown.get(index)?.pos;
 
-/** Draw objects made after the start (the stress check adds many). */
-export const addObjectView = add;
+/** Draw objects made after the start (the stress check adds many), once per registry index. */
+export function addObjectView(o) {
+  if (slotOf.has(o.index)) return;
+  add(o);
+  const c = { pos: new THREE.Vector3(), q: new THREE.Quaternion() };
+  poseOf(o, c.pos, c.q);
+  shown.set(o.index, c);
+}
 
 /** How many draw calls the objects cost: the parts of the kinds in use. */
 export const objectDrawCalls = () => { let n = 0; for (const k of kinds.values()) n += k.parts.length; return n; };

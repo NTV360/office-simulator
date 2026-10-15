@@ -11,6 +11,8 @@ import { SAVE_VERSION, SaveError, parseSavedWorld, restoreWorld, serializeWorld 
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
 import { removeHelper } from './testing';
+import { addObject, consumeObject, objects } from '../world/objects';
+import { placeItem, setHotbarSlot } from './inventory';
 
 const testRoster = (count = 40) => Array.from({ length: count }, (_, i) => ({
   userId: `persist-${i + 1}`, firstName: i === 0 ? 'Hazel' : `Test${i + 1}`, lastName: i === 0 ? 'Sellote' : 'Employee', department: 'UI/UX' as string | null,
@@ -27,6 +29,46 @@ function runningWorld(seed = 1, steps = 8000) {
 const viaJson = () => JSON.parse(JSON.stringify(serializeWorld()));
 
 describe('saving and restoring the world', () => {
+  it('persists consumed objects as detached tombstones through JSON restore', () => {
+    runningWorld(1, 0);
+    const chair = objects.all().find(o => o.link)!;
+    const spot = chair.link!.spot;
+    consumeObject(chair);
+    const saved = viaJson();
+    expect(saved.objects).toContainEqual(expect.objectContaining({ id: chair.id, removed: true }));
+
+    restoreWorld(parseSavedWorld(saved));
+    const restored = objects.byId(chair.id)!;
+    expect(restored.removed).toBe(true);
+    expect(restored.link!.spot.object).toBeUndefined();
+    expect(viaJson().objects).toContainEqual(expect.objectContaining({ id: chair.id, removed: true }));
+    expect(spot.occupant).toBeNull();
+  });
+
+  it('persists a runtime-created object definition through JSON restore', () => {
+    runningWorld(1, 0);
+    const before = objects.count();
+    const created = addObject({ type: 'mug', variant: 0, station: null, spot: null, x: 3, z: 3, rot: 0, y: 0 });
+    const saved = viaJson();
+    expect(saved.objects).toContainEqual(expect.objectContaining({ id: created.id, type: 'mug', variant: 0, station: null, spot: null }));
+    restoreWorld(parseSavedWorld(saved));
+    expect(objects.count()).toBe(before + 1);
+    expect(objects.byId(created.id)).toMatchObject({ type: 'mug', x: 3, z: 3, removed: false });
+    expect(viaJson()).toEqual(saved);
+  });
+
+  it('persists a person inventory and hotbar through JSON restore', () => {
+    runningWorld(1, 0);
+    const p = people.find(hasSlot)!;
+    p.inventory = placeItem(p.inventory, { id: 'persist-item', type: 'notebook', x: 0, y: 0, rotation: 0 });
+    p.inventory = setHotbarSlot(p.inventory, 0, 'persist-item');
+    const saved = viaJson();
+    expect(saved.people.find((s: { id: number }) => s.id === p.id)?.inventory).toEqual(p.inventory);
+    restoreWorld(parseSavedWorld(saved));
+    const restored = people.find(q => q.id === p.id)!;
+    expect(restored.inventory).toEqual(p.inventory);
+  });
+
   it('a restored world saves back exactly what was saved (through JSON, as the database does)', () => {
     runningWorld();
     const saved = viaJson();
@@ -136,6 +178,8 @@ describe('parseSavedWorld refuses damaged saves', () => {
     bad(s => { s.people[0].x = 1e9; }, /\.x/);
     bad(s => { s.people[0].coffees = -1; }, /coffees/);
     bad(s => { s.people[0].id = 70000; }, /\.id/);
+    bad(s => { s.people[0].id = 1.5; }, /whole number/);
+    bad(s => { s.nameIdx = 1.5; }, /nameIdx.*whole number/);
     bad(s => { s.people[0].screenVariant = 9; }, /screenVariant/);
   });
   it('text, flags and shapes that are wrong', () => {
@@ -149,6 +193,11 @@ describe('parseSavedWorld refuses damaged saves', () => {
   it('two people with the same id or the same desk', () => {
     bad(s => { s.people[1].id = s.people[0].id; }, /repeats id/);
     bad(s => { s.people[1].slot = s.people[0].slot; }, /shares desk/);
+  });
+  it('rejects an incomplete runtime object definition', () => {
+    bad(s => {
+      s.objects = [{ id: 'obj:999', x: 1, z: 1, rot: 0, type: 'mug' }];
+    }, /incomplete runtime definition/);
   });
   it('accepts a good one', () => {
     expect(parseSavedWorld(good()).people).toHaveLength(40);

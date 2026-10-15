@@ -1,15 +1,16 @@
 import { io } from 'socket.io-client';
 import { getAccount, logout, mintTicket, showLogin } from './login.js';
+import { initVoice } from './voice.js';
 import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
 import { initObjectControls, tickObjectControls } from './objects.js';
 import { predictCarried } from '../render/objects.js';
-import { updateCarriedObjects } from '../render/objects.js';
+import { addObjectView, updateCarriedObjects } from '../render/objects.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
 import {
-  CLOCK, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, interactables, layoutCheck, live, people, simEvents, sim, hasSlot,
+  CLOCK, HOTBAR_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, footprintForItem, interactables, layoutCheck, live, materializeObject, people, simEvents, sim, hasSlot,
 } from '@office/shared';
 
 // Online mode: the page is a viewer of the server's office. It does not run the simulation; it applies what the
@@ -20,6 +21,9 @@ import {
 const DELAY_MS = 150; // people are drawn this far in the past, so there are always two snapshots to blend between
 const SNAP_DISTANCE = 2.5; // a jump bigger than this (metres) is a teleport, not a walk
 const MAX_BUFFER = 8;
+let inventoryCollapsed = true;
+let inventoryDragId = null;
+let inventoryDragHandled = false;
 
 /** Where /api and /socket.io live. `?online=http://localhost:3000` points at a server on this computer; otherwise the page's own origin. */
 export function serverBase() {
@@ -56,6 +60,7 @@ function lockServerControls() {
 
 export function startOnline() {
   const base = serverBase();
+  const voice = initVoice({ base });
   const mirror = new Mirror(interactables.all(), {
     added(p) {
       people.push(p);
@@ -78,7 +83,7 @@ export function startOnline() {
 
   // ?trace keeps what the server said at its last few keyframes, for scripted checks (see tests/browser/verify.mjs)
   const tracing = new URLSearchParams(location.search).has('trace');
-  const net = { mirror, rttMs: null, connected: false, layoutOk: true, fatal: null, snapshots: 0, trace: new Map() };
+  const net = { mirror, voice, rttMs: null, connected: false, layoutOk: true, fatal: null, snapshots: 0, trace: new Map() };
   net.account = null;
   net.you = null; // the id of the person this account drives (from the welcome)
   net.joined = false; // the server has accepted our hello: inputs may be sent
@@ -108,6 +113,7 @@ export function startOnline() {
       crouch: posture.crouch === true,
       prone: posture.prone === true,
       jump: posture.jump === true,
+      struggle: posture.struggle === true,
       crouchWheel: Number.isFinite(posture.crouchWheel) ? Math.trunc(posture.crouchWheel) : 0,
     };
     const postureChanged = lastPosture === null || Object.keys(nextPosture).some(k => nextPosture[k] !== lastPosture[k]);
@@ -124,6 +130,19 @@ export function startOnline() {
     return true;
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
+  const sendAttack = (phase, kind = 'punch', side) => {
+    if (!net.joined) return false;
+    send({ type: 'attack', phase, kind, ...(side ? { side } : {}) });
+    return true;
+  };
+  const sendCharacter = (action, target, az, lift) => {
+    if (!net.joined) return false;
+    if (action === 'grab') {
+      if (!Number.isInteger(target)) return false;
+      send({ type: 'grab-character', target, az: Number.isFinite(az) ? az : 0, lift: Number.isFinite(lift) ? lift : 1 });
+    } else send({ type: action === 'release' ? 'release-character' : 'throw-character' });
+    return true;
+  };
   initObjectControls({ send });
   // ?netdebug: a readout of how prediction is doing, top left, for chasing a jump you can see: how often the server corrected you, by how
   // much, how far your person is drawn from where the server has you, and the biggest step your person made in one frame lately
@@ -152,10 +171,11 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     const n = me._buf && me._buf[me._buf.length - 1];
     return n ? { x: me.pos.x, z: me.pos.z, face: me.face, serverX: n.x, serverZ: n.z, serverFace: n.face } : null;
   });
-  player.online = { input: sendInput, act: sendAct, predicting, lastMovedAt: -1e9, movedNow() { this.lastMovedAt = performance.now(); } };
+  player.online = { input: sendInput, act: sendAct, attack: sendAttack, character: sendCharacter, predicting, lastMovedAt: -1e9, movedNow() { this.lastMovedAt = performance.now(); } };
 
   /** Forget who you were: after a logout, an ended session or a fatal error nothing of the old person may stay on screen or be steered. */
   function resetLocal() {
+    voice.hide?.();
     net.you = null; net.joined = false; net.autoView = false;
     live.mode = 'sim'; // (the copy of the server's clock mode: the next welcome says)
     player.person = null; player.sitting = null; player.moving = false;
@@ -165,7 +185,158 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
   }
 
   /** Say who you are and whether you have a desk: in the account box, and a note for guests. */
+  function inventoryOwner() {
+    return net.you !== null ? mirror.people.get(net.you) : null;
+  }
+
+  function sendInventory(action, values = {}) {
+    const me = inventoryOwner(), inventory = me?.inventory;
+    if (!net.joined || !inventory) return false;
+    send({ type: 'inventory', action, revision: me.mechanics.inventoryRevision, ...values });
+    return true;
+  }
+
+  function chooseMedical(itemId) {
+    const me = inventoryOwner();
+    if (!me) return;
+    const candidates = [...mirror.people.values()].filter(person => person.controller === 'account' && person.mechanics?.health?.body > 0 && Math.hypot(person.pos.x - me.pos.x, person.pos.z - me.pos.z) <= 1.25);
+    const dialog = document.createElement('dialog');
+    dialog.className = 'medical-dialog';
+    dialog.innerHTML = '<form method="dialog"><h3>Use medical item</h3><label>Limb <select name="limb"><option>head</option><option selected>body</option><option>leftArm</option><option>rightArm</option><option>leftLeg</option><option>rightLeg</option></select></label><label>Patient <select name="target"><option value="">Self</option></select></label><div><button value="cancel">Cancel</button><button value="use">Use</button></div></form>';
+    const targetSelect = dialog.querySelector('select[name="target"]');
+    for (const person of candidates) {
+      if (person.id === me.id) continue;
+      const option = document.createElement('option');
+      option.value = String(person.id);
+      option.textContent = person.name;
+      targetSelect.append(option);
+    }
+    document.body.append(dialog);
+    dialog.addEventListener('close', () => {
+      if (dialog.returnValue === 'use') {
+        const form = dialog.querySelector('form');
+        const target = form.elements.target.value;
+        sendInventory('use', { itemId, limb: form.elements.limb.value, ...(target ? { target: Number(target) } : {}) });
+      }
+      dialog.remove();
+    }, { once: true });
+    dialog.showModal();
+  }
+
+  function renderInventory() {
+    const panel = document.getElementById('inventoryPanel');
+    const grid = document.getElementById('inventoryGrid');
+    const hotbar = document.getElementById('inventoryHotbar');
+    const me = inventoryOwner(), inventory = me?.inventory;
+    if (!panel || !grid || !hotbar) return;
+    const details = document.getElementById('inventoryDetails');
+    const toggle = document.getElementById('inventoryToggle');
+    if (details) { details.hidden = inventoryCollapsed; details.setAttribute('aria-hidden', String(inventoryCollapsed)); }
+    if (toggle) { toggle.setAttribute('aria-expanded', String(!inventoryCollapsed)); toggle.textContent = inventoryCollapsed ? 'Show' : 'Hide'; }
+    panel.hidden = !inventory;
+    if (!inventory) { grid.replaceChildren(); hotbar.replaceChildren(); return; }
+    const itemName = item => item.type.replace(/[-_]/g, ' ');
+    const cellPoint = event => {
+      const rect = grid.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      return {
+        x: Math.max(0, Math.min(INVENTORY_COLUMNS - 1, Math.floor((event.clientX - rect.left) / (rect.width / INVENTORY_COLUMNS)))),
+        y: Math.max(0, Math.min(INVENTORY_ROWS - 1, Math.floor((event.clientY - rect.top) / (rect.height / INVENTORY_ROWS))))
+      };
+    };
+    // The grid persists across snapshots. Bind its listeners once, otherwise every
+    // snapshot would submit the same drag with an increasingly stale revision.
+    if (!grid.dataset.bound) {
+      grid.dataset.bound = '1';
+      grid.addEventListener('dragover', event => {
+        if (!event.dataTransfer?.types.includes('text/inventory-item')) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      });
+      grid.addEventListener('drop', event => {
+        event.preventDefault();
+        const id = event.dataTransfer?.getData('text/inventory-item');
+        const point = cellPoint(event);
+        if (id && point) sendInventory('move', { itemId: id, ...point });
+      });
+    }
+    const draw = () => {
+      const owner = inventoryOwner(), state = owner?.inventory;
+      if (!state) { panel.hidden = true; return; }
+      panel.hidden = false;
+      const revision = document.getElementById('inventoryRevision');
+      if (revision) revision.textContent = `rev ${owner.mechanics.inventoryRevision}`;
+      grid.replaceChildren(); hotbar.replaceChildren();
+      for (let i = 0; i < INVENTORY_COLUMNS * INVENTORY_ROWS; i++) {
+        const cell = document.createElement('div'); cell.className = 'inventory-cell'; cell.setAttribute('role', 'gridcell'); cell.dataset.cell = String(i);
+        grid.append(cell);
+      }
+      for (const item of state.items) {
+        const [width, height] = footprintForItem(item.type, item.rotation);
+        const el = document.createElement('button');
+        el.type = 'button'; el.className = 'inventory-item'; el.draggable = true; el.dataset.itemId = item.id;
+        el.textContent = itemName(item); el.title = `${itemName(item)} · drag to hotbar or outside to place`;
+        el.style.gridColumn = `${item.x + 1} / span ${width}`; el.style.gridRow = `${item.y + 1} / span ${height}`;
+        el.addEventListener('dragstart', event => {
+          inventoryDragId = item.id; inventoryDragHandled = false;
+          event.dataTransfer?.setData('text/inventory-item', item.id);
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+        });
+        el.addEventListener('dblclick', () => sendInventory('rotate', { itemId: item.id }));
+        el.addEventListener('dragend', event => {
+          const r = panel.getBoundingClientRect();
+          const outside = event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom ? false : event.clientX !== 0 || event.clientY !== 0;
+          if (inventoryDragId === item.id && outside && !inventoryDragHandled) sendInventory('drop', { itemId: item.id });
+          inventoryDragId = null; inventoryDragHandled = false;
+        });
+        grid.append(el);
+      }
+      state.hotbar.forEach((itemId, slot) => {
+        const slotEl = document.createElement('div'); slotEl.className = 'hotbar-slot'; slotEl.dataset.slot = String(slot); slotEl.setAttribute('role', 'button'); slotEl.tabIndex = 0;
+        const item = state.items.find(candidate => candidate.id === itemId);
+        slotEl.textContent = item ? `${slot + 1} · ${itemName(item)}` : String(slot + 1); slotEl.setAttribute('aria-label', item ? `Hotbar ${slot + 1}: ${itemName(item)}` : `Empty hotbar slot ${slot + 1}`);
+        slotEl.addEventListener('dragover', event => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; });
+        slotEl.addEventListener('drop', event => { event.preventDefault(); const id = event.dataTransfer?.getData('text/inventory-item'); if (id) { inventoryDragHandled = true; sendInventory('hotbar', { itemId: id, slot }); } });
+        slotEl.addEventListener('click', () => {
+          if (!itemId) return;
+          const current = state.items.find(candidate => candidate.id === itemId);
+          if (!current) return;
+          const medical = current.type === 'bandage' || current.type === 'first-aid-box';
+          if (medical) {
+            chooseMedical(itemId);
+          }
+          // Ordinary hotbar activation is not a mutation yet. Do not send a
+          // hotbar command without itemId: the server correctly interprets
+          // that shape as clearing the slot.
+
+        });
+        hotbar.append(slotEl);
+      });
+    };
+    draw();
+  }
+
+  document.getElementById('inventoryToggle')?.addEventListener('click', () => {
+    inventoryCollapsed = !inventoryCollapsed;
+    renderInventory();
+  });
+  addEventListener('keydown', event => {
+    const target = event.target;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT' || target?.isContentEditable) return;
+    if (event.key.toLowerCase() === 'i') {
+      inventoryCollapsed = !inventoryCollapsed;
+      renderInventory();
+      event.preventDefault();
+      return;
+    }
+    const slot = Number(event.key) - 1;
+    if (slot < 0 || slot >= HOTBAR_SIZE || !net.joined) return;
+    const el = document.querySelector(`#inventoryHotbar [data-slot="${slot}"]`);
+    if (el) { el.click(); event.preventDefault(); }
+  });
+
   function showWho() {
+    renderInventory();
     const me = net.you !== null ? mirror.people.get(net.you) : null;
     const box = document.getElementById('accountBox');
     if (box) {
@@ -243,7 +414,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     if (got.loggedOut) { socket.disconnect(); resetLocal(); mirror.clear(); await logIn('Your session has ended. Please log in again.'); return; }
     send({ type: 'hello', version: PROTOCOL_VERSION, ticket: got.ticket });
   });
-  socket.on('disconnect', () => { net.connected = false; net.joined = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
+  socket.on('disconnect', () => { void voice.disconnect(); net.connected = false; net.joined = false; if (!net.fatal) setStatus('wait', 'Connection lost, reconnecting…'); });
   socket.on('connect_error', () => { if (!net.fatal) setStatus('wait', 'Cannot reach the server, retrying…'); });
   void logIn();
 
@@ -260,12 +431,18 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
           return;
         }
         mirror.applyWelcome(msg);
+        for (const definition of msg.objectDefinitions ?? []) {
+          const o = materializeObject(definition);
+          if (o) addObjectView(o);
+        }
         applyObjectPoses(msg.objects); // chairs and things that are not where they started
         net.you = msg.you; net.joined = true; seq = 1; lastSent = null; lastPosture = null; lastSentAt = 0; reconciler.reset(); net.pred.owed = { x: 0, z: 0 }; // (a new connection numbers its messages from the start)
+        voice.show?.();
         player.person = mirror.people.get(msg.you) ?? null;
         syncClock();
         reassignOccupants();
         showWho();
+        renderInventory();
         chat.setActive(true);
         setStatus('ok', `Online · ${people.length} people`);
         if (!net.autoView && player.person && viewId() !== 'fp' && viewId() !== 'third') { net.autoView = true; setView('third'); } // you arrive as your person
@@ -282,6 +459,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
         }
         syncClock();
         reassignOccupants();
+        renderInventory();
         break;
       case 'ack': {
         const me = player.person;
@@ -295,11 +473,16 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
         if (c.kind !== 'none') { net.pred.lastError = c.error; net.pred.maxError = Math.max(net.pred.maxError, c.error); }
         break;
       }
-      case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); if (msg.info.id === net.you) { player.person = mirror.people.get(net.you) ?? null; showWho(); } break;
+      case 'person': mirror.applyJoin(msg.info, msg.snap); reassignOccupants(); renderInventory(); if (msg.info.id === net.you) { player.person = mirror.people.get(net.you) ?? null; showWho(); } break;
       case 'leave': mirror.applyLeave(msg.id); reassignOccupants(); break;
       case 'event': pushEvent(msg); break;
       case 'chat': chat.receive(msg); break;
-      case 'object': applyObjectPose(msg.pose); break;
+      case 'object': {
+        const o = msg.definition ? materializeObject(msg.definition) : null;
+        if (o) addObjectView(o);
+        applyObjectPose(msg.pose);
+        break;
+      }
       case 'emoted': { net.emotesSeen = (net.emotesSeen ?? 0) + 1; const who = mirror.people.get(msg.from); if (who) { const t = performance.now(); who.emote = { kind: msg.kind, t0: t, until: t + 2600 }; } break; }
       case 'pong': net.rttMs = Math.round(performance.now() - msg.ts); break;
       case 'kick':

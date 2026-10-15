@@ -64,5 +64,9 @@ const TV_MATS = { slides: [0, 1, 2].map(i => screenMat(slidesScreen(i))), dash: 
 // the client looks the mesh up here.
 const deskScreens = new Map();
 const registerScreen = (spotId, mesh) => deskScreens.set(spotId, mesh);
+/** Remove a screen registration when its owning monitor tombstone is consumed. */
+const unregisterScreen = (spotId, mesh) => {
+  if (deskScreens.get(spotId) === mesh || mesh === undefined) deskScreens.delete(spotId);
+};
 
-export { SCREENS, TV_MATS, deskScreens, registerScreen };
+export { SCREENS, TV_MATS, deskScreens, registerScreen, unregisterScreen };

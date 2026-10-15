@@ -9,6 +9,24 @@ export interface CharacterHold {
   lift: number;
 }
 
+export interface CharacterAttachmentTransform {
+  id: number;
+  holder: number;
+  x: number;
+  z: number;
+  face: number;
+  lift: number;
+}
+
+/** Stable depth-first attachment metadata, useful to render nested holds without guessing graph order. */
+export interface CharacterAttachment {
+  id: number;
+  holder: number;
+  depth: number;
+  az: number;
+  lift: number;
+}
+
 /** A small graph wrapper; relationships are deliberately separate from WorldObject holds. */
 export class CharacterHoldGraph {
   private readonly byHolder = new Map<number, CharacterHold>();
@@ -70,6 +88,42 @@ export class CharacterHoldGraph {
       const edge = this.byHolder.get(id);
       if (!edge || seen.has(edge.target)) continue;
       seen.add(edge.target); out.push(edge.target); stack.push(edge.target);
+    }
+    return out;
+  }
+
+  /** Return direct/nested attachment metadata in stable root-to-leaf order. */
+  attachments(root: number, maxNodes = 10000): CharacterAttachment[] {
+    const out: CharacterAttachment[] = [];
+    const stack: Array<{ id: number; depth: number }> = [{ id: root, depth: 0 }];
+    const seen = new Set<number>();
+    while (stack.length && out.length < maxNodes) {
+      const current = stack.pop()!;
+      const edge = this.byHolder.get(current.id);
+      if (!edge || seen.has(edge.target)) continue;
+      seen.add(edge.target);
+      out.push({ id: edge.target, holder: edge.holder, depth: current.depth + 1, az: edge.az, lift: edge.lift });
+      stack.push({ id: edge.target, depth: current.depth + 1 });
+    }
+    return out;
+  }
+
+  /** Compute deterministic world transforms from the holder's pose. */
+  transforms(root: { id: number; x: number; z: number; face: number }, maxNodes = 10000): CharacterAttachmentTransform[] {
+    const out: CharacterAttachmentTransform[] = [];
+    const stack: Array<{ holder: { id: number; x: number; z: number; face: number }; depth: number }> = [{ holder: root, depth: 0 }];
+    const seen = new Set<number>();
+    while (stack.length && out.length < maxNodes) {
+      const current = stack.pop()!;
+      const edge = this.byHolder.get(current.holder.id);
+      if (!edge || seen.has(edge.target)) continue;
+      seen.add(edge.target);
+      const face = current.holder.face + edge.az;
+      const x = current.holder.x + Math.sin(face) * 0.6;
+      const z = current.holder.z + Math.cos(face) * 0.6;
+      const transform = { id: edge.target, holder: edge.holder, x, z, face, lift: edge.lift };
+      out.push(transform);
+      stack.push({ holder: { id: edge.target, x, z, face }, depth: current.depth + 1 });
     }
     return out;
   }

@@ -137,6 +137,23 @@ export function removeItem(state: InventoryState, id: string): InventoryState {
   };
 }
 
+/** Move an existing item (or rotate it) without changing its identity or hotbar assignment. */
+export function moveItem(state: InventoryState, id: string, x: number, y: number, rotation?: number): InventoryState | null {
+  const current = state.items.find(item => item.id === id);
+  if (!current || !Number.isInteger(x) || !Number.isInteger(y)) return null;
+  const nextRotation = rotation === undefined ? current.rotation : normalizeInventoryRotation(current.type, rotation);
+  if (rotation !== undefined && rotation !== 0 && rotation !== 90) return null;
+  const candidate: InventoryItem = { ...current, x, y, rotation: nextRotation };
+  const without = { items: state.items.filter(item => item.id !== id).map(item => ({ ...item })), hotbar: [...state.hotbar] };
+  return canPlaceItem(without, candidate) ? { items: [...without.items, candidate], hotbar: [...without.hotbar] } : null;
+}
+
+export function rotateItem(state: InventoryState, id: string): InventoryState | null {
+  const current = state.items.find(item => item.id === id);
+  if (!current || !itemCanRotate(current.type)) return null;
+  return moveItem(state, id, current.x, current.y, current.rotation === 0 ? 90 : 0);
+}
+
 export function setHotbarSlot(state: InventoryState, slot: number, itemId: string | null): InventoryState {
   if (!Number.isInteger(slot) || slot < 0 || slot >= HOTBAR_SIZE) throw new Error(`invalid hotbar slot ${slot}`);
   if (itemId !== null && !state.items.some(item => item.id === itemId)) throw new Error(`unknown inventory item "${itemId}"`);

@@ -58,7 +58,7 @@ export const seatOf = (o: WorldObject): Spot | null => o.link?.spot ?? null;
 
 /** Can this thing be picked up right now (whoever asks)? */
 export function movability(o: WorldObject): Refusal | null {
-  if (!isMovableType(o.type)) return 'not-movable';
+  if (o.removed || !isMovableType(o.type)) return 'not-movable';
   if (o.carriedBy !== null) return 'carried';
   if (o.links.some(l => seatInUse(l.spot))) return 'in-use';
   return null;
@@ -170,6 +170,24 @@ export function placementProblem(o: WorldObject, x: number, z: number, rot: numb
   return null;
 }
 
+/**
+ * Whether a direct horizontal line between two people stays in walkable space.
+ * This is deliberately a conservative, shared-grid test: the server uses it for
+ * short-range interactions and the client can use the same rule for previews.
+ */
+export function hasLineOfSight(a: { x: number; z: number }, b: { x: number; z: number }): boolean {
+  if (![a.x, a.z, b.x, b.z].every(Number.isFinite)) return false;
+  const distance = Math.hypot(b.x - a.x, b.z - a.z);
+  if (distance < 1e-9) return true;
+  const [ax, az] = toPx(a), [bx, bz] = toPx(b);
+  const cells = Math.ceil(distance / (CS * S * .4));
+  for (let i = 1; i < cells; i++) {
+    const t = i / cells;
+    if (!walkPx(ax + (bx - ax) * t, az + (bz - az) * t)) return false;
+  }
+  return true;
+}
+
 /** Is the point within a person's reach? */
 export const inReach = (person: { pos: { x: number; z: number } }, x: number, z: number): boolean => Math.hypot(person.pos.x - x, person.pos.z - z) <= REACH;
 
@@ -206,7 +224,7 @@ function placementProbe(type: string, x: number, z: number, rot: number): WorldO
   const home = { x: x + 10000, z: z + 10000, rot: rot + 1, y: 0 };
   return {
     id: 'inventory-probe', index: -1, type, x, z, rot, y: 0, variant: 0, station: null, spot: null,
-    home, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [],
+    home, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [], removed: false,
   };
 }
 

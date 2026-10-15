@@ -57,10 +57,14 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private broadcaster!: Broadcaster;
   /** Objects that moved during the tick, sent after its snapshot (index -> object: one message each, the latest pose). */
   private readonly movedThisTick = new Map<number, WorldObject>();
+  private readonly objectDefinitionsSent = new Set<number>();
   private readonly options = gatewayOptions(process.env);
   /** The one live connection of each account. */
   private readonly byAccount = new Map<number, Socket>();
   private sweepTimer: NodeJS.Timeout | null = null;
+  private readonly teardown: Array<() => void> = [];
+  private destroyed = false;
+  private readonly helloTimers = new Set<NodeJS.Timeout>();
 
   constructor(
     @Inject(WorldService) private readonly worlds: WorldService,
@@ -82,27 +86,31 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       muted: async id => (await this.auth.require().accountById(id))?.muted ?? false,
     });
     this.broadcaster = new Broadcaster({ tickRate: world.options.tickRate });
-    simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p)));
-    simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id)));
-    simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p))); // who drives them, their name or look changed
-    this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason));
+    this.teardown.push(simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p))));
+    this.teardown.push(simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id))));
+    this.teardown.push(simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p)))); // who drives them, their name or look changed
+    this.teardown.push(this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason)));
     // a chair or a mug was moved: everybody sees it, once per tick and after that tick's snapshot. (Sent at once, they went out ahead of the
     // snapshot every tick while anything moved, and a snapshot is volatile: with data still queued it is dropped, so while somebody carried
     // something nobody's position reached anybody.)
-    simEvents.on('objectMoved', o => { this.movedThisTick.set(o.index, o); });
-    simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text })));
-    this.auth.onSessionEnd(e => this.onSessionEnd(e));
-    this.sweepTimer = setInterval(() => { void this.sweep(); }, this.options.sweepMs);
+    this.teardown.push(simEvents.on('objectMoved', o => { this.movedThisTick.set(o.index, o); }));
+    this.teardown.push(simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text }))));
+    this.teardown.push(this.auth.onSessionEnd(e => this.onSessionEnd(e)));
+    this.sweepTimer = setInterval(() => { if (!this.destroyed) void this.sweep(); }, this.options.sweepMs);
     this.sweepTimer.unref();
-    world.onTick(tick => {
+    this.teardown.push(world.onTick(tick => {
       if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
         this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
         this.sendAcks(tick);
       } else this.broadcaster.snapshot(tick); // keep change tracking moving even with nobody watching
-      for (const o of this.movedThisTick.values()) this.broadcast(this.broadcaster.objectMoved(o));
+      for (const o of this.movedThisTick.values()) {
+        const definition = !this.objectDefinitionsSent.has(o.index);
+        this.broadcast(this.broadcaster.objectMoved(o, definition));
+        if (definition) this.objectDefinitionsSent.add(o.index);
+      }
       this.movedThisTick.clear();
       for (const e of this.broadcaster.events()) this.broadcast(e);
-    });
+    }));
   }
 
   handleConnection(socket: Socket): void {
@@ -110,8 +118,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const address = this.addressOf(socket);
     socket.data.address = address;
     if (this.unjoinedFrom(address) > this.options.maxUnjoinedPerAddress) { this.kick(socket, 'too many connections from your address'); return; }
-    const timer = setTimeout(() => this.kick(socket, 'no hello'), this.options.helloTimeoutMs);
-    socket.once('disconnect', () => clearTimeout(timer));
+    // There is no useful handshake when the authoritative account store is unavailable. Refuse it now rather than allowing a
+    // busy event loop to turn the intended availability error into the misleading hello-timeout error.
+    if (!this.auth.available) { this.kick(socket, 'accounts are not available on this server'); return; }
+    const timer = setTimeout(() => { this.helloTimers.delete(timer); this.kick(socket, 'no hello'); }, this.options.helloTimeoutMs);
+    this.helloTimers.add(timer);
+    socket.once('disconnect', () => { clearTimeout(timer); this.helloTimers.delete(timer); });
     socket.data.timer = timer;
     socket.on(WIRE_EVENT, (data: unknown) => this.onMessage(socket, data));
   }
@@ -173,6 +185,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         return;
       case 'input':
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
         this.players.manager().setInput(socket.data.accountId, msg, this.worlds.world.tick);
         return;
       case 'say':
@@ -188,8 +201,39 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       }
       case 'act':
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
         this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
         return;
+      case 'attack':
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const manager = this.players.manager();
+        manager.attack(socket.data.accountId, msg.phase, msg.kind, manager.mechanicsNow(), msg.side);
+        return;
+      case 'grab-character': case 'release-character': case 'throw-character': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const m = this.players.manager();
+        const r = msg.type === 'grab-character' ? m.grabCharacter(socket.data.accountId, msg.target, msg.az, msg.lift)
+          : msg.type === 'release-character' ? m.releaseCharacter(socket.data.accountId) : m.throwCharacter(socket.data.accountId);
+        if (r && !r.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: `Character hold refused: ${r.reason}` }));
+        return;
+      }
+      case 'inventory': {
+        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const r = this.players.manager().inventoryAction(socket.data.accountId, msg.action, msg.revision, msg.itemId, msg.slot, msg.object, msg.x, msg.y, msg.limb, msg.target);
+        if (r && r.ok) {
+          if ('object' in r) {
+            const definition = !this.objectDefinitionsSent.has(r.object.index);
+            this.broadcast(this.broadcaster.objectMoved(r.object, definition));
+            if (definition) this.objectDefinitionsSent.add(r.object.index);
+          }
+          const person = this.players.manager().personFor(socket.data.accountId);
+          if (person) socket.emit(WIRE_EVENT, this.broadcaster.ownerUpdate(person, this.worlds.world.tick));
+        } else if (r && !r.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: 'Inventory action refused.' }));
+        return;
+      }
       case 'hold': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
@@ -259,7 +303,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const prior = this.byAccount.get(account.id);
       if (prior && prior !== socket) { this.byAccount.delete(account.id); this.kick(prior, 'you logged in from somewhere else'); }
       this.byAccount.set(account.id, socket);
-      clearTimeout(socket.data.timer);
+      if (socket.data.timer) { clearTimeout(socket.data.timer); this.helloTimers.delete(socket.data.timer); socket.data.timer = null; }
       socket.data.joined = true;
       socket.join(PLAYING);
       socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, person.id));
@@ -363,7 +407,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   get connectedAccounts(): number { return this.byAccount.size; }
 
   /** Stop the periodic check (the app is shutting down). */
-  onModuleDestroy(): void { if (this.sweepTimer) clearInterval(this.sweepTimer); for (const t of this.leaveTimers.values()) clearTimeout(t); }
+  onModuleDestroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    if (this.sweepTimer) { clearInterval(this.sweepTimer); this.sweepTimer = null; }
+    for (const t of this.leaveTimers.values()) clearTimeout(t);
+    this.leaveTimers.clear();
+    for (const t of this.helloTimers) clearTimeout(t);
+    this.helloTimers.clear();
+    for (const remove of this.teardown.splice(0)) remove();
+  }
 
   private broadcast(bytes: Uint8Array): void { this.server.to(PLAYING).emit(WIRE_EVENT, bytes); }
 

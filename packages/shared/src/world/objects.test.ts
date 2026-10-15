@@ -9,7 +9,8 @@ import { simEvents } from '../sim/events';
 import { layoutCheck, applyObjectPose, applyObjectPoses, movedObjectPoses } from '../protocol/convert';
 import { setSeed } from '../util';
 import { CATALOGUE, isMovableType } from './catalogue';
-import { addObject, isAtHome, movedObjects, objects, resetAllObjects, resetObject, setObjectPose } from './objects';
+import { footprintOf } from './footprint';
+import { addObject, consumeObject, isAtHome, movedObjects, objects, resetAllObjects, resetObject, setObjectPose } from './objects';
 
 beforeEach(() => { simEvents.clear(); resetSim(); loadLayout(officeLayout); });
 
@@ -23,6 +24,52 @@ describe('the catalogue', () => {
     expect(CATALOGUE.mug.rests).toBe('surface');
     expect(CATALOGUE['chair-office'].rests).toBe('floor');
     for (const t of Object.values(CATALOGUE)) expect(t.radius).toBeGreaterThan(0);
+  });
+});
+
+describe('consumed objects', () => {
+  it('tombstones without shifting indices and detaches linked spots', () => {
+    const chair = objects.all().find(o => o.link)!, spot = chair.link!.spot;
+    const index = chair.index;
+    consumeObject(chair);
+    expect(objects.at(index)).toBe(chair);
+    expect(chair.removed).toBe(true);
+    expect(spot.object).toBeUndefined();
+    expect(footprintOf(chair)).toBeNull();
+    expect(movedObjectPoses().find(p => p.index === index)?.removed).toBe(true);
+    consumeObject(chair);
+    expect(chair.removed).toBe(true);
+  });
+
+  it('keeps a consumed object as a tombstone when resetting everything', () => {
+    const chair = objects.all().find(o => o.link)!;
+    const spot = chair.link!.spot;
+
+    consumeObject(chair);
+    expect(chair.removed).toBe(true);
+    expect(spot.object).toBeUndefined();
+
+    resetAllObjects();
+
+    expect(chair.removed).toBe(true);
+    expect(spot.object).toBeUndefined();
+    expect(isAtHome(chair)).toBe(true);
+    expect(movedObjects()).toContain(chair);
+  });
+
+  it('applies consumed and restored protocol poses to linked spots', () => {
+    const chair = objects.all().find(o => o.link)!;
+    const spot = chair.link!.spot;
+
+    applyObjectPose({ index: chair.index, x: chair.x, z: chair.z, rot: chair.rot, y: chair.y, q: null, carriedBy: -1, helpers: [], removed: true });
+    expect(chair.removed).toBe(true);
+    expect(spot.object).toBeUndefined();
+    expect(spot.occupant).toBeNull();
+
+    applyObjectPose({ index: chair.index, x: chair.home.x, z: chair.home.z, rot: chair.home.rot, y: chair.home.y, q: null, carriedBy: -1, helpers: [] });
+    expect(chair.removed).toBe(false);
+    expect(spot.object).toBe(chair.id);
+    expect(spot.occupant).toBeNull();
   });
 });
 

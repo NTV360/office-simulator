@@ -18,7 +18,7 @@ const KEY = 'fake-secret-key-that-must-not-leak';
 process.env.VERIFY_ADMIN_TOKEN = TOKEN;
 const env = {
   ...process.env, COMPOSE_PROJECT_NAME: 'office-e2e-employees', WEB_PORT: String(PORT), ADMIN_TOKEN: TOKEN, SAVE_INTERVAL_MS: '1000', GRACE_MS: '4000', WORLD_SEED: '',
-  ADMIN_USERNAME: '', ADMIN_PASSWORD: '', SUPABASE_URL: `http://host.docker.internal:${FAKE}`, SUPABASE_SECRET_KEY: KEY, EMPLOYEE_IMPORT_MS: '86400000', ATTENDANCE_MS: '1500',
+  ADMIN_USERNAME: '', ADMIN_PASSWORD: '', SUPABASE_URL: `http://host.docker.internal:${FAKE}`, SUPABASE_SECRET_KEY: KEY, EMPLOYEE_IMPORT_MS: '86400000', ATTENDANCE_MS: '1500', LIVEKIT_API_KEY: 'e2e-disabled', LIVEKIT_API_SECRET: 'e2e-disabled-secret',
 };
 const base = `http://localhost:${PORT}`;
 const compose = (...args) => spawnSync('docker', ['compose', ...args], { cwd: root, env, encoding: 'utf8' });

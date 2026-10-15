@@ -94,10 +94,10 @@ export class SupabaseSource {
   }
 
   /** A table we can do without (the answer carries on with defaults), as main does for an unreadable table. */
-  private async optional(table: string, query: string, what: string): Promise<Row[]> {
+  private async optional(table: string, query: string, what: string): Promise<Row[] | null> {
     try { return await this.rows(table, query); } catch (err) {
       this.log.warn(`${table} unreadable, ${what}: ${err instanceof Error ? err.message : String(err)}`);
-      return [];
+      return null;
     }
   }
 
@@ -109,8 +109,8 @@ export class SupabaseSource {
     const shiftRows = await this.rows('shifts', 'select=shift_id,code,start_time,end_time');
     // (the pictures: one field of the metadata, and only that. If it cannot be read the employees still come in and their stored pictures stay)
     const photoRows = await this.optional('employees', 'select=user_id,photo:metadata->>profileImage&deleted_at=is.null', 'stored pictures kept');
-    const photoOf = new Map<string, string | null>(), photosRead = photoRows.length > 0;
-    for (const r of photoRows) if (typeof r.user_id === 'string' && UUID.test(r.user_id)) photoOf.set(r.user_id.toLowerCase(), photoUrl(r.photo));
+    const photoOf = new Map<string, string | null>(), photosRead = photoRows !== null && photoRows.length > 0;
+    if (photoRows) for (const r of photoRows) if (typeof r.user_id === 'string' && UUID.test(r.user_id)) photoOf.set(r.user_id.toLowerCase(), photoUrl(r.photo));
     const looks = await this.optional('character_information', 'select=user_id,character_data', 'made-up looks used');
     const interns = new Set(types.filter(t => INTERN.test(`${String(t.code ?? '')} ${String(t.description ?? '')}`)).map(t => String(t.employment_type_id)));
     const shifts = new Map<string, Shift>();
@@ -119,7 +119,7 @@ export class SupabaseSource {
       if (start !== null && end !== null && code && s.shift_id !== null && s.shift_id !== undefined) shifts.set(String(s.shift_id), { code, start, end });
     }
     const lookOf = new Map<string, unknown>();
-    for (const l of looks) if (typeof l.user_id === 'string' && UUID.test(l.user_id) && l.character_data && typeof l.character_data === 'object') lookOf.set(l.user_id.toLowerCase(), l.character_data);
+    if (looks) for (const l of looks) if (typeof l.user_id === 'string' && UUID.test(l.user_id) && l.character_data && typeof l.character_data === 'object') lookOf.set(l.user_id.toLowerCase(), l.character_data);
 
     const out: ImportedEmployee[] = [], seen = new Set<string>();
     let skipped = 0;

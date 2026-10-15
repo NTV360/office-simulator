@@ -1,6 +1,8 @@
 import { interactables, type Spot } from './interactables';
 import { shuffle } from '../util';
 import type { Meeting, Person } from './types';
+import { resetCharacterHolds } from './character-hold-actions';
+import { resetFreeSitState } from './free-sit-state';
 
 /** Sim minutes that pass per real second at 1x speed. */
 export const CLOCK = 0.4;
@@ -50,6 +52,8 @@ export function initState(): void {
 
 /** Back to a fresh, empty simulation (tests; also a future "new world"). Spots are not touched. */
 export function resetSim(): void {
+  resetCharacterHolds();
+  resetFreeSitState();
   Object.assign(sim, { t: 9 * 60 + 25, day: 1, speed: 1, paused: false, lastMinute: 0 });
   log.length = 0;
   logState.dirty = true;

@@ -1,5 +1,5 @@
 import { buildBody, disposeBody } from '../character/rig.js';
-import { DEFAULT_SPEC, ENTRY, newProps, normalizePlayerSpec, normalizeSpec, people } from '@office/shared';
+import { DEFAULT_SPEC, ENTRY, defaultCharacterMechanics, createInventory, newProps, normalizePlayerSpec, normalizeSpec, people } from '@office/shared';
 import { loadLocalSpec, saveLocalSpec } from '../persistence/store.js';
 import { peopleGroup } from '../people/group.js';
 import { N } from '../world/furniture/basics.js';
@@ -35,7 +35,7 @@ function spawnPlayer() {
   const p = {
     id: -1, name: 'You', role: 'You', spec: player.spec, body: makeBody(player.spec),
     pos: ENTRY.clone(), face: N, faceGoal: N, controller: 'account', state: 'controlled', shown: true, props: newProps(), task: null, chatWith: null,
-    walkPhase: 0, animT: 0, pose: {},
+    walkPhase: 0, animT: 0, pose: {}, mechanics: defaultCharacterMechanics(), inventory: createInventory(),
   };
   player.person = p;
   people.push(p);

@@ -1,4 +1,4 @@
-import { PROP_KEYS, sim } from '@office/shared';
+import { JUMP, PROP_KEYS, people, sim } from '@office/shared';
 import { isLocalPlayer } from '../player/player.js';
 import { ringMats } from '../character/rig.js';
 import { applyPose } from './animation.js';
@@ -14,6 +14,20 @@ function applyVisibility(p) {
 }
 
 // Per-frame: pose a person's rig and place their meshes where the simulation says they are.
+function heldRenderTransform(p, seen = new Set()) {
+  const base = { x: p.pos.x, z: p.pos.z, face: p.face, y: 0 };
+  if (seen.has(p.id)) return base;
+  const holderId = p.mechanics?.heldBy ? Number(p.mechanics.heldBy) : NaN;
+  const holder = Number.isInteger(holderId) ? people.find(candidate => candidate.id === holderId) : null;
+  if (!holder || holder === p) return base;
+  seen.add(p.id);
+  const parent = heldRenderTransform(holder, seen);
+  const az = Number.isFinite(holder.mechanics?.holdAz) ? holder.mechanics.holdAz : 0;
+  const lift = Number.isFinite(holder.mechanics?.holdLift) ? holder.mechanics.holdLift : 1;
+  const face = parent.face + az;
+  return { x: parent.x + Math.sin(face) * .6, z: parent.z + Math.cos(face) * .6, face, y: parent.y + lift - 1 };
+}
+
 function syncBody(p, dt) {
   applyVisibility(p);
   updateNameTag(p);
@@ -21,10 +35,27 @@ function syncBody(p, dt) {
   if (p.state === 'away') return;
   if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)
   const b = p.body;
+  const held = heldRenderTransform(p);
+  const renderX = held.x, renderZ = held.z, renderFace = held.face, attachmentY = held.y;
   const crouch = p.mechanics?.posture === 'crouching' ? (p.mechanics.crouchLevel || 0) : 0;
-  const vertical = p.mechanics?.locomotion === 'jump' ? (p.mechanics.verticalVelocity || 0) * .08 : 0;
-  b.root.position.set(p.pos.x, vertical, p.pos.z); b.root.rotation.y = p.face;
-  b.ring.position.set(p.pos.x, .015, p.pos.z);
+  let jumpY = 0;
+  if (p.mechanics?.locomotion === 'jump') {
+    if (p._buf) {
+      // Online snapshots carry the authoritative vertical velocity. Derive the
+      // ballistic height from it instead of integrating the same velocity once
+      // per render frame (which makes jump height depend on display refresh rate).
+      const velocity = Number.isFinite(p.mechanics.verticalVelocity) ? p.mechanics.verticalVelocity : 0;
+      const elapsed = Math.max(0, Math.min(JUMP.duration, (JUMP.velocity - velocity) / 9.8));
+      jumpY = Math.max(0, JUMP.velocity * elapsed - 4.9 * elapsed * elapsed);
+    } else {
+      jumpY = Math.max(0, (p._jumpY || 0) + (p.mechanics.verticalVelocity || 0) * dt);
+    }
+    p._jumpY = jumpY;
+  } else {
+    p._jumpY = 0;
+  }
+  b.root.position.set(renderX, attachmentY + jumpY, renderZ); b.root.rotation.y = renderFace;
+  b.ring.position.set(renderX, .015, renderZ);
   const cat = p.state === 'walking' ? 'walk' : (p.task?.kind === 'work' && p.chatWith ? 'chat' : p.task?.cat || 'walk');
   if (b.ring.material !== ringMats[cat]) b.ring.material = ringMats[cat];
 }

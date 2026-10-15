@@ -8,8 +8,10 @@ import { hasSlot } from './person';
 import { newProps } from './props';
 import type { Shift } from './schedule';
 import { counters, deskPool, meetings, people, resetSim, sim } from './state';
-import { movedObjects, objects, resetAllObjects, setObjectPose, type Quat } from '../world/objects';
+import { addObject, consumeObject, isAtHome, objects, resetAllObjects, setObjectPose, staticObjectCount, type Quat } from '../world/objects';
+import { typeOf } from '../world/catalogue';
 import { defaultCharacterMechanics } from './character-state';
+import { createInventory, type InventoryItem, type InventoryState } from './inventory';
 import type { Person } from './types';
 
 // Saving and restoring the world. Only what cannot be recomputed is kept: who is in the office, where they sit and
@@ -17,9 +19,9 @@ import type { Person } from './types';
 // resume as idle where they stood and choose what to do next. Meetings end. Props in hand are dropped.
 // The random stream is not saved either; a restored world continues with fresh randomness.
 
-export const SAVE_VERSION = 5;
-/** Saves written by earlier versions that can still be read (version 1 has no owners, versions 1 and 2 no moved objects, versions 1 to 3 no employee details and no clock mode, versions 1 to 4 no object heights or tilts). */
-const READABLE_VERSIONS = [1, 2, 3, 4, SAVE_VERSION];
+export const SAVE_VERSION = 6;
+/** Saves written by earlier versions that can still be read (version 1 has no owners, versions 1 and 2 no moved objects, versions 1 to 3 no employee details and no clock mode, versions 1 to 4 no object heights or tilts, version 5 no runtime object definitions). */
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, SAVE_VERSION];
 
 export interface SavedPerson {
   id: number;
@@ -54,7 +56,8 @@ export interface SavedPerson {
   absent: boolean;
   /** Out of the building on the toilet run until this time. */
   toiletUntil: number | null;
-  /** Mechanics are session-only until the versioned character save format is finalized. */
+  /** Inventory carried by this person, including persistent hotbar assignments. */
+  inventory?: InventoryState;
 }
 
 /** A world object that is not where it started. (Only these are saved: everything else is at home, which the layout data says.) */
@@ -62,6 +65,15 @@ export interface SavedObject {
   id: string; x: number; z: number; rot: number;
   /** Height and whole orientation (null: upright). Absent in saves before version 5: the height it started at, upright. */
   y?: number; q?: Quat | null;
+  /** Whether this append-only object was consumed into inventory. Absent in older saves means active. */
+  removed?: boolean;
+  /** Definition for an object appended after the static layout (save version 6+). */
+  type?: string;
+  variant?: number;
+  station?: string | null;
+  spot?: string | null;
+  spots?: string[];
+  dims?: number[];
 }
 
 export interface SavedWorld {
@@ -90,8 +102,16 @@ export function serializeWorld(): SavedWorld {
       arrivedAt: p.arrivedAt, coffees: p.coffees, screenKind: p.screenKind, screenVariant: p.screenVariant, owner: p.owner ?? null,
       userId: p.userId ?? null, title: p.title ?? p.role, department: p.department ?? null, shift: p.shift ?? null, shiftStart: p.shiftStart ?? 9 * 60,
       absent: !!p.absent, toiletUntil: p.toiletUntil ?? null,
+      inventory: { items: p.inventory.items.map(item => ({ ...item })), hotbar: [...p.inventory.hotbar] },
     })),
-    objects: movedObjects().map(o => ({ id: o.id, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] as Quat : null })), // (one being carried is saved where it was picked up)
+    objects: objects.all().filter(o => o.index >= staticObjectCount() || o.removed || !isAtHome(o)).map(o => ({
+      id: o.id, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] as Quat : null,
+      ...(o.index >= staticObjectCount() ? {
+        type: o.type, variant: o.variant, station: o.station, spot: o.spot,
+        ...(o.spots?.length ? { spots: [...o.spots] } : {}), ...(o.dims?.length ? { dims: [...o.dims] } : {}),
+      } : {}),
+      ...(o.removed ? { removed: true } : {}),
+    })), // (one being carried is saved where it was picked up)
   };
 }
 
@@ -124,6 +144,23 @@ function parseShift(v: unknown, w: string): Shift | null {
   return { code: str(v.code, w + '.code', 20), start: num(v.start, w + '.start', 0, 24 * 60), end: num(v.end, w + '.end', 0, 24 * 60) };
 }
 
+function parseInventory(v: unknown, w: string): InventoryState {
+  if (v === undefined) return createInventory();
+  if (!isObj(v) || !Array.isArray(v.items) || !Array.isArray(v.hotbar)) throw new SaveError(`${w} is not a valid inventory`);
+  if (v.items.length > 20 || v.hotbar.length !== 3) throw new SaveError(`${w} has an invalid size`);
+  const items: InventoryItem[] = v.items.map((raw: unknown, i: number) => {
+    if (!isObj(raw)) throw new SaveError(`${w}.items[${i}] is not an object`);
+    return {
+      id: str(raw.id, `${w}.items[${i}].id`, 80), type: str(raw.type, `${w}.items[${i}].type`, 80),
+      x: whole(num(raw.x, `${w}.items[${i}].x`, 0, 3), `${w}.items[${i}].x`),
+      y: whole(num(raw.y, `${w}.items[${i}].y`, 0, 4), `${w}.items[${i}].y`),
+      rotation: whole(num(raw.rotation, `${w}.items[${i}].rotation`, 0, 90), `${w}.items[${i}].rotation`) as 0 | 90,
+    };
+  });
+  const hotbar = v.hotbar.map((id: unknown, i: number) => id === null ? null : str(id, `${w}.hotbar[${i}]`, 80));
+  try { return createInventory(items, hotbar); } catch (e) { throw new SaveError(`${w} is invalid: ${e instanceof Error ? e.message : 'invalid inventory'}`); }
+}
+
 /** Check a value read from storage and return it typed, or throw `SaveError` saying what is wrong. */
 export function parseSavedWorld(raw: unknown): SavedWorld {
   if (!isObj(raw)) throw new SaveError('the save is not an object');
@@ -139,7 +176,7 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
   const list = raw.people.map((p: unknown, i: number): SavedPerson => {
     if (!isObj(p)) throw new SaveError(`people[${i}] is not an object`);
     const w = `people[${i}]`;
-    const id = num(p.id, w + '.id', 0, 65534);
+    const id = whole(num(p.id, w + '.id', 0, 65534), w + '.id');
     if (seen.has(id)) throw new SaveError(`${w} repeats id ${id}`);
     seen.add(id);
     const slot = str(p.slot, w + '.slot', 40);
@@ -161,6 +198,7 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
       shiftStart: p.shiftStart === undefined ? 9 * 60 : num(p.shiftStart, w + '.shiftStart', 0, 48 * 60),
       absent: p.absent === undefined ? false : bool(p.absent, w + '.absent'),
       toiletUntil: p.toiletUntil === undefined || p.toiletUntil === null ? null : num(p.toiletUntil, w + '.toiletUntil'),
+      inventory: parseInventory(p.inventory, w + '.inventory'),
     };
   });
   const rawObjects = raw.objects === undefined ? [] : raw.objects; // (saves from before objects had none)
@@ -179,9 +217,31 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
       if (!Array.isArray(o.q) || o.q.length !== 4) throw new SaveError(w + '.q is not an orientation');
       saved.q = o.q.map((v: unknown, k: number) => num(v, w + '.q[' + k + ']', -1.001, 1.001)) as Quat;
     }
+    if (o.removed !== undefined) saved.removed = bool(o.removed, w + '.removed');
+    const hasDefinition = o.type !== undefined || o.variant !== undefined || o.station !== undefined || o.spot !== undefined || o.spots !== undefined || o.dims !== undefined;
+    if (hasDefinition) {
+      if (o.type === undefined || o.variant === undefined || o.station === undefined || o.spot === undefined) {
+        throw new SaveError(`${w} has an incomplete runtime definition`);
+      }
+      const type = str(o.type, w + '.type', 80);
+      if (!typeOf(type)) throw new SaveError(`${w}.type is unknown`);
+      saved.type = type;
+      saved.variant = whole(num(o.variant, w + '.variant', 0, 1000), w + '.variant');
+      const parseRef = (v: unknown, what: string): string | null => v === null ? null : str(v, what, 100);
+      saved.station = parseRef(o.station, w + '.station');
+      saved.spot = parseRef(o.spot, w + '.spot');
+      if (o.spots !== undefined) {
+        if (!Array.isArray(o.spots) || o.spots.length > 20) throw new SaveError(`${w}.spots is not a list`);
+        saved.spots = o.spots.map((v: unknown, k: number) => str(v, `${w}.spots[${k}]`, 100));
+      }
+      if (o.dims !== undefined) {
+        if (!Array.isArray(o.dims) || o.dims.length > 8) throw new SaveError(`${w}.dims is not a list`);
+        saved.dims = o.dims.map((v: unknown, k: number) => num(v, `${w}.dims[${k}]`, 0.001, 100));
+      }
+    }
     return saved;
   });
-  return { version: SAVE_VERSION, clock, nameIdx: num(raw.nameIdx, 'nameIdx', 0, 1e9), deskOrder, people: list, objects: moved };
+  return { version: SAVE_VERSION, clock, nameIdx: whole(num(raw.nameIdx, 'nameIdx', 0, 1e9), 'nameIdx'), deskOrder, people: list, objects: moved };
 }
 
 /**
@@ -217,18 +277,30 @@ export function restoreWorld(saved: SavedWorld): void {
       walkPhase: s.walkPhase, animT: 0, pose: {}, arriveAt: s.arriveAt, leaveAt: s.leaveAt, lunchAt: s.lunchAt, hadLunch: s.hadLunch,
       arrivedAt: s.arrivedAt, coffees: s.coffees, chatWith: null, meeting: null, screenKind: s.screenKind, screenVariant: s.screenVariant,
       userId: s.userId, title: s.title, department: s.department, shift: s.shift, shiftStart: s.shiftStart, absent: s.absent, toiletUntil: s.toiletUntil,
-      mechanics: defaultCharacterMechanics(),
+      mechanics: defaultCharacterMechanics(), inventory: s.inventory ? createInventory(s.inventory.items, s.inventory.hotbar) : createInventory(),
     };
     if (s.toiletUntil !== null) p.props.bucket = true; // out on the toilet run: with the one bucket
     if (slot) slot.owner = p;
     people.push(p);
     simEvents.emit('personAdded', p);
   });
-  // objects: everything goes home, then the saved ones go where they were (one this office no longer has is ignored)
+  // objects: everything goes home, then the saved ones go where they were. Runtime objects include their
+  // definition because they are not part of the immutable layout loaded above.
   resetAllObjects();
   for (const s of saved.objects) {
-    const o = objects.byId(s.id);
-    if (o) setObjectPose(o, s.x, s.z, s.rot, s.y ?? o.home.y, s.q ?? null);
+    let o = objects.byId(s.id);
+    if (!o && s.type !== undefined) {
+      const expected = `obj:${objects.count()}`;
+      if (s.id !== expected) throw new SaveError(`runtime object ${s.id} is out of append order`);
+      try {
+        o = addObject({ type: s.type, variant: s.variant!, station: s.station!, spot: s.spot!, spots: s.spots, dims: s.dims, x: s.x, z: s.z, rot: s.rot, y: s.y ?? 0 });
+      } catch (e) {
+        throw new SaveError(`runtime object ${s.id} is invalid: ${e instanceof Error ? e.message : 'invalid definition'}`);
+      }
+    }
+    if (!o) continue;
+    setObjectPose(o, s.x, s.z, s.rot, s.y ?? o.home.y, s.q ?? null);
+    if (s.removed) consumeObject(o);
   }
   meetings.length = 0;
 }

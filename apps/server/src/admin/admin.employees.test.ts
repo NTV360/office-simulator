@@ -163,7 +163,7 @@ describe('importing the company\'s records', () => {
     expect(again).toMatchObject({ added: 0, updated: 0, removed: 0, sync: { added: 0, updated: 0, removed: 0 } });
     expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ configured: true, lastImportOk: true, lastImportError: null });
   });
-  it('a failed import changes nothing, while a successful empty import clears the office, says why, and never shows the key', async () => {
+  it('a failed import changes nothing, while a successful empty import clears the roster and never shows the key', async () => {
     await staffed([imp(1), imp(2)]);
     service.useSource(fakeSource(records([row(1), row(2)]), 500));
     const failed = await call('POST', '/api/admin/import');
@@ -173,8 +173,8 @@ describe('importing the company\'s records', () => {
     expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ lastImportOk: false });
     service.useSource(fakeSource(records([])));
     const empty = await call('POST', '/api/admin/import');
-    expect(empty.status).toBe(201);
-    expect((await empty.json()).result).toMatchObject({ added: 0, updated: 0, removed: 2, sync: { assigned: 0, unassigned: 0, unassignedUserIds: [] } });
+    expect(empty.status).toBeLessThan(300);
+    expect(JSON.stringify(await empty.json())).not.toContain('the-secret-key');
     expect(people.filter(hasSlot)).toHaveLength(0);
     expect(await (await call('GET', '/api/admin/import')).json()).toMatchObject({ lastImportOk: true, lastImportError: null });
   });

@@ -36,8 +36,18 @@ export interface Shape {
   top?: { y: number; hw: number; hd: number };
 }
 
+export interface BashCapability {
+  /** Which hand may swing the object; two-handed items require both functional arms. */
+  hand: 'one' | 'two';
+  force: number;
+  damage: number;
+  cooldown: number;
+}
+
 export interface ObjectType extends Shape {
   label: string;
+  /** An explicitly bash-capable held object; ordinary carried items cannot become a weapon. */
+  bash?: BashCapability;
   /** Fixed things are objects too (saved, drawn, used the same way) but players cannot move them. */
   mobility: Mobility;
   /** Mass in kg: a typical real-world weight for this kind of thing (the sources are in docs/ITEMS-PHYSICS-PLAN.md, section 3). */
@@ -79,9 +89,9 @@ const BAR_STOOL: readonly Collider[] = [
 
 // (a seat is a top too: a mug can be put on a chair, and falls when somebody picks the chair up)
 export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
-  'chair-office': { label: 'Office chair', mobility: 'movable', mass: 12, material: 'plastic', colliders: OFFICE_CHAIR, top: { y: .49, hw: .22, hd: .2 }, surface: true, radius: .3, rests: 'floor' },
-  'chair-wood': { label: 'Dining chair', mobility: 'movable', mass: 6, material: 'wood', colliders: WOOD_CHAIR, top: { y: .475, hw: .2, hd: .2 }, surface: true, radius: .26, rests: 'floor' },
-  'stool-bar': { label: 'Bar stool', mobility: 'movable', mass: 8, material: 'metal', colliders: BAR_STOOL, top: { y: .75, hw: .12, hd: .12 }, surface: true, radius: .22, rests: 'floor' },
+  'chair-office': { label: 'Office chair', mobility: 'movable', mass: 12, material: 'plastic', bash: { hand: 'two', force: 8, damage: 18, cooldown: .55 }, colliders: OFFICE_CHAIR, top: { y: .49, hw: .22, hd: .2 }, surface: true, radius: .3, rests: 'floor' },
+  'chair-wood': { label: 'Dining chair', mobility: 'movable', mass: 6, material: 'wood', bash: { hand: 'two', force: 7, damage: 16, cooldown: .5 }, colliders: WOOD_CHAIR, top: { y: .475, hw: .2, hd: .2 }, surface: true, radius: .26, rests: 'floor' },
+  'stool-bar': { label: 'Bar stool', mobility: 'movable', mass: 8, material: 'metal', bash: { hand: 'two', force: 7.5, damage: 17, cooldown: .55 }, colliders: BAR_STOOL, top: { y: .75, hw: .12, hd: .12 }, surface: true, radius: .22, rests: 'floor' },
   mug: { label: 'Mug', mobility: 'movable', mass: .35, material: 'ceramic', colliders: [{ shape: 'cylinder', radius: .0375, height: .1, at: [0, .05, 0] }], surface: false, radius: .06, rests: 'surface' },
   notebook: { label: 'Notebook', mobility: 'movable', mass: .35, material: 'paper', colliders: [{ shape: 'box', size: [.2, .025, .27], at: [0, .0125, 0] }], surface: true, radius: .14, rests: 'surface' },
   // the desk computer: a monitor on its foot (its screen is drawn by the page, at its face), the keyboard and the mouse
@@ -146,6 +156,8 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
     foot: [18, 5.5],
   },
   piano: { label: 'Keyboard piano', mobility: 'movable', mass: 4.5, material: 'plastic', colliders: [{ shape: 'box', size: [1.28, .09, .34], at: [0, .045, .0205] }], surface: false, radius: .3, rests: 'surface' },
+  bandage: { label: 'Bandage', mobility: 'movable', mass: .05, material: 'fabric', colliders: [{ shape: 'box', size: [.12, .02, .08], at: [0, .01, 0] }], surface: false, radius: .05, rests: 'surface' },
+  'first-aid-box': { label: 'First-aid box', mobility: 'movable', mass: .4, material: 'plastic', colliders: [{ shape: 'box', size: [.2, .08, .14], at: [0, .04, 0] }], surface: false, radius: .1, rests: 'surface' },
   'stool-low': {
     label: 'Stool', mobility: 'movable', mass: 6, material: 'metal', surface: true, radius: .2, rests: 'floor', top: { y: .55, hw: .12, hd: .12 },
     colliders: [{ shape: 'cylinder', radius: .2, height: .02, at: [0, .01, 0] }, { shape: 'cylinder', radius: .03, height: .5, at: [0, .25, 0] }, { shape: 'cylinder', radius: .19, height: .06, at: [0, .52, 0], material: 'fabric' }],

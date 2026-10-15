@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
+import { CATALOGUE, NONE, REACH, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, freeSitOccupied, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
 import { camera, scene } from '../render/renderer.js';
 import { ghostOf, highlightItem, itemAt, shownAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
@@ -16,11 +16,13 @@ import { $ } from '../ui/dom.js';
 const state = {
   send: null, acc: 0, candidate: null, grip: null, far: null,
   held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwing: false, power: .5, turning: null, target: null, problem: null,
+  pickup: null, store: null,
 };
+const PICKUP_HOLD_MS = 500;
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
 aim.far = 6;
 /** How far from where you stand a thing can be put down (m): your arm, and the thing's own size. */
-const PUT_REACH = 1.2;
+const PUT_REACH = REACH;
 const UP = new THREE.Vector3(0, 1, 0), RIGHT = new THREE.Vector3(-1, 0, 0), FORWARD = new THREE.Vector3(0, 0, 1), turnBy = new THREE.Quaternion();
 
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
@@ -42,7 +44,7 @@ function pickable(p) {
   if (!hit) return { o: null, at: null, far: null };
   for (const h of aim.intersectObjects(BAKED, false)) { if (h.distance >= from) { if (h.distance < hit.distance - .02) return { o: null, at: null, far: null }; break; } }
   const o = objects.at(hit.index);
-  if (!o || (movability(o) !== null && !joinable(o))) return { o: null, at: null, far: null };
+  if (!o || (freeSitOccupied(o)) || (movability(o) !== null && !joinable(o))) return { o: null, at: null, far: null };
   return canReach(p, hit.point) ? { o, at: hit.point, far: null } : { o: null, at: null, far: o };
 }
 
@@ -66,10 +68,17 @@ function putTarget(p, held) {
 
 function refresh() {
   const p = player.person, on = !!p && ctl.active;
-  const held = on ? carriedBy(p.id) : undefined;
+  // Keep the empty-hand representation stable. `state.held` uses null, while
+  // carriedBy returns undefined when empty; mixing them cancels every pending E
+  // hold on the next refresh and makes pickup appear to do nothing.
+  const held = on ? (carriedBy(p.id) ?? null) : null;
   state.candidate = null; state.target = null; state.problem = null;
-  if (held !== state.held) { state.held = held ?? null; state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; hideGhost(); hideArc(); }
-  if (!on) { setPrompt('', false); highlightItem(null); return; }
+  // Network snapshots may replace an object record without changing what is held.
+  // Compare stable indexes so a refresh cannot cancel an in-progress E hold.
+  const heldChanged = (held?.index ?? null) !== (state.held?.index ?? null);
+  if (heldChanged) { state.turn.identity(); state.raise = 0; state.dirty = false; state.throwing = false; cancelPickup(); state.store = null; hideGhost(); hideArc(); }
+  state.held = held ?? null;
+  if (!on) { cancelPickup(); setPrompt('', false); highlightItem(null); return; }
   if (held) {
     const t = putTarget(p, held);
     state.target = t;
@@ -78,13 +87,22 @@ function refresh() {
     highlightItem(null);
     const name = labelOf(held);
     if (state.throwing) { hideGhost(); showArc(); setPrompt(`Throwing the ${name}: look up to lob it, level to throw it straight  ·  wheel: how hard  ·  let go of the right button  ·  Esc calls it off`, false); }
-    else setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  turn  (R + mouse)  ·  hands  (Z + wheel)  ·  throw  (hold right button)`, true);
+    else {
+      const storeProgress = state.store ? `  (${Math.min(100, Math.floor((performance.now() - state.store.started) / PICKUP_HOLD_MS * 100))}%)` : '';
+      setPrompt(state.problem ? `${REFUSAL_TEXT[state.problem]}  ·  let go  (G)` : `Put the ${name} down here  (G)  ·  store in inventory (hold E${storeProgress})  ·  turn (R + mouse)  ·  throw (hold right button)`, true);
+    }
     return;
   }
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
   state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
-  highlightItem(state.candidate); // (the thing G would take hold of: outlined on this page only)
-  if (state.candidate) setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (G)` : `Pick up the ${labelOf(state.candidate)}  (G)`, true);
+  // Once E captures a concrete target, keep that request stable for its 500 ms
+  // hold. The server revalidates identity, reach, and occupancy authoritatively;
+  // a changing camera ray must not cancel the user's deliberate interaction.
+  highlightItem(state.candidate); // (the thing E would take hold of: outlined on this page only)
+  if (state.candidate) {
+    const progress = state.pickup ? `  (${Math.min(100, Math.floor((performance.now() - state.pickup.started) / PICKUP_HOLD_MS * 100))}%)` : '';
+    setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (hold E${progress})` : `Pick up the ${labelOf(state.candidate)}  (hold E${progress})`, true);
+  }
   else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
 }
 
@@ -147,6 +165,51 @@ function setPrompt(text, ok) {
   const b = $('fpObj'); if (!b) return;
   b.hidden = !text; b.textContent = text; b.disabled = !ok;
   const t = $('fpTidy'); if (t) t.hidden = !(ctl.active && player.person?.slot && !carriedBy(player.person.id));
+  const store = $('fpStore');
+  if (store) {
+    // Inventory storage is the second phase of E: only the object already in our hands may be stored.
+    const held = ctl.active && player.person ? carriedBy(player.person.id) : undefined;
+    const canStore = !!held && !player.sitting && !held.removed;
+    store.hidden = !canStore;
+    store.disabled = !canStore;
+    store.textContent = canStore ? `Store the ${labelOf(held)} in inventory (hold E)` : '';
+  }
+}
+
+function cancelPickup() { state.pickup = null; }
+
+function pickupKey(down) {
+  const p = player.person;
+  if (!down) {
+    const handled = !!(state.pickup || state.store);
+    cancelPickup();
+    state.store = null;
+    return handled;
+  }
+  if (!p || !ctl.active || player.sitting) return false;
+  const held = carriedBy(p.id);
+  if (held) {
+    if (!state.store) state.store = { index: held.index, started: performance.now() };
+    return true;
+  }
+  if (!state.candidate || !state.grip) return false;
+  if (!state.pickup) state.pickup = {
+    index: state.candidate.index,
+    at: { x: state.grip.x, y: state.grip.y, z: state.grip.z },
+    started: performance.now()
+  };
+  return true;
+}
+
+function sendPickup() {
+  const p = player.person, pending = state.pickup, at = pending?.at;
+  // The pending index/aim are the deliberate E target. Do not require the
+  // current render mirror to contain the object at this exact frame; snapshots
+  // can replace it while the authoritative server still has the same index.
+  if (!p || !ctl.active || carriedBy(p.id) || player.sitting || !pending || !at) return;
+  state.pickup = null;
+  state.send?.({ type: 'grab', object: pending.index, at: [at.x, at.y, at.z] });
+  p.reachTo = { x: at.x, y: at.y, z: at.z, t: performance.now() };
 }
 
 function act() {
@@ -154,11 +217,13 @@ function act() {
   const held = carriedBy(p.id);
   if (held) {
     // what the ghost shows (it is a tenth of a second old at most): green, put it there; red or none, let go of it where it is
-    const t = state.held === held ? state.target : null;
+    // Snapshot application may replace the object record while it remains held.
+    // Stable indexes preserve the placement target across those replacements.
+    const t = state.held?.index === held.index ? state.target : null;
     if (t && !state.problem) state.send({ type: 'place', x: t.x, z: t.z, rot: t.rot });
     else state.send({ type: 'drop' });
   } else if (state.candidate && state.grip && !state.turning) {
-    // first turn to face where the hands will take it (a moment), then reach: see turnThenReach
+    // G remains the immediate/manual object action; E uses the deliberate pickup hold.
     const at = state.grip, heading = Math.atan2(at.x - p.pos.x, at.z - p.pos.z);
     state.turning = { index: state.candidate.index, at, heading, until: performance.now() + TURN_MS };
     ctl.faceTo = heading;
@@ -217,8 +282,22 @@ function sendHold() {
 export function initObjectControls({ send }) {
   state.send = send;
   $('fpObj').onclick = act;
+  $('fpStore').onpointerdown = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) {}
+    pickupKey(true);
+  };
+  const stopStoreHold = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    pickupKey(false);
+  };
+  $('fpStore').onpointerup = stopStoreHold;
+  $('fpStore').onpointercancel = stopStoreHold;
+  $('fpStore').onlostpointercapture = stopStoreHold;
   $('fpTidy').onclick = () => send({ type: 'reset', scope: 'station', object: NONE });
-  ctl.holdLook = turnIt; ctl.holdWheel = raiseHands; ctl.holdPress = windUp;
+  ctl.holdLook = turnIt; ctl.holdWheel = raiseHands; ctl.holdPress = windUp; ctl.pickupHook = pickupKey;
   addEventListener('keydown', e => {
     if (e.key === 'Shift') state.shift = true;
     if (!ctl.active || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -252,6 +331,15 @@ export function tickObjectControls(dt) {
   showWindUp();
   if (state.throwing) showArc();
   turnThenReach();
-  // (for the browser checks: where G would put it, and whether it may go there: the ghost green, or red)
-  if (state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; window.__sim.shownAt ??= shownAt; } }
+  // Complete a held pickup before the periodic ray refresh. A transient missed
+  // ray must not erase the concrete candidate captured when E was pressed.
+  if (state.pickup && performance.now() - state.pickup.started >= PICKUP_HOLD_MS) sendPickup();
+  if (state.pickup || state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; window.__sim.shownAt ??= shownAt; } }
+  if (state.store && performance.now() - state.store.started >= PICKUP_HOLD_MS) {
+    const p = player.person, held = p && carriedBy(p.id);
+    if (held && held.index === state.store.index && !held.removed) {
+      state.send?.({ type: 'inventory', action: 'assign', revision: p.mechanics.inventoryRevision, object: held.index });
+    }
+    state.store = null;
+  }
 }

@@ -17,12 +17,12 @@ Read these in order if you are new to the codebase. They describe how the projec
 | [PHASE-2-BREAKDOWN.md](PHASE-2-BREAKDOWN.md) | the steps for the server, the protocol, saving the world and the viewer client (done) |
 | [PHASE-3-BREAKDOWN.md](PHASE-3-BREAKDOWN.md) | the steps for accounts, login, taking over a person, character creation and admin tools (done) |
 | [PHASE-4-BREAKDOWN.md](PHASE-4-BREAKDOWN.md) | the steps for playing together: walking with prediction, sitting, names, chat, emotes and shared events (done) |
-| [PHASE-5-BREAKDOWN.md](PHASE-5-BREAKDOWN.md) | the steps for world objects: chairs and desk items the server owns, that players can move and that are kept (in progress; steps 1 and 2 done) |
+| [PHASE-5-BREAKDOWN.md](PHASE-5-BREAKDOWN.md) | the steps for world objects: chairs and desk items the server owns, that players can move and that are kept (done) |
 | [ITEMS-PHYSICS-PLAN.md](ITEMS-PHYSICS-PLAN.md) | the plan for items with weight, materials and Rapier physics: picking up by reaching, holding and tilting, the ghost, throwing, and the list of every item in the office (planning) |
 | [PARALLEL-WORK.md](PARALLEL-WORK.md) | split work between several people or AI instances without them breaking each other (tracks, folder ownership, rules, a brief to hand out) |
 | [LOCAL-DOCKER.md](LOCAL-DOCKER.md) | run the whole stack (web, server, database) in Docker on your PC, and troubleshoot it |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | serve the current demo as a static site (Render notes; Render is not the plan, local Docker is) |
-| [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) | the proposed plan for accounts, a shared persistent world with movable objects, NPCs that players take over, voice, and a self-hosted Docker stack (phases 1 to 4 built, phase 5 in progress; the design and the reasons) |
+| [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md) | the proposed plan for accounts, a shared persistent world with movable objects, NPCs that players take over, voice, and a self-hosted Docker stack (phases 1 to 7 implemented behind optional configuration; LAN deployment remains) |
 | [ROADMAP.md](ROADMAP.md) | see what is planned (items, shops, character creation) and the design it was built to allow |
 
 **The short version**

@@ -15,7 +15,8 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
     ports:
-      - "${WEB_PORT:-16769}:80"
+      # Keep the plain HTTP development endpoint on this host only; LAN access goes through web-lan.
+      - "127.0.0.1:${WEB_PORT:-16769}:80"
     depends_on:
       server:
         condition: service_healthy
@@ -24,6 +25,56 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  # LAN edge is opt-in: start with `docker compose --profile lan up --build`.
+  # It uses Caddy's internal CA; install that CA on each LAN client before browsing.
+  web-lan:
+    profiles: ["lan"]
+    build:
+      context: .
+      dockerfile: docker/web-lan.Dockerfile
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:-office.lan}"
+      VOICE_SITE_ADDRESS: "${VOICE_SITE_ADDRESS:-voice.office.lan}"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${LAN_HTTP_PORT:-80}:80"
+      - "${LAN_HTTPS_PORT:-443}:443"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "--spider", "https://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Voice is opt-in: start with `docker compose --profile voice up --build`.
+  # Do not expose a LiveKit listener merely because the ordinary gameplay stack is running.
+  voice:
+    profiles: ["voice"]
+    image: livekit/livekit-server:v1.9.2
+    command: >-
+      --dev --bind 0.0.0.0
+      --udp-port ${LIVEKIT_RTC_PORT_RANGE_START:-50000}-${LIVEKIT_RTC_PORT_RANGE_END:-50020}
+      ${LIVEKIT_NODE_IP:+--node-ip ${LIVEKIT_NODE_IP}}
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY when using the voice profile}: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET when using the voice profile}"
+    ports:
+      # Room Service/signaling is reached by web-lan over the Docker network; do not expose it on the LAN.
+      - "127.0.0.1:${LIVEKIT_HTTP_PORT:-7880}:7880"
+      - "${LIVEKIT_RTC_TCP_PORT:-7881}:${LIVEKIT_RTC_TCP_INTERNAL_PORT:-7881}"
+      - "${LIVEKIT_RTC_PORT_RANGE_START:-50000}-${LIVEKIT_RTC_PORT_RANGE_END:-50020}:${LIVEKIT_RTC_PORT_RANGE_START:-50000}-${LIVEKIT_RTC_PORT_RANGE_END:-50020}/udp"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
     restart: unless-stopped
 
   server:
@@ -43,6 +94,13 @@ services:
       SIM_PAUSED: "${SIM_PAUSED:-false}"
       WORLD_SEED: "${WORLD_SEED:-}"
       PHYSICS: "${PHYSICS:-on}"
+      VOICE_ENABLED: "${VOICE_ENABLED:-false}"
+      LIVEKIT_URL: "${LIVEKIT_URL:-ws://localhost:7880}"
+      LIVEKIT_API_URL: "${LIVEKIT_API_URL:-http://voice:7880}"
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY:-devkey}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET:-change-this-server-only-secret}"
+      VOICE_ROOM: "${VOICE_ROOM:-office}"
+      VOICE_RANGE: "${VOICE_RANGE:-10}"
       TRUST_PROXY: "1" # Caddy is one hop in front: use the client address it reports
       ADMIN_USERNAME: "${ADMIN_USERNAME:-}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
@@ -86,3 +144,5 @@ services:
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

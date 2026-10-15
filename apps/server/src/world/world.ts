@@ -2,7 +2,7 @@ import {
   DEFAULTS, ensureHelper, initDay, initState, interactables, loadLayout, officeLayout, people, hasSlot, resetSim, restoreWorld, roster, setSeed, sim, stepSim,
   type SavedWorld,
 } from '@office/shared';
-import { ItemPhysics } from '../physics/item-physics';
+import { ItemPhysics, type ItemImpact } from '../physics/item-physics';
 import type { StaticShape } from '../physics/physics';
 
 // The world the server runs: the shared simulation, stepped at a fixed rate. The simulation keeps its state in
@@ -32,13 +32,14 @@ const num = (v: string | undefined, fallback: number): number => {
   return Number.isFinite(n) ? n : fallback;
 };
 const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, v));
+const normalizeSlotCount = (v: number): number => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0;
 
 /** Read the world settings from environment variables (TICK_RATE, SLOT_COUNT, SIM_SPEED, SIM_PAUSED, WORLD_SEED, PHYSICS). */
 export function readWorldOptions(env: Record<string, string | undefined>): WorldOptions {
   const seed = env.WORLD_SEED !== undefined && env.WORLD_SEED.trim() !== '' ? num(env.WORLD_SEED, NaN) : NaN;
   return {
     tickRate: clamp(Math.round(num(env.TICK_RATE, DEFAULTS.tickRate)), TICK_RATE_RANGE),
-    slotCount: num(env.SLOT_COUNT, DEFAULTS.slotCount),
+    slotCount: normalizeSlotCount(num(env.SLOT_COUNT, DEFAULTS.slotCount)),
     speed: clamp(num(env.SIM_SPEED, 1), SPEED_RANGE),
     paused: env.SIM_PAUSED === 'true' || env.SIM_PAUSED === '1',
     seed: Number.isFinite(seed) ? seed : undefined,
@@ -91,6 +92,7 @@ export class World {
   private lastReport = 0;
   private stopped = true;
   private readonly listeners: Array<(tick: number) => void> = [];
+  private readonly itemImpactListeners: Array<(impact: ItemImpact) => void> = [];
   private readonly beforeStep: Array<(dt: number, tick: number) => void> = [];
   private shapes: readonly StaticShape[] | null = null;
   private items: ItemPhysics | null = null;
@@ -100,8 +102,11 @@ export class World {
     this.now = now;
   }
 
-  /** Call `fn` at the start of every tick, before the simulation steps (people a human drives are moved here). */
-  onBeforeStep(fn: (dt: number, tick: number) => void): void { this.beforeStep.push(fn); }
+  /** Call `fn` at the start of every tick, before the simulation steps (people a human drives are moved here). Returns an unsubscribe function. */
+  onBeforeStep(fn: (dt: number, tick: number) => void): () => void {
+    this.beforeStep.push(fn);
+    return () => { const i = this.beforeStep.indexOf(fn); if (i >= 0) this.beforeStep.splice(i, 1); };
+  }
 
   /** Give the world physics, built from these fixed shapes at every `init()`. `loadPhysics()` must have finished. */
   usePhysics(shapes: readonly StaticShape[]): void { this.shapes = shapes; }
@@ -109,8 +114,34 @@ export class World {
   /** The items' physics, when the world has it. */
   get itemPhysics(): ItemPhysics | null { return this.items; }
 
-  /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. */
-  onTick(fn: (tick: number) => void): void { this.listeners.push(fn); }
+  /** Receive authoritative fast-item contacts after each physics step. Returns an unsubscribe function. */
+  onItemImpact(fn: (impact: ItemImpact) => void): () => void {
+    this.itemImpactListeners.push(fn);
+    return () => { const i = this.itemImpactListeners.indexOf(fn); if (i >= 0) this.itemImpactListeners.splice(i, 1); };
+  }
+
+  /** Reject malformed or stale physics input before it reaches gameplay listeners. */
+  private validItemImpact(impact: ItemImpact): boolean {
+    if (!impact || !impact.object || impact.object.removed) return false;
+    if (!Number.isInteger(impact.personId) || !people.some(person => person.id === impact.personId)) return false;
+    if (!Number.isFinite(impact.relativeSpeed) || impact.relativeSpeed <= 0) return false;
+    const { normal } = impact;
+    if (!normal || !Number.isFinite(normal.x) || !Number.isFinite(normal.z) || Math.hypot(normal.x, normal.z) < 1e-6) return false;
+    return true;
+  }
+
+  private dispatchItemImpact(impact: ItemImpact): void {
+    if (!this.validItemImpact(impact)) return;
+    for (const listener of this.itemImpactListeners) {
+      try { listener(impact); } catch (err) { this.report('item-impact listener failed', err); }
+    }
+  }
+
+  /** Call `fn` after every tick (the broadcaster sends the snapshot from here). A failing listener is logged, never fatal. Returns an unsubscribe function. */
+  onTick(fn: (tick: number) => void): () => void {
+    this.listeners.push(fn);
+    return () => { const i = this.listeners.indexOf(fn); if (i >= 0) this.listeners.splice(i, 1); };
+  }
 
   /**
    * Build the office from the layout data. With a saved world, restore it (the saved clock, speed and pause win over the
@@ -128,11 +159,16 @@ export class World {
     } else {
       initState();
       // The office contains only employees from the authoritative roster; unavailable or empty means no autonomous staff.
+      // Do not use SLOT_COUNT to truncate this list: the external roster is authoritative, and desk compatibility is
+      // reconciled by makeStaff/allocateDesks as employees are populated.
       initDay(roster.list?.length ?? 0);
       sim.speed = this.options.speed;
       sim.paused = this.options.paused;
     }
-    if (this.shapes) this.items = new ItemPhysics(this.shapes); // (after the restore: every item has its body where it was saved)
+    if (this.shapes) {
+      this.items = new ItemPhysics(this.shapes); // (after the restore: every item has its body where it was saved)
+      this.items.onImpact(impact => this.dispatchItemImpact(impact));
+    }
     this.tick = 0;
     this.durations.length = 0;
     this.sampleCount = 0;

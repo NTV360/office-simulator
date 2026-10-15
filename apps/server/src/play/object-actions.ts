@@ -1,7 +1,7 @@
 import {
-  CATALOGUE, canReach, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
+  CATALOGUE, canReach, canUseHands, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, freeSitOccupied, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
-  addObject, findInventoryDropPlacement, removeItem, type InventoryState, type InventoryDropPlacement,
+  addObject, consumeObject, findInventoryDropPlacement, findFirstFit, placeItem, removeItem, type InventoryState, type InventoryDropPlacement,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -16,6 +16,30 @@ const yes = (changed = 1): ObjectResult => ({ ok: true, changed });
 export type InventoryDropResult =
   | { ok: true; changed: 1; inventory: InventoryState; object: WorldObject; placement: InventoryDropPlacement }
   | { ok: false; reason: Refusal };
+
+export type InventoryAssignResult =
+  | { ok: true; changed: 1; inventory: InventoryState; object: WorldObject }
+  | { ok: false; reason: Refusal };
+
+/** Consume a live world object into the next deterministic inventory slot. All validation occurs before either state is changed. */
+export function assignObjectToInventory(person: Person, inventory: InventoryState, index: number): InventoryAssignResult {
+  if (isSeated(person)) return { ok: false, reason: 'busy' };
+  const held = carriedBy(person.id);
+  const object = Number.isInteger(index) ? objects.at(index) : undefined;
+  if (!object || object.removed) return { ok: false, reason: 'not-movable' };
+  // Storage is the second half of the E interaction: it may atomically consume
+  // exactly the object this person is holding, but never somebody else's object
+  // or an object supplied by an empty-handed client.
+  if (held !== object || object.holds.length > 1) return { ok: false, reason: 'busy' };
+  // The exact held object is already movable by this person; do not apply the
+  // ordinary world-object movability check, which reports it as carried.
+  if (!canReach(person, nearestGrip(object, person))) return { ok: false, reason: 'too-far' };
+  const item = findFirstFit(inventory, `world:${object.id}`, object.type, 0);
+  if (!item) return { ok: false, reason: 'blocked' };
+  const next = placeItem(inventory, item);
+  consumeObject(object);
+  return { ok: true, changed: 1, inventory: next, object };
+}
 
 /**
  * Materialize one inventory item in front of a character. Placement is resolved before either side effect;
@@ -40,6 +64,7 @@ export function grab(person: Person, index: number, at?: readonly number[]): Obj
   if (isSeated(person) || carriedBy(person.id)) return no('busy');
   const o = Number.isInteger(index) ? objects.at(index) : undefined;
   if (!o) return no('not-movable');
+  if (freeSitOccupied(o)) return no('busy');
   // somebody carrying it already: anything bigger than a one-hand thing can be carried by several people (up to four), each holding it where they take it
   const joining = o.carriedBy !== null && !o.placing && carryOf(o.type) !== 'one-hand' && o.holds.length < MOST_HOLDERS;
   const refusal = joining ? null : movability(o);
@@ -73,6 +98,7 @@ export function holdInput(person: Person, turn: readonly number[], raise: number
 
 /** Let go of what you hold: it falls where it is (if others hold it too, they carry on without you). */
 export function drop(person: Person): ObjectResult {
+  if (!canUseHands(person.mechanics)) return no('blocked');
   const o = heldBy(person);
   if (!o) return no('nothing-carried');
   const rest = o.holds.filter(h => h.person !== person.id);
@@ -89,6 +115,7 @@ export function drop(person: Person): ObjectResult {
  * goes the way they face, a little up. They turn to face where they throw.
  */
 export function throwIt(person: Person, power: number, yaw = person.face, pitch = .25): ObjectResult {
+  if (!canUseHands(person.mechanics)) return no('blocked');
   const o = heldBy(person);
   if (!o) return no('nothing-carried');
   if (o.holds.length > 1) return no('carried'); // (not something several people are holding)
@@ -117,6 +144,8 @@ export function place(person: Person, x: number, z: number, rot: number): Object
 export function putBack(person: Person, index: number): ObjectResult {
   const o = Number.isInteger(index) ? objects.at(index) : undefined;
   if (!o) return no('not-movable');
+  if (o.removed) return no('not-movable');
+  if (freeSitOccupied(o)) return no('busy'); // (somebody sits on it: it would leave them hovering)
   if (isSeated(person)) return no('busy');
   if (!inReach(person, o.x, o.z)) return no('too-far'); // (the same as picking up: you cannot undo what you could not touch)
   if (o.carriedBy !== null && o.carriedBy !== person.id) return no('carried');
@@ -133,7 +162,7 @@ export function putBackStation(person: Person): ObjectResult {
   if (!desk) return no('locked');
   let changed = 0;
   for (const o of objects.all()) {
-    if (o.station !== desk.id) continue;
+    if (o.station !== desk.id || o.removed || freeSitOccupied(o)) continue;
     if (o.carriedBy !== null && o.carriedBy !== person.id) continue;
     if (o.carriedBy === null && movability(o)) continue;
     if (isAtHome(o) || !homeFree(o)) continue;

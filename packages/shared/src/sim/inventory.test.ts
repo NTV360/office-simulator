@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HOTBAR_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, INVENTORY_SIZE, canPlaceItem, createInventory,
   findFirstFit, inventoryFingerprint, itemAtCell, itemCells, itemCanRotate, inventoryFootprint,
-  placeItem, removeItem, setHotbarSlot, tryPlaceItem, validateInventory,
+  moveItem, placeItem, removeItem, rotateItem, setHotbarSlot, tryPlaceItem, validateInventory,
 } from './inventory';
 
 describe('authoritative inventory', () => {
@@ -15,6 +15,8 @@ describe('authoritative inventory', () => {
   it('uses catalogue types, dimensions, and quarter-turns deterministically', () => {
     expect(inventoryFootprint('notebook')).toEqual([2, 2]);
     expect(inventoryFootprint('keyboard', 90)).toEqual([1, 2]);
+    expect(inventoryFootprint('bandage')).toEqual([1, 1]);
+    expect(inventoryFootprint('first-aid-box')).toEqual([1, 1]);
     expect(itemCanRotate('keyboard')).toBe(true);
     expect(itemCanRotate('mug')).toBe(false);
     expect(itemCells({ type: 'keyboard', x: 1, y: 2, rotation: 90 })).toEqual([{ x: 1, y: 2 }, { x: 1, y: 3 }]);
@@ -38,6 +40,17 @@ describe('authoritative inventory', () => {
     expect(found).toEqual({ id: 'keyboard-1', type: 'keyboard', x: 2, y: 0, rotation: 90 });
     expect(state.items).toHaveLength(1);
     expect(inventoryFingerprint(state)).toBe(JSON.stringify({ items: [{ id: 'book-1', type: 'notebook', x: 0, y: 0, rotation: 0 }], hotbar: [null, null, null] }));
+  });
+
+  it('moves and rotates items only when the requested footprint fits', () => {
+    let state = placeItem(createInventory(), { id: 'keyboard-1', type: 'keyboard', x: 0, y: 0, rotation: 0 });
+    state = setHotbarSlot(state, 0, 'keyboard-1');
+    const moved = moveItem(state, 'keyboard-1', 2, 3);
+    expect(moved?.items[0]).toMatchObject({ x: 2, y: 3, rotation: 0 });
+    expect(moved?.hotbar).toEqual(['keyboard-1', null, null]);
+    expect(moveItem(state, 'keyboard-1', 3, 4)).toBeNull();
+    expect(rotateItem(state, 'keyboard-1')?.items[0]).toMatchObject({ x: 0, y: 0, rotation: 90 });
+    expect(rotateItem(placeItem(createInventory(), { id: 'mug-1', type: 'mug', x: 0, y: 0, rotation: 0 }), 'mug-1')).toBeNull();
   });
 
   it('removes items and clears stale hotbar references', () => {

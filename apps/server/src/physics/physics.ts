@@ -154,6 +154,14 @@ export class Physics {
 
   body(index: number): RAPIER.RigidBody | undefined { return this.bodies.get(index); }
 
+  /** The current linear velocity of an item body, for authoritative impact observation. */
+  velocity(index: number): { x: number; y: number; z: number } | null {
+    const b = this.bodies.get(index);
+    if (!b) return null;
+    const v = b.linvel();
+    return { x: v.x, y: v.y, z: v.z };
+  }
+
   /** Move an item to a pose at once (put down, reset) and let it settle from there; what rests on it, or under it, wakes too. */
   place(index: number, pose: BodyPose): void {
     const b = this.bodies.get(index);

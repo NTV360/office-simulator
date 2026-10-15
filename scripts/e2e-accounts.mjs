@@ -2,6 +2,7 @@
 // in real browsers: an admin makes an account, the person chooses a password and a character, logs in and drives their person,
 // others see it, the server restarts in the middle (politely, then with a hard kill), they log out and the autopilot carries
 // on, they log back in, an admin resets the password and disables the account.   npm run e2e:accounts
+import http from 'node:http';
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -10,9 +11,11 @@ import { adminCreate, adminJson, openPage, personOf, sitDownSomewhere, sleep } f
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.E2E_PORT) || 18081;
+const FAKE = Number(process.env.E2E_FAKE_PORT) || 18091;
 const TOKEN = 'e2e-accounts-admin-password';
+const KEY = 'e2e-accounts-roster-key';
 process.env.VERIFY_ADMIN_TOKEN = TOKEN;
-const env = { ...process.env, COMPOSE_PROJECT_NAME: 'office-e2e-accounts', WEB_PORT: String(PORT), ADMIN_TOKEN: TOKEN, SAVE_INTERVAL_MS: '1000', GRACE_MS: '4000', WORLD_SEED: '', ADMIN_USERNAME: '', ADMIN_PASSWORD: '' };
+const env = { ...process.env, COMPOSE_PROJECT_NAME: 'office-e2e-accounts', WEB_PORT: String(PORT), ADMIN_TOKEN: TOKEN, SAVE_INTERVAL_MS: '1000', GRACE_MS: '4000', WORLD_SEED: '', SUPABASE_URL: `http://host.docker.internal:${FAKE}`, SUPABASE_SECRET_KEY: KEY, EMPLOYEE_IMPORT_MS: '86400000', ADMIN_USERNAME: '', ADMIN_PASSWORD: '', LIVEKIT_API_KEY: 'e2e-disabled', LIVEKIT_API_SECRET: 'e2e-disabled-secret' };
 const base = `http://localhost:${PORT}`;
 const compose = (...args) => spawnSync('docker', ['compose', ...args], { cwd: root, env, encoding: 'utf8' });
 
@@ -21,6 +24,7 @@ const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} 
 const admin = (method, p, body) => adminJson(base, method, p, body);
 const post = (p, body, cookie) => fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(body) });
 
+async function until(fn, ms = 30000) { const end = Date.now() + ms; for (;;) { const value = await fn().catch(() => null); if (value) return value; if (Date.now() >= end) return null; await sleep(500); } }
 async function waitUp(label) {
   for (let i = 0; i < 90; i++) {
     try { const r = await fetch(base + '/api/health'); const j = await r.json(); if (j.status === 'ok' && j.db === 'ok') return; } catch { /* not up yet */ }
@@ -30,6 +34,20 @@ async function waitUp(label) {
 }
 const joined = page => page.waitForFunction(() => window.__sim.net.joined && window.__sim.player.person, null, { timeout: 45000 });
 const SHIRT = '#c45f4b';
+const employeeId = '00000000-0000-4000-8000-000000000001';
+const rosterTables = {
+  employees: [{ user_id: employeeId, first_name: 'Roster', last_name: 'Employee', employment_type_id: 1, shift_id: 10, department: { name: 'Engineering' } }],
+  employment_types: [{ employment_type_id: 1, code: 'REG', description: 'Regular' }],
+  shifts: [{ shift_id: 10, code: 'DAY', start_time: '09:00:00', end_time: '18:00:00' }],
+  character_information: [],
+  attendances: [],
+};
+const fake = http.createServer((req, res) => {
+  const table = new URL(req.url, 'http://fixture').pathname.split('/').pop();
+  if (req.headers.apikey !== KEY || req.headers.authorization !== `Bearer ${KEY}`) { res.writeHead(401).end('{}'); return; }
+  res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(rosterTables[table] ?? []));
+});
+await new Promise(resolve => fake.listen(FAKE, '0.0.0.0', resolve));
 
 let browser;
 try {
@@ -38,6 +56,7 @@ try {
   const up = compose('up', '--build', '-d');
   if (up.status !== 0) throw new Error('docker compose up failed:\n' + up.stderr);
   await waitUp('first start');
+  await until(async () => (await admin('GET', '/api/admin/employees')).body?.length === 1, 30000);
 
   // ---- 1. an admin makes the accounts and gives one a desk
   const made = await admin('POST', '/api/admin/users', { username: 'ana' });
@@ -45,13 +64,15 @@ try {
   check('an admin makes an account and is given its first password once', made.status === 201 && /^[A-Za-z0-9]{12}$/.test(firstPassword ?? ''));
   const anaId = made.body.account.id;
   const desk = (await admin('GET', '/api/admin/slots')).body.find(s => s.status === 'unclaimed');
-  check('an admin gives it a desk', (await admin('POST', `/api/admin/users/${anaId}/assign-slot`, { spot: desk.spot })).status === 201, desk.place);
+  check('an unclaimed desk is available for the account', !!desk, desk?.place ?? 'no unclaimed desk');
+  const assigned = desk ? await admin('POST', `/api/admin/users/${anaId}/assign-slot`, { spot: desk.spot }) : { status: 0 };
+  check('an admin gives it a desk', assigned.status === 201, desk?.place ?? 'no desk assigned');
   check('nobody can make an account for themselves', (await post('/api/auth/register', { username: 'sneak', password: 'a-long-password-1' })).status === 404);
 
   browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const watcher = await openPage(browser, base, '?trace', { login: 'e2e_watcher' });
   await joined(watcher.page);
-  check('a guest watcher sees the office', (await watcher.page.evaluate(() => window.__sim.people.length)) >= 40);
+  check('a guest watcher sees the office', (await watcher.page.evaluate(() => window.__sim.people.length)) >= 1);
 
   // ---- 2. Ana logs in with the first password, chooses her own, makes her character
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -160,6 +181,7 @@ try {
 } finally {
   await browser?.close();
   compose('down', '-v');
+  await new Promise(resolve => fake.close(resolve));
 }
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
 process.exitCode = failures ? 1 : 0;

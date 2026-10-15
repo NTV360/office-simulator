@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
-  createInventory, placeItem, resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
+  createInventory, placeItem, freeSitOccupied, sitFree, resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
 import { OBJECT_BUCKET, PlayerManager } from './player-manager';
@@ -131,6 +131,44 @@ describe('picking up', () => {
     expect(manager.grabObject(third.id, mug.index, T())).toEqual({ ok: false, reason: 'carried' });
   });
 
+  it('stores the exact object held after the second inventory intent', async () => {
+    const { id, person } = await guest('ana');
+    const chair = diningChair();
+    stand(person, chair);
+    expect(manager.grabObject(id, chair.index, T())).toEqual({ ok: true, changed: 1 });
+    const revision = person.mechanics.inventoryRevision;
+    const result = manager.inventoryAction(id, 'assign', revision, undefined, undefined, chair.index);
+    expect(result).toEqual(expect.objectContaining({ ok: true, changed: 1 }));
+    expect(chair.removed).toBe(true);
+    expect(carriedBy(person.id)).toBeUndefined();
+    expect(person.inventory.items).toHaveLength(1);
+    expect(person.inventory.items[0].id).toBe(`world:${chair.id}`);
+    expect(person.mechanics.inventoryRevision).toBe(revision + 1);
+  });
+
+  it('refuses an inventory assignment when the player is empty-handed', async () => {
+    const { id, person } = await guest('ana');
+    const chair = diningChair();
+    stand(person, chair);
+    const before = person.inventory;
+    const result = manager.inventoryAction(id, 'assign', person.mechanics.inventoryRevision, undefined, undefined, chair.index);
+    expect(result).toEqual({ ok: false, reason: 'busy' });
+    expect(chair.removed).toBe(false);
+    expect(carriedBy(person.id)).toBeUndefined();
+    expect(person.inventory).toBe(before);
+  });
+
+  it('does not consume a different object while holding one', async () => {
+    const { id, person } = await guest('ana');
+    const [held, other] = [diningChair(), diningChair(1)];
+    stand(person, held);
+    expect(manager.grabObject(id, held.index, T())).toEqual({ ok: true, changed: 1 });
+    const result = manager.inventoryAction(id, 'assign', person.mechanics.inventoryRevision, undefined, undefined, other.index);
+    expect(result).toEqual({ ok: false, reason: 'busy' });
+    expect(other.removed).toBe(false);
+    expect(carriedBy(person.id)).toBe(held);
+  });
+
   it('is refused while sitting, while carrying something, and for a chair somebody sits in', async () => {
     const { id, person } = await guest('ana'), other = await guest('ben');
     const [a, b] = [diningChair(0), diningChair(1)];
@@ -223,6 +261,28 @@ describe('putting back', () => {
     expect(manager.resetObjects(id, 'object', npcChair.index, T())).toEqual({ ok: true, changed: 0 }); // (somebody else's desk: allowed, and it was home)
   });
 
+  it('is refused for a thing somebody is sitting on, which would leave them hovering', async () => {
+    const { id, person } = await guest('ana');
+    const other = await guest('ben');
+    let seated = false;
+    for (const o of objects.all()) {
+      if (o.removed || o.carriedBy !== null) continue;
+      for (const [dx, dz] of [[.9, 0], [-.9, 0], [0, .9], [0, -.9]]) {
+        person.pos.x = o.x + dx; person.pos.z = o.z + dz;
+        if (sitFree(person)) { seated = true; break; }
+      }
+      if (seated) break;
+    }
+    expect(seated, 'a free-sit support somewhere in the office').toBe(true);
+    const support = objects.all().find(o => freeSitOccupied(o)); // (the nearest support, not necessarily the one tried)
+    expect(support).toBeDefined();
+    support!.x += .4; // (somehow out of place, so a reset would move it)
+    stand(other.person, support!);
+    expect(manager.resetObjects(other.id, 'object', support!.index, T())).toEqual({ ok: false, reason: 'busy' });
+    expect(support!.x).toBeCloseTo(support!.home.x + .4, 6);
+    void id;
+  });
+
   it('a guest has no desk, so no station to put back', async () => {
     const { id } = await guest('ana');
     expect(manager.resetObjects(id, 'station', 0, T())).toEqual({ ok: false, reason: 'locked' });
@@ -279,11 +339,25 @@ describe('what a review found', () => {
 });
 
 describe('how fast', () => {
-  it('a burst of moves is allowed, then they are refused until the bucket has refilled', async () => {
+  it('semantic refusals do not drain the bucket, while a real burst is refused until refill', async () => {
     const { id, person } = await guest('ana');
     const chair = diningChair(); stand(person, chair);
+
+    // Repeating an invalid request must not turn later valid requests into
+    // rate-limit failures.
+    for (let i = 0; i < OBJECT_BUCKET.burst + 6; i++)
+      expect(manager.grabObject(id, chair.index + 1000, 100)).toEqual({ ok: false, reason: 'not-movable' });
+
+    expect(manager.grabObject(id, chair.index, 100)).toEqual({ ok: true, changed: 1 });
+    expect(manager.dropObject(id, 100)).toEqual({ ok: true, changed: 1 });
+
     let refused = 0;
-    for (let i = 0; i < OBJECT_BUCKET.burst + 6; i++) if (manager.grabObject(id, chair.index, 100)?.ok === false && (manager.grabObject(id, chair.index, 100) as { reason: string }).reason === 'too-fast') refused++;
+    for (let i = 0; i < OBJECT_BUCKET.burst + 2; i++) {
+      const result = i % 2 === 0
+        ? manager.grabObject(id, chair.index, 100)
+        : manager.dropObject(id, 100);
+      if (result?.ok === false && result.reason === 'too-fast') refused++;
+    }
     expect(refused).toBeGreaterThan(0);
     const later = manager.grabObject(id, chair.index, 100 + 20 * 5); // five seconds later
     expect(later && later.ok === false ? later.reason : 'ok').not.toBe('too-fast');

@@ -103,7 +103,7 @@ function makeCells() { return new Float32Array(GC * GR); }
 
 Which checks to run for which kind of change is in [GETTING-STARTED.md](GETTING-STARTED.md#test-before-you-ask-for-a-review); how to write something other players see is in [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md). The list below is the full manual checklist.
 
-Automated tests cover only the shared and server code so far (`npm test`). The browser app has none yet, so changes to it are checked by hand in a real browser. Do all of these:
+Conventional unit tests cover mainly the shared and server code (`npm test`); browser behavior is also covered by automated Playwright checks (`npm run verify:browser`, `npm run verify:browser:thorough`, and the `npm run e2e*` suites). Do all of these:
 
 1. `npm run build`, `npm test`, `npm run typecheck` and `npm run check:docs` all succeed (`npm run check:mutations` after changing the simulation, `npm run test:db` after changing anything that touches the database, and `VERIFY_URL=http://localhost:16769 VERIFY_ADMIN_TOKEN=local-admin-token npm run verify:browser` against the Docker stack after changing the protocol, the server or online mode).
 2. `npm run dev`, open the page, **hard-reload**, and confirm the browser console has no errors. If you added or removed files, **restart the dev server** first; a stale server serves old modules and gives confusing failures.

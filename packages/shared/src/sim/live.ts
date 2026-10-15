@@ -52,11 +52,26 @@ export function applyAttendance(records: readonly AttendanceRecord[]): void {
   for (const p of people) {
     if (!p.userId) continue;
     const was = isIn(before.get(p.userId)), now = isIn(live.att.get(p.userId));
-    if (now && !was) { p.absent = false; p.arrivedAt = null; p.arriveAt = sim.t; p.leaveAt = NEVER; }
-    if (!now && was) {
-      p.leaveAt = sim.t;
-      if (p.state === 'doing') p.until = sim.t; // finish up and head out
-      addLog(`${p.name} clocked out`);
+    if (now) {
+      // Re-apply the authoritative presence on every poll, not only on an edge. A
+      // poll can race the Live-mode reset and otherwise leave a clocked-in person
+      // marked absent until the next change in their attendance row.
+      p.absent = false;
+      if (!was) {
+        p.arrivedAt = null;
+        p.arriveAt = sim.t;
+        p.leaveAt = NEVER;
+      } else if (!p.arrivedAt && p.state === 'away') {
+        p.arriveAt = sim.t;
+        p.leaveAt = NEVER;
+      }
+    } else {
+      p.absent = true;
+      if (was) {
+        p.leaveAt = sim.t;
+        if (p.state === 'doing') p.until = sim.t; // finish up and head out
+        addLog(`${p.name} clocked out`);
+      }
     }
   }
 }

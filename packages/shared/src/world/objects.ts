@@ -50,6 +50,8 @@ export interface WorldObject extends ObjectRecord {
   holds: Hold[];
   /** Everyone else holding it with `carriedBy` (several people carrying a sofa), as every page knows it. */
   helpers: number[];
+  /** An object consumed into an inventory remains in the append-only index but is no longer in the world. */
+  removed: boolean;
   /** Being put down (the server's physics lowers it there, then lets go), or undefined. */
   placing?: Placing;
   /** Just let go where it is (not moved anywhere): the physics keeps it moving as it was, plus this velocity (a throw). Cleared once seen. */
@@ -83,6 +85,10 @@ export interface Link { spot: Spot; px: number; pz: number; ax: number; az: numb
 const list: WorldObject[] = [];
 const byId = new Map<string, WorldObject>();
 let objectAdded: ((o: WorldObject) => void) | null = null;
+let layoutObjectCount = 0;
+/** Mark the immutable layout boundary; objects appended afterwards are runtime objects. */
+export const markLayoutObjects = (): void => { layoutObjectCount = list.length; };
+export const staticObjectCount = (): number => layoutObjectCount;
 
 // frame(px, py, face) in the page turns local (lx, lz) into world (lx cos f + lz sin f, -lx sin f + lz cos f)
 const toWorld = (f: number, lx: number, lz: number) => ({ x: lx * Math.cos(f) + lz * Math.sin(f), z: -lx * Math.sin(f) + lz * Math.cos(f) });
@@ -103,7 +109,7 @@ export const setObjectAdded = (fn: ((o: WorldObject) => void) | null): void => {
 /** Make an object at its starting pose, and tie it to the seat it carries (the seat must exist already). */
 export function addObject(rec: ObjectRecord): WorldObject {
   if (!CATALOGUE[rec.type]) throw new Error(`unknown object type "${rec.type}"`);
-  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [] };
+  const o: WorldObject = { ...rec, id: `obj:${list.length}`, index: list.length, home: { x: rec.x, z: rec.z, rot: rec.rot, y: rec.y }, carriedBy: null, q: null, link: null, links: [], holds: [], helpers: [], removed: false };
   for (const id of [...(rec.spot ? [rec.spot] : []), ...(rec.spots ?? [])]) {
     const spot = interactables.all().find(s => s.id === id);
     if (!spot) throw new Error(`object ${o.id} carries ${id}, which does not exist`);
@@ -121,6 +127,11 @@ export function addObject(rec: ObjectRecord): WorldObject {
 /** Put an object at a pose (at the height it has, upright, unless told otherwise). Its seat goes with it. Announces `objectMoved` so viewers can redraw it. */
 export function setObjectPose(o: WorldObject, x: number, z: number, rot: number, y: number = o.y, q: Quat | null = null): void {
   o.x = x; o.z = z; o.rot = rot; o.y = y; o.q = q;
+  if (o.removed) {
+    refreshFootprint(o);
+    simEvents.emit('objectMoved', o);
+    return;
+  }
   for (const { spot, px, pz, ax, az, dface } of o.links) {
     const p = toWorld(rot, px, pz), a = toWorld(rot, ax, az);
     spot.pos.x = x + p.x; spot.pos.z = z + p.z;
@@ -141,8 +152,35 @@ export function syncHolders(o: WorldObject): void {
   o.helpers = o.holds.slice(1).map(h => h.person);
 }
 
+/** Detach the spots carried by an object, including anyone left in one. */
+export function detachObjectLinks(o: WorldObject): void {
+  for (const link of o.links) if (link.spot.object === o.id) {
+    link.spot.object = undefined;
+    if (link.spot.occupant != null) link.spot.occupant = null;
+  }
+}
+
+/** Restore the spots carried by an object, clearing stale occupants. */
+export function restoreObjectLinks(o: WorldObject): void {
+  for (const link of o.links) {
+    link.spot.object = o.id;
+    link.spot.occupant = null;
+  }
+}
+
+/** Consume an object into an inventory without deleting its append-only slot. Linked spots are detached and every observer gets the tombstone pose. */
+export function consumeObject(o: WorldObject): void {
+  if (o.removed) return;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
+  detachObjectLinks(o);
+  o.removed = true;
+  refreshFootprint(o);
+  simEvents.emit('objectMoved', o);
+}
+
 /** A person picks an object up (taking it the way `hold` says, when the server knows). Everybody is told (it is drawn in their hands from now on). */
 export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
+  if (o.removed) return;
   o.carriedBy = personId;
   o.holds = hold ? [hold] : []; o.helpers = [];
   refreshFootprint(o); // (it no longer blocks the floor it stood on)
@@ -205,14 +243,17 @@ export function releaseCarried(personId: number): void {
 
 export const isAtHome = (o: WorldObject): boolean => o.x === o.home.x && o.z === o.home.z && o.rot === o.home.rot && o.y === o.home.y && o.q === null && o.carriedBy === null;
 
-/** Put an object back where it started (and not carried). */
-export function resetObject(o: WorldObject): void {
-  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined;
+/** Put an active object back where it started (and not carried). Consumed tombstones stay authoritative. */
+export function resetObject(o: WorldObject): boolean {
+  if (o.removed) return false;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
+  restoreObjectLinks(o);
   setObjectPose(o, o.home.x, o.home.z, o.home.rot, o.home.y, null);
+  return true;
 }
 
-/** Put every object back where it started. */
+/** Put every active object back where it started; consumed tombstones remain removed. */
 export function resetAllObjects(): void { for (const o of list) if (!isAtHome(o)) resetObject(o); }
 
-/** The objects that are not where they started (or are being carried): what a viewer, and the save, need to be told. */
-export const movedObjects = (): WorldObject[] => list.filter(o => !isAtHome(o));
+/** The objects that are not where they started (or are consumed/carried): what a viewer, and the save, need to be told. */
+export const movedObjects = (): WorldObject[] => list.filter(o => o.removed || !isAtHome(o));

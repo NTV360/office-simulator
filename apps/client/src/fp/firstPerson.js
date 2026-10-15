@@ -34,7 +34,12 @@ function fpUpdate(dt) {
   p.body.root.visible = false; // every frame: online a changed look (or a reconnect) replaces the body with a visible one
   driveLocomotion(dt, p);
   p.face = p.faceGoal = player.sitting ? player.sitting.face : ctl.yaw;
-  const eyeGoal = eyeHeight(p.body, player.sitting?.hipY); eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));
+  const crouch = p.mechanics?.posture === 'crouching' ? Math.max(0, Math.min(1, p.mechanics.crouchLevel || 0)) : 0;
+  const prone = p.mechanics?.posture === 'prone';
+  const jump = p._jumpY || 0;
+  const postureDrop = prone ? .95 : crouch * .28;
+  const eyeGoal = eyeHeight(p.body, player.sitting?.hipY) - postureDrop + jump;
+  eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));
   const bob = player.moving ? Math.abs(Math.sin(p.walkPhase)) * .03 : 0;
   camera.position.set(p.pos.x + Math.sin(ctl.yaw) * .1, eye + bob, p.pos.z + Math.cos(ctl.yaw) * .1);
   const cp = Math.cos(ctl.pitch);

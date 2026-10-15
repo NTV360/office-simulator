@@ -63,7 +63,12 @@ function initInput() {
   el.addEventListener('wheel', e => {
     e.preventDefault();
     const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
-    if (ctl.active) { if (ctl.holdWheel && ctl.holdWheel(dy)) return; if (ctl.wheelHook) ctl.wheelHook(dy); return; } // (holding something: the wheel raises your hands)
+    if (ctl.active) {
+      if (ctl.holdWheel && ctl.holdWheel(dy)) return;
+      // Control+wheel changes crouch depth; do not also zoom the third-person camera.
+      if (ctl.wheelHook && !e.ctrlKey && !keys.has('control') && !keys.has('ctrl')) ctl.wheelHook(dy);
+      return;
+    } // (holding something: the wheel raises your hands)
     // Trackpad pinch arrives as ctrl+wheel: zoom. A notched mouse wheel: zoom.
     // A two-finger trackpad swipe: move around the floor, like dragging.
     const notched = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50) || (e.wheelDeltaY && Math.abs(e.wheelDeltaY) % 120 === 0 && !e.deltaX);
@@ -73,7 +78,14 @@ function initInput() {
     if (!notched) { pan(-e.deltaX, -e.deltaY); return; }
     zoomAt(clampF(Math.exp(dy * .0005)), e.clientX, e.clientY);
   }, { passive: false });
-  addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; const k = e.key.toLowerCase(); if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift', 'control', 'ctrl', 'z', ' ', 'space'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); } });
+  addEventListener('keydown', e => {
+    // HUD buttons may retain focus after an action (for example Voice Connect),
+    // but they must not suppress gameplay movement and camera keys. Only text
+    // entry controls own keyboard input while a play view is active.
+    if (e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    const k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'q', 'e', '+', '=', '-', '_', 'shift', 'control', 'ctrl', 'z', 'x', ' ', 'space'].includes(k)) { keys.add(k); if (k.startsWith('arrow')) e.preventDefault(); }
+  });
   addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
   addEventListener('blur', () => keys.clear());
 }

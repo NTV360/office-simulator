@@ -170,6 +170,18 @@ describe('employees', () => {
     expect(asked.some(s => s.includes('photo:metadata->>profileImage'))).toBe(true); // (one field of the metadata)
     for (const s of asked) expect(s).not.toMatch(/(^|,)metadata(,|$)/); // (never the whole metadata)
   });
+  it('when the picture query succeeds with no rows, it does not clear stored pictures', async () => {
+    const tables = { ...TABLES, employees: [{ user_id: id(1), first_name: 'Ana', last_name: 'Cruz' }] };
+    const f = fake({ ...tables });
+    const base = f.fetch;
+    const wrapped = (async (url: URL | string, init?: RequestInit) => {
+      const u = new URL(String(url));
+      if (u.pathname.endsWith('/employees') && u.searchParams.get('select')?.startsWith('user_id,photo:')) return new Response('[]', { status: 200 });
+      return base(url, init);
+    }) as typeof fetch;
+    const list = await new SupabaseSource({ url: URL_, secretKey: KEY, fetch: wrapped }).employees();
+    expect('photo' in list[0]).toBe(false);
+  });
   it('when the pictures cannot be read the employees still come in, and nothing is said about their pictures (the stored ones stay)', async () => {
     const warn: string[] = [];
     const base = fake({ ...TABLES, employees: [{ user_id: id(1), first_name: 'Ana', last_name: 'Cruz', photo: 'https://img.example.test/ana.png' }] });

@@ -1,10 +1,11 @@
 import { normalizeSpec, type CharacterSpec } from '../character/spec';
+import { validateInventory, type InventoryItem } from '../sim/inventory';
 import { defaultCharacterMechanics } from '../sim/character-state';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
-  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, PHOTO_URL, WIRE_VERSION, type ObjectPose,
-  type ActKind, type ClientMessage, type MoveSnap, type ResetScope, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type PersonMechanicsSnap, type ServerMessage,
+  EMOTE_KINDS, MAX_CHAT, NONE, ONE_OFF_SPOT, PHOTO_URL, WIRE_VERSION, type ObjectPose, type ObjectDefinition,
+  type ActKind, type ClientMessage, type MoveSnap, type ResetScope, type EventKind, type LayoutCheck, type MeetingSnap, type Message, type PersonInfo, type PersonSnap, type PersonMechanicsSnap, type ServerMessage, type InventorySnap,
 } from './messages';
 
 // Binary encoding of every message. One byte of message type, then a compact body. See messages.ts for the meaning.
@@ -16,6 +17,8 @@ const LOCOMOTION = ['grid', 'jump', 'knockback', 'ragdoll'] as const;
 const ATTACK_KINDS = ['punch', 'kick', 'bash'] as const;
 const ATTACK_SIDES = ['left', 'right'] as const;
 const ATTACK_PHASES = ['charging', 'active', 'cooldown'] as const;
+const ATTACK_INTENT_PHASES = ['begin', 'release'] as const;
+const LIMBS = ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
 const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
@@ -24,11 +27,11 @@ const RESET_SCOPES: ResetScope[] = ['object', 'station'];
 
 /** Names the simulation uses today. Anything else still travels (as text) but costs more bytes. */
 export const WIRE_KINDS = ['', 'work', 'coffee', 'sink', 'locker', 'sofa', 'piano', 'guitar', 'darts', 'golf', 'game', 'storage', 'bar', 'phone', 'chat', 'lunch', 'lunchDesk', 'exit', 'meeting', 'playerSit', 'bucket', 'toilet', 'bucketBack', 'snack', 'snackDesk', 'whiteboard', 'tv', 'clean'];
-export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit', 'present', 'wipe', 'windowWipe', 'mop'];
+export const WIRE_ANIMS = ['', 'type', 'drink', 'sink', 'locker', 'relax', 'piano', 'guitar', 'darts', 'putt', 'game', 'drinkSit', 'phone', 'talkStand', 'eat', 'stand', 'listen', 'listenSit', 'talkSit', 'present', 'wipe', 'windowWipe', 'mop', 'sit', 'sitCrossed'];
 export const WIRE_CATS = ['', 'work', 'meeting', 'phone', 'pantry', 'lunch', 'break', 'chat', 'clean', 'walk'];
 
 const T = {
-  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, say: 0x05, emote: 0x06, grab: 0x07, place: 0x08, reset: 0x09, hold: 0x0a, drop: 0x0b, throw: 0x0c,
+  hello: 0x01, ping: 0x02, input: 0x03, act: 0x04, attack: 0x14, say: 0x05, emote: 0x06, grab: 0x07, place: 0x08, reset: 0x09, hold: 0x0a, drop: 0x0b, throw: 0x0c, grabCharacter: 0x0d, releaseCharacter: 0x0e, throwCharacter: 0x0f, inventory: 0x10,
   welcome: 0x80, snapshot: 0x81, person: 0x82, leave: 0x83, event: 0x84, pong: 0x85, kick: 0x86, ack: 0x87, chat: 0x88, emoted: 0x89, object: 0x8a,
 } as const;
 
@@ -47,15 +50,62 @@ function writeObjectPose(w: Writer, p: ObjectPose): void {
   if (p.q) w.f32(p.q[0]).f32(p.q[1]).f32(p.q[2]).f32(p.q[3]);
   w.u8(Math.min(8, p.helpers.length));
   for (const h of p.helpers.slice(0, 8)) w.u16(toU16(h));
+  w.u8(p.removed ? 1 : 0);
 }
 function readObjectPose(r: Reader): ObjectPose {
   const index = r.u16(), x = r.f32(), z = r.f32(), rot = r.f32(), y = r.f32(), carriedBy = fromU16(r.u16());
-  const q: ObjectPose['q'] = r.u8() ? [r.f32(), r.f32(), r.f32(), r.f32()] : null;
+  const qFlag = r.u8();
+  if (qFlag > 1) throw new DecodeError('invalid object quaternion flag');
+  const q: ObjectPose['q'] = qFlag ? [r.f32(), r.f32(), r.f32(), r.f32()] : null;
   const n = r.u8();
   if (n > 8) throw new DecodeError('too many helpers');
   const helpers: number[] = [];
   for (let i = 0; i < n; i++) helpers.push(fromU16(r.u16()));
-  return { index, x, z, rot, y, q, carriedBy, helpers };
+  const removed = r.u8();
+  if (removed > 1) throw new DecodeError('invalid object removal flag');
+  return { index, x, z, rot, y, q, carriedBy, helpers, ...(removed ? { removed: true } : {}) };
+}
+function writeObjectDefinition(w: Writer, d: ObjectDefinition): void {
+  if (!Number.isInteger(d.index) || d.index < 0 || d.index >= NO_U16) throw new RangeError('invalid object index');
+  if (d.type.length > MAX_NAME || d.station !== null && d.station.length > MAX_HOLD_ID || d.spot !== null && d.spot.length > MAX_HOLD_ID) throw new RangeError('object definition name too long');
+  w.u16(d.index).str(d.type).u8(d.variant).u8(d.station === null ? 0 : 1);
+  if (d.station !== null) w.str(d.station);
+  w.u8(d.spot === null ? 0 : 1);
+  if (d.spot !== null) w.str(d.spot);
+  const spots = d.spots ?? [];
+  if (spots.length > 32) throw new RangeError('too many object spots');
+  w.u8(spots.length);
+  for (const spot of spots) { if (spot.length > MAX_HOLD_ID) throw new RangeError('object spot too long'); w.str(spot); }
+  const dims = d.dims ?? [];
+  if (dims.length > 8 || dims.some(value => !Number.isFinite(value))) throw new RangeError('invalid object dimensions');
+  w.u8(dims.length);
+  for (const value of dims) w.f32(value);
+  writeObjectPose(w, d.pose);
+}
+function readObjectDefinition(r: Reader): ObjectDefinition {
+  const index = r.u16(), type = r.str();
+  if (!type || type.length > MAX_NAME) throw new DecodeError('invalid object type');
+  const variant = r.u8();
+  const stationFlag = r.u8();
+  if (stationFlag > 1) throw new DecodeError('invalid object station flag');
+  const station = stationFlag ? r.str() : null;
+  const spotFlag = r.u8();
+  if (spotFlag > 1) throw new DecodeError('invalid object spot flag');
+  const spot = spotFlag ? r.str() : null;
+  if ((station !== null && station.length > MAX_HOLD_ID) || (spot !== null && spot.length > MAX_HOLD_ID)) throw new DecodeError('object definition name too long');
+  const spots: string[] = [], nSpots = r.u8();
+  if (nSpots > 32) throw new DecodeError('too many object spots');
+  for (let i = 0; i < nSpots; i++) { const value = r.str(); if (value.length > MAX_HOLD_ID) throw new DecodeError('object spot too long'); spots.push(value); }
+  const dims: number[] = [], nDims = r.u8();
+  if (nDims > 8) throw new DecodeError('too many object dimensions');
+  for (let i = 0; i < nDims; i++) {
+    const value = r.f32();
+    if (!Number.isFinite(value)) throw new DecodeError('invalid object dimension');
+    dims.push(value);
+  }
+  const pose = readObjectPose(r);
+  if (pose.index !== index) throw new DecodeError('object definition index mismatch');
+  return { index, type, variant, station, spot, ...(spots.length ? { spots } : {}), ...(dims.length ? { dims } : {}), pose };
 }
 
 function writeName(w: Writer, table: readonly string[], value: string): void {
@@ -100,6 +150,7 @@ function writeMechanics(w: Writer, m: PersonMechanicsSnap): void {
   w.u8(index(ATTACK_SIDES, m.dominantHand, 'dominant hand')).f32(m.struggle);
   for (const limb of ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const) w.f32(m.health[limb]);
   for (const id of [m.holdTarget, m.heldBy]) { if (id === null) w.u8(0); else { if (id.length > 64) throw new RangeError('hold id too long'); w.u8(1).str(id); } }
+  w.f32(m.holdAz ?? 0).f32(m.holdLift ?? 1);
   w.u32(m.inventoryRevision);
 }
 function readMechanics(r: Reader): PersonMechanicsSnap {
@@ -117,13 +168,48 @@ function readMechanics(r: Reader): PersonMechanicsSnap {
   const health = { head: r.f32(), body: r.f32(), leftArm: r.f32(), rightArm: r.f32(), leftLeg: r.f32(), rightLeg: r.f32() };
   const holdTarget = r.u8() ? r.str() : null, heldBy = r.u8() ? r.str() : null;
   if ((holdTarget !== null && holdTarget.length > MAX_HOLD_ID) || (heldBy !== null && heldBy.length > MAX_HOLD_ID)) throw new DecodeError('hold id too long');
+  const holdAz = r.f32(), holdLift = r.f32();
+  if (!Number.isFinite(holdAz) || !Number.isFinite(holdLift)) throw new DecodeError('invalid hold transform');
   const inventoryRevision = r.u32();
-  return { posture, crouchLevel, seatMode, seatId, locomotion, grounded, verticalVelocity, jumpUntil, knockbackUntil, attack, dominantHand, struggle, health, holdTarget, heldBy, inventoryRevision };
+  return { posture, crouchLevel, seatMode, seatId, locomotion, grounded, verticalVelocity, jumpUntil, knockbackUntil, attack, dominantHand, struggle, health, holdTarget, heldBy, holdAz, holdLift, inventoryRevision };
+}
+
+function writeInventory(w: Writer, inventory: InventorySnap): void {
+  if (!Number.isInteger(inventory.revision) || inventory.revision < 0) throw new RangeError('invalid inventory revision');
+  if (inventory.items.length > 255) throw new RangeError('too many inventory items');
+  w.u32(inventory.revision).u8(inventory.items.length);
+  for (const item of inventory.items) {
+    if (item.id.length > MAX_HOLD_ID || item.type.length > MAX_NAME) throw new RangeError('inventory item name too long');
+    w.str(item.id).str(item.type).u8(item.x).u8(item.y).u8(item.rotation);
+  }
+  if (inventory.hotbar.length !== 3) throw new RangeError('invalid hotbar');
+  for (const id of inventory.hotbar) {
+    if (id === null) w.u8(0);
+    else { if (id.length > MAX_HOLD_ID) throw new RangeError('hotbar item id too long'); w.u8(1).str(id); }
+  }
+}
+function readInventory(r: Reader): InventorySnap {
+  const revision = r.u32(), n = r.u8();
+  const items: InventoryItem[] = [];
+  for (let i = 0; i < n; i++) {
+    const id = r.str(), type = r.str(), x = r.u8(), y = r.u8(), rotation = r.u8();
+    if (id.length > MAX_HOLD_ID || type.length > MAX_NAME || (rotation !== 0 && rotation !== 90)) throw new DecodeError('invalid inventory item');
+    items.push({ id, type, x, y, rotation: rotation as 0 | 90 });
+  }
+  const hotbar: Array<string | null> = [];
+  for (let i = 0; i < 3; i++) {
+    const present = r.u8();
+    if (present !== 0 && present !== 1) throw new DecodeError('invalid hotbar presence');
+    hotbar.push(present ? r.str() : null);
+  }
+  const inventory = { revision, items, hotbar };
+  try { validateInventory(inventory); } catch { throw new DecodeError('invalid inventory'); }
+  return inventory;
 }
 
 function writeSnap(w: Writer, s: PersonSnap): void {
   w.u16(s.id);
-  w.u8((s.shown ? 1 : 0) | (s.absent ? 2 : 0) | (s.toilet ? 4 : 0) | (s.mechanics ? 8 : 0));
+  w.u8((s.shown ? 1 : 0) | (s.absent ? 2 : 0) | (s.toilet ? 4 : 0) | (s.mechanics ? 8 : 0) | (s.inventory ? 16 : 0));
   w.u8(index(STATES, s.state, 'state'));
   w.f32(s.x).f32(s.z);
   w.u16(quantAngle(s.face)).u16(quantAngle(s.walkPhase));
@@ -133,27 +219,38 @@ function writeSnap(w: Writer, s: PersonSnap): void {
     const o = s.oneOff;
     if (!o) throw new RangeError('a one-off spot needs its details');
     w.f32(o.x).f32(o.z).u16(quantAngle(o.face)).str(o.place);
+    w.u8(Number.isFinite(o.hipY) ? 1 : 0);
+    if (Number.isFinite(o.hipY)) w.f32(o.hipY!);
   }
   if (s.meeting !== NONE && s.meeting >= NO_U8) throw new RangeError('meeting index too big for the protocol');
   w.u16(toU16(s.partner)).u16(toU16(s.chatWith)).u8(s.meeting === NONE ? NO_U8 : s.meeting);
   w.u8(s.props).f32(s.arrivedAt).f32(s.arriveAt).f32(s.leaveAt).u8(Math.min(255, s.coffees));
   if (s.mechanics) writeMechanics(w, s.mechanics);
+  if (s.inventory) writeInventory(w, s.inventory);
 }
 function readSnap(r: Reader): PersonSnap {
   const id = r.u16();
   const flags = r.u8();
+  if (flags & ~0x1f) throw new DecodeError('invalid snapshot flags');
   const state = readIndex(r, STATES, 'state');
   const x = r.f32(), z = r.f32();
   const face = unquantAngle(r.u16()), walkPhase = unquantAngle(r.u16());
   const kind = readName(r, WIRE_KINDS, 'task'), anim = readName(r, WIRE_ANIMS, 'pose'), cat = readName(r, WIRE_CATS, 'category');
   const spot = r.u16();
   let oneOff: PersonSnap['oneOff'];
-  if (spot === ONE_OFF_SPOT) oneOff = { x: r.f32(), z: r.f32(), face: unquantAngle(r.u16()), place: r.str() };
+  if (spot === ONE_OFF_SPOT) {
+    const x = r.f32(), z = r.f32(), face = unquantAngle(r.u16()), place = r.str();
+    const hasHipY = r.u8();
+    if (hasHipY > 1) throw new DecodeError('invalid one-off spot');
+    oneOff = { x, z, face, place, ...(hasHipY ? { hipY: r.f32() } : {}) };
+  }
   const partner = fromU16(r.u16()), chatWith = fromU16(r.u16());
   const m = r.u8();
   const props = r.u8(), arrivedAt = r.f32(), arriveAt = r.f32(), leaveAt = r.f32(), coffees = r.u8();
   const mechanics = flags & 8 ? readMechanics(r) : undefined;
-  const snap: PersonSnap = { id, state, shown: !!(flags & 1), absent: !!(flags & 2), toilet: !!(flags & 4), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees, ...(mechanics ? { mechanics } : {}) };
+  const inventory = flags & 16 ? readInventory(r) : undefined;
+  if (mechanics && inventory && mechanics.inventoryRevision !== inventory.revision) throw new DecodeError('inventory revision mismatch');
+  const snap: PersonSnap = { id, state, shown: !!(flags & 1), absent: !!(flags & 2), toilet: !!(flags & 4), x, z, face, walkPhase, kind, anim, cat, spot, partner, chatWith, meeting: m === NO_U8 ? NONE : m, props, arrivedAt, arriveAt, leaveAt, coffees, ...(mechanics ? { mechanics } : {}), ...(inventory ? { inventory } : {}) };
   if (oneOff) snap.oneOff = oneOff;
   return snap;
 }
@@ -221,22 +318,66 @@ export function encode(msg: Message): Uint8Array {
       break;
     case 'ping': w.u8(T.ping).f64(msg.ts); break;
     case 'say': if (msg.text.length > MAX_CHAT) throw new RangeError('chat line too long for the protocol'); w.u8(T.say).str(msg.text); break;
-    case 'object': w.u8(T.object); writeObjectPose(w, msg.pose); break;
+    case 'object':
+      w.u8(T.object).u8(msg.definition ? 1 : 0);
+      if (msg.definition) writeObjectDefinition(w, msg.definition);
+      writeObjectPose(w, msg.pose);
+      break;
     case 'emote': w.u8(T.emote).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'emoted': w.u8(T.emoted).u16(msg.from).u8(index(EMOTE_KINDS, msg.kind, 'emote')); break;
     case 'chat': w.u8(T.chat).u16(msg.from).str(msg.name).str(msg.text); break;
     case 'input': {
-      const flags = (msg.run ? 1 : 0) | (msg.crouch ? 2 : 0) | (msg.prone ? 4 : 0) | (msg.jump ? 8 : 0);
+      const flags = (msg.run ? 1 : 0) | (msg.crouch ? 2 : 0) | (msg.prone ? 4 : 0) | (msg.jump ? 8 : 0) | (msg.struggle ? 16 : 0);
       w.u8(T.input).u32(msg.seq).f32(msg.mx).f32(msg.mz).f32(msg.heading).u8(flags).f32(msg.crouchWheel ?? 0);
       break;
     }
     case 'act': w.u8(T.act).u8(index(ACT_KINDS, msg.kind, 'act')); break;
+    case 'attack':
+      w.u8(T.attack).u8(index(ATTACK_INTENT_PHASES, msg.phase, 'attack intent phase')).u8(index(ATTACK_KINDS, msg.kind, 'attack kind'));
+      w.u8(msg.side === undefined ? 0xff : index(ATTACK_SIDES, msg.side, 'attack side'));
+      break;
     case 'grab': w.u8(T.grab).u16(toU16(msg.object)).u8(msg.at ? 1 : 0); if (msg.at) w.f32(msg.at[0]).f32(msg.at[1]).f32(msg.at[2]); break;
     case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
     case 'reset': w.u8(T.reset).u8(index(RESET_SCOPES, msg.scope, 'reset scope')).u16(toU16(msg.object)); break;
     case 'hold': w.u8(T.hold).f32(msg.turn[0]).f32(msg.turn[1]).f32(msg.turn[2]).f32(msg.turn[3]).f32(msg.raise); break;
     case 'drop': w.u8(T.drop); break;
     case 'throw': w.u8(T.throw).f32(msg.power).f32(msg.yaw).f32(msg.pitch); break;
+    case 'inventory': {
+      const inventory = msg;
+      w.u8(T.inventory).u8(index(['assign', 'hotbar', 'drop', 'move', 'rotate', 'use'] as const, inventory.action, 'inventory action')).u32(inventory.revision);
+      if (inventory.action === 'assign') {
+        if (!Number.isInteger(inventory.object)) throw new RangeError('invalid inventory object');
+        const object = inventory.object as number;
+        w.u16(toU16(object));
+      } else if (inventory.action === 'hotbar') {
+        const slot = inventory.slot;
+        if (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot > 2) throw new RangeError('invalid hotbar slot');
+        const hotbarSlot = slot as number;
+        w.u8(hotbarSlot);
+        if (inventory.itemId === undefined) w.u8(0); else w.u8(1).str(inventory.itemId);
+      } else if (inventory.action === 'drop' || inventory.action === 'rotate') {
+        if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID) throw new RangeError('invalid inventory item');
+        w.str(inventory.itemId);
+      } else if (inventory.action === 'use') {
+        if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID || !inventory.limb || !LIMBS.includes(inventory.limb)) throw new RangeError('invalid medical use');
+        if (inventory.target !== undefined && (!Number.isInteger(inventory.target) || inventory.target < 0 || inventory.target >= NO_U16)) throw new RangeError('invalid medical target');
+        w.str(inventory.itemId).u8(LIMBS.indexOf(inventory.limb));
+        w.u16(toU16(inventory.target ?? NONE));
+      } else {
+        const itemId = inventory.itemId, x = inventory.x, y = inventory.y;
+        if (!itemId || itemId.length > MAX_HOLD_ID || typeof x !== 'number' || typeof y !== 'number' || !Number.isInteger(x) || !Number.isInteger(y)) throw new RangeError('invalid inventory move');
+        w.str(itemId).u8(x!).u8(y!);
+      }
+      break;
+    }
+    case 'grab-character':
+      w.u8(T.grabCharacter).u16(toU16(msg.target)).u8(msg.az === undefined ? 0 : 1);
+      if (msg.az !== undefined) w.f32(msg.az);
+      w.u8(msg.lift === undefined ? 0 : 1);
+      if (msg.lift !== undefined) w.f32(msg.lift);
+      break;
+    case 'release-character': w.u8(T.releaseCharacter); break;
+    case 'throw-character': w.u8(T.throwCharacter); break;
     case 'pong': w.u8(T.pong).f64(msg.ts); break;
     case 'kick': w.u8(T.kick).str(msg.reason); break;
     case 'ack': w.u8(T.ack).u32(msg.seq).u32(msg.tick).f32(msg.x).f32(msg.z).f32(msg.face); break;
@@ -258,6 +399,10 @@ export function encode(msg: Message): Uint8Array {
       writeMeetings(w, msg.meetings);
       w.u16(msg.objects.length);
       for (const o of msg.objects) writeObjectPose(w, o);
+      const definitions = msg.objectDefinitions ?? [];
+      if (definitions.length > 0xffff) throw new RangeError('too many object definitions');
+      w.u16(definitions.length);
+      for (const definition of definitions) writeObjectDefinition(w, definition);
       break;
   }
   return w.bytes();
@@ -265,7 +410,7 @@ export function encode(msg: Message): Uint8Array {
 
 /** Decode a message from a client: only hello, ping, input, act, say, emote, grab, place and reset are accepted, and nothing else is parsed. */
 export function decodeClient(bytes: Uint8Array): ClientMessage {
-  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.grab && bytes[0] !== T.place && bytes[0] !== T.reset && bytes[0] !== T.hold && bytes[0] !== T.drop && bytes[0] !== T.throw)) throw new DecodeError('not a message a client may send');
+  if (bytes.length === 0 || (bytes[0] !== T.hello && bytes[0] !== T.ping && bytes[0] !== T.input && bytes[0] !== T.act && bytes[0] !== T.attack && bytes[0] !== T.say && bytes[0] !== T.emote && bytes[0] !== T.grab && bytes[0] !== T.place && bytes[0] !== T.reset && bytes[0] !== T.hold && bytes[0] !== T.drop && bytes[0] !== T.throw && bytes[0] !== T.inventory && bytes[0] !== T.grabCharacter && bytes[0] !== T.releaseCharacter && bytes[0] !== T.throwCharacter)) throw new DecodeError('not a message a client may send');
   return decode(bytes) as ClientMessage;
 }
 
@@ -278,28 +423,81 @@ export function decode(bytes: Uint8Array): Message {
     case T.hello: { const version = r.u8(), ticket = r.str(); if (ticket.length > MAX_TICKET) throw new DecodeError('ticket too long'); msg = { type: 'hello', version, ticket }; break; }
     case T.ping: msg = { type: 'ping', ts: r.f64() }; break;
     case T.say: { const text = r.str(); if (text.length > MAX_CHAT) throw new DecodeError('chat line too long'); msg = { type: 'say', text }; break; }
-    case T.object: msg = { type: 'object', pose: readObjectPose(r) }; break;
+    case T.object: {
+      const hasDefinition = r.u8();
+      if (hasDefinition > 1) throw new DecodeError('invalid object definition flag');
+      const definition = hasDefinition ? readObjectDefinition(r) : undefined;
+      const pose = readObjectPose(r);
+      if (definition && definition.index !== pose.index) throw new DecodeError('object definition index mismatch');
+      msg = { type: 'object', pose, ...(definition ? { definition } : {}) };
+      break;
+    }
     case T.emote: msg = { type: 'emote', kind: readIndex(r, EMOTE_KINDS, 'emote') }; break;
     case T.emoted: { const from = r.u16(); msg = { type: 'emoted', from, kind: readIndex(r, EMOTE_KINDS, 'emote') }; break; }
     case T.chat: { const from = r.u16(), name = r.str(), text = r.str(); if (name.length > MAX_NAME || text.length > MAX_CHAT) throw new DecodeError('chat too long'); msg = { type: 'chat', from, name, text }; break; }
     case T.input: {
       const seq = r.u32(), mx = r.f32(), mz = r.f32(), heading = r.f32(), flags = r.u8(), crouchWheel = r.f32();
-      if ((flags & 0xf0) !== 0 || Math.abs(crouchWheel) > 20) throw new DecodeError('invalid posture input');
+      if ((flags & 0xe0) !== 0 || Math.abs(crouchWheel) > 20) throw new DecodeError('invalid posture input');
       const input: Extract<ClientMessage, { type: 'input' }> = { type: 'input', seq, mx, mz, heading, run: !!(flags & 1) };
       if (flags & 2) input.crouch = true;
       if (flags & 4) input.prone = true;
       if (flags & 8) input.jump = true;
+      if (flags & 16) input.struggle = true;
       if (crouchWheel !== 0) input.crouchWheel = crouchWheel;
       msg = input;
       break;
     }
     case T.act: msg = { type: 'act', kind: readIndex(r, ACT_KINDS, 'act') }; break;
+    case T.attack: {
+      const phase = readIndex(r, ATTACK_INTENT_PHASES, 'attack intent phase');
+      const kind = readIndex(r, ATTACK_KINDS, 'attack kind');
+      const side = r.u8();
+      if (side !== 0xff && side >= ATTACK_SIDES.length) throw new DecodeError('unknown attack side');
+      msg = { type: 'attack', phase, kind, ...(side === 0xff ? {} : { side: ATTACK_SIDES[side] }) };
+      break;
+    }
     case T.grab: { const object = fromU16(r.u16()); msg = r.u8() ? { type: 'grab', object, at: [r.f32(), r.f32(), r.f32()] } : { type: 'grab', object }; break; }
     case T.place: { const x = r.f32(), z = r.f32(), rot = r.f32(); msg = { type: 'place', x, z, rot }; break; }
     case T.reset: { const scope = readIndex(r, RESET_SCOPES, 'reset scope'), object = fromU16(r.u16()); msg = { type: 'reset', scope, object }; break; }
     case T.hold: { const turn: [number, number, number, number] = [r.f32(), r.f32(), r.f32(), r.f32()]; msg = { type: 'hold', turn, raise: r.f32() }; break; }
     case T.drop: msg = { type: 'drop' }; break;
     case T.throw: msg = { type: 'throw', power: r.f32(), yaw: r.f32(), pitch: r.f32() }; break;
+    case T.inventory: {
+      const action = readIndex(r, ['assign', 'hotbar', 'drop', 'move', 'rotate', 'use'] as const, 'inventory action');
+      const revision = r.u32();
+      if (action === 'assign') {
+        const object = fromU16(r.u16());
+        if (object === NONE) throw new DecodeError('invalid inventory object');
+        msg = { type: 'inventory', action, object, revision };
+      } else if (action === 'hotbar') {
+        const slot = r.u8(), present = r.u8();
+        if (slot >= 3 || present > 1) throw new DecodeError('invalid hotbar intent');
+        const itemId = present ? r.str() : undefined;
+        if (itemId !== undefined && (!itemId || itemId.length > MAX_HOLD_ID)) throw new DecodeError('invalid inventory item');
+        msg = { type: 'inventory', action, slot, revision, ...(itemId === undefined ? {} : { itemId }) };
+      } else if (action === 'drop' || action === 'rotate') {
+        const itemId = r.str();
+        if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid inventory item');
+        msg = { type: 'inventory', action, itemId, revision };
+      } else if (action === 'use') {
+        const itemId = r.str(), limb = r.u8(), target = fromU16(r.u16());
+        if (!itemId || itemId.length > MAX_HOLD_ID || limb >= LIMBS.length) throw new DecodeError('invalid medical use');
+        msg = { type: 'inventory', action, itemId, limb: LIMBS[limb], ...(target === NONE ? {} : { target }), revision };
+      } else {
+        const itemId = r.str(), x = r.u8(), y = r.u8();
+        if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid inventory item');
+        msg = { type: 'inventory', action, itemId, x, y, revision };
+      }
+      break;
+    }
+    case T.grabCharacter: {
+      const target = fromU16(r.u16()), hasAz = r.u8(), az = hasAz ? r.f32() : undefined, hasLift = r.u8(), lift = hasLift ? r.f32() : undefined;
+      if (hasAz > 1 || hasLift > 1) throw new DecodeError('invalid character hold');
+      msg = { type: 'grab-character', target, ...(az === undefined ? {} : { az }), ...(lift === undefined ? {} : { lift }) };
+      break;
+    }
+    case T.releaseCharacter: msg = { type: 'release-character' }; break;
+    case T.throwCharacter: msg = { type: 'throw-character' }; break;
     case T.pong: msg = { type: 'pong', ts: r.f64() }; break;
     case T.kick: msg = { type: 'kick', reason: r.str() }; break;
     case T.ack: msg = { type: 'ack', seq: r.u32(), tick: r.u32(), x: r.f32(), z: r.f32(), face: r.f32() }; break;
@@ -325,7 +523,9 @@ export function decode(bytes: Uint8Array): Message {
       const meetings = readMeetings(r);
       const nObjects = count(r, 16, 'object'), objectsList: ObjectPose[] = [];
       for (let i = 0; i < nObjects; i++) objectsList.push(readObjectPose(r));
-      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, live, you, layout, people, meetings, objects: objectsList };
+      const nDefinitions = count(r, 16, 'object definition'), definitions: ObjectDefinition[] = [];
+      for (let i = 0; i < nDefinitions; i++) definitions.push(readObjectDefinition(r));
+      msg = { type: 'welcome', tick, tickRate, simTime, day, speed, paused, live, you, layout, people, meetings, objects: objectsList, ...(definitions.length ? { objectDefinitions: definitions } : {}) };
       break;
     }
     default: throw new DecodeError(`unknown message type ${type}`);
@@ -335,4 +535,4 @@ export function decode(bytes: Uint8Array): Message {
 }
 
 export function isServerMessage(m: Message): m is ServerMessage { return !isClientMessage(m); }
-export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'say' || m.type === 'emote' || m.type === 'grab' || m.type === 'place' || m.type === 'reset' || m.type === 'hold' || m.type === 'drop' || m.type === 'throw'; }
+export function isClientMessage(m: Message): m is ClientMessage { return m.type === 'hello' || m.type === 'ping' || m.type === 'input' || m.type === 'act' || m.type === 'attack' || m.type === 'say' || m.type === 'emote' || m.type === 'grab' || m.type === 'place' || m.type === 'reset' || m.type === 'hold' || m.type === 'drop' || m.type === 'throw' || m.type === 'inventory' || m.type === 'grab-character' || m.type === 'release-character' || m.type === 'throw-character'; }

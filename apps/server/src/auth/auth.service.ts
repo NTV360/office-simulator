@@ -152,7 +152,10 @@ export class AuthService {
   }
 
   /** Listen for sessions ending (logout, a password change, an account being disabled). */
-  onSessionEnd(fn: (e: SessionEnd) => void): void { this.endListeners.push(fn); }
+  onSessionEnd(fn: (e: SessionEnd) => void): () => void {
+    this.endListeners.push(fn);
+    return () => { const i = this.endListeners.indexOf(fn); if (i >= 0) this.endListeners.splice(i, 1); };
+  }
   private ended(e: SessionEnd): void { for (const fn of this.endListeners) { try { fn(e); } catch { /* a listener must not break a logout */ } } }
 
   /** The account with this id (used when a ticket is redeemed), or null. */

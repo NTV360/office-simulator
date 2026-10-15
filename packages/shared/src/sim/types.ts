@@ -6,6 +6,7 @@ import type { HeldProps } from './props';
 import type { ScreenKind } from './data';
 import type { Shift } from './schedule';
 import type { CharacterMechanicsState } from './character-state';
+import type { InventoryState } from './inventory';
 
 /** What a person is doing right now. 'controlled' people are driven by a human, not by the simulation. */
 export type PersonState = 'away' | 'idle' | 'walking' | 'doing' | 'controlled';
@@ -102,4 +103,6 @@ export interface Person {
   body?: any;
   /** Character mechanics state; absent on legacy records and normalized at creation/restore. */
   mechanics: CharacterMechanicsState;
+  /** Server-authoritative carried/stored items and exactly three hotbar slots. */
+  inventory: InventoryState;
 }

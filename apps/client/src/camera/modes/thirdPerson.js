@@ -49,7 +49,11 @@ const thirdPersonMode = {
     else { if (ctl.faceTo !== null) p.faceGoal = ctl.faceTo; else if (dx || dz) p.faceGoal = Math.atan2(dx, dz); p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12)); }
 
     tp.sideNow += (tp.side - tp.sideNow) * (1 - Math.exp(-dt * 8));
-    const headGoal = eyeHeight(p.body, player.sitting?.hipY); tp.head += (headGoal - tp.head) * (1 - Math.exp(-dt * 8));
+    const posture = p.mechanics?.posture;
+    const crouchDrop = posture === 'crouching' ? .28 * Math.max(0, Math.min(1, p.mechanics?.crouchLevel || 0)) : 0;
+    const postureDrop = posture === 'prone' ? .70 : posture === 'recovering' ? .20 : crouchDrop;
+    const headGoal = eyeHeight(p.body, player.sitting?.hipY) - postureDrop + (p._jumpY || 0);
+    tp.head += (headGoal - tp.head) * (1 - Math.exp(-dt * 8));
     const yaw = ctl.yaw, pit = ctl.pitch, cp = Math.cos(pit), sp = Math.sin(pit);
     const dirX = Math.sin(yaw) * cp, dirY = sp, dirZ = Math.cos(yaw) * cp;       // where the camera looks
     const rightX = -Math.cos(yaw), rightZ = Math.sin(yaw);

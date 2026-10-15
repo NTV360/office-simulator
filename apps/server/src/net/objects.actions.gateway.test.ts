@@ -145,17 +145,43 @@ describe('picking up and putting down', () => {
     resetAllObjects();
   });
 
-  it('too many moves too quickly are refused (the bucket), and it refills', async () => {
+  it('too many valid moves too quickly are refused (the bucket), and it refills', async () => {
     resetAllObjects();
     const a = await join('obj_spam');
+    const carrier = personOf('obj_spam');
     const chair = diningChair(6);
+    const spot = freePlaceNear(chair, 1.2);
+
+    // Semantic refusals are refunded by PlayerManager, so alternate a valid
+    // grab and place on the same chair to consume real object-action tokens.
+    for (let i = 0; i < 8; i++) {
+      stand('obj_spam', chair);
+      send(a, { type: 'grab', object: chair.index });
+      await sleep(100);
+      if (chair.carriedBy !== carrier.id) break;
+      stand('obj_spam', spot, .5);
+      send(a, { type: 'place', x: spot.x, z: spot.z, rot: chair.rot });
+      await sleep(100);
+    }
+
     stand('obj_spam', chair);
-    for (let i = 0; i < 14; i++) send(a, { type: 'grab', object: chair.index });
-    await sleep(400);
+    send(a, { type: 'grab', object: chair.index });
+    await sleep(300);
     expect(notices(a).filter(t => t === REFUSAL_TEXT['too-fast']).length).toBeGreaterThan(0);
-    await sleep(1500);
-    send(a, { type: 'place', x: chair.x + 1.2, z: chair.z, rot: 0 }); await sleep(200);
-    expect(notices(a).at(-1)).not.toBe(REFUSAL_TEXT['too-fast']);
+
+    // The bucket refills at three actions per second, so a later valid grab
+    // must succeed after the temporary burst limit has cleared.
+    await sleep(3200);
+    if (chair.carriedBy === carrier.id) {
+      stand('obj_spam', spot, .5);
+      send(a, { type: 'place', x: spot.x, z: spot.z, rot: chair.rot });
+      await sleep(250);
+    }
+    stand('obj_spam', chair);
+    send(a, { type: 'grab', object: chair.index });
+    await sleep(250);
+    expect(chair.carriedBy).toBe(carrier.id);
+
     a.socket.close(); await sleep(900);
     resetAllObjects();
   });

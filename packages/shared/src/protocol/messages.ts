@@ -1,12 +1,13 @@
 import type { CharacterSpec } from '../character/spec';
 import type { ScreenKind } from '../sim/data';
 import type { PersonState } from '../sim/types';
+import type { InventoryItem } from '../sim/inventory';
 import type { AttackKind, AttackPhase, AttackSide, LocomotionMode, Posture, SeatMode } from '../sim/character-state';
 
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 19;
+export const WIRE_VERSION = 23;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -64,7 +65,15 @@ export interface PersonMechanicsSnap {
   health: { head: number; body: number; leftArm: number; rightArm: number; leftLeg: number; rightLeg: number };
   holdTarget: string | null;
   heldBy: string | null;
+  holdAz?: number;
+  holdLift?: number;
   inventoryRevision: number;
+}
+
+export interface InventorySnap {
+  revision: number;
+  items: InventoryItem[];
+  hotbar: Array<string | null>;
 }
 
 export interface PersonSnap {
@@ -86,7 +95,7 @@ export interface PersonSnap {
   cat: string;
   /** 0 none; 1 + index into the layout's spot list; ONE_OFF_SPOT for a chat place (see `oneOff`). */
   spot: number;
-  oneOff?: { x: number; z: number; face: number; place: string };
+  oneOff?: { x: number; z: number; face: number; place: string; hipY?: number };
   /** The other person in a chat task, or NONE. */
   partner: number;
   /** Who is chatting with this person at their desk, or NONE. */
@@ -103,6 +112,8 @@ export interface PersonSnap {
   coffees: number;
   /** Optional for source compatibility with legacy test/tools; wire snapshots always carry it. */
   mechanics?: PersonMechanicsSnap;
+  /** Inventory is included only for the owning account; other viewers receive no item contents. */
+  inventory?: InventorySnap;
 }
 
 export interface MeetingSnap {
@@ -122,7 +133,18 @@ export interface LayoutCheck {
 }
 
 /** Where a world object is now: its place in the layout's object list, its pose (with its height, and its whole orientation when it is not upright), and who carries it (NONE if nobody). */
-export interface ObjectPose { index: number; x: number; z: number; rot: number; y: number; q: [number, number, number, number] | null; carriedBy: number; helpers: number[] }
+export interface ObjectPose { index: number; x: number; z: number; rot: number; y: number; q: [number, number, number, number] | null; carriedBy: number; helpers: number[]; /** Tombstone for an object consumed into an inventory; its index remains stable. */ removed?: boolean }
+/** The catalogue data needed to materialize an object that was created after the layout loaded. */
+export interface ObjectDefinition {
+  index: number;
+  type: string;
+  variant: number;
+  station: string | null;
+  spot: string | null;
+  spots?: string[];
+  dims?: number[];
+  pose: ObjectPose;
+}
 
 export interface Welcome {
   type: 'welcome';
@@ -141,6 +163,8 @@ export interface Welcome {
   meetings: MeetingSnap[];
   /** The objects that are not where they started (everything else is at home, which every page knows from the layout). */
   objects: ObjectPose[];
+  /** Definitions for objects created after the layout was loaded. */
+  objectDefinitions?: ObjectDefinition[];
 }
 
 /**
@@ -168,7 +192,7 @@ export interface Snapshot {
 }
 
 /** A world object moved, was picked up or put down. Sent to everybody playing. */
-export interface ObjectMoved { type: 'object'; pose: ObjectPose }
+export interface ObjectMoved { type: 'object'; pose: ObjectPose; definition?: ObjectDefinition }
 export interface PersonJoined { type: 'person'; info: PersonInfo; snap: PersonSnap }
 export interface PersonLeft { type: 'leave'; id: number }
 
@@ -182,10 +206,15 @@ export interface Hello { type: 'hello'; version: number; ticket: string }
 export interface Input {
   type: 'input'; seq: number; mx: number; mz: number; heading: number; run: boolean;
   crouch?: boolean; crouchWheel?: number; prone?: boolean; jump?: boolean;
+  /** While held, ask the server to accumulate escape effort for this character. */
+  struggle?: boolean;
 }
 /** Sit in the nearest seat, or stand up. The server decides whether it is allowed. */
 export type ActKind = 'sit' | 'stand';
 export interface Act { type: 'act'; kind: ActKind }
+/** A server-authoritative punch or kick intent. Press begins charging; release opens the hit window. */
+export type AttackIntentPhase = 'begin' | 'release';
+export interface AttackIntent { type: 'attack'; phase: AttackIntentPhase; kind: AttackKind; side?: AttackSide }
 /** Something the player says in local chat: heard by people within about 10 m. */
 export interface Say { type: 'say'; text: string }
 /** The short list of things a player can act out. The order is part of the protocol: add to the end. */
@@ -222,7 +251,30 @@ export interface Drop { type: 'drop' }
 /** Throw what you hold, as hard as `power` says (0 to 1). */
 /** Throw what you hold: how hard (0 to 1), and which way you look (yaw, and pitch: up is positive), which is the way it goes. */
 export interface Throw { type: 'throw'; power: number; yaw: number; pitch: number }
+export type InventoryAction = 'assign' | 'hotbar' | 'drop' | 'move' | 'rotate' | 'use';
+export interface InventoryIntent {
+  type: 'inventory';
+  action: InventoryAction;
+  itemId?: string;
+  /** World-object index for authoritative assignment; the server derives type and instance id. */
+  object?: number;
+  slot?: number;
+  /** Top-left inventory cell for a move. */
+  x?: number;
+  y?: number;
+  /** Limb healed by a medical use. */
+  limb?: 'head' | 'body' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg';
+  /** Target person id; omitted means self. */
+  target?: number;
+  revision: number;
+}
+/** Take hold of another character; the server validates reach and graph invariants. */
+export interface GrabCharacter { type: 'grab-character'; target: number; az?: number; lift?: number }
+/** Release the character currently held by this player. */
+export interface ReleaseCharacter { type: 'release-character' }
+/** End a character hold without introducing combat semantics. */
+export interface ThrowCharacter { type: 'throw-character' }
 
-export type ClientMessage = Hello | Ping | Input | Act | Say | Emote | Grab | Place | Reset | HoldInput | Drop | Throw;
+export type ClientMessage = Hello | Ping | Input | Act | AttackIntent | Say | Emote | Grab | Place | Reset | HoldInput | Drop | Throw | InventoryIntent | GrabCharacter | ReleaseCharacter | ThrowCharacter;
 export type ServerMessage = Welcome | Snapshot | PersonJoined | PersonLeft | GameEvent | Pong | Kick | Ack | Chat | Emoted | ObjectMoved;
 export type Message = ClientMessage | ServerMessage;

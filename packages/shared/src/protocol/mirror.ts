@@ -2,6 +2,7 @@ import { Vec3 } from '../vec3';
 import { RUNNING_KINDS } from '../sim/data';
 import { NEVER } from '../sim/schedule';
 import { defaultCharacterMechanics } from '../sim/character-state';
+import { createInventory, validateInventory } from '../sim/inventory';
 import { PROP_KEYS, newProps } from '../sim/props';
 import type { Spot } from '../sim/interactables';
 import type { Meeting, Person, TaskSpot } from '../sim/types';
@@ -59,6 +60,9 @@ export class Mirror {
     for (const p of [...this.people.values()]) this.drop(p);
     this.meetingIndex.clear();
     this.meetings = [];
+    this.you = NONE;
+    this.unknownRecords = 0;
+    this.clock = { tick: 0, tickRate: 20, simTime: 0, day: 1, speed: 1, paused: false, live: false };
   }
 
   applySnapshot(s: Snapshot): void {
@@ -120,6 +124,7 @@ export class Mirror {
       walkPhase: snap.walkPhase, animT: 0, pose: {}, arriveAt: info.arriveAt, leaveAt: 0, lunchAt: 0, hadLunch: false,
       arrivedAt: null, coffees: 0, chatWith: null, meeting: null, screenKind: info.screenKind, screenVariant: info.screenVariant,
       mechanics: defaultCharacterMechanics(),
+      inventory: createInventory(),
     };
     this.people.set(p.id, p);
     this.fill(p, snap);
@@ -157,6 +162,10 @@ export class Mirror {
       ...defaultCharacterMechanics(),
       ...previousEdges,
     };
+    if (snap.inventory) {
+      const next = { items: snap.inventory.items.map(item => ({ ...item })), hotbar: [...snap.inventory.hotbar] };
+      try { validateInventory(next); p.inventory = next; } catch { /* malformed inventory snapshots never poison the mirror */ }
+    }
     PROP_KEYS.forEach((k, i) => { p.props[k] = !!(snap.props & (1 << i)); });
     if (snap.kind === '') { p.task = null; return; }
     const spot: TaskSpot | undefined = snap.spot === ONE_OFF_SPOT
@@ -207,9 +216,10 @@ export class Mirror {
 function oneOffSpot(snap: PersonSnap): TaskSpot {
   const o = snap.oneOff!;
   const v = new Vec3(o.x, 0, o.z);
-  return { kind: 'chat', pos: v, approach: v, face: o.face, shared: false, place: o.place };
+  return { kind: 'chat', pos: v, approach: v, face: o.face, shared: false, place: o.place, ...(Number.isFinite(o.hipY) ? { hipY: o.hipY } : {}) };
 }
 function sameSpot(a: TaskSpot, b: TaskSpot, snap: PersonSnap): boolean {
   if (snap.spot !== ONE_OFF_SPOT) return a === b;
-  return a.place === b.place && a.pos.x === b.pos.x && a.pos.z === b.pos.z && a.face === b.face;
+  return a.place === b.place && a.pos.x === b.pos.x && a.pos.z === b.pos.z && a.face === b.face
+    && (a as { hipY?: number }).hipY === (b as { hipY?: number }).hipY;
 }

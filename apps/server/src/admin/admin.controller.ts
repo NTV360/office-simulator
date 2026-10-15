@@ -1,7 +1,7 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { HAZEL_NAME, deskSeat, interactables, isAtHome, live, movedObjects, objects, people, resetObject, seatInUse, seatOf, type Person } from '@office/shared';
+import { HAZEL_NAME, deskSeat, freeSitOccupied, interactables, isAtHome, live, movedObjects, objects, people, resetObject, seatInUse, seatOf, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { clientAddress, type Req as HttpReq } from '../auth/http';
@@ -121,7 +121,7 @@ export class AdminController {
     const b = (body ?? {}) as { object?: unknown; all?: unknown };
     if (b.all === true) {
       // (a chair somebody sits in stays: the chair would jump away from under them. They are told it is skipped.)
-      const out = movedObjects(), todo = out.filter(o => { const seat = seatOf(o); return !(o.carriedBy === null && seat && seatInUse(seat)); });
+      const out = movedObjects(), todo = out.filter(o => !o.removed && !freeSitOccupied(o) && !(o.carriedBy === null && seatOf(o) && seatInUse(seatOf(o)!)));
       for (const o of todo) resetObject(o);
       await this.note(req, 'objects.reset', 'everything', { count: todo.length, skipped: out.length - todo.length });
       return { ok: true, reset: todo.length, skipped: out.length - todo.length };
@@ -129,6 +129,8 @@ export class AdminController {
     if (typeof b.object !== 'string' || !/^obj:[0-9]{1,5}$/.test(b.object)) throw new BadRequestException('send { "all": true } or { "object": "obj:12" }');
     const o = objects.byId(b.object);
     if (!o) throw new NotFoundException('there is no such object');
+    if (o.removed) throw new ConflictException('that object is consumed into an inventory and cannot be reset');
+    if (freeSitOccupied(o)) throw new ConflictException('somebody is sitting on that; try again when they have stood up');
     const seat = seatOf(o);
     if (o.carriedBy === null && seat && seatInUse(seat)) throw new ConflictException('somebody is sitting in that chair; try again when they have stood up');
     const was = !isAtHome(o);

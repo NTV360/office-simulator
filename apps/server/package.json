@@ -18,6 +18,8 @@
     "@nestjs/websockets": "^11.2.7",
     "@node-rs/argon2": "^2.2.2",
     "@office/shared": "*",
+    "@livekit/protocol": "^1.52.1",
+    "livekit-server-sdk": "^2.19.1",
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

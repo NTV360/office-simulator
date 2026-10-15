@@ -19,6 +19,16 @@ const MOVE_EPS = .001, TURN_EPS = .5 * Math.PI / 180;
 const UPRIGHT = .5 * Math.PI / 180, HOME_EPS = .02, HOME_TURN = 1.5 * Math.PI / 180;
 /** Put down this much above its surface, so it starts clear of it and settles onto it. */
 const LIFT = .002;
+/** A moving item may affect a character once per short contact window, not once per physics substep. */
+const IMPACT_COOLDOWN = .3;
+const CHARACTER_RADIUS = .32;
+
+export interface ItemImpact {
+  object: WorldObject;
+  personId: number;
+  normal: { x: number; z: number };
+  relativeSpeed: number;
+}
 
 /**
  * How a hand holds: its spring's stiffness and the turn's (rad/s: about 2 and 1.6 a second); how far a hand may be from its grip, and for how
@@ -77,20 +87,28 @@ export class ItemPhysics {
   readonly physics: Physics;
   private awakeBefore = new Set<number>();
   private readonly hands = new WeakMap<Hold, HandNow>();
+  private readonly impactUntil = new Map<string, number>();
+  /** Last observed body pose, used to sweep fast objects between server ticks. */
+  private readonly impactPrevious = new Map<number, { x: number; y: number; z: number }>();
+  private elapsed = 0;
+  private pendingImpacts: ItemImpact[] = [];
   private writing = false;
   private readonly stop: () => void;
+  private impactHandler: ((impact: ItemImpact) => void) | null = null;
 
   /** Bodies for every item the world has now, where it is. `loadPhysics()` must have finished. */
   constructor(shapes: readonly StaticShape[]) {
     this.physics = new Physics(shapes);
-    for (const o of objects.all()) this.physics.addItem(o, o.q ?? yawQuat(o.rot));
-    setObjectAdded(o => { this.physics.addItem(o, o.q ?? yawQuat(o.rot)); });
+    for (const o of objects.all()) if (!o.removed) this.physics.addItem(o, o.q ?? yawQuat(o.rot));
+    setObjectAdded(o => { if (!o.removed) this.physics.addItem(o, o.q ?? yawQuat(o.rot)); });
     this.stop = simEvents.on('objectMoved', o => this.follow(o));
     setPlacer((o, p) => { o.placing = p; this.physics.setPassThrough(o, true); this.physics.body(o.index)?.wakeUp(); });
   }
 
   /** The game moved an item: its body goes there too. (One somebody holds is moved by their hands; one just let go keeps moving as it was.) */
   private follow(o: WorldObject): void {
+    if (o.removed) { this.physics.removeItem(o.index); return; }
+    if (!this.physics.body(o.index)) this.physics.addItem(o, o.q ?? yawQuat(o.rot));
     if (this.writing) return; // (physics moved it: the body is already there)
     if (o.carriedBy !== null) { this.physics.setBig(o, true); this.physics.body(o.index)?.wakeUp(); return; }
     this.physics.setBig(o, false);
@@ -104,15 +122,33 @@ export class ItemPhysics {
     this.physics.place(o.index, { x: o.x, y: o.y + LIFT, z: o.z, q: o.q ?? yawQuat(o.rot) });
   }
 
+  /** Register the server-side recipient of moving-item character impacts. */
+  onImpact(handler: ((impact: ItemImpact) => void) | null): void { this.impactHandler = handler; }
+
+  /** Drain impacts observed during the preceding physics step. */
+  drainImpacts(): ItemImpact[] {
+    const impacts = this.pendingImpacts;
+    this.pendingImpacts = [];
+    return impacts;
+  }
+
   /** Advance the physics by `dt` seconds (the hands pushing on what they hold before every substep), and move every item whose body moved. */
   step(dt: number): void {
     const held = objects.all().filter(o => o.carriedBy !== null);
     for (const o of held) { this.ensureHold(o); this.ease(o, dt); for (const h of o.holds) this.track(h, dt); }
     const flying = this.physics.awake().map(i => objects.at(i)).filter((o): o is WorldObject => !!o && o.carriedBy === null);
+    // Capture the pre-step pose so the impact observer can sweep across this whole server tick,
+    // including the first tick after a throw or a body is woken.
+    for (const o of flying) {
+      const pose = this.physics.pose(o.index);
+      if (pose) this.impactPrevious.set(o.index, { x: pose.x, y: pose.y, z: pose.z });
+    }
     this.physics.step(dt, () => {
       for (const o of held) if (o.carriedBy !== null) this.push(o);
       for (const o of flying) this.air(o);
     });
+    this.elapsed += Math.max(0, dt);
+    this.observeImpacts(flying);
     const awake = new Set(this.physics.awake());
     for (const i of awake) this.read(i, false);
     for (const i of this.awakeBefore) if (!awake.has(i)) this.read(i, true); // (it has just come to rest: its final pose, tidied)
@@ -246,6 +282,58 @@ export class ItemPhysics {
     const k = dragOf(o) * speed;
     b.applyImpulse({ x: -k * v.x * SUBSTEP, y: -k * v.y * SUBSTEP, z: -k * v.z * SUBSTEP }, true);
   }
+
+  /**
+   * Characters are not rigid bodies in this simulation. Observe a fast dynamic item crossing their authoritative capsule after Rapier has
+   * stepped, then hand one bounded impact to the player layer. Resting overlap and held manipulation are deliberately ignored.
+   */
+  private observeImpacts(candidates: readonly WorldObject[]): void {
+    for (const o of candidates) {
+      if (o.carriedBy !== null || o.removed) continue;
+      const v = this.physics.velocity(o.index);
+      const at = this.physics.pose(o.index);
+      if (!v || !at) continue;
+      const previous = this.impactPrevious.get(o.index) ?? at;
+      this.impactPrevious.set(o.index, { x: at.x, y: at.y, z: at.z });
+      const speed = Math.hypot(v.x, v.y, v.z);
+      if (speed < DRAG_FROM) continue;
+      // A person's collision volume is roughly a vertical capsule. Sweep the item's horizontal centre between
+      // ticks, and require the item's collider-height band to overlap that capsule instead of using a broad y gate.
+      const itemHeight = this.itemHeight(o);
+      const low = at.y - itemHeight / 2, high = at.y + itemHeight / 2;
+      if (high < .05 || low > 1.9) continue;
+      for (const p of people) {
+        if (p.controller !== 'account' || p.mechanics.health.body <= 0) continue;
+        const hit = this.sweptDistance(previous.x, previous.z, at.x, at.z, p.pos.x, p.pos.z);
+        const reach = (CATALOGUE[o.type]?.radius ?? .1) + CHARACTER_RADIUS;
+        if (hit.distance > reach) continue;
+        const horizontalDistance = Math.hypot(hit.dx, hit.dz);
+        const nx = horizontalDistance > 1e-5 ? hit.dx / horizontalDistance : (Math.hypot(v.x, v.z) > 1e-5 ? v.x / Math.hypot(v.x, v.z) : 1);
+        const nz = horizontalDistance > 1e-5 ? hit.dz / horizontalDistance : (Math.hypot(v.x, v.z) > 1e-5 ? v.z / Math.hypot(v.x, v.z) : 0);
+        // Only a crossing/towards-character movement is an impact; a falling item may have no horizontal motion.
+        if (Math.hypot(v.x, v.z) > 1e-5 && v.x * nx + v.z * nz <= .5) continue;
+        const key = `${o.index}:${p.id}`;
+        if ((this.impactUntil.get(key) ?? -Infinity) > this.elapsed) continue;
+        this.impactUntil.set(key, this.elapsed + IMPACT_COOLDOWN);
+        const impact = { object: o, personId: p.id, normal: { x: nx, z: nz }, relativeSpeed: speed };
+        this.pendingImpacts.push(impact);
+        this.impactHandler?.(impact);
+      }
+    }
+  }
+
+  private itemHeight(o: WorldObject): number {
+    const ys = shapeOf(o).colliders.flatMap(c => c.shape === 'box' ? [c.at[1] - c.size[1] / 2, c.at[1] + c.size[1] / 2] : c.shape === 'cylinder' ? [c.at[1] - c.height / 2, c.at[1] + c.height / 2] : [c.at[1] - c.radius, c.at[1] + c.radius]);
+    return Math.max(...ys) - Math.min(...ys);
+  }
+
+  private sweptDistance(x0: number, z0: number, x1: number, z1: number, px: number, pz: number): { distance: number; dx: number; dz: number } {
+    const sx = x1 - x0, sz = z1 - z0, length2 = sx * sx + sz * sz;
+    const t = length2 > 1e-9 ? Math.max(0, Math.min(1, ((px - x0) * sx + (pz - z0) * sz) / length2)) : 1;
+    const x = x0 + sx * t, z = z0 + sz * t;
+    return { distance: Math.hypot(px - x, pz - z), dx: px - x, dz: pz - z };
+  }
+
   /** After a tick: a hand pulled too far from its grip slips off; a thing put down that has got there (or taken too long) is let go. */
   private check(o: WorldObject, dt: number): void {
     if (o.carriedBy === null) return;
@@ -291,5 +379,14 @@ export class ItemPhysics {
     try { setObjectPose(o, x, z, rot, y, q); } finally { this.writing = false; }
   }
 
-  dispose(): void { this.stop(); setPlacer(null); setObjectAdded(null); this.physics.free(); }
+  dispose(): void {
+    this.stop();
+    this.impactHandler = null;
+    this.pendingImpacts = [];
+    this.impactUntil.clear();
+    this.impactPrevious.clear();
+    setPlacer(null);
+    setObjectAdded(null);
+    this.physics.free();
+  }
 }

@@ -13,9 +13,11 @@ import { GameGateway } from './net/game.gateway';
 import { WorldController } from './world/world.controller';
 import { WorldService } from './world/world.service';
 import { EmployeeService } from './employees/employee.service';
+import { VoiceController } from './voice/voice.controller';
+import { VoiceAclService } from './voice/voice-acl.service';
 
 @Module({
-  controllers: [HealthController, WorldController, AdminController, AuthController, PlayController, CharacterController],
-  providers: [DbService, WorldService, EmployeeService, GameGateway, AdminGuard, AuthProvider, PlayService, SessionGuard, SameOriginGuard, { provide: TicketService, useFactory: () => new TicketService() }],
+  controllers: [HealthController, WorldController, AdminController, AuthController, PlayController, CharacterController, VoiceController],
+  providers: [DbService, WorldService, EmployeeService, GameGateway, AdminGuard, AuthProvider, PlayService, VoiceAclService, SessionGuard, SameOriginGuard, { provide: TicketService, useFactory: () => new TicketService() }],
 })
 export class AppModule {}

@@ -2,10 +2,14 @@ import { OX, OY, S } from '../plan';
 import { walkPx } from '../nav/grid';
 import { stepPlayer } from './locomotion';
 import { CATALOGUE, carryOf } from '../world/catalogue';
-import { carriedBy, holderCount, seatUnusable } from '../world/objects';
+import { carriedBy, holderCount, seatUnusable, objects, type WorldObject } from '../world/objects';
+import { shapeOf } from '../world/catalogue';
+import { classifyFreeSitting, type FreeSitSupport, type SittingPoint, type FreeSitClassification } from './free-sitting';
 import { interactables, type Spot } from './interactables';
 import { people } from './state';
 import { adjustCrouch, canMove, JUMP, postureSpeedFactor } from './character-state';
+import { characterHolds } from './character-hold-actions';
+import { freeSitClearOccupant, freeSitIsOccupied, freeSitOccupant, freeSitSetOccupant } from './free-sit-state';
 import type { Person } from './types';
 
 // Moving and sitting a person a human drives. The browser sends inputs (which way, how fast, which way it faces) and asks to
@@ -36,6 +40,73 @@ const MAX_SUBSTEP = 0.25;
 export const INPUT_STALE_SECONDS = 0.25;
 /** The seat's own furniture stands in the way of the last stretch; a wall must not be anywhere before it. */
 const SEAT_MARGIN = 0.6;
+const FREE_SEAT_EDGE = 0.2;
+const FREE_SEAT_REACH = 1.15;
+
+/** Whether an arbitrary support currently has a person sitting on it. */
+export function freeSitOccupied(o: WorldObject): boolean { return freeSitIsOccupied(o); }
+
+/** Convert a rectangular catalogue top into the pure free-sitting support model. */
+export function freeSitSupport(o: WorldObject): FreeSitSupport | null {
+  if (o.removed || o.carriedBy !== null || o.q !== null) return null;
+  const shape = shapeOf(o);
+  const top = shape.top;
+  // Registered chairs retain the driven Spot path; only unregistered, explicitly surface furniture can be free-sit supports.
+  if (o.link || ['chair-office', 'chair-wood', 'stool-bar', 'stool-low'].includes(o.type) || !top || !CATALOGUE[o.type]?.surface) return null;
+  return { center: { x: o.x, z: o.z }, halfWidth: top.hw, halfDepth: top.hd, topY: o.y + top.y, rotation: o.rot, occupant: freeSitOccupant(o) };
+}
+
+function insideSupport(point: SittingPoint, support: FreeSitSupport): boolean {
+  const r = support.rotation ?? 0;
+  const dx = point.x - support.center.x, dz = point.z - support.center.z;
+  const x = dx * Math.cos(r) - dz * Math.sin(r), z = dx * Math.sin(r) + dz * Math.cos(r);
+  return Math.abs(x) <= (support.halfWidth ?? 0) && Math.abs(z) <= (support.halfDepth ?? 0);
+}
+
+function freeSupportCandidate(p: Person): { object: WorldObject; support: FreeSitSupport; position: SittingPoint; heading: number } | null {
+  let best: { object: WorldObject; support: FreeSitSupport; position: SittingPoint; heading: number } | null = null;
+  let bestDistance = FREE_SEAT_REACH;
+  for (const o of objects.all()) {
+    const support = freeSitSupport(o);
+    if (!support || support.occupant && support.occupant !== p) continue;
+    const r = support.rotation ?? 0, c = Math.cos(r), s = Math.sin(r);
+    const dx = p.pos.x - support.center.x, dz = p.pos.z - support.center.z;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c;
+    const hw = support.halfWidth ?? 0, hd = support.halfDepth ?? 0;
+    const px = Math.max(-hw + FREE_SEAT_EDGE, Math.min(hw - FREE_SEAT_EDGE, lx));
+    const pz = Math.max(-hd + FREE_SEAT_EDGE, Math.min(hd - FREE_SEAT_EDGE, lz));
+    if (hw <= FREE_SEAT_EDGE || hd <= FREE_SEAT_EDGE) continue;
+    const position = { x: support.center.x + px * c - pz * s, z: support.center.z + px * s + pz * c };
+    const distance = Math.hypot(position.x - p.pos.x, position.z - p.pos.z);
+    if (distance >= bestDistance || !clearBetween(p.pos, position, SEAT_MARGIN)) continue;
+    const heading = Math.atan2(p.pos.x - position.x, p.pos.z - position.z);
+    best = { object: o, support, position, heading }; bestDistance = distance;
+  }
+  return best;
+}
+
+/** Validate and enter the nearest arbitrary rectangular support, after registered chairs are tried. */
+export function sitFree(p: Person): boolean {
+  if (p.controller !== 'account' || isSeated(p) || carriedBy(p.id) || inCharacterHold(p)) return false;
+  const candidate = freeSupportCandidate(p);
+  if (!candidate) return false;
+  const { object, support, position, heading } = candidate;
+  // The body may occupy the support, but stand-up candidates must be clear floor outside it.
+  const clear = (point: SittingPoint): boolean => insideSupport(point, support) || walkPx(point.x / S + OX, point.z / S + OY);
+  const floorClear = (point: SittingPoint): boolean => !insideSupport(point, support) && walkPx(point.x / S + OX, point.z / S + OY);
+  const stand = { x: position.x + Math.sin(heading) * .8, z: position.z + Math.cos(heading) * .8 };
+  const result: FreeSitClassification = classifyFreeSitting({ support, position, heading, person: p, isClear: clear, standUpCandidates: [stand] });
+  if (result.ok && !floorClear(result.standUp)) return false;
+  if (!result.ok) return false;
+  freeSitSetOccupant(object, p);
+  p.pos.x = position.x; p.pos.z = position.z; p.face = p.faceGoal = heading;
+  p.mechanics.posture = 'seated'; p.mechanics.seatMode = result.mode; p.mechanics.seatId = object.id;
+  p.mechanics.crouchLevel = 0; p.mechanics.grounded = true; p.mechanics.locomotion = 'grid';
+  const spot: any = { kind: 'free-sit', pos: { ...position }, approach: result.standUp, face: heading, hipY: Math.max(.2, support.topY - .22), shared: true, place: object.id, occupant: p, freeObject: object };
+  p.task = { kind: 'playerSit', cat: 'break', anim: result.mode === 'free-crossed' ? 'sitCrossed' : 'sit', spot, onEnd: q => { freeSitClearOccupant(object); putDownProps(q); } };
+  putDownProps(p);
+  return true;
+}
 
 /** What the human is asking for right now. */
 export interface DrivenInput {
@@ -54,6 +125,8 @@ export interface DrivenInput {
   crouchWheel?: number;
   prone?: boolean;
   jump?: boolean;
+  /** Held-character escape effort, evaluated by the server from the latest input. */
+  struggle?: boolean;
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -75,6 +148,7 @@ export function sanitizeInput(raw: unknown, tick: number): DrivenInput | null {
   if (finite(r.crouchWheel) && r.crouchWheel !== 0) out.crouchWheel = r.crouchWheel;
   if (r.prone === true) out.prone = true;
   if (r.jump === true) out.jump = true;
+  if (r.struggle === true) out.struggle = true;
   return out;
 }
 
@@ -133,9 +207,12 @@ function putDownProps(p: Person): void {
   p.props.pad = p.props.phone = p.props.mug = p.props.guitar = false;
 }
 
+/** Is this person holding somebody, or held by somebody? Hold poses are written every tick, so neither may take a seat. */
+const inCharacterHold = (p: Person): boolean => !!characterHolds.getHeld(p.id) || !!characterHolds.getHolder(p.id);
+
 /** Sit in the nearest allowed seat. Returns false (and changes nothing) if there is none, the person is already sitting, or no human drives them. */
 export function sit(p: Person): boolean {
-  if (p.controller !== 'account' || isSeated(p) || carriedBy(p.id)) return false; // (put down what you carry first)
+  if (p.controller !== 'account' || isSeated(p) || carriedBy(p.id) || inCharacterHold(p)) return false; // (put down what you carry first)
   const spot = nearestSeat(p);
   if (!spot) return false;
   spot.occupant = p; // whether the seat is shared or a desk, nobody else sits in it now
@@ -156,6 +233,8 @@ export function sit(p: Person): boolean {
 export function stand(p: Person): boolean {
   const t = p.task;
   if (!t || t.kind !== 'playerSit') return false;
+  const freeObject = (t.spot as { freeObject?: WorldObject }).freeObject;
+  if (freeObject) freeSitClearOccupant(freeObject);
   if (t.spot.occupant === p) t.spot.occupant = null;
   p.pos.x = t.spot.approach.x; p.pos.z = t.spot.approach.z;
   putDownProps(p);
@@ -185,17 +264,43 @@ export function stepDriven(p: Person, input: DrivenInput | null, dt: number, tic
     if (!live || Math.hypot(live.mx, live.mz) <= DEAD_ZONE) return 0;
     stand(p); // moving gets them out of the chair first
   }
-  if (!live) return 0;
   const mechanics = p.mechanics;
-  if (live.crouch) {
-    mechanics.posture = 'crouching';
-    mechanics.crouchLevel = adjustCrouch(mechanics.crouchLevel, live.crouchWheel ?? 0);
-  } else if (mechanics.posture === 'crouching' && (live.crouchWheel ?? 0) === 0) {
-    mechanics.posture = 'standing'; mechanics.crouchLevel = 0;
+  if (!live) {
+    // Release transient button state when packets stop arriving. Crouching is held,
+    // while prone is a toggle; preserve the latter posture but allow the next edge.
+    if (mechanics.posture === 'crouching') {
+      mechanics.posture = 'standing';
+      mechanics.crouchLevel = 0;
+    }
+    mechanics.proneHeld = false;
+    mechanics.jumpHeld = false;
+    // A lost input packet must not freeze a jump forever. Continue the
+    // authoritative jump clock and land it even while the client is silent.
+    if (mechanics.locomotion === 'jump') {
+      mechanics.verticalVelocity -= 9.8 * dt;
+      if (tick >= mechanics.jumpUntil) {
+        mechanics.locomotion = 'grid'; mechanics.grounded = true; mechanics.verticalVelocity = 0;
+      }
+    }
+    return 0;
   }
-  if (live.prone && !mechanics.proneHeld) mechanics.posture = mechanics.posture === 'prone' ? 'standing' : 'prone';
+  // A ragdolled or recovering person cannot choose a posture: input must not cancel the fall or skip the recovery lockout.
+  const downed = mechanics.posture === 'ragdoll' || mechanics.posture === 'recovering' || mechanics.locomotion === 'ragdoll';
+  if (!downed) {
+    if (live.crouch) {
+      mechanics.posture = 'crouching';
+      mechanics.crouchLevel = adjustCrouch(mechanics.crouchLevel, live.crouchWheel ?? 0);
+    } else if (mechanics.posture === 'crouching') {
+      // The wheel changes crouch depth while the key is held; releasing the key always stands,
+      // even when the last wheel notch was not consumed by the server yet.
+      mechanics.posture = 'standing'; mechanics.crouchLevel = 0;
+    }
+    if (live.prone && !mechanics.proneHeld) mechanics.posture = mechanics.posture === 'prone' ? 'standing' : 'prone';
+  }
   mechanics.proneHeld = live.prone === true;
-  if (live.jump && !mechanics.jumpHeld && mechanics.grounded && canMove(mechanics) && mechanics.posture !== 'prone') {
+  if (live.jump && !mechanics.jumpHeld && mechanics.grounded
+    && (mechanics.jumpUntil === 0 || tick >= mechanics.jumpUntil + Math.ceil(JUMP.cooldown / Math.max(dt, .001)))
+    && canMove(mechanics) && mechanics.posture !== 'prone') {
     mechanics.locomotion = 'jump'; mechanics.grounded = false; mechanics.verticalVelocity = JUMP.velocity;
     mechanics.jumpUntil = tick + Math.ceil(JUMP.duration / Math.max(dt, .001));
   }
@@ -224,7 +329,7 @@ export function stepDriven(p: Person, input: DrivenInput | null, dt: number, tic
 export function stepAllDriven(inputs: ReadonlyMap<number, DrivenInput>, dt: number, tick: number): void {
   const staleTicks = Math.max(2, Math.ceil(INPUT_STALE_SECONDS / dt)); // a quarter of a second, whatever the tick rate
   for (const p of people) {
-    if (p.controller !== 'account') continue;
+    if (p.controller !== 'account' || characterHolds.getHolder(p.id)) continue;
     stepDriven(p, inputs.get(p.id) ?? null, dt, tick, people, staleTicks);
   }
 }

@@ -9,6 +9,7 @@ import { AuthError, AuthService, type SessionEnd } from './auth.service';
 export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdown {
   private service: AuthService | null = null;
   private readonly endListeners: Array<(e: SessionEnd) => void> = [];
+  private removeServiceEnd: (() => void) | null = null;
   private readyResolve!: () => void;
   /** Resolves when start-up is over (accounts are on, or switched off for lack of a database). */
   readonly ready = new Promise<void>(res => { this.readyResolve = res; });
@@ -26,10 +27,17 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
   get available(): boolean { return this.service !== null; }
 
   /** Use this service instead of the database one (tests give it an in-memory store). */
-  useService(service: AuthService): void { this.service = service; service.onSessionEnd(e => this.endListeners.forEach(fn => fn(e))); }
+  useService(service: AuthService): void {
+    this.removeServiceEnd?.();
+    this.service = service;
+    this.removeServiceEnd = service.onSessionEnd(e => this.endListeners.forEach(fn => fn(e)));
+  }
 
   /** Hear about sessions ending, whichever service instance is current. */
-  onSessionEnd(fn: (e: SessionEnd) => void): void { this.endListeners.push(fn); }
+  onSessionEnd(fn: (e: SessionEnd) => void): () => void {
+    this.endListeners.push(fn);
+    return () => { const i = this.endListeners.indexOf(fn); if (i >= 0) this.endListeners.splice(i, 1); };
+  }
 
   async onApplicationBootstrap(): Promise<void> {
     try { await this.start(); } finally { this.readyResolve(); }
@@ -58,7 +66,11 @@ export class AuthProvider implements OnApplicationBootstrap, OnApplicationShutdo
     this.timer = setInterval(() => { service.purgeExpired().catch(() => {}); }, 60 * 60_000);
   }
 
-  onApplicationShutdown(): void { if (this.timer) clearInterval(this.timer); }
+  onApplicationShutdown(): void {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    this.removeServiceEnd?.();
+    this.removeServiceEnd = null;
+  }
 }
 
 /** Turns an AuthError into the right HTTP answer (everything else keeps Nest's default handling). */

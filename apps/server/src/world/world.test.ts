@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { people, hasSlot, isHelper, parseSavedWorld, roster, serializeWorld, sim, setSeed, type Employee } from '@office/shared';
+import { objects, people, hasSlot, isHelper, parseSavedWorld, roster, serializeWorld, sim, setSeed, type Employee } from '@office/shared';
 import { World, readWorldOptions, type WorldOptions } from './world';
+import type { ItemImpact } from '../physics/item-physics';
 
 const base: WorldOptions = { tickRate: 20, slotCount: 40, speed: 1, paused: false, seed: 1 };
 const employee = (userId: string, department = 'UI/UX'): Employee => ({ userId, firstName: userId, lastName: 'Employee', department, intern: false, shift: null, character: null, desk: null });
@@ -20,14 +21,17 @@ describe('readWorldOptions', () => {
     const o = readWorldOptions({ TICK_RATE: '500', SLOT_COUNT: '12', SIM_SPEED: '100', SIM_PAUSED: 'true', WORLD_SEED: '7' });
     expect(o).toEqual({ tickRate: 60, slotCount: 12, speed: 8, paused: true, seed: 7, physics: true });
     expect(readWorldOptions({ TICK_RATE: '1' }).tickRate).toBe(10); // a slower world would let one step of a runner be long enough to cheat with
-    expect(readWorldOptions({ TICK_RATE: 'abc', SIM_SPEED: '-3', WORLD_SEED: 'x' })).toEqual({ tickRate: 20, slotCount: 40, speed: 0.25, paused: false, seed: undefined, physics: true });
+    expect(readWorldOptions({ SLOT_COUNT: '7.9' }).slotCount).toBe(7);
+    expect(readWorldOptions({ SLOT_COUNT: '-3' }).slotCount).toBe(0);
+    expect(readWorldOptions({ SLOT_COUNT: 'abc', SIM_SPEED: '-3', WORLD_SEED: 'x' })).toEqual({ tickRate: 20, slotCount: 40, speed: 0.25, paused: false, seed: undefined, physics: true });
   });
 });
 
 describe('World', () => {
-  it('builds only roster employees and never more than the roster or compatible desks', () => {
-    const w = new World({ ...base, slotCount: 12 }); w.init();
+  it('builds every authoritative roster employee, bounded by compatible desks', () => {
+    const w = new World({ ...base, slotCount: 5 }); w.init();
     expect(w.status()).toMatchObject({ staff: 12, desks: 80, tick: 0 });
+    expect(people.filter(hasSlot).every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
     roster.list = [...rosterFor(74), ...Array.from({ length: 6 }, (_, i) => employee(`hr-${i + 1}`, 'Human Resources'))];
     const many = new World({ ...base, slotCount: 500 }); many.init();
     expect(many.status().staff).toBe(80);
@@ -137,6 +141,28 @@ describe('the tick loop', () => {
     vi.advanceTimersByTime(1000);
     expect(w.status().tick).toBe(20);
     w.stop();
+  });
+});
+
+describe('item-impact routing', () => {
+  it('rejects stale or malformed impacts and isolates listener failures', () => {
+    const w = new World(base); w.init();
+    const person = people[0];
+    const object = objects.all().find(o => !o.removed)!;
+    const seen: ItemImpact[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    w.onItemImpact(() => { throw new Error('listener failure'); });
+    w.onItemImpact(impact => seen.push(impact));
+    const valid = { object, personId: person.id, normal: { x: 1, z: 0 }, relativeSpeed: 4 } satisfies ItemImpact;
+    (w as unknown as { dispatchItemImpact: (impact: ItemImpact) => void }).dispatchItemImpact(valid);
+    (w as unknown as { dispatchItemImpact: (impact: ItemImpact) => void }).dispatchItemImpact({ ...valid, normal: { x: NaN, z: 0 } });
+    (w as unknown as { dispatchItemImpact: (impact: ItemImpact) => void }).dispatchItemImpact({ ...valid, personId: 999999 });
+    object.removed = true;
+    (w as unknown as { dispatchItemImpact: (impact: ItemImpact) => void }).dispatchItemImpact(valid);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toBe(valid);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 

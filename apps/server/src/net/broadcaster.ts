@@ -1,5 +1,5 @@
 import {
-  NONE, encode, live, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectPose, people, personInfo, personSnap, sim,
+  NONE, dynamicObjectDefinitions, encode, live, isDriven, layoutCheck, log, meetingSnap, meetings, movedObjectPoses, objectDefinition, objectPose, people, personInfo, personSnap, sim,
   type WorldObject,
   type GameEvent, type MoveSnap, type Person, type PersonSnap,
 } from '@office/shared';
@@ -7,11 +7,12 @@ import {
 // Builds the messages the server sends. It knows the simulation and the protocol, not Socket.IO, so it can be tested alone.
 
 const same = (a: PersonSnap, b: PersonSnap): boolean => {
+  if (JSON.stringify(a.inventory) !== JSON.stringify(b.inventory)) return false;
   if (a.x !== b.x || a.z !== b.z || a.face !== b.face || a.walkPhase !== b.walkPhase) return false;
   if (a.state !== b.state || a.shown !== b.shown || a.absent !== b.absent || a.toilet !== b.toilet || a.kind !== b.kind || a.anim !== b.anim || a.cat !== b.cat || a.spot !== b.spot) return false;
   if (a.partner !== b.partner || a.chatWith !== b.chatWith || a.meeting !== b.meeting || a.props !== b.props || a.arrivedAt !== b.arrivedAt || a.arriveAt !== b.arriveAt || a.leaveAt !== b.leaveAt || a.coffees !== b.coffees) return false;
   if (JSON.stringify(a.mechanics) !== JSON.stringify(b.mechanics)) return false;
-  return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z && a.oneOff?.face === b.oneOff?.face;
+  return (a.oneOff?.place ?? '') === (b.oneOff?.place ?? '') && a.oneOff?.x === b.oneOff?.x && a.oneOff?.z === b.oneOff?.z && a.oneOff?.face === b.oneOff?.face && a.oneOff?.hipY === b.oneOff?.hipY;
 };
 
 /** Did nothing about this person change except where they are and which way they face (and their stride)? */
@@ -47,10 +48,10 @@ export class Broadcaster {
 
   /** Everything a new client needs: the clock, every person, the meetings. (Does not touch the change tracking: other clients have not seen this.) */
   welcome(tick: number, you: number = NONE): Uint8Array {
-    const list = people.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings) }));
+    const list = people.map(p => ({ info: personInfo(p), snap: personSnap(p, meetings, p.id === you) }));
     return encode({
       type: 'welcome', tick, tickRate: this.opts.tickRate, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused, live: live.mode === 'live', you,
-      layout: layoutCheck(), people: list, meetings: meetings.map(meetingSnap), objects: movedObjectPoses(),
+      layout: layoutCheck(), people: list, meetings: meetings.map(meetingSnap), objects: movedObjectPoses(), objectDefinitions: dynamicObjectDefinitions(),
     });
   }
 
@@ -104,9 +105,18 @@ export class Broadcaster {
     return encode({ type: 'person', info: personInfo(p), snap });
   }
 
+  /** Send one owner's current inventory without exposing its contents to other viewers. */
+  ownerUpdate(p: Person, tick: number): Uint8Array {
+    return encode({
+      type: 'snapshot', tick, simTime: sim.t, day: sim.day, speed: sim.speed, paused: sim.paused,
+      live: live.mode === 'live', full: false,
+      people: [personSnap(p, meetings, true)], meetings: meetings.map(meetingSnap),
+    });
+  }
+
   /** An object was moved, picked up or put down. */
-  objectMoved(o: WorldObject): Uint8Array {
-    return encode({ type: 'object', pose: objectPose(o) });
+  objectMoved(o: WorldObject, definition = false): Uint8Array {
+    return encode({ type: 'object', pose: objectPose(o), ...(definition ? { definition: objectDefinition(o) } : {}) });
   }
 
   left(id: number): Uint8Array {

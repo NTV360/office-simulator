@@ -9,7 +9,7 @@ import type { WorldObject } from './objects';
 
 /** The rectangle this item blocks now, in plan pixels, or null (it does not block, or somebody is carrying it). */
 export function footprintOf(o: WorldObject): ObstacleRect | null {
-  if (o.carriedBy !== null) return null;
+  if (o.removed || o.carriedBy !== null) return null;
   const foot = shapeOf(o).foot;
   if (!foot) return null;
   const [hw, hd] = foot, [cx, cy] = toPx(o), c = Math.abs(Math.cos(o.rot)), s = Math.abs(Math.sin(o.rot));

@@ -4,7 +4,7 @@ import { interactables, type Spot } from '../sim/interactables';
 import { Vec3 } from '../vec3';
 import { refreshFootprint } from '../world/footprint';
 import { setFixedTops, type FixedTop } from '../world/placement';
-import { addObject, objects, type ObjectRecord } from '../world/objects';
+import { addObject, markLayoutObjects, objects, type ObjectRecord } from '../world/objects';
 
 // The office as data: every spot (desk, chair, counter, game...) in the order it was created, and the obstacle
 // rectangles the nav grid avoids. The server loads this instead of running the client's furniture code.
@@ -69,6 +69,7 @@ export function loadLayout(data: LayoutData): void {
   }
   objects.clear();
   for (const rec of data.objects ?? []) addObject({ ...rec });
+  markLayoutObjects();
   setFixedTops(data.tops ?? []);
   initGrid(data.obstacles);
   for (const o of objects.all()) refreshFootprint(o); // (items that block walking: tables, sofas, cabinets)

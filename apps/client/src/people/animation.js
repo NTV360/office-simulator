@@ -9,12 +9,18 @@ import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 const JOINTS = ['hipY', 'seat', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
-const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
+const HOLDING = new Set(['walk', 'run', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
   const posture = p.mechanics?.posture;
+  // A held character is attached to another player's hands; show the carried
+  // ragdoll pose instead of an ordinary walking/standing animation.
+  if (p.mechanics?.heldBy) return 'ragdoll';
+  if (p.mechanics?.holdTarget) return 'hold-character';
   if (posture === 'prone') return 'prone';
   if (posture === 'ragdoll') return 'ragdoll';
   if (posture === 'recovering') return 'recovering';
+  const attack = p.mechanics?.attack;
+  if (attack && (attack.phase === 'charging' || attack.phase === 'active')) return `attack-${attack.kind}`;
   if (isLocalPlayer(p)) return player.sitting || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (player.moving ? 'walk' : 'stand'));
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (p.moving ? 'walk' : 'stand')); // a human somewhere else (online)
   if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
@@ -49,6 +55,19 @@ function targetPose(p, k, T) {
   const breathe = Math.sin(T * 1.6) * .012;
   const sit = () => { o.seat = 1; o.hipY = p.task?.spot?.hipY ?? .53; const hi = o.hipY > .65; o.lHip = o.rHip = hi ? -1.2 : -1.5; o.lKnee = o.rKnee = hi ? .95 : 1.45; o.lShX = o.rShX = -.45; o.lEl = o.rEl = -.75; };
   switch (k) {
+    case 'attack-punch':
+      o.lShX = o.rShX = -.15; o.lEl = o.rEl = -.35;
+      if (p.mechanics?.attack?.side === 'left') o.lShX = -1.55; else o.rShX = -1.55;
+      o.lean = .1;
+      break;
+    case 'attack-kick':
+      o.lShX = o.rShX = -.1; o.lEl = o.rEl = -.35;
+      if (p.mechanics?.attack?.side === 'left') { o.lHip = -1.0; o.lKnee = .25; } else { o.rHip = -1.0; o.rKnee = .25; }
+      o.lean = -.12;
+      break;
+    case 'attack-bash':
+      o.lShX = o.rShX = -1.0; o.lEl = o.rEl = -.45; o.lean = .15;
+      break;
     case 'walk': {
       const s = Math.sin(p.walkPhase), c = Math.cos(p.walkPhase);
       o.lHip = -.5 * s; o.rHip = .5 * s;
@@ -74,6 +93,12 @@ function targetPose(p, k, T) {
       o.lShX = -.65; o.rShX = .35; o.lEl = -.8; o.rEl = .4; o.headY = .35;
       break;
     }
+    case 'hold-character':
+      // Keep both hands forward around the attached character rather than using
+      // the ordinary idle/walk arms while the authoritative hold is active.
+      o.lShX = o.rShX = -1.05; o.lShZ = .18; o.rShZ = -.18;
+      o.lEl = o.rEl = -.55; o.lean = .08;
+      break;
     case 'recovering': {
       o.hipY = .68; o.lean = .35; o.lHip = o.rHip = -.55; o.lKnee = o.rKnee = .65;
       o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.7;
@@ -95,6 +120,8 @@ function targetPose(p, k, T) {
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;
     case 'listen': sit(); o.lean = -.03; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -1.0; o.headX = Math.sin(T * 2.1) * .04; break;
     case 'listenSit': sit(); o.lean = -.02; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; break;
+    case 'sit': sit(); o.lean = -.04; o.lShX = o.rShX = -.45; o.lEl = o.rEl = -.85; break;
+    case 'sitCrossed': sit(); o.lean = -.08; o.lShX = o.rShX = -.3; o.lEl = o.rEl = -.65; o.lKnee = o.rKnee = -.35; break;
     case 'talkSit': sit(); o.lean = .08; o.lShX = -.5; o.lEl = -.9; o.rShX = -.75 + Math.sin(T * 3.1) * .25; o.rEl = -1.1 + Math.sin(T * 4.3) * .3; o.rShZ = -.2; o.headX = Math.sin(T * 5) * .05; break;
     case 'relax': sit(); o.lean = -.18; o.lShX = o.rShX = -.25; o.lEl = o.rEl = -.6; o.headY = Math.sin(T * .3) * .5; o.headX = -.05; break;
     case 'phone': sit(); o.lean = .02; o.rShX = -.45; o.rShZ = .55; o.rEl = -2.55; o.lShX = -.4 + Math.sin(T * 2.2) * .15; o.lEl = -1.0; o.headY = Math.sin(T * .5) * .3; o.headX = -.05 + Math.sin(T * 4) * .03; break;
@@ -141,6 +168,10 @@ function targetPose(p, k, T) {
   else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && !isLocalPlayer(p)) look = LOUNGE_TV_POS;
   else if (p.state === 'doing' && (p.task?.kind === 'tv' || (p.task?.kind === 'lunch' && p.task.spot?.kind === 'dining'))) look = DINING_TV_POS; // watching the dining TV
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
+  if (isLocalPlayer(p) && Number.isFinite(p._lookYaw)) {
+    o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, p._lookYaw)));
+    if (Number.isFinite(p._lookPitch)) o.headX = Math.max(-.65, Math.min(.65, -p._lookPitch));
+  }
   return o;
 }
 // Arms that point at a place: both hands go to it (the rig's arms are one piece, so the shoulder takes the aim and the elbow only bends

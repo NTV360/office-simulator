@@ -8,6 +8,8 @@ import { ENTRY } from './spots';
 import { endTask, putBucketBack } from './tasks';
 import { releaseCarried } from '../world/objects';
 import { defaultCharacterMechanics } from './character-state';
+import { releaseCharacterPerson } from './character-hold-actions';
+import { createInventory } from './inventory';
 import type { Person } from './types';
 
 // A human taking over a person, handing them back, and a guest (a human with no desk). See docs/PHASE-3-BREAKDOWN.md, step 3.
@@ -46,6 +48,7 @@ export function takeControl(p: Person): void {
  */
 export function handBack(p: Person): void {
   if (p.controller === 'ai') return;
+  releaseCharacterPerson(p.id);
   releaseCarried(p.id); // what they carried goes back where it started
   if (!p.slot) { removeGuest(p); return; } // a guest has no desk to go back to: they are simply gone
   endTask(p); // a seat the human was in is freed
@@ -53,6 +56,20 @@ export function handBack(p: Person): void {
   p.controller = 'ai';
   p.state = 'idle';
   p.task = null; p.path = null; p.pi = 0; p.queue = []; p.until = 0;
+  // A task callback only cleans presentation props; reset transient player mechanics before AI resumes.
+  p.mechanics.posture = 'standing';
+  p.mechanics.crouchLevel = 0;
+  p.mechanics.seatMode = 'none';
+  p.mechanics.seatId = null;
+  p.mechanics.locomotion = 'grid';
+  p.mechanics.grounded = true;
+  p.mechanics.verticalVelocity = 0;
+  p.mechanics.jumpUntil = 0;
+  p.mechanics.jumpHeld = false;
+  p.mechanics.proneHeld = false;
+  p.mechanics.knockbackUntil = 0;
+  p.mechanics.attack = null;
+  p.mechanics.struggle = 0;
   p.chatWith = null;
   p.arrivedAt = p.arrivedAt ?? sim.t;
   p.shown = true;
@@ -74,7 +91,7 @@ export function makeGuest(accountId: number, name: string, spec?: unknown): Pers
     state: 'controlled', shown: true, props: newProps(), task: null, path: null, pi: 0, until: 0, queue: [],
     walkPhase: 0, animT: 0, pose: {}, arriveAt: sim.t, leaveAt: 24 * 60, lunchAt: 0, hadLunch: true, arrivedAt: sim.t, coffees: 0,
     chatWith: null, meeting: null, screenKind: 'code', screenVariant: 0,
-    mechanics: defaultCharacterMechanics(),
+    mechanics: defaultCharacterMechanics(), inventory: createInventory(),
   };
   people.push(guest);
   simEvents.emit('personAdded', guest);
@@ -83,6 +100,7 @@ export function makeGuest(accountId: number, name: string, spec?: unknown): Pers
 
 /** A guest disconnects and is gone. */
 export function removeGuest(p: Person): void {
+  releaseCharacterPerson(p.id);
   releaseCarried(p.id);
   endTask(p);
   leaveMeeting(p);

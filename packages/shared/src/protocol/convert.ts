@@ -1,9 +1,9 @@
 import { PROP_KEYS } from '../sim/props';
 import { interactables } from '../sim/interactables';
-import { movedObjects, objects, resetAllObjects, setObjectPose, type WorldObject } from '../world/objects';
+import { addObject, detachObjectLinks, isAtHome, objects, resetAllObjects, restoreObjectLinks, setObjectPose, type WorldObject } from '../world/objects';
 import type { Meeting, Person } from '../sim/types';
 import type { PersonMechanicsSnap } from './messages';
-import { NONE, ONE_OFF_SPOT, PHOTO_URL, type LayoutCheck, type MeetingSnap, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
+import { NONE, ONE_OFF_SPOT, PHOTO_URL, type LayoutCheck, type MeetingSnap, type ObjectDefinition, type ObjectPose, type PersonInfo, type PersonSnap } from './messages';
 
 // Turning simulation objects into protocol records (server side).
 
@@ -32,17 +32,63 @@ export function layoutCheck(): LayoutCheck {
 }
 
 /** Where an object is now, as the protocol says it. */
-export const objectPose = (o: WorldObject): ObjectPose => ({ index: o.index, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] : null, carriedBy: o.carriedBy ?? NONE, helpers: [...o.helpers] });
+export const objectPose = (o: WorldObject): ObjectPose => ({ index: o.index, x: o.x, z: o.z, rot: o.rot, y: o.y, q: o.q ? [...o.q] : null, carriedBy: o.carriedBy ?? NONE, helpers: [...o.helpers], ...(o.removed ? { removed: true } : {}) });
 
-/** The objects that are not at home: what a new page is told. */
-export const movedObjectPoses = (): ObjectPose[] => movedObjects().map(objectPose);
+/** The objects that are not at home, including tombstones for consumed objects. */
+export const movedObjectPoses = (): ObjectPose[] => objects.all().filter(o => o.removed || !isAtHome(o)).map(objectPose);
+
+/** The catalogue and pose needed to recreate an object appended after the initial layout. */
+export function objectDefinition(o: WorldObject): ObjectDefinition {
+  return {
+    index: o.index,
+    type: o.type,
+    variant: o.variant,
+    station: o.station,
+    spot: o.spot,
+    ...(o.spots?.length ? { spots: [...o.spots] } : {}),
+    ...(o.dims?.length ? { dims: [...o.dims] } : {}),
+    pose: objectPose(o),
+  };
+}
+
+/** Runtime-created objects, excluded from the immutable layout fingerprint. */
+export const dynamicObjectDefinitions = (): ObjectDefinition[] => {
+  const lockIsCurrent = locked !== null && locked.spots === interactables.all().length && locked.objects === objects.count();
+  const first = lockIsCurrent ? locked!.objects : objects.count();
+  return objects.all().filter(o => o.index >= first).map(objectDefinition);
+};
+
+/** Add a wire-created object once, checking that append order cannot be remapped. */
+export function materializeObject(d: ObjectDefinition): WorldObject | null {
+  if (d.index < 0 || !Number.isInteger(d.index) || d.index !== d.pose.index) return null;
+  if (![d.pose.x, d.pose.z, d.pose.rot, d.pose.y].every(Number.isFinite) || (d.pose.q && !d.pose.q.every(Number.isFinite))) return null;
+  const existing = objects.at(d.index);
+  if (existing) {
+    const sameList = (a: readonly string[] | undefined, b: readonly string[] | undefined) => JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+    const sameDims = (a: readonly number[] | undefined, b: readonly number[] | undefined) => JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+    if (existing.type !== d.type || existing.variant !== d.variant || existing.station !== d.station || existing.spot !== d.spot
+      || !sameList(existing.spots, d.spots) || !sameDims(existing.dims, d.dims)) return null;
+    return applyObjectPose(d.pose);
+  }
+  if (d.index !== objects.count() || !d.type || !Number.isInteger(d.variant) || d.variant < 0
+    || (d.dims !== undefined && (!d.dims.every(Number.isFinite) || d.dims.length > 8))) return null;
+  try {
+    const o = addObject({ type: d.type, variant: d.variant, station: d.station, spot: d.spot, spots: d.spots, dims: d.dims, x: d.pose.x, z: d.pose.z, rot: d.pose.rot, y: d.pose.y });
+    if (o.index !== d.index) return null;
+    return applyObjectPose(d.pose);
+  } catch { return null; }
+}
 
 /** Put one object where the server says (an object we do not know is ignored). Returns the object, or null. */
 export function applyObjectPose(p: ObjectPose): WorldObject | null {
   const o = objects.at(p.index);
   if (!o || ![p.x, p.z, p.rot, p.y].every(Number.isFinite) || (p.q && !p.q.every(Number.isFinite))) return null;
-  o.carriedBy = p.carriedBy === NONE ? null : p.carriedBy;
-  o.helpers = o.carriedBy === null ? [] : (p.helpers ?? []).filter(h => h !== NONE);
+  const wasRemoved = o.removed;
+  o.removed = p.removed === true;
+  if (o.removed) detachObjectLinks(o);
+  else if (wasRemoved) restoreObjectLinks(o);
+  o.carriedBy = o.removed ? null : (p.carriedBy === NONE ? null : p.carriedBy);
+  o.helpers = o.removed || o.carriedBy === null ? [] : (p.helpers ?? []).filter(h => h !== NONE);
   setObjectPose(o, p.x, p.z, p.rot, p.y, p.q ? [...p.q] : null);
   return o;
 }
@@ -71,22 +117,26 @@ function mechanicsSnap(p: Person): PersonMechanicsSnap | undefined {
   const full = m.health.head === 40 && m.health.body === 80 && m.health.leftArm === 35 && m.health.rightArm === 35 && m.health.leftLeg === 45 && m.health.rightLeg === 45;
   if (m.posture === 'standing' && m.crouchLevel === 0 && m.seatMode === 'none' && m.seatId === null && m.locomotion === 'grid'
     && m.grounded && m.verticalVelocity === 0 && m.jumpUntil === 0 && m.knockbackUntil === 0 && m.attack === null && m.dominantHand === 'right'
-    && m.struggle === 0 && full && m.holdTarget === null && m.heldBy === null && m.inventoryRevision === 0) return undefined;
+    && m.struggle === 0 && full && m.holdTarget === null && m.heldBy === null && (m.holdAz ?? 0) === 0 && (m.holdLift ?? 1) === 1 && m.inventoryRevision === 0) return undefined;
   return {
     posture: m.posture, crouchLevel: m.crouchLevel, seatMode: m.seatMode, seatId: m.seatId,
     locomotion: m.locomotion, grounded: m.grounded, verticalVelocity: m.verticalVelocity, jumpUntil: m.jumpUntil, knockbackUntil: m.knockbackUntil,
     attack: m.attack ? { ...m.attack } : null, dominantHand: m.dominantHand, struggle: m.struggle, health: { ...m.health },
-    holdTarget: m.holdTarget, heldBy: m.heldBy, inventoryRevision: m.inventoryRevision,
+    holdTarget: m.holdTarget, heldBy: m.heldBy, holdAz: m.holdAz ?? 0, holdLift: m.holdLift ?? 1, inventoryRevision: m.inventoryRevision,
   };
 }
 
-export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap {
+export function personSnap(p: Person, meetings: readonly Meeting[], includeInventory = false): PersonSnap {
   const t = p.task;
   let spot = 0, oneOff: PersonSnap['oneOff'];
   if (t) {
     const i = interactables.indexOf(t.spot);
     if (i >= 0) spot = i + 1;
-    else { spot = ONE_OFF_SPOT; oneOff = { x: t.spot.pos.x, z: t.spot.pos.z, face: t.spot.face, place: t.spot.place }; }
+    else {
+      spot = ONE_OFF_SPOT;
+      const hipY = (t.spot as { hipY?: number }).hipY;
+      oneOff = { x: t.spot.pos.x, z: t.spot.pos.z, face: t.spot.face, place: t.spot.place, ...(Number.isFinite(hipY) ? { hipY } : {}) };
+    }
   }
   const meeting = t?.meeting ?? p.meeting;
   const snap: PersonSnap = {
@@ -99,5 +149,6 @@ export function personSnap(p: Person, meetings: readonly Meeting[]): PersonSnap 
     mechanics: mechanicsSnap(p),
   };
   if (oneOff) snap.oneOff = oneOff;
+  if (includeInventory) snap.inventory = { revision: p.mechanics.inventoryRevision, items: p.inventory.items.map(item => ({ ...item })), hotbar: [...p.inventory.hotbar] };
   return snap;
 }

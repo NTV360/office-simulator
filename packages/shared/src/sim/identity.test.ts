@@ -10,6 +10,7 @@ import { allocatePersonId, meetings, people, sim } from './state';
 import { stepSim } from './step';
 import { buildTestLayout, removeHelper } from './testing';
 import type { Person } from './types';
+import { createInventory } from './inventory';
 
 // Phase 3, step 0: who a person is, how they are told apart, and what the save remembers about them.
 
@@ -27,7 +28,7 @@ const guest = (account: number): Person => {
       posture: 'standing', crouchLevel: 0, seatMode: 'none', seatId: null, locomotion: 'grid', grounded: true,
       verticalVelocity: 0, jumpUntil: 0, jumpHeld: false, proneHeld: false, knockbackUntil: 0, attack: null, dominantHand: 'right', struggle: 0,
       health: { head: 40, body: 80, leftArm: 35, rightArm: 35, leftLeg: 45, rightLeg: 45 }, holdTarget: null, heldBy: null, inventoryRevision: 0,
-    },
+    }, inventory: createInventory(),
   } as Person;
   people.push(g);
   return g;

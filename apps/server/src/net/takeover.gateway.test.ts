@@ -57,13 +57,13 @@ describe('a player with a desk', () => {
     await playerWithDesk('dana', 'desk:3');
     const watcher = client(); await watcher.ready; await enter(base, watcher, 'watch1');
     const w0 = await welcomeOf(watcher);
-    const before = w0.people.find(p => p.info.name === 'Dana Employee')!;
+    const before = w0.people.find(p => p.info.name === 'dana')!;
     expect(before.info.controller).toBe('ai'); // an NPC until she logs in: her desk person
     const dana = client(); await dana.ready; await enter(base, dana, 'dana');
     const w = await welcomeOf(dana);
     expect(w.you).toBe(before.info.id);
     const me = w.people.find(p => p.info.id === w.you)!;
-    expect(me.info).toMatchObject({ name: 'Dana Employee', controller: 'account' });
+    expect(me.info).toMatchObject({ name: 'dana', controller: 'account' });
     // The watcher welcome predates the login handshake; the AI can walk during that interval.
     // Keep this below a real teleport while allowing normal movement under a loaded suite.
     expect(Math.hypot(me.snap.x - before.snap.x, me.snap.z - before.snap.z)).toBeLessThan(1);
@@ -151,7 +151,7 @@ describe('a player with no desk yet', () => {
     const again = client(); await again.ready; hello(again, await ticketFor(base, cookie));
     const w = await welcomeOf(again);
     expect(w.you).not.toBe(guestId);
-    expect(w.people.find(p => p.info.id === w.you)!.info).toMatchObject({ name: 'Ivy Employee', controller: 'account' });
+    expect(w.people.find(p => p.info.id === w.you)!.info).toMatchObject({ name: 'ivy', controller: 'account' });
     expect(w.people.some(p => p.info.id === guestId)).toBe(false); // the guest is gone
     again.socket.close();
   });
@@ -205,7 +205,7 @@ describe('the admin endpoints', () => {
     const slots = (await admin('GET', '/api/admin/slots')).body as Array<{ spot: string; status: string; account: { username: string } | null; person: string }>;
     expect(slots).toHaveLength(40); // one per person; the other 30 desks of the real office are empty
     expect(slots.filter(s => s.status === 'reserved')).toHaveLength(0); // no synthetic Hazel in a roster-only world
-    expect(slots.find(s => s.spot === deskOf.get('dana'))).toMatchObject({ status: 'claimed', account: { username: 'dana' }, person: 'Dana Employee' });
+    expect(slots.find(s => s.spot === deskOf.get('dana'))).toMatchObject({ status: 'claimed', account: { username: 'dana' }, person: 'dana' });
     expect(slots.some(s => s.status === 'unclaimed')).toBe(true);
   });
 

@@ -1,6 +1,6 @@
 # Serves the built frontend and forwards API and realtime traffic to the server container.
 # Plain HTTP on port 80 inside the container (the compose file publishes it on WEB_PORT).
-# HTTPS for other computers on the network is added in a later phase (see docs/MULTIPLAYER-PLAN.md, 13.3).
+# HTTPS for LAN clients is provided by the separate `lan` Compose profile.
 {
 	admin off
 	auto_https off

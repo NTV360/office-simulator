@@ -5,3 +5,12 @@ tests/browser/out/
 .env.*
 !.env.example
 backups/
+# Local analysis and verification output
+failure-snippet.txt
+focused-suite-output.txt
+full-test-latest.txt
+full-test-output.txt
+vitest-results.json
+graphify-out/
+tests/browser/golden-local/
+tests/fixtures/

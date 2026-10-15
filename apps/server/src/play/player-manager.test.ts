@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { HAZEL_NAME, drawCount, initDay, mkSpot, interactables, people, roster, setSeed, sim, simEvents, stepSim, buildTestLayout, type Employee, type Person } from '@office/shared';
+import { HAZEL_NAME, addObject, carriedBy, createInventory, drawCount, initDay, mkSpot, interactables, objects, people, placeItem, roster, setSeed, sim, simEvents, stepSim, buildTestLayout, type Employee, type Person } from '@office/shared';
 import { MemoryAccountStore, type Account } from '../auth/account-store';
-import { PlayError, PlayerManager, type Timers } from './player-manager';
+import { MEDICAL_TARGET_REACH, PlayError, PlayerManager, type Timers } from './player-manager';
+import type { ItemImpact } from '../physics/item-physics';
 
 // Who plays which person: logins, the grace period, and an admin giving and taking desks, on the shared test office.
 
@@ -54,6 +55,221 @@ afterEach(() => {
   roster.list = null;
   roster.status = 'unavailable';
   simEvents.clear();
+});
+
+describe('authoritative item impacts', () => {
+  it('damages and knocks back a controlled target from a fast item contact', async () => {
+    const a = await account('target');
+    const object = addObject({ type: 'chair-office', x: 0, z: 0, rot: 0, y: 0, variant: 0, station: null, spot: null });
+    const target = await manager.attach(a);
+    const contact: ItemImpact = {
+      object,
+      personId: target.id,
+      normal: { x: 0, z: 1 },
+      relativeSpeed: 10,
+    };
+    const before = target.mechanics.health.body;
+    expect(manager.applyItemImpact(contact, 100)).toBe(true);
+    expect(target.mechanics.health.body).toBeLessThan(before);
+    expect(target.mechanics.locomotion).toBe('ragdoll');
+  });
+
+  it('ignores a slow/resting item contact', async () => {
+    const a = await account('target');
+    const object = addObject({ type: 'mug', x: 0, z: 0, rot: 0, y: 0, variant: 0, station: null, spot: null });
+    const target = await manager.attach(a);
+    const before = target.mechanics.health.body;
+    expect(manager.applyItemImpact({ object, personId: target.id, normal: { x: 1, z: 0 }, relativeSpeed: .1 }, 100)).toBe(false);
+    expect(target.mechanics.health.body).toBe(before);
+  });
+
+  it('heals the actor, consumes exactly one item, and advances the revision', async () => {
+    const a = await account('medic');
+    const actor = await manager.attach(a);
+    actor.mechanics.health.leftArm = 10;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'leftArm')).toEqual({ ok: true, changed: 15 });
+    expect(actor.mechanics.health.leftArm).toBe(25);
+    expect(actor.inventory.items).toHaveLength(0);
+    expect(actor.mechanics.inventoryRevision).toBe(revision + 1);
+  });
+
+  it('heals another nearby account-controlled person only when they are visible', async () => {
+    const a = await account('medic'), b = await account('patient');
+    const actor = await manager.attach(a), target = await manager.attach(b);
+    actor.pos.x = 0; actor.pos.z = 0;
+    target.pos.x = 0; target.pos.z = .5;
+    target.mechanics.health.body = 50;
+    actor.inventory = placeItem(createInventory(), { id: 'box-1', type: 'first-aid-box', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'box-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: true, changed: 30 });
+    expect(target.mechanics.health.body).toBe(80);
+    expect(actor.inventory.items).toHaveLength(0);
+  });
+
+  it('refuses medical use out of range, for a missing target, or with a stale revision', async () => {
+    const a = await account('medic'), b = await account('patient');
+    const actor = await manager.attach(a), target = await manager.attach(b);
+    actor.pos.x = 0; actor.pos.z = 0;
+    target.pos.x = 0; target.pos.z = MEDICAL_TARGET_REACH + .1;
+    target.mechanics.health.body = 50;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+    const before = target.mechanics.health.body;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', 999999)).toEqual({ ok: false, reason: 'blocked' });
+    expect(manager.inventoryAction(a.id, 'use', revision + 1, 'bandage-1', undefined, undefined, undefined, undefined, 'body')).toEqual({ ok: false, reason: 'blocked' });
+    expect(target.mechanics.health.body).toBe(before);
+    expect(actor.inventory.items).toHaveLength(1);
+    expect(actor.mechanics.inventoryRevision).toBe(revision);
+  });
+
+  it('refuses healing a person who is not controlled by an account', async () => {
+    const a = await account('medic');
+    const actor = await manager.attach(a);
+    const target = people.find(person => person.controller === 'ai')!;
+    target.pos.x = actor.pos.x; target.pos.z = actor.pos.z + .5;
+    target.mechanics.health.body = 50;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
+    expect(target.mechanics.health.body).toBe(50);
+    expect(actor.inventory.items).toHaveLength(1);
+  });
+
+  it('refuses medical use when the actor cannot use their hands', async () => {
+    const a = await account('medic');
+    const target = await manager.attach(a);
+    target.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    target.mechanics.health.leftArm = 0;
+    target.mechanics.health.rightArm = 0;
+    const before = target.mechanics.health.body;
+    const revision = target.mechanics.inventoryRevision;
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body')).toEqual({ ok: false, reason: 'blocked' });
+    expect(target.mechanics.health.body).toBe(before);
+    expect(target.mechanics.inventoryRevision).toBe(revision);
+    expect(target.inventory.items).toHaveLength(1);
+  });
+
+  it('refuses remote treatment of a body-broken patient', async () => {
+    const a = await account('medic'), b = await account('patient');
+    const actor = await manager.attach(a), target = await manager.attach(b);
+    actor.pos.x = 0; actor.pos.z = 0;
+    target.pos.x = 0; target.pos.z = .5;
+    target.mechanics.health.body = 0;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
+    expect(target.mechanics.health.body).toBe(0);
+    expect(actor.inventory.items).toHaveLength(1);
+    expect(actor.mechanics.inventoryRevision).toBe(revision);
+  });
+
+  it('allows a medic to treat a nearby patient whose arms are disabled', async () => {
+    const a = await account('medic'), b = await account('patient');
+    const actor = await manager.attach(a), target = await manager.attach(b);
+    actor.pos.x = 0; actor.pos.z = 0;
+    target.pos.x = 0; target.pos.z = .5;
+    target.mechanics.health.body = 50;
+    target.mechanics.health.leftArm = 0;
+    target.mechanics.health.rightArm = 0;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    const revision = actor.mechanics.inventoryRevision;
+
+    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: true, changed: 15 });
+    expect(target.mechanics.health.body).toBe(65);
+    expect(actor.inventory.items).toHaveLength(0);
+  });
+});
+
+describe('authoritative attacks', () => {
+  it('requires one active attack, charges in real seconds, and damages a nearby target once', async () => {
+    const a = await account('attacker'), b = await account('target');
+    const attacker = await manager.attach(a), target = await manager.attach(b);
+    attacker.pos.x = 0; attacker.pos.z = 0; attacker.face = 0;
+    target.pos.x = 0; target.pos.z = .5;
+    expect(manager.attack(a.id, 'begin', 'punch')).toBe(true);
+    expect(manager.attack(a.id, 'begin', 'kick')).toBe(false);
+    manager.stepAll(.45, 1);
+    expect(manager.attack(a.id, 'release', 'punch')).toBe(true);
+    expect(target.mechanics.health.body).toBeLessThan(80);
+    const damaged = target.mechanics.health.body;
+    manager.stepAll(.05, 2);
+    expect(target.mechanics.health.body).toBe(damaged);
+    manager.stepAll(.95, 3);
+    manager.stepAll(.01, 4);
+    expect(manager.attack(a.id, 'begin', 'kick')).toBe(true);
+  });
+
+  it('rejects a kick using a destroyed selected leg', async () => {
+    const a = await account('attacker');
+    const attacker = await manager.attach(a);
+    attacker.mechanics.health.leftLeg = 0;
+    expect(manager.attack(a.id, 'begin', 'kick', sim.t, 'left')).toBe(false);
+  });
+
+  it('cancels a two-handed bash if an arm fails before release', async () => {
+    const a = await account('attacker'), b = await account('target');
+    const attacker = await manager.attach(a), target = await manager.attach(b);
+    const chair = addObject({ type: 'chair-office', x: attacker.pos.x, z: attacker.pos.z + .4, rot: 0, y: 0, variant: 0, station: null, spot: null });
+    expect(manager.grabObject(a.id, chair.index, 1)).toEqual({ ok: true, changed: 1 });
+    target.pos.x = attacker.pos.x; target.pos.z = attacker.pos.z + .5; attacker.face = 0;
+    const targetBodyBefore = target.mechanics.health.body;
+    sim.t = 10;
+    expect(manager.attack(a.id, 'begin', 'bash', sim.t)).toBe(true);
+    attacker.mechanics.health.leftArm = 0;
+    attacker.mechanics.health.rightArm = 0;
+    sim.t = 10.5;
+    expect(manager.attack(a.id, 'release', 'bash', sim.t)).toBe(false);
+    expect(attacker.mechanics.attack).toBeNull();
+    expect(target.mechanics.health.body).toBe(targetBodyBefore);
+    expect(carriedBy(attacker.id)).toBe(chair);
+  });
+});
+
+describe('held-character struggle', () => {
+  it('releases a held character without applying combat impact', async () => {
+    const holderAccount = await account('holder'), targetAccount = await account('target');
+    const holder = await manager.attach(holderAccount), target = await manager.attach(targetAccount);
+    holder.pos.x = target.pos.x = 0;
+    holder.pos.z = 0; target.pos.z = .5;
+    expect(manager.grabCharacter(holderAccount.id, target.id)?.ok).toBe(true);
+    const before = { x: target.pos.x, z: target.pos.z };
+    expect(manager.throwCharacter(holderAccount.id)?.ok).toBe(true);
+    expect(holder.mechanics.holdTarget).toBeNull();
+    expect(target.mechanics.heldBy).toBeNull();
+    expect(target.pos.z).toBe(before.z);
+    expect(target.mechanics.locomotion).not.toBe('ragdoll');
+  });
+
+  it('fills only while held and releases the target at the server threshold', async () => {
+    const holderAccount = await account('holder'), targetAccount = await account('target');
+    const holder = await manager.attach(holderAccount), target = await manager.attach(targetAccount);
+    holder.pos.x = target.pos.x = 0;
+    holder.pos.z = 0; target.pos.z = .5;
+    const grabbed = manager.grabCharacter(holderAccount.id, target.id);
+    expect(grabbed?.ok).toBe(true);
+
+    expect(manager.setInput(targetAccount.id, { seq: 1, mx: 0, mz: 0, heading: 0, run: false, struggle: true }, 1)).toBe(true);
+    manager.stepAll(1, 1);
+    expect(target.mechanics.struggle).toBeCloseTo(.35);
+    manager.stepAll(1, 2);
+    expect(target.mechanics.struggle).toBeCloseTo(.7);
+    manager.stepAll(1, 3);
+    expect(target.mechanics.heldBy).toBeNull();
+    expect(holder.mechanics.holdTarget).toBeNull();
+    expect(target.mechanics.struggle).toBe(0);
+
+    expect(manager.setInput(targetAccount.id, { seq: 2, mx: 0, mz: 0, heading: 0, run: false }, 4)).toBe(true);
+    manager.stepAll(1, 4);
+    expect(target.mechanics.struggle).toBe(0);
+  });
 });
 
 describe('a login', () => {
@@ -118,10 +334,9 @@ describe('a login', () => {
   it('the database saying "this is your desk" wins when the world did not know (a reset world)', async () => {
     const bob = await account('bob', 'desk:7');
     const p = deskPerson(7);
-    const name = p.name;
     expect(p.owner).toBeUndefined();
     expect(await manager.attach(bob)).toBe(p);
-    expect([p.owner, p.name]).toEqual([bob.id, name]);
+    expect([p.owner, p.name]).toEqual([bob.id, 'bob']);
   });
 
   it('plays as a guest, with a warning, if the desk is not available any more', async () => {
@@ -157,7 +372,7 @@ describe('an admin giving a desk', () => {
     const ana = await account('ana');
     const before = deskPerson(10).name;
     const p = await manager.assignSlot(ana.id, 'desk:10');
-    expect([p.owner, p.name]).toEqual([ana.id, before]);
+    expect([p.owner, p.name]).toEqual([ana.id, 'ana']);
     expect((await store.byId(ana.id))!.slotSpot).toBe('desk:10');
     expect(updated).toContain(p);
   });
@@ -211,7 +426,7 @@ describe('an admin taking a desk back', () => {
     expect((await store.byId(ana.id))!.slotSpot).toBeNull();
     expect(p.controller).toBe('ai');
     expect((await manager.assignSlot(bob.id, 'desk:13')) === p).toBe(true); // the same person, now bob's
-    expect(p.name).toBe('Test21 Employee');
+    expect(p.name).toBe('bob');
   });
 
   it('ends the play of an account that is playing that person right now', async () => {
@@ -293,7 +508,7 @@ describe('giving a desk back', () => {
     await manager.assignSlot(ana.id, 'desk:25');
     const p = deskPerson(25);
     const rosterName = p.name;
-    expect(rosterName).not.toBe('ana');
+    expect(rosterName).toBe('ana');
     const draws = drawCount();
     await manager.releaseSlot(ana.id);
     expect(p.name).not.toBe('ana');
@@ -348,6 +563,21 @@ describe('moving and sitting', () => {
     expect(manager.act(ana.id, 'sit', 11)).toBe(true);
   });
 
+  it('refuses grabbing a seated character without disturbing seat ownership', async () => {
+    const holderAccount = await account('holder'), targetAccount = await account('target');
+    const holder = await manager.attach(holderAccount), target = await manager.attach(targetAccount);
+    const seat = mkSpot('lounge', 450, 500, 0, { sit: true });
+    target.pos.x = seat.pos.x; target.pos.z = seat.pos.z;
+    expect(manager.act(targetAccount.id, 'sit', 100)).toBe(true);
+    holder.pos.x = target.pos.x; holder.pos.z = target.pos.z + .5;
+
+    expect(manager.grabCharacter(holderAccount.id, target.id)).toEqual({ ok: false, reason: 'blocked' });
+    expect(seat.occupant).toBe(target);
+    expect(target.task?.kind).toBe('playerSit');
+    expect(target.mechanics.heldBy).toBeNull();
+    expect(holder.mechanics.holdTarget).toBeNull();
+  });
+
   it('posture inputs are sanitized and applied by the authoritative step', async () => {
     const ana = await account('ana');
     const g = await manager.attach(ana);
@@ -391,7 +621,7 @@ describe('making the world agree with the accounts at start-up', () => {
     expect(deskPerson(16).owner).toBe(b.id);
     expect(deskPerson(17).owner).toBeUndefined();
     expect(r).toEqual({ claimed: 2, released: 1 });
-    expect(deskPerson(15).name).not.toBe('ana');
+    expect(deskPerson(15).name).toBe('ana');
   });
 
   it('is quiet when everything already agrees, and survives an account whose desk has nobody', async () => {

@@ -26,13 +26,14 @@ Open **http://localhost:16769**. Change the port by putting `WEB_PORT=9000` in a
 | `web` | built from `docker/web.Dockerfile` (Caddy) | Serves the built client. Forwards `/api` and `/socket.io` to `server`. The only port published to your PC (16769) |
 | `server` | built from `docker/server.Dockerfile` (Node 22) | Runs as a non-root user. `GET /api/health` reports the server and the database |
 | `db` | `postgres:16-alpine` | Data in the named volume `office-sim_pgdata`. Not published to your PC |
+| `voice` | `livekit/livekit-server:v1.9.2` | Optional `voice` profile; publishes LiveKit HTTP/TCP/UDP ports only when explicitly started |
 
 Start order is enforced by health checks: the database must be healthy before the server starts, and the server before the web container.
 
 ## What the stack does now
 
 - `server` runs the office simulation (the same code as the browser, in `packages/shared`) at 20 ticks a second, restores it from the database at start-up, saves it every 10 seconds and when it stops, and streams it to every browser. `GET /api/world` shows the clock, who is in, tick times and the saving status.
-- The `web` image is built with `VITE_ONLINE=1`, so the page is a **viewer** of the server's office: every browser sees the same people. Open the page with `?offline` to run a private copy instead.
+- The `web` image is built with `VITE_ONLINE=1`, so the page is a **viewer** of the server's office: every browser sees the same people. Open the page with `?offline` to run a private copy instead. Voice is optional: set `VOICE_ENABLED=true`, configure non-default LiveKit credentials and a browser-reachable `LIVEKIT_URL`, then start the explicit profile with `docker compose --profile voice up --build`; use the token flow described in [VOICE.md](VOICE.md).
 - Staff count, clock speed and pause belong to the server. An admin changes them through `/api/admin/*` with the `ADMIN_TOKEN` from `.env` (leave it empty and the admin API does not exist):
 
 ```
@@ -40,7 +41,7 @@ curl -X PUT http://localhost:16769/api/admin/settings -H "Authorization: Bearer 
 curl -X POST http://localhost:16769/api/admin/announce -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"text": "Pizza in the pantry"}'
 ```
 
-- The staff list: put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` and the server imports the company's employee records into its own database (read-only, at start-up and every `EMPLOYEE_IMPORT_MS`; who is clocked in every `ATTENDANCE_MS` while the clock is Live). Leave them empty and the office has made-up staff. `GET /api/admin/employees` lists them; `POST /api/admin/users/<id>/employee` links an account to an employee; `POST /api/admin/import` imports now. See docs/PHASE-6-BREAKDOWN.md, step 4.
+- The staff list: put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` and the server imports the company's employee records into its own database (read-only, at start-up and every `EMPLOYEE_IMPORT_MS`; who is clocked in every `ATTENDANCE_MS` while the clock is Live). Leave them empty and the office has no autonomous imported staff; synthetic employees are limited to explicit tests/local fixtures. `GET /api/admin/employees` lists them; `POST /api/admin/users/<id>/employee` links an account to an employee; `POST /api/admin/import` imports now. See docs/PHASE-6-BREAKDOWN.md, step 4.
 - The page asks you to log in first (accounts are made by an admin, and the first login asks for a new password); the realtime connection needs a one-time ticket from a logged-in session, and a second login of the same account takes over from the first.
 - Desks: a new account is a guest until an admin gives it a desk. With `ADMIN_TOKEN` set, list desks and accounts and give one out like this (a proper admin page comes in a later step):
 
@@ -99,5 +100,5 @@ npm run e2e:employees # its OWN copy again, with a fake employee-records server:
 
 ## Notes for later phases
 
-- Voice and HTTPS for other computers on the network arrive in later phases; today it is plain HTTP on your own PC (where `localhost` already counts as a secure page for browsers).
+- The default stack is plain HTTP on your own PC (where `localhost` already counts as a secure page for browsers). For LAN clients, start the optional `lan` profile with `SITE_ADDRESS` and `VOICE_SITE_ADDRESS`; it publishes Caddy HTTPS on 443 with a persistent internal CA and proxies browser-facing LiveKit WSS. Install the generated root CA on each client, configure DNS/hosts, set `LIVEKIT_NODE_IP`, and open the configured LiveKit RTC TCP/UDP ports. This configuration is not itself LAN verification; record any certificate, firewall, ICE, or browser failures as blocked checks.
 - Moving to EC2 is the same compose file on an Ubuntu machine with a domain name. See [MULTIPLAYER-PLAN.md](MULTIPLAYER-PLAN.md#13-hosting-local-docker-first-ec2-later).

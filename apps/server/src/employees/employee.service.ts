@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdo
 import { allocateDesks, applyAttendance, hasSlot, interactables, live, people, type AttendanceRecord } from '@office/shared';
 import { DbService } from '../db.service';
 import { WorldService } from '../world/world.service';
+import { PlayService } from '../play/play.service';
 import { PgEmployeeStore, type EmployeeStore, type ImportResult } from './employee-store';
 import { syncRoster, type SyncResult } from './roster-sync';
 import { SourceError, SupabaseSource } from './supabase-source';
@@ -45,6 +46,7 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Inject(WorldService) private readonly worlds: WorldService,
+    @Inject(PlayService) private readonly play: PlayService,
   ) {}
 
   /** The store, or a 503 when the server has no database. */
@@ -73,7 +75,9 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
     void this.refreshAttendance().catch(() => {});
     const every = Number(process.env.EMPLOYEE_IMPORT_MS) || DEFAULT_IMPORT_MS, att = Number(process.env.ATTENDANCE_MS) || DEFAULT_ATTENDANCE_MS;
     this.timers.push(setInterval(() => { void this.importNow().catch(() => {}); }, every));
-    this.timers.push(setInterval(() => { if (live.mode === 'live') void this.refreshAttendance().catch(() => {}); }, att));
+    // Keep the latest attendance ready before Live is selected as well. This avoids a mode switch
+    // racing the next poll and briefly showing the previous simulated schedule.
+    this.timers.push(setInterval(() => { void this.refreshAttendance().catch(() => {}); }, att));
   }
 
   onApplicationShutdown(): void { this.timers.forEach(clearInterval); this.timers = []; }
@@ -95,10 +99,12 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
       const store = this.require();
       try {
         const list = await this.source.employees();
-        // An empty successful response is authoritative: it means the roster is currently empty.
+        // A successful source response is authoritative, including an empty roster.
+        // Transport/shape failures are rejected before this point and leave the last roster intact.
         if (list.length === 0) {
           const result = await store.applyImport(list);
           const sync = syncRoster(await this.canonicalRecords(store));
+          await this.play.reconcile();
           const out = { ...result, sync };
           this.status.lastImportAt = new Date().toISOString(); this.status.lastImportOk = true; this.status.lastImportError = null; this.status.lastResult = out;
           return out;
@@ -108,6 +114,7 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
         if (!opts.force && stored >= SHRINK_FLOOR && list.length < stored / 2) throw new SourceError(`the employee records list ${list.length} people where ${stored} are stored; nothing was changed (an admin can import anyway)`);
         const result = await store.applyImport(list);
         const sync = syncRoster(await this.canonicalRecords(store));
+        await this.play.reconcile();
         const out = { ...result, sync };
         this.status.lastImportAt = new Date().toISOString(); this.status.lastImportOk = true; this.status.lastImportError = null; this.status.lastResult = out;
         if (result.added || result.updated || result.removed || result.restored) this.log.log(`employee records imported: ${result.added} new, ${result.updated} changed, ${result.removed} gone, ${result.restored} back; the office: ${sync.added} in, ${sync.removed} out, ${sync.updated} changed, ${sync.replaced} made-up replaced`);
@@ -156,7 +163,9 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
   syncWorld(): Promise<SyncResult> {
     return this.serial(async () => {
       const store = this.require();
-      return syncRoster(await this.canonicalRecords(store));
+      const result = syncRoster(await this.canonicalRecords(store));
+      await this.play.reconcile();
+      return result;
     });
   }
 

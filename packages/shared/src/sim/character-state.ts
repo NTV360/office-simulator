@@ -67,6 +67,10 @@ export interface CharacterMechanicsState {
   health: LimbHealth;
   holdTarget: string | null;
   heldBy: string | null;
+  /** Relative attachment angle (radians) for the direct hold, or zero when absent. */
+  holdAz?: number;
+  /** Relative attachment height (metres) for the direct hold, or one when absent. */
+  holdLift?: number;
   inventoryRevision: number;
 }
 
@@ -77,7 +81,7 @@ export function defaultCharacterMechanics(): CharacterMechanicsState {
     posture: 'standing', crouchLevel: 0, seatMode: 'none', seatId: null,
     locomotion: 'grid', grounded: true, verticalVelocity: 0, jumpUntil: 0, jumpHeld: false, proneHeld: false, knockbackUntil: 0,
     attack: null, dominantHand: 'right', struggle: 0, health: fullHealth(),
-    holdTarget: null, heldBy: null, inventoryRevision: 0,
+    holdTarget: null, heldBy: null, holdAz: 0, holdLift: 1, inventoryRevision: 0,
   };
 }
 
@@ -99,7 +103,8 @@ export function postureSpeedFactor(posture: Posture, crouchLevel: number): numbe
 
 export function canMove(s: CharacterMechanicsState): boolean {
   return (s.posture === 'standing' || s.posture === 'crouching' || s.posture === 'prone')
-    && !legsBroken(s.health) && !bodyBroken(s.health) && s.locomotion !== 'ragdoll';
+    && !legsBroken(s.health) && !bodyBroken(s.health)
+    && s.locomotion !== 'ragdoll' && s.locomotion !== 'knockback';
 }
 
 export function canUseHands(s: CharacterMechanicsState): boolean {
