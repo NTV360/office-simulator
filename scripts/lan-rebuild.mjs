@@ -66,4 +66,4 @@ for (let i = 0; i < 90 && !healthy; i++) {
 const cert = await fetch(`http://127.0.0.1:${settings.LAN_HTTP_PORT}/ca.crt`).then(r => r.text()).catch(() => '');
 console.log(healthy ? 'The server is healthy.' : 'The server did not report healthy within 90 s: check `docker compose logs`.');
 console.log(cert.includes('BEGIN CERTIFICATE') ? `The setup page and certificate are at http://${settings.SITE_ADDRESS}:${settings.LAN_HTTP_PORT}/ (the certificate is unchanged: computers that already installed it keep working).` : 'The certificate download did not answer yet.');
-process.exit(healthy ? 0 : 1);
+process.exitCode = healthy ? 0 : 1; // (not process.exit: on Windows it can trip a harmless Node assertion while the last request closes)
