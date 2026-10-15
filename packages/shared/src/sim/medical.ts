@@ -47,3 +47,24 @@ export function useMedicalItem(
   const health = heal(state.health, limb, amount);
   return { ok: true, health, amount: health[limb] - state.health[limb] };
 }
+
+/** How long, in seconds, the medic must keep applying each item before it heals (the item is used up only when it does). */
+export const MEDICAL_HEAL_SECONDS: Readonly<Record<MedicalItem, number>> = {
+  bandage: 3,
+  'first-aid-box': 5,
+};
+
+/** Seconds of care an item needs, or null when it is not a medical item. */
+export function medicalHealSeconds(item: string): number | null {
+  return item === 'bandage' || item === 'first-aid-box' ? MEDICAL_HEAL_SECONDS[item] : null;
+}
+
+/** The limb that is missing the most health (the first of those, head to legs, when several are equal); null when nothing is hurt. */
+export function mostHurtLimb(health: LimbHealth): Limb | null {
+  let worst: Limb | null = null, most = 0;
+  for (const limb of Object.keys(LIMB_MAX_HP) as Limb[]) {
+    const missing = LIMB_MAX_HP[limb] - health[limb];
+    if (missing > most) { most = missing; worst = limb; }
+  }
+  return worst;
+}

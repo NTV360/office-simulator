@@ -36,6 +36,7 @@
     "e2e:together": "node scripts/e2e-together.mjs",
     "e2e:employees": "node scripts/e2e-employees.mjs",
     "e2e:objects": "node scripts/e2e-objects.mjs",
+    "e2e:medkit": "node scripts/e2e-medkit.mjs",
     "e2e:voice": "node scripts/e2e-voice.mjs",
     "check:lan": "node --env-file=.env scripts/check-lan-config.mjs"
   },

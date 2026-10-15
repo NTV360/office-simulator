@@ -52,6 +52,18 @@ const PREFABS = {
   'apple:0': drawApple,
   'orange:0': drawOrange,
   'puck:0': g => { cyl(g, .07, .05, .05, M.dark, 0, .025, 0, 10); },
+  // the medical things: a white case with a red cross (on its lid and its front), a roll of bandage, a first-aid box
+  'medkit-box:0': g => {
+    box(g, .3, .16, .2, M.white, 0, .08, 0);
+    box(g, .1, .002, .03, M.red, 0, .161, 0, false); box(g, .03, .002, .1, M.red, 0, .161, 0, false); // (on the lid)
+    box(g, .1, .03, .002, M.red, 0, .08, .101, false); box(g, .03, .1, .002, M.red, 0, .08, .101, false); // (on the front)
+    box(g, .08, .03, .02, M.steel, 0, .15, -.11, false); // (the handle)
+  },
+  'bandage:0': g => { cyl(g, .035, .035, .06, M.white, 0, .03, 0, 10, false); box(g, .014, .062, .074, M.red, 0, .03, 0, false); },
+  'first-aid-box:0': g => {
+    box(g, .2, .08, .14, M.white, 0, .04, 0);
+    box(g, .07, .002, .02, M.red, 0, .081, 0, false); box(g, .02, .002, .07, M.red, 0, .081, 0, false);
+  },
   'tv-stand:0': (g, [along]) => drawTvStand(g, Math.min(along * S, 2.1)),
   'whiteboard:0': g => drawWhiteboard(g, 0),
   'whiteboard:1': g => drawWhiteboard(g, 1),
@@ -331,6 +343,14 @@ export function itemAt(raycaster, skip = -1, from = 0) {
 
 /** Where an item is drawn now (smoothed), or undefined. */
 export const shownAt = index => shown.get(index)?.pos;
+/** What is drawn for the kind of object `index` is (for checks): how many instances, which slot, and where that instance sits. */
+export function drawnInfo(index) {
+  const s = slotOf.get(index);
+  if (!s) return null;
+  const m = new THREE.Matrix4(), out = [];
+  for (const p of s.kind.parts) { if (!p.mesh) { out.push(null); continue; } p.mesh.getMatrixAt(s.slot, m); const e = m.elements; out.push({ at: [e[12], e[13], e[14]], scale: Math.hypot(e[0], e[1], e[2]), count: p.mesh.count, inScene: p.mesh.parent === scene }); }
+  return { slot: s.slot, slots: s.kind.slots.length, parts: out };
+}
 
 /** Draw objects made after the start (the stress check adds many), once per registry index. */
 export function addObjectView(o) {

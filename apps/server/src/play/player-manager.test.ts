@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HAZEL_NAME, addObject, carriedBy, createInventory, drawCount, initDay, mkSpot, interactables, objects, people, placeItem, roster, setSeed, sim, simEvents, stepSim, buildTestLayout, type Employee, type Person } from '@office/shared';
 import { MemoryAccountStore, type Account } from '../auth/account-store';
-import { MEDICAL_TARGET_REACH, PlayError, PlayerManager, type Timers } from './player-manager';
+import { MEDICAL_TARGET_REACH, PlayError, PlayerManager, type PlayerNote, type Timers } from './player-manager';
 import type { ItemImpact } from '../physics/item-physics';
 
 // Who plays which person: logins, the grace period, and an admin giving and taking desks, on the shared test office.
@@ -24,6 +24,7 @@ let timers: FakeTimers;
 let kicks: Array<[number, string]>;
 let manager: PlayerManager;
 let updated: Person[];
+let notes: PlayerNote[];
 const deskPerson = (n: number): Person => interactables.of('desk').find(d => d.id === `desk:${n}`)!.owner as Person;
 
 async function account(name: string, slot: string | null = null): Promise<Account> {
@@ -47,7 +48,8 @@ beforeEach(() => {
   roster.status = 'ready';
   setSeed(1); buildTestLayout({ desks: 40 }); initDay();
   store = new MemoryAccountStore(); timers = new FakeTimers(); kicks = []; updated = [];
-  manager = new PlayerManager(store, { graceMs: 30_000, timers, kick: (id, why) => kicks.push([id, why]) });
+  notes = [];
+  manager = new PlayerManager(store, { graceMs: 30_000, timers, kick: (id, why) => kicks.push([id, why]), notify: (_id, note) => notes.push(note) });
   simEvents.on('personUpdated', p => updated.push(p));
 });
 
@@ -83,92 +85,130 @@ describe('authoritative item impacts', () => {
     expect(target.mechanics.health.body).toBe(before);
   });
 
-  it('heals the actor, consumes exactly one item, and advances the revision', async () => {
+  /** Let `seconds` of real time pass, in tenth-of-a-second ticks. */
+  const pass = (seconds: number, from = 0) => { for (let i = 1; i <= Math.round(seconds * 10); i++) manager.stepAll(.1, from + i); };
+
+  it('a bandage heals the actor only after 3 seconds of care, uses up exactly one item and advances the revision', async () => {
     const a = await account('medic');
     const actor = await manager.attach(a);
     actor.mechanics.health.leftArm = 10;
     actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
     const revision = actor.mechanics.inventoryRevision;
 
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'leftArm')).toEqual({ ok: true, changed: 15 });
+    expect(manager.careStart(a.id, 'bandage-1')).toEqual({ ok: true, seconds: 3 });
+    pass(2.5);
+    expect(actor.mechanics.health.leftArm).toBe(10); // (not yet)
+    expect(actor.inventory.items).toHaveLength(1);
+    pass(.6, 25);
     expect(actor.mechanics.health.leftArm).toBe(25);
     expect(actor.inventory.items).toHaveLength(0);
     expect(actor.mechanics.inventoryRevision).toBe(revision + 1);
+    expect(notes.map(n => n.text)).toEqual(['start:3', 'done']);
   });
 
-  it('heals another nearby account-controlled person only when they are visible', async () => {
+  it('a first-aid box takes 5 seconds, heals another nearby account-controlled person, and tells the patient', async () => {
     const a = await account('medic'), b = await account('patient');
     const actor = await manager.attach(a), target = await manager.attach(b);
     actor.pos.x = 0; actor.pos.z = 0;
     target.pos.x = 0; target.pos.z = .5;
     target.mechanics.health.body = 50;
     actor.inventory = placeItem(createInventory(), { id: 'box-1', type: 'first-aid-box', x: 0, y: 0, rotation: 0 });
-    const revision = actor.mechanics.inventoryRevision;
 
-    expect(manager.inventoryAction(a.id, 'use', revision, 'box-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: true, changed: 30 });
+    expect(manager.careStart(a.id, 'box-1', target.id)).toEqual({ ok: true, seconds: 5 });
+    pass(4.8);
+    expect(target.mechanics.health.body).toBe(50);
+    pass(.4, 48);
     expect(target.mechanics.health.body).toBe(80);
     expect(actor.inventory.items).toHaveLength(0);
+    expect(notes.some(n => n.text === 'patient was treated.' || n.text.endsWith('treated you.'))).toBe(true);
   });
 
-  it('refuses medical use out of range, for a missing target, or with a stale revision', async () => {
+  it('letting go ends the care: nothing is healed or used up', async () => {
+    const a = await account('medic');
+    const actor = await manager.attach(a);
+    actor.mechanics.health.leftArm = 10;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    manager.careStart(a.id, 'bandage-1');
+    pass(1.5);
+    manager.careStop(a.id);
+    pass(3, 15);
+    expect(actor.mechanics.health.leftArm).toBe(10);
+    expect(actor.inventory.items).toHaveLength(1);
+    expect(notes.map(n => n.text)).toEqual(['start:3', 'cancel:released']);
+  });
+
+  it('ends when the medic walks away, the patient leaves, or either is hit or knocked down', async () => {
+    const a = await account('medic'), b = await account('patient');
+    const actor = await manager.attach(a), target = await manager.attach(b);
+    const begin = () => {
+      actor.pos.x = 0; actor.pos.z = 0; target.pos.x = 0; target.pos.z = .5;
+      target.mechanics.health = { ...target.mechanics.health, body: 50 }; target.mechanics.posture = 'standing'; target.mechanics.locomotion = 'grid';
+      actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+      notes.length = 0;
+      expect(manager.careStart(a.id, 'bandage-1', target.id)?.ok).toBe(true);
+    };
+    const ends = (why: string) => { pass(.2); expect(notes.map(n => n.text)).toEqual(['start:3', `cancel:${why}`]); expect(actor.inventory.items).toHaveLength(1); expect(target.mechanics.health.body).toBeLessThanOrEqual(50); };
+    begin(); actor.pos.x = 1; ends('moved');
+    begin(); target.pos.z = 2; ends('range');
+    begin(); target.mechanics.health.head -= 5; ends('hit');
+    begin(); actor.mechanics.health.rightLeg -= 5; ends('hit');
+    begin(); target.mechanics.posture = 'ragdoll'; ends('hurt');
+    begin(); actor.mechanics.locomotion = 'knockback'; ends('hurt');
+  });
+
+  it('refuses care out of range, for a missing target, or when already caring', async () => {
     const a = await account('medic'), b = await account('patient');
     const actor = await manager.attach(a), target = await manager.attach(b);
     actor.pos.x = 0; actor.pos.z = 0;
     target.pos.x = 0; target.pos.z = MEDICAL_TARGET_REACH + .1;
     target.mechanics.health.body = 50;
     actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
-    const revision = actor.mechanics.inventoryRevision;
-    const before = target.mechanics.health.body;
 
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', 999999)).toEqual({ ok: false, reason: 'blocked' });
-    expect(manager.inventoryAction(a.id, 'use', revision + 1, 'bandage-1', undefined, undefined, undefined, undefined, 'body')).toEqual({ ok: false, reason: 'blocked' });
-    expect(target.mechanics.health.body).toBe(before);
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: false, reason: 'too-far' });
+    expect(manager.careStart(a.id, 'bandage-1', 999999)).toEqual({ ok: false, reason: 'target' });
+    expect(manager.careStart(a.id, 'not-an-item', target.id)).toEqual({ ok: false, reason: 'not-medical' });
+    target.pos.z = .5;
+    expect(manager.careStart(a.id, 'bandage-1', target.id)?.ok).toBe(true);
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: false, reason: 'busy' });
+    expect(target.mechanics.health.body).toBe(50);
     expect(actor.inventory.items).toHaveLength(1);
-    expect(actor.mechanics.inventoryRevision).toBe(revision);
   });
 
-  it('refuses healing a person who is not controlled by an account', async () => {
+  it('refuses care for a person who is not controlled by an account', async () => {
     const a = await account('medic');
     const actor = await manager.attach(a);
     const target = people.find(person => person.controller === 'ai')!;
     target.pos.x = actor.pos.x; target.pos.z = actor.pos.z + .5;
     target.mechanics.health.body = 50;
     actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
-    const revision = actor.mechanics.inventoryRevision;
 
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: false, reason: 'target' });
     expect(target.mechanics.health.body).toBe(50);
     expect(actor.inventory.items).toHaveLength(1);
   });
 
-  it('refuses medical use when the actor cannot use their hands', async () => {
+  it('refuses care when the actor cannot use their hands', async () => {
     const a = await account('medic');
     const target = await manager.attach(a);
     target.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
     target.mechanics.health.leftArm = 0;
     target.mechanics.health.rightArm = 0;
-    const before = target.mechanics.health.body;
-    const revision = target.mechanics.inventoryRevision;
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body')).toEqual({ ok: false, reason: 'blocked' });
-    expect(target.mechanics.health.body).toBe(before);
-    expect(target.mechanics.inventoryRevision).toBe(revision);
+    expect(manager.careStart(a.id, 'bandage-1')).toEqual({ ok: false, reason: 'hands' });
     expect(target.inventory.items).toHaveLength(1);
   });
 
-  it('refuses remote treatment of a body-broken patient', async () => {
+  it('refuses care for a body-broken or knocked-down patient', async () => {
     const a = await account('medic'), b = await account('patient');
     const actor = await manager.attach(a), target = await manager.attach(b);
     actor.pos.x = 0; actor.pos.z = 0;
     target.pos.x = 0; target.pos.z = .5;
-    target.mechanics.health.body = 0;
     actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
-    const revision = actor.mechanics.inventoryRevision;
-
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: false, reason: 'blocked' });
+    target.mechanics.health.body = 0;
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: false, reason: 'target' });
     expect(target.mechanics.health.body).toBe(0);
+    target.mechanics.health.body = 50; target.mechanics.posture = 'recovering';
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: false, reason: 'down' });
     expect(actor.inventory.items).toHaveLength(1);
-    expect(actor.mechanics.inventoryRevision).toBe(revision);
   });
 
   it('allows a medic to treat a nearby patient whose arms are disabled', async () => {
@@ -180,10 +220,10 @@ describe('authoritative item impacts', () => {
     target.mechanics.health.leftArm = 0;
     target.mechanics.health.rightArm = 0;
     actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
-    const revision = actor.mechanics.inventoryRevision;
 
-    expect(manager.inventoryAction(a.id, 'use', revision, 'bandage-1', undefined, undefined, undefined, undefined, 'body', target.id)).toEqual({ ok: true, changed: 15 });
-    expect(target.mechanics.health.body).toBe(65);
+    expect(manager.careStart(a.id, 'bandage-1', target.id)).toEqual({ ok: true, seconds: 3 });
+    pass(3.2);
+    expect(target.mechanics.health.leftArm).toBe(15); // (both arms were missing 35; the first, left, is healed first)
     expect(actor.inventory.items).toHaveLength(0);
   });
 });

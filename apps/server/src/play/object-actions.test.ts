@@ -436,3 +436,31 @@ describe('when the carrier goes', () => {
     expect(isSeated(person)).toBe(false);
   });
 });
+
+describe('the medkit on the kitchen counter', () => {
+  it('opens, gives an item with a current revision, tells the player what is left, and fills up again', async () => {
+    const { id, person } = await guest('ana');
+    const notes: Array<{ kind: string; text: string; owner?: boolean }> = [];
+    manager.onNotify((_id, note) => notes.push(note));
+    const m = objects.all().find(o => o.type === 'medkit-box')!;
+    person.pos.x = 1.85; person.pos.z = 17.4;
+    const revision = person.mechanics.inventoryRevision;
+    expect(manager.medkitOpen(id, m.index)).toMatchObject({ ok: true, contents: { bandage: 10, 'first-aid-box': 5 } });
+    expect(notes.at(-1)).toEqual({ kind: 'medkit', text: `${m.index},10,5` });
+    expect(manager.medkitTake(id, revision + 1, m.index, 'bandage')).toEqual({ ok: false, reason: 'stale' });
+    expect(manager.medkitTake(id, revision, m.index, 'first-aid-box')).toMatchObject({ ok: true });
+    expect(person.inventory.items.map(i => i.type)).toEqual(['first-aid-box']);
+    expect(person.mechanics.inventoryRevision).toBe(revision + 1);
+    expect(notes.at(-1)).toEqual({ kind: 'medkit', text: `${m.index},10,4`, owner: true });
+    manager.stepAll(15, 1); // the box makes another first-aid box in 15 seconds
+    expect(manager.medkitOpen(id, m.index)).toMatchObject({ ok: true, contents: { 'first-aid-box': 5 } });
+  });
+
+  it('is refused from across the office', async () => {
+    const { id, person } = await guest('ben');
+    const m = objects.all().find(o => o.type === 'medkit-box')!;
+    person.pos.x = -6; person.pos.z = -5;
+    expect(manager.medkitOpen(id, m.index)).toEqual({ ok: false, reason: 'too-far' });
+    expect(manager.medkitTake(id, person.mechanics.inventoryRevision, m.index, 'bandage')).toEqual({ ok: false, reason: 'too-far' });
+  });
+});

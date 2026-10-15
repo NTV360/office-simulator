@@ -8623,6 +8623,16 @@
    "dims": [
     0.9
    ]
+  },
+  {
+   "type": "medkit-box",
+   "x": 1.051649999999999,
+   "z": 17.299950000000003,
+   "rot": 0,
+   "y": 0.96,
+   "variant": 0,
+   "station": null,
+   "spot": null
   }
  ],
  "tops": [

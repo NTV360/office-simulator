@@ -28,3 +28,13 @@ body.clock-live [data-speed] { display: none; } /* Live follows the real time: t
 @keyframes pulse{50%{opacity:.35}}
 .timebar{display:flex;align-items:center;gap:6px}
 .timebar[hidden]{display:none}
+.hotbar-slot.selected{outline:2px solid var(--accent);outline-offset:1px;background:rgba(255,255,255,.18)}
+.medbox-panel{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:35;width:300px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.medbox-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.medbox-head strong{font-size:12px}
+.medbox-grid{display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:34px;gap:4px}
+.medbox-item,.medbox-empty{min-width:0;border-radius:4px;font:10px var(--f-mono);overflow:hidden;text-overflow:ellipsis}
+.medbox-item{border:1px solid var(--line);background:rgba(255,255,255,.1);color:inherit;cursor:pointer}.medbox-item:hover,.medbox-item:focus-visible{background:rgba(255,255,255,.2);outline:2px solid var(--accent);outline-offset:1px}
+.medbox-item.first-aid-box{background:rgba(255,90,74,.18)}.medbox-empty{border:1px dashed rgba(127,150,165,.28)}
+.medbox-panel small{color:var(--muted);font-size:10px}
+#careBar{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);z-index:36;width:240px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:11px var(--f-mono);display:flex;flex-direction:column;gap:6px}
+#careBar[hidden]{display:none}.care-track{height:8px;border-radius:4px;background:rgba(127,150,165,.28);overflow:hidden}.care-fill{height:100%;width:0;background:var(--accent)}

@@ -12,9 +12,13 @@ Punches, kicks, and bash attacks are server-timed. A bash is valid only while th
 
 Character attacks resolve body damage and a bounded directional impact. Slow/resting item manipulation is not an attack. Item-physics contact damage must remain server-observed and must use the same bounded impact resolver when enabled; clients never infer contact outcomes.
 
-## Medical use
+## Medical care and the medkit
 
-Bandages and first-aid boxes are finite inventory items. A medical action contains an item instance id, expected inventory revision, limb, and optional target person. The server validates item ownership, revision, medical type, usable body/hands, target existence, reach, and a conservative walk-grid line of sight before applying immutable limb healing and consuming exactly one item. A failed or replayed revision does not consume anything. The current version-5 world save persists each person's inventory and hotbar; health, medical-action state, hold links, ragdoll, and recovery state remain session-only.
+Bandages (heal 15, one inventory cell) and first-aid boxes (heal 30, a 1x2 cell item, rotatable) are finite inventory items. They are applied by **timed care**: pick the item on the hotbar (press its number, or click it) and hold E. A bandage takes 3 seconds and a first-aid box 5. The care heals the player you face within 1.25 m, else yourself, and always the most-hurt limb. The server owns the clock: the item is used up only when the care completes. It ends, healing nothing and keeping the item, when E is let go, when the medic walks more than 0.5 m, when the patient leaves range or line of sight, or when either player is hit or knocked down. A patient whose body health is 0, who is not account-controlled, or who is ragdolled or recovering cannot be treated. The medic needs usable hands; the patient's arms do not matter. There is no instant medical use: a client cannot skip the timer.
+
+The **medkit** is a fixed object at the north-east corner of the kitchen counter (the last object in the layout, so every earlier object id is unchanged). E opens its menu, a grid of what it holds; clicking an item takes it into the inventory when it fits (revision compare-and-swap, reach 1.8 m, line of sight). It holds at most 10 bandages and 5 first-aid boxes, makes a bandage every 5 seconds and a first-aid box every 15, and starts full after a server restart (the stock, like health, is session-only). The server tells only the player who has it open what it holds.
+
+At 0 health a limb simply stops working: body 0 means no moving, no hands and no treatment; either leg 0 means no moving; both arms 0 means no hands. There is no death or respawn.
 
 ## Inventory and hotbar
 
@@ -26,4 +30,4 @@ Disconnect, reset, hand-back, and ragdoll cleanup release character holds and cl
 
 ## Wire compatibility
 
-The binary wire version is incremented whenever message shape changes. Medical inventory use is part of wire version 23; older clients must be rejected rather than decoding it as another action.
+The binary wire version is incremented whenever message shape changes. The medkit and timed-care actions are part of wire version 24; older clients must be rejected rather than decoding them as another action.

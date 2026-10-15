@@ -92,15 +92,39 @@ describe('round trips', () => {
     expect(decoded.inventoryRevision).toBe(mechanics.inventoryRevision);
   });
 
-  it('round-trips a medical use intent with optional target', () => {
-    const intent = { type: 'inventory', action: 'use', itemId: 'bandage-1', limb: 'leftArm', target: 17, revision: 4 } as const;
+  it('round-trips a medical care intent with optional target, and the stop', () => {
+    const intent = { type: 'inventory', action: 'care', itemId: 'bandage-1', target: 17, revision: 4 } as const;
     expect(decodeClient(encode(intent))).toEqual(intent);
-    const self = { ...intent, target: undefined };
+    const { target: _target, ...self } = intent;
     expect(decodeClient(encode(self))).toEqual(self);
+    const stop = { type: 'inventory', action: 'care-stop', revision: 4 } as const;
+    expect(decodeClient(encode(stop))).toEqual(stop);
   });
 
-  it('rejects malformed medical use intents', () => {
-    expect(() => encode({ type: 'inventory', action: 'use', itemId: 'bandage', limb: 'nope' as never, revision: 0 })).toThrow();
+  it('rejects malformed medical care intents', () => {
+    expect(() => encode({ type: 'inventory', action: 'care', revision: 0 })).toThrow();
+    expect(() => encode({ type: 'inventory', action: 'care', itemId: 'bandage', target: -1, revision: 0 })).toThrow();
+  });
+
+  it('round-trips the medkit intents and the events that come back for one player', () => {
+    for (const intent of [
+      { type: 'inventory', action: 'medkit-open', object: 460, revision: 2 },
+      { type: 'inventory', action: 'medkit-take', object: 460, kit: 'bandage', revision: 3 },
+      { type: 'inventory', action: 'medkit-take', object: 460, kit: 'first-aid-box', revision: 3 },
+    ] as const) expect(decodeClient(encode(intent))).toEqual(intent);
+    for (const kind of ['medkit', 'care'] as const) {
+      const event = { type: 'event', kind, simTime: 12.5, text: kind === 'medkit' ? '460,9,5' : 'start:3' } as const;
+      expect(decode(encode(event))).toEqual(event);
+    }
+  });
+
+  it('rejects malformed medkit intents', () => {
+    expect(() => encode({ type: 'inventory', action: 'medkit-open', revision: 0 })).toThrow();
+    expect(() => encode({ type: 'inventory', action: 'medkit-take', object: 460, revision: 0 })).toThrow();
+    expect(() => encode({ type: 'inventory', action: 'medkit-take', object: 460, kit: 'mug' as never, revision: 0 })).toThrow();
+    const good = encode({ type: 'inventory', action: 'medkit-take', object: 460, kit: 'bandage', revision: 0 });
+    const bad = good.slice(); bad[bad.length - 1] = 2; // (a kit number that does not exist)
+    expect(() => decodeClient(bad)).toThrow();
   });
 
   it('hello, ping, pong, kick, leave', () => {

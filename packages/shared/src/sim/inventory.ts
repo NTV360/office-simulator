@@ -40,6 +40,7 @@ export const INVENTORY_FOOTPRINTS: Readonly<Record<string, InventoryFootprint>> 
   'table-dining': [4, 3], 'table-coffee': [4, 2], 'table-bar': [4, 3], sofa: [4, 2], couch: [3, 2],
   armchair: [2, 2], 'plant-floor': [2, 2], credenza: [4, 2], 'cabinet-tall': [4, 2], 'tv-stand': [4, 2],
   whiteboard: [4, 1], 'piano-stand': [3, 2],
+  bandage: [1, 1], 'first-aid-box': [1, 2],
 };
 
 /** Items whose orientation can be changed while stored. Square items are harmlessly included. */
@@ -48,7 +49,7 @@ export const INVENTORY_ROTATABLE: Readonly<Record<string, boolean>> = {
   'coffee-machine': true, toaster: true, 'fruit-bowl': true, console: true, 'guitar-stand': true,
   'table-dining': true, 'table-coffee': true, 'table-bar': true, sofa: true, couch: true, armchair: true,
   'plant-floor': true, credenza: true, 'cabinet-tall': true, 'tv-stand': true, whiteboard: true,
-  'piano-stand': true,
+  'piano-stand': true, 'first-aid-box': true,
 };
 
 const validDimension = (n: number): boolean => Number.isInteger(n) && n > 0;

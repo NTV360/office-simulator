@@ -7,7 +7,7 @@ import type { AttackKind, AttackPhase, AttackSide, LocomotionMode, Posture, Seat
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 23;
+export const WIRE_VERSION = 24;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -197,7 +197,7 @@ export interface PersonJoined { type: 'person'; info: PersonInfo; snap: PersonSn
 export interface PersonLeft { type: 'leave'; id: number }
 
 /** 'notice' is for one player alone ("you are chatting too fast"); the others go to everybody. */
-export type EventKind = 'log' | 'announce' | 'day' | 'notice';
+export type EventKind = 'log' | 'announce' | 'day' | 'notice' | 'medkit' | 'care';
 export interface GameEvent { type: 'event'; kind: EventKind; simTime: number; text: string }
 
 /** The first thing a client says: its protocol version and the one-time ticket from POST /api/play/ticket. */
@@ -251,7 +251,7 @@ export interface Drop { type: 'drop' }
 /** Throw what you hold, as hard as `power` says (0 to 1). */
 /** Throw what you hold: how hard (0 to 1), and which way you look (yaw, and pitch: up is positive), which is the way it goes. */
 export interface Throw { type: 'throw'; power: number; yaw: number; pitch: number }
-export type InventoryAction = 'assign' | 'hotbar' | 'drop' | 'move' | 'rotate' | 'use';
+export type InventoryAction = 'assign' | 'hotbar' | 'drop' | 'move' | 'rotate' | 'care' | 'care-stop' | 'medkit-open' | 'medkit-take';
 export interface InventoryIntent {
   type: 'inventory';
   action: InventoryAction;
@@ -262,9 +262,9 @@ export interface InventoryIntent {
   /** Top-left inventory cell for a move. */
   x?: number;
   y?: number;
-  /** Limb healed by a medical use. */
-  limb?: 'head' | 'body' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg';
-  /** Target person id; omitted means self. */
+  /** What to take out of a medkit. */
+  kit?: 'bandage' | 'first-aid-box';
+  /** The person to care for (hold E on a medical item); omitted means self. */
   target?: number;
   revision: number;
 }

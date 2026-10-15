@@ -5,6 +5,8 @@ import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
 import { initObjectControls, tickObjectControls } from './objects.js';
+import { careNote, initCare, selectCareItem } from './care.js';
+import { initMedbox, medkitNote } from '../ui/medbox.js';
 import { predictCarried } from '../render/objects.js';
 import { addObjectView, updateCarriedObjects } from '../render/objects.js';
 import { setView, viewId } from '../camera/controller.js';
@@ -23,6 +25,8 @@ const SNAP_DISTANCE = 2.5; // a jump bigger than this (metres) is a teleport, no
 const MAX_BUFFER = 8;
 let inventoryCollapsed = true;
 let inventoryDragId = null;
+/** The hotbar slot picked (press its number or click it): a medical item picked there is what hold-E gives. */
+let selectedSlot = null;
 let inventoryDragHandled = false;
 
 /** Where /api and /socket.io live. `?online=http://localhost:3000` points at a server on this computer; otherwise the page's own origin. */
@@ -144,6 +148,9 @@ export function startOnline() {
     return true;
   };
   initObjectControls({ send });
+  const revisionNow = () => inventoryOwner()?.mechanics?.inventoryRevision ?? 0;
+  initCare({ send, revision: revisionNow, say: text => chat.system(text, 'notice') });
+  initMedbox({ send, revision: revisionNow });
   // ?netdebug: a readout of how prediction is doing, top left, for chasing a jump you can see: how often the server corrected you, by how
   // much, how far your person is drawn from where the server has you, and the biggest step your person made in one frame lately
   const netDebug = new URLSearchParams(location.search).has('netdebug');
@@ -194,33 +201,6 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     if (!net.joined || !inventory) return false;
     send({ type: 'inventory', action, revision: me.mechanics.inventoryRevision, ...values });
     return true;
-  }
-
-  function chooseMedical(itemId) {
-    const me = inventoryOwner();
-    if (!me) return;
-    const candidates = [...mirror.people.values()].filter(person => person.controller === 'account' && person.mechanics?.health?.body > 0 && Math.hypot(person.pos.x - me.pos.x, person.pos.z - me.pos.z) <= 1.25);
-    const dialog = document.createElement('dialog');
-    dialog.className = 'medical-dialog';
-    dialog.innerHTML = '<form method="dialog"><h3>Use medical item</h3><label>Limb <select name="limb"><option>head</option><option selected>body</option><option>leftArm</option><option>rightArm</option><option>leftLeg</option><option>rightLeg</option></select></label><label>Patient <select name="target"><option value="">Self</option></select></label><div><button value="cancel">Cancel</button><button value="use">Use</button></div></form>';
-    const targetSelect = dialog.querySelector('select[name="target"]');
-    for (const person of candidates) {
-      if (person.id === me.id) continue;
-      const option = document.createElement('option');
-      option.value = String(person.id);
-      option.textContent = person.name;
-      targetSelect.append(option);
-    }
-    document.body.append(dialog);
-    dialog.addEventListener('close', () => {
-      if (dialog.returnValue === 'use') {
-        const form = dialog.querySelector('form');
-        const target = form.elements.target.value;
-        sendInventory('use', { itemId, limb: form.elements.limb.value, ...(target ? { target: Number(target) } : {}) });
-      }
-      dialog.remove();
-    }, { once: true });
-    dialog.showModal();
   }
 
   function renderInventory() {
@@ -297,21 +277,21 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
         slotEl.textContent = item ? `${slot + 1} · ${itemName(item)}` : String(slot + 1); slotEl.setAttribute('aria-label', item ? `Hotbar ${slot + 1}: ${itemName(item)}` : `Empty hotbar slot ${slot + 1}`);
         slotEl.addEventListener('dragover', event => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; });
         slotEl.addEventListener('drop', event => { event.preventDefault(); const id = event.dataTransfer?.getData('text/inventory-item'); if (id) { inventoryDragHandled = true; sendInventory('hotbar', { itemId: id, slot }); } });
+        if (slot === selectedSlot && item) slotEl.classList.add('selected');
         slotEl.addEventListener('click', () => {
           if (!itemId) return;
-          const current = state.items.find(candidate => candidate.id === itemId);
-          if (!current) return;
-          const medical = current.type === 'bandage' || current.type === 'first-aid-box';
-          if (medical) {
-            chooseMedical(itemId);
-          }
-          // Ordinary hotbar activation is not a mutation yet. Do not send a
-          // hotbar command without itemId: the server correctly interprets
-          // that shape as clearing the slot.
-
+          // Picking a slot is not a mutation: nothing is sent (a hotbar command without an itemId would clear the slot). A medical item picked
+          // here is what holding E gives (see care.js); picking the same slot again puts it away.
+          selectedSlot = selectedSlot === slot ? null : slot;
+          draw();
         });
         hotbar.append(slotEl);
       });
+      // what is picked now: gone from the hotbar (used up, moved) means nothing is picked
+      const pickedId = selectedSlot === null ? null : state.hotbar[selectedSlot];
+      const picked = pickedId ? state.items.find(candidate => candidate.id === pickedId) : null;
+      if (!picked) selectedSlot = null;
+      selectCareItem(picked ?? null);
     };
     draw();
   }
@@ -525,6 +505,8 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
 
   function pushEvent(e) {
     if (e.kind === 'notice') { chat.system(e.text, 'notice'); return; } // for this player alone: in the chat panel
+    if (e.kind === 'medkit') { medkitNote(e.text); return; } // what the medkit they have open holds
+    if (e.kind === 'care') { careNote(e.text); return; } // how the care they are giving is going
     if (e.kind === 'announce') chat.system(`Announcement: ${e.text}`, 'announce');
     // the log lines also reach the ledger the way local ones do
     addLog(e.kind === 'announce' ? `Announcement: ${e.text}` : e.text);

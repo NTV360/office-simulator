@@ -2,7 +2,7 @@ import { initCamera } from './camera/controller.js';
 import { initInput } from './camera/input.js';
 import { initDay, initGrid, initState, lockLayoutCheck, objects, refreshFootprint, setFixedTops } from '@office/shared';
 import { OBS, TOPS } from './world/helpers.js';
-import { flushLaterObjects } from './world/objects.js';
+import { flushLaterObjects, placeObject } from './world/objects.js';
 import { initLabels } from './render/labels.js';
 import { initPeopleGroup } from './people/group.js';
 import { initPeopleViews } from './people/views.js';
@@ -63,6 +63,9 @@ export function bootstrap({ simulate = true } = {}) {
   buildPlants();
   buildEntrance();
   flushLaterObjects(); // (furniture that became items, after the first ones so their ids stay as they were)
+  // The medkit on the kitchen counter, at its north-east corner (the free end, away from the fruit and the cups). Made last of all, so every
+  // earlier object keeps its id.
+  placeObject('medkit-box', 423.5, 999, 0, { y: .96 });
   buildBake();
   initObjectViews(); // the chairs and desk things: drawn instanced, from the object data (not baked)
   initLabels();

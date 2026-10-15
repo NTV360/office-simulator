@@ -81,7 +81,8 @@ export class Physics {
   addItem(o: WorldObject, q: [number, number, number, number] = yawQuat(o.rot)): RAPIER.RigidBody {
     const t = CATALOGUE[o.type];
     if (!t) throw new Error(`unknown item type "${o.type}"`);
-    const desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(o.x, o.y, o.z).setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] })
+    // (a fixed kind, like the medkit on the counter, is solid but is never shoved: it gets a fixed body)
+    const desc = (t.mobility === 'fixed' ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic()).setTranslation(o.x, o.y, o.z).setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] })
       .setCanSleep(true).setCcdEnabled(t.mass < 1); // (small things would pass through a thin shelf when they fall fast)
     const body = this.world.createRigidBody(desc);
     const colliders = shapeOf(o).colliders, total = colliders.reduce((v, c) => v + volumeOf(c), 0);
@@ -193,7 +194,7 @@ export class Physics {
   /** The items whose bodies are moving now (awake and in the simulation). */
   awake(): number[] {
     const out: number[] = [];
-    for (const [i, b] of this.bodies) if (b.isEnabled() && !b.isSleeping()) out.push(i);
+    for (const [i, b] of this.bodies) if (b.isEnabled() && !b.isFixed() && !b.isSleeping()) out.push(i); // (a fixed body never moves, so it is never awake)
     return out;
   }
 

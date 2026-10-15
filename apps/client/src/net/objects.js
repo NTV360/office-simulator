@@ -1,11 +1,13 @@
 import * as THREE from 'three';
-import { CATALOGUE, NONE, REACH, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, freeSitOccupied, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
+import { CATALOGUE, MEDKIT_REACH, NONE, REACH, REFUSAL_TEXT, angDiff, canReach, carriedBy, carryOf, freeSitOccupied, holderCount, inReach, movability, objects, placementProblem, restHeightAt, throwPath, throwVelocity } from '@office/shared';
 import { camera, scene } from '../render/renderer.js';
-import { ghostOf, highlightItem, itemAt, shownAt } from '../render/objects.js';
+import { drawnInfo, ghostOf, highlightItem, itemAt, shownAt } from '../render/objects.js';
 import { BAKED } from '../world/bake.js';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
 import { $ } from '../ui/dom.js';
+import { medboxOpen, toggleMedbox } from '../ui/medbox.js';
+import { careHint, careItem, careKey } from './care.js';
 
 // Moving things about, online. Aim at something and take hold of it where you aim (G); the hands go there and lift it. Holding it: a ghost
 // shows where it would go, where you look (G puts it down there gently, or lets go of it where it is if that is not a place it may go); hold
@@ -16,7 +18,7 @@ import { $ } from '../ui/dom.js';
 const state = {
   send: null, acc: 0, candidate: null, grip: null, far: null,
   held: null, turn: new THREE.Quaternion(), raise: 0, dirty: false, sentAt: 0, rKey: false, zKey: false, shift: false, throwing: false, power: .5, turning: null, target: null, problem: null,
-  pickup: null, store: null,
+  pickup: null, store: null, medkit: null,
 };
 const PICKUP_HOLD_MS = 500;
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
@@ -43,9 +45,12 @@ function pickable(p) {
   aim.setFromCamera(MIDDLE, camera);
   const r = aim.ray, from = ctl.mode === 'fp' ? 0 : Math.max(0, (p.pos.x - r.origin.x) * r.direction.x + (1 - r.origin.y) * r.direction.y + (p.pos.z - r.origin.z) * r.direction.z - .3);
   const hit = itemAt(aim, -1, from);
+  if (window.__sim) window.__sim.rayHit = hit ? { index: hit.index, distance: hit.distance, from } : null; // (for checks)
   if (!hit) return { o: null, at: null, far: null };
   for (const h of aim.intersectObjects(BAKED, false)) { if (h.distance >= from) { if (h.distance < hit.distance - .02) return { o: null, at: null, far: null }; break; } }
   const o = objects.at(hit.index);
+  // the medkit on the counter is not picked up: E opens its menu (when you are close enough)
+  if (o && o.type === 'medkit-box' && !o.removed) return Math.hypot(o.x - p.pos.x, o.z - p.pos.z) <= MEDKIT_REACH ? { o: null, at: null, far: null, medkit: o } : { o: null, at: null, far: o };
   if (!o || (freeSitOccupied(o)) || (movability(o) !== null && !joinable(o))) return { o: null, at: null, far: null };
   return canReach(p, hit.point) ? { o, at: hit.point, far: null } : { o: null, at: null, far: o };
 }
@@ -74,7 +79,7 @@ function refresh() {
   // carriedBy returns undefined when empty; mixing them cancels every pending E
   // hold on the next refresh and makes pickup appear to do nothing.
   const held = on ? (carriedBy(p.id) ?? null) : null;
-  state.candidate = null; state.target = null; state.problem = null;
+  state.candidate = null; state.target = null; state.problem = null; state.medkit = null;
   // Network snapshots may replace an object record without changing what is held.
   // Compare stable indexes so a refresh cannot cancel an in-progress E hold.
   const heldChanged = (held?.index ?? null) !== (state.held?.index ?? null);
@@ -96,16 +101,18 @@ function refresh() {
     return;
   }
   const pick = player.sitting ? { o: null, at: null, far: null } : pickable(p);
-  state.candidate = pick.o; state.grip = pick.at; state.far = pick.far;
+  state.candidate = pick.o; state.grip = pick.at; state.far = pick.far; state.medkit = pick.medkit ?? null;
   // Once E captures a concrete target, keep that request stable for its 500 ms
   // hold. The server revalidates identity, reach, and occupancy authoritatively;
   // a changing camera ray must not cancel the user's deliberate interaction.
-  highlightItem(state.candidate); // (the thing E would take hold of: outlined on this page only)
+  highlightItem(state.candidate ?? state.medkit); // (the thing E would take hold of, or open: outlined on this page only)
   if (state.candidate) {
     const progress = state.pickup ? `  (${Math.min(100, Math.floor((performance.now() - state.pickup.started) / PICKUP_HOLD_MS * 100))}%)` : '';
     setPrompt(state.candidate.carriedBy !== null ? `Help carry the ${labelOf(state.candidate)}  (hold E${progress})` : `Pick up the ${labelOf(state.candidate)}  (hold E${progress})`, true);
   }
-  else setPrompt(state.far ? `Step closer to the ${labelOf(state.far)}` : '', false);
+  else if (state.medkit) setPrompt(medboxOpen() ? 'Close the medkit  (E)' : 'Open the medkit  (E)', true);
+  else if (state.far) setPrompt(`Step closer to the ${labelOf(state.far)}`, false);
+  else setPrompt(careItem() ? careHint() : '', false);
 }
 
 // ---- the throw's path: where it will fly, drawn while the right button is held (by the same rules the server throws it by: shared/world/throw.ts)
@@ -186,7 +193,7 @@ function pickupKey(down) {
     const handled = !!(state.pickup || state.store);
     cancelPickup();
     state.store = null;
-    return handled;
+    return careKey(false) || handled; // (letting go also ends any care that was being given)
   }
   if (!p || !ctl.active || player.sitting) return false;
   const held = carriedBy(p.id);
@@ -194,7 +201,9 @@ function pickupKey(down) {
     if (!state.store) state.store = { index: held.index, started: performance.now() };
     return true;
   }
-  if (!state.candidate || !state.grip) return false;
+  if (state.medkit) { toggleMedbox(state.medkit.index); return true; }
+  // nothing to pick up or open: with a medical item picked on the hotbar, E starts giving care (hold it)
+  if (!state.candidate || !state.grip) return careKey(true);
   if (!state.pickup) state.pickup = {
     index: state.candidate.index,
     at: { x: state.grip.x, y: state.grip.y, z: state.grip.z },
@@ -336,7 +345,7 @@ export function tickObjectControls(dt) {
   // Complete a held pickup before the periodic ray refresh. A transient missed
   // ray must not erase the concrete candidate captured when E was pressed.
   if (state.pickup && performance.now() - state.pickup.started >= PICKUP_HOLD_MS) sendPickup();
-  if (state.pickup || state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; window.__sim.shownAt ??= shownAt; } }
+  if (state.pickup || state.acc > .1) { state.acc = 0; refresh(); if (window.__sim) { window.__sim.objectAim = state.target && { ...state.target, ok: !state.problem }; window.__sim.objectPick = state.candidate?.index ?? null; window.__sim.medkitPick = state.medkit?.index ?? null; window.__sim.medkitFar = state.far?.type === 'medkit-box'; window.__sim.shownAt ??= shownAt; window.__sim.drawnInfo ??= drawnInfo; } }
   if (state.store && performance.now() - state.store.started >= PICKUP_HOLD_MS) {
     const p = player.person, held = p && carriedBy(p.id);
     if (held && held.index === state.store.index && !held.removed) {

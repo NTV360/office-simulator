@@ -9,6 +9,8 @@ import { AuthProvider } from '../auth/auth.provider';
 import type { SessionEnd } from '../auth/auth.service';
 import { TicketService } from '../auth/tickets';
 import { ChatService, type SayResult } from '../play/chat';
+import { MEDKIT_REFUSAL_TEXT } from '../play/medical-care';
+import type { PlayerNote } from '../play/player-manager';
 import { EmoteService } from '../play/emotes';
 import { PlayService } from '../play/play.service';
 import { WorldService } from '../world/world.service';
@@ -90,6 +92,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.teardown.push(simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id))));
     this.teardown.push(simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p)))); // who drives them, their name or look changed
     this.teardown.push(this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason)));
+    this.teardown.push(this.players.onNotify((accountId, note) => this.noteTo(accountId, note)));
     // a chair or a mug was moved: everybody sees it, once per tick and after that tick's snapshot. (Sent at once, they went out ahead of the
     // snapshot every tick while anything moved, and a snapshot is volatile: with data still queued it is dropped, so while somebody carried
     // something nobody's position reached anybody.)
@@ -222,7 +225,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       case 'inventory': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.players.manager().inventoryAction(socket.data.accountId, msg.action, msg.revision, msg.itemId, msg.slot, msg.object, msg.x, msg.y, msg.limb, msg.target);
+        const manager = this.players.manager(), accountId = socket.data.accountId;
+        // the medkit and timed care answer through `noteTo` (what it holds, how the care is going), not with an inventory snapshot
+        if (msg.action === 'medkit-open' || msg.action === 'medkit-take') {
+          const taken = msg.action === 'medkit-open' ? manager.medkitOpen(accountId, msg.object!) : manager.medkitTake(accountId, msg.revision, msg.object!, msg.kit!);
+          if (taken && !taken.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: MEDKIT_REFUSAL_TEXT[taken.reason] }));
+          return;
+        }
+        if (msg.action === 'care') { manager.careStart(accountId, msg.itemId!, msg.target); return; }
+        if (msg.action === 'care-stop') { manager.careStop(accountId); return; }
+        const r = manager.inventoryAction(accountId, msg.action, msg.revision, msg.itemId, msg.slot, msg.object, msg.x, msg.y);
         if (r && r.ok) {
           if ('object' in r) {
             const definition = !this.objectDefinitionsSent.has(r.object.index);
@@ -260,6 +272,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       default:
         this.kick(socket, 'unexpected message');
     }
+  }
+
+  /** Something for one player alone (what a medkit holds, how their care is going); with `owner`, their own state is sent too. */
+  private noteTo(accountId: number, note: PlayerNote): void {
+    const socket = this.byAccount.get(accountId);
+    if (!socket || !socket.connected) return;
+    socket.emit(WIRE_EVENT, encode({ type: 'event', kind: note.kind, simTime: sim.t, text: note.text }));
+    const person = note.owner ? this.players.manager().personFor(accountId) : undefined;
+    if (person) socket.emit(WIRE_EVENT, this.broadcaster.ownerUpdate(person, this.worlds.world.tick));
   }
 
   /** Tell one player why what they did with an object was refused (what worked tells everybody, through the object message). */

@@ -18,10 +18,11 @@ const ATTACK_KINDS = ['punch', 'kick', 'bash'] as const;
 const ATTACK_SIDES = ['left', 'right'] as const;
 const ATTACK_PHASES = ['charging', 'active', 'cooldown'] as const;
 const ATTACK_INTENT_PHASES = ['begin', 'release'] as const;
-const LIMBS = ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
 const CONTROLLERS = ['ai', 'account'] as const;
 const SCREEN_KINDS = ['code', 'design', 'dash'] as const;
-const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice'];
+const EVENT_KINDS: EventKind[] = ['log', 'announce', 'day', 'notice', 'medkit', 'care'];
+const INVENTORY_ACTIONS = ['assign', 'hotbar', 'drop', 'move', 'rotate', 'care', 'care-stop', 'medkit-open', 'medkit-take'] as const;
+const KITS = ['bandage', 'first-aid-box'] as const;
 const ACT_KINDS: ActKind[] = ['sit', 'stand'];
 const RESET_SCOPES: ResetScope[] = ['object', 'station'];
 
@@ -344,7 +345,7 @@ export function encode(msg: Message): Uint8Array {
     case 'throw': w.u8(T.throw).f32(msg.power).f32(msg.yaw).f32(msg.pitch); break;
     case 'inventory': {
       const inventory = msg;
-      w.u8(T.inventory).u8(index(['assign', 'hotbar', 'drop', 'move', 'rotate', 'use'] as const, inventory.action, 'inventory action')).u32(inventory.revision);
+      w.u8(T.inventory).u8(index(INVENTORY_ACTIONS, inventory.action, 'inventory action')).u32(inventory.revision);
       if (inventory.action === 'assign') {
         if (!Number.isInteger(inventory.object)) throw new RangeError('invalid inventory object');
         const object = inventory.object as number;
@@ -358,11 +359,18 @@ export function encode(msg: Message): Uint8Array {
       } else if (inventory.action === 'drop' || inventory.action === 'rotate') {
         if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID) throw new RangeError('invalid inventory item');
         w.str(inventory.itemId);
-      } else if (inventory.action === 'use') {
-        if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID || !inventory.limb || !LIMBS.includes(inventory.limb)) throw new RangeError('invalid medical use');
+      } else if (inventory.action === 'care') {
+        if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID) throw new RangeError('invalid medical care');
         if (inventory.target !== undefined && (!Number.isInteger(inventory.target) || inventory.target < 0 || inventory.target >= NO_U16)) throw new RangeError('invalid medical target');
-        w.str(inventory.itemId).u8(LIMBS.indexOf(inventory.limb));
-        w.u16(toU16(inventory.target ?? NONE));
+        w.str(inventory.itemId).u16(toU16(inventory.target ?? NONE));
+      } else if (inventory.action === 'care-stop') {
+        // (nothing more: it ends whatever care is going on)
+      } else if (inventory.action === 'medkit-open') {
+        if (!Number.isInteger(inventory.object)) throw new RangeError('invalid medkit');
+        w.u16(toU16(inventory.object as number));
+      } else if (inventory.action === 'medkit-take') {
+        if (!Number.isInteger(inventory.object) || !inventory.kit || !KITS.includes(inventory.kit)) throw new RangeError('invalid medkit take');
+        w.u16(toU16(inventory.object as number)).u8(KITS.indexOf(inventory.kit));
       } else {
         const itemId = inventory.itemId, x = inventory.x, y = inventory.y;
         if (!itemId || itemId.length > MAX_HOLD_ID || typeof x !== 'number' || typeof y !== 'number' || !Number.isInteger(x) || !Number.isInteger(y)) throw new RangeError('invalid inventory move');
@@ -463,7 +471,7 @@ export function decode(bytes: Uint8Array): Message {
     case T.drop: msg = { type: 'drop' }; break;
     case T.throw: msg = { type: 'throw', power: r.f32(), yaw: r.f32(), pitch: r.f32() }; break;
     case T.inventory: {
-      const action = readIndex(r, ['assign', 'hotbar', 'drop', 'move', 'rotate', 'use'] as const, 'inventory action');
+      const action = readIndex(r, INVENTORY_ACTIONS, 'inventory action');
       const revision = r.u32();
       if (action === 'assign') {
         const object = fromU16(r.u16());
@@ -479,10 +487,20 @@ export function decode(bytes: Uint8Array): Message {
         const itemId = r.str();
         if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid inventory item');
         msg = { type: 'inventory', action, itemId, revision };
-      } else if (action === 'use') {
-        const itemId = r.str(), limb = r.u8(), target = fromU16(r.u16());
-        if (!itemId || itemId.length > MAX_HOLD_ID || limb >= LIMBS.length) throw new DecodeError('invalid medical use');
-        msg = { type: 'inventory', action, itemId, limb: LIMBS[limb], ...(target === NONE ? {} : { target }), revision };
+      } else if (action === 'care') {
+        const itemId = r.str(), target = fromU16(r.u16());
+        if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid medical care');
+        msg = { type: 'inventory', action, itemId, ...(target === NONE ? {} : { target }), revision };
+      } else if (action === 'care-stop') {
+        msg = { type: 'inventory', action, revision };
+      } else if (action === 'medkit-open') {
+        const object = fromU16(r.u16());
+        if (object === NONE) throw new DecodeError('invalid medkit');
+        msg = { type: 'inventory', action, object, revision };
+      } else if (action === 'medkit-take') {
+        const object = fromU16(r.u16()), kit = r.u8();
+        if (object === NONE || kit >= KITS.length) throw new DecodeError('invalid medkit take');
+        msg = { type: 'inventory', action, object, kit: KITS[kit], revision };
       } else {
         const itemId = r.str(), x = r.u8(), y = r.u8();
         if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid inventory item');

@@ -16,7 +16,10 @@ describe('authoritative inventory', () => {
     expect(inventoryFootprint('notebook')).toEqual([2, 2]);
     expect(inventoryFootprint('keyboard', 90)).toEqual([1, 2]);
     expect(inventoryFootprint('bandage')).toEqual([1, 1]);
-    expect(inventoryFootprint('first-aid-box')).toEqual([1, 1]);
+    expect(inventoryFootprint('first-aid-box')).toEqual([1, 2]);
+    expect(inventoryFootprint('first-aid-box', 90)).toEqual([2, 1]);
+    expect(itemCanRotate('first-aid-box')).toBe(true);
+    expect(itemCanRotate('bandage')).toBe(false);
     expect(itemCanRotate('keyboard')).toBe(true);
     expect(itemCanRotate('mug')).toBe(false);
     expect(itemCells({ type: 'keyboard', x: 1, y: 2, rotation: 90 })).toEqual([{ x: 1, y: 2 }, { x: 1, y: 3 }]);

@@ -60,4 +60,5 @@ export * from './sim/character-holds';
 export * from './sim/character-hold-actions';
 export * from './sim/inventory';
 export * from './sim/medical';
+export * from './sim/medkit-state';
 export * from './sim/impact';

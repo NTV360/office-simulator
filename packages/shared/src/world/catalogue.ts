@@ -158,6 +158,8 @@ export const CATALOGUE: Readonly<Record<string, ObjectType>> = {
   piano: { label: 'Keyboard piano', mobility: 'movable', mass: 4.5, material: 'plastic', colliders: [{ shape: 'box', size: [1.28, .09, .34], at: [0, .045, .0205] }], surface: false, radius: .3, rests: 'surface' },
   bandage: { label: 'Bandage', mobility: 'movable', mass: .05, material: 'fabric', colliders: [{ shape: 'box', size: [.12, .02, .08], at: [0, .01, 0] }], surface: false, radius: .05, rests: 'surface' },
   'first-aid-box': { label: 'First-aid box', mobility: 'movable', mass: .4, material: 'plastic', colliders: [{ shape: 'box', size: [.2, .08, .14], at: [0, .04, 0] }], surface: false, radius: .1, rests: 'surface' },
+  // the medkit on the kitchen counter: fixed (it is opened, not carried); what is in it is in sim/medkit-state.ts
+  'medkit-box': { label: 'Medkit', mobility: 'fixed', mass: 1, material: 'plastic', colliders: [{ shape: 'box', size: [.3, .16, .2], at: [0, .08, 0] }], surface: false, radius: .17, rests: 'surface' },
   'stool-low': {
     label: 'Stool', mobility: 'movable', mass: 6, material: 'metal', surface: true, radius: .2, rests: 'floor', top: { y: .55, hw: .12, hd: .12 },
     colliders: [{ shape: 'cylinder', radius: .2, height: .02, at: [0, .01, 0] }, { shape: 'cylinder', radius: .03, height: .5, at: [0, .25, 0] }, { shape: 'cylinder', radius: .19, height: .06, at: [0, .52, 0], material: 'fabric' }],

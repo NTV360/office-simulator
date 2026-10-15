@@ -1,9 +1,10 @@
 import {
-  HAZEL_NAME, handBack, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, releaseCarried, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
+  HAZEL_NAME, handBack, stepMedkits, type MedkitContents, type MedkitItem, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, releaseCarried, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
 import { assignObjectToInventory, drop, dropInventoryItem, grab, holdInput, place, putBack, putBackStation, throwIt, type InventoryDropResult, type ObjectResult } from './object-actions';
 import type { ItemImpact } from '../physics/item-physics';
+import { advanceCare, finishCare, openMedkit, startCare, takeFromMedkitInto, type CareJob, type CareRefusal, type MedkitOpen, type MedkitTake } from './medical-care';
 
 // Who is playing which person. The simulation knows how to take a person over and hand them back (shared/sim/takeover.ts);
 // this decides *when*: a login takes over the account's own person (or makes a guest), a disconnect starts a grace period
@@ -22,7 +23,12 @@ export interface Timers {
 }
 const realTimers: Timers = { set: (fn, ms) => setTimeout(fn, ms), clear: h => clearTimeout(h as NodeJS.Timeout) };
 
+/** Something for one player alone. `owner`: their own state changed too (inventory, health), so it is sent as well. */
+export interface PlayerNote { kind: 'medkit' | 'care' | 'notice'; text: string; owner?: boolean }
+
 export interface PlayerManagerOptions {
+  /** Tell one player something only they need (what a medkit holds, how their care is going). */
+  notify?: (accountId: number, note: PlayerNote) => void;
   /** How long a person stays under their player's control after the connection drops, so a flaky link does not make them wander off. */
   graceMs?: number;
   timers?: Timers;
@@ -40,6 +46,8 @@ interface Session {
   objectTokens: number;
   objectTick: number;
   attackHit: number | null;
+  /** Care being given right now (hold E on a medical item in the hotbar), or null. */
+  care: CareJob | null;
 }
 
 /** Moving things tells everybody, so it is limited: a burst of this many, then about three a second. */
@@ -47,6 +55,8 @@ export const OBJECT_BUCKET = { burst: 8, perSecond: 3 };
 
 /** Sitting and standing move a person to the seat, so they are limited to one a second: no hopping between seats to get around quickly. */
 export const ACT_COOLDOWN_SECONDS = 1;
+/** What a medkit holds, as the short text the page is sent: `object,bandages,first-aid boxes`. */
+const medkitText = (object: number, c: MedkitContents): string => `${object},${c.bandage},${c['first-aid-box']}`;
 /** Maximum horizontal reach for applying a medical item to another controlled person. */
 export const MEDICAL_TARGET_REACH = 1.25;
 
@@ -61,12 +71,14 @@ export class PlayerManager {
   /** Monotonic real-seconds clock for mechanics whose constants are expressed in seconds. */
   private mechanicsTime = 0;
   private kick: ((accountId: number, reason: string) => void) | null;
+  private notify: ((accountId: number, note: PlayerNote) => void) | null;
   private readonly log: NonNullable<PlayerManagerOptions['log']>;
 
   constructor(private readonly store: AccountStore, opts: PlayerManagerOptions = {}) {
     this.graceMs = opts.graceMs ?? 30_000;
     this.timers = opts.timers ?? realTimers;
     this.kick = opts.kick ?? (() => {});
+    this.notify = opts.notify ?? null;
     this.log = opts.log ?? { log: () => {}, warn: () => {} };
   }
 
@@ -74,6 +86,12 @@ export class PlayerManager {
     const run = this.queue.then(job, job);
     this.queue = run.catch(() => {});
     return run;
+  }
+
+  /** Where notes for one player go (the gateway). */
+  onNotify(fn: (accountId: number, note: PlayerNote) => void): () => void {
+    this.notify = fn;
+    return () => { if (this.notify === fn) this.notify = null; };
   }
 
   /** Where kicks go (the gateway). */
@@ -133,7 +151,7 @@ export class PlayerManager {
     }
     person ??= makeGuest(account.id, account.username, account.spec ?? undefined);
     this.inputs.delete(person.id); // a new session starts with no movement and its own message numbers
-    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0, attackHit: null });
+    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0, attackHit: null, care: null });
     return person;
   }
 
@@ -278,30 +296,10 @@ export class PlayerManager {
   }
 
   /** Authoritative inventory mutation. The revision is compare-and-swap; client inventory contents are never accepted. */
-  inventoryAction(accountId: number, action: 'assign' | 'hotbar' | 'drop' | 'move' | 'rotate' | 'use', revision: number, itemId?: string, slot?: number, objectIndex?: number, x?: number, y?: number, limb?: Limb, targetId?: number): InventoryDropResult | ObjectResult | null {
+  inventoryAction(accountId: number, action: 'assign' | 'hotbar' | 'drop' | 'move' | 'rotate', revision: number, itemId?: string, slot?: number, objectIndex?: number, x?: number, y?: number): InventoryDropResult | ObjectResult | null {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (!Number.isInteger(revision) || revision !== s.person.mechanics.inventoryRevision) return { ok: false, reason: 'blocked' };
-    if (action === 'use') {
-      if (!itemId || !limb) return { ok: false, reason: 'not-movable' };
-      const item = s.person.inventory.items.find(value => value.id === itemId);
-      if (!item || (item.type !== 'bandage' && item.type !== 'first-aid-box')) return { ok: false, reason: 'not-movable' };
-      const target = targetId === undefined ? s.person : people.find(person => person.id === targetId);
-      if (!target || target.controller !== 'account' || !canUseHands(s.person.mechanics)) return { ok: false, reason: 'blocked' };
-      // Remote treatment does not require the patient's arms, but a body-broken
-      // target is incapacitated and cannot receive ordinary limb treatment.
-      if (target !== s.person && target.mechanics.health.body <= 0) return { ok: false, reason: 'blocked' };
-      const distance = Math.hypot(target.pos.x - s.person.pos.x, target.pos.z - s.person.pos.z);
-      if (!Number.isFinite(distance) || (target !== s.person && (distance > MEDICAL_TARGET_REACH || !hasLineOfSight(s.person.pos, target.pos)))) return { ok: false, reason: 'blocked' };
-      const healed = useMedicalItem(target.mechanics, item.type, limb, { requireHands: target === s.person });
-      if (!healed.ok) return { ok: false, reason: 'blocked' };
-      target.mechanics.health = healed.health;
-      s.person.inventory = removeItem(s.person.inventory, itemId);
-      s.person.mechanics.inventoryRevision++;
-      simEvents.emit('personUpdated', target);
-      if (target !== s.person) simEvents.emit('personUpdated', s.person);
-      return { ok: true, changed: healed.amount } as InventoryDropResult;
-    }
     if (action === 'drop') {
       if (!itemId) return { ok: false, reason: 'not-movable' };
       const result = dropInventoryItem(s.person, s.person.inventory, itemId);
@@ -326,6 +324,82 @@ export class PlayerManager {
     const result = assignObjectToInventory(s.person, s.person.inventory, objectIndex);
     if (result.ok) { s.person.inventory = result.inventory; s.person.mechanics.inventoryRevision++; }
     return result;
+  }
+
+  /** The player opens a medkit: they are told what it holds now. The page asks again about once a second while the menu is open, so the counts stay current. */
+  medkitOpen(accountId: number, index: number): MedkitOpen | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    const r = openMedkit(s.person, index);
+    if (r.ok) this.notify?.(accountId, { kind: 'medkit', text: medkitText(r.object, r.contents) });
+    return r;
+  }
+
+  /** The player takes one item out of a medkit into their inventory. The revision is compare-and-swap like every inventory change. */
+  medkitTake(accountId: number, revision: number, index: number, item: MedkitItem): MedkitTake | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (!Number.isInteger(revision) || revision !== s.person.mechanics.inventoryRevision) return { ok: false, reason: 'stale' };
+    const r = takeFromMedkitInto(s.person, index, item);
+    if (!r.ok) return r;
+    s.person.inventory = r.inventory;
+    s.person.mechanics.inventoryRevision++;
+    this.notify?.(accountId, { kind: 'medkit', text: medkitText(r.object, r.contents), owner: true });
+    return r;
+  }
+
+  /**
+   * The player starts caring for somebody (themselves, or `targetId`) with a medical item from their inventory: hold E on it in the hotbar.
+   * It takes 3 seconds (bandage) or 5 (first-aid box) and is ended by anything in `advanceCare`; the item is used up only when it works.
+   */
+  careStart(accountId: number, itemId: string, targetId?: number): { ok: true; seconds: number } | { ok: false; reason: CareRefusal | 'busy' } | null {
+    const s = this.sessions.get(accountId);
+    if (!s) return null;
+    if (s.care) return { ok: false, reason: 'busy' };
+    const target = targetId === undefined ? s.person : people.find(p => p.id === targetId);
+    if (!target) return this.refuseCare(accountId, 'target');
+    const r = startCare(s.person, itemId, target, this.mechanicsTime);
+    if (!r.ok) return this.refuseCare(accountId, r.reason);
+    s.care = r.job;
+    this.notify?.(accountId, { kind: 'care', text: `start:${r.job.seconds}` });
+    return { ok: true, seconds: r.job.seconds };
+  }
+
+  private refuseCare(accountId: number, reason: CareRefusal): { ok: false; reason: CareRefusal } {
+    this.notify?.(accountId, { kind: 'care', text: `cancel:${reason}` });
+    return { ok: false, reason };
+  }
+
+  /** The player lets go of E: any care they were giving stops and nothing is used up. */
+  careStop(accountId: number): void {
+    const s = this.sessions.get(accountId);
+    if (!s?.care) return;
+    s.care = null;
+    this.notify?.(accountId, { kind: 'care', text: 'cancel:released' });
+  }
+
+  /** Move every care on by one tick: end the ones that must end, finish the ones that are done. */
+  private stepCare(now: number): void {
+    for (const [accountId, s] of this.sessions) {
+      const job = s.care;
+      if (!job) continue;
+      const target = people.find(p => p.id === job.targetId);
+      const state = advanceCare(job, s.person, target, now);
+      if (state === 'running') continue;
+      s.care = null;
+      if (state !== 'done') { this.notify?.(accountId, { kind: 'care', text: `cancel:${state}` }); continue; }
+      const health = finishCare(job, s.person, target!);
+      if (!health) { this.notify?.(accountId, { kind: 'care', text: 'cancel:unhurt' }); continue; }
+      target!.mechanics.health = health;
+      s.person.inventory = removeItem(s.person.inventory, job.itemId);
+      s.person.mechanics.inventoryRevision++;
+      simEvents.emit('personUpdated', target!);
+      if (target !== s.person) simEvents.emit('personUpdated', s.person);
+      this.notify?.(accountId, { kind: 'care', text: 'done', owner: true });
+      if (target !== s.person) {
+        for (const [otherId, other] of this.sessions) if (other.person === target) this.notify?.(otherId, { kind: 'notice', text: `${s.person.name} treated you.`, owner: true });
+      }
+    }
   }
 
   /** The player puts one object, or everything at their own desk, back where it started. */
@@ -445,6 +519,8 @@ export class PlayerManager {
     // changes with the office speed, so keep a separate monotonic mechanics clock.
     this.mechanicsTime += Math.max(0, dt);
     const now = this.mechanicsTime;
+    stepMedkits(dt); // (every medkit makes its next bandage and first-aid box in real seconds)
+    this.stepCare(now);
     for (const s of this.sessions.values()) {
       const input = this.inputs.get(s.person.id);
       const heldBy = s.person.mechanics.heldBy;

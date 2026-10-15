@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdo
 import { AuthProvider } from '../auth/auth.provider';
 import type { AuthService } from '../auth/auth.service';
 import { WorldService } from '../world/world.service';
-import { PlayerManager } from './player-manager';
+import { PlayerManager, type PlayerNote } from './player-manager';
 
 /**
  * Builds the PlayerManager on the accounts, once the world and the accounts are both up, and makes the world agree with the
@@ -13,6 +13,8 @@ export class PlayService implements OnApplicationBootstrap, OnApplicationShutdow
   private current: { auth: AuthService; manager: PlayerManager } | null = null;
   private kickHandler: ((accountId: number, reason: string) => void) | null = null;
   private removeManagerKick: (() => void) | null = null;
+  private noteHandler: ((accountId: number, note: PlayerNote) => void) | null = null;
+  private removeManagerNote: (() => void) | null = null;
   private readonly log = new Logger('Play');
   private readonly removeBeforeStep: () => void;
   private readonly removeImpactListener: () => void;
@@ -33,9 +35,12 @@ export class PlayService implements OnApplicationBootstrap, OnApplicationShutdow
     if (!this.current || this.current.auth !== auth) {
       this.removeManagerKick?.();
       this.removeManagerKick = null;
+      this.removeManagerNote?.();
+      this.removeManagerNote = null;
       this.current?.manager.releaseAll();
       const manager = new PlayerManager(auth.accounts, { graceMs: Number(process.env.GRACE_MS) || 30_000, log: this.log });
       if (this.kickHandler) this.removeManagerKick = manager.onKick(this.kickHandler);
+      if (this.noteHandler) this.removeManagerNote = manager.onNotify(this.noteHandler);
       this.current = { auth, manager };
     }
     return this.current.manager;
@@ -52,6 +57,20 @@ export class PlayService implements OnApplicationBootstrap, OnApplicationShutdow
       this.removeManagerKick?.();
       this.removeManagerKick = null;
       this.kickHandler = null;
+    };
+  }
+
+  /** Where notes for one player go (the gateway registers this): what a medkit holds, how a care is going. */
+  onNotify(fn: (accountId: number, note: PlayerNote) => void): () => void {
+    this.removeManagerNote?.();
+    this.removeManagerNote = null;
+    this.noteHandler = fn;
+    if (this.current) this.removeManagerNote = this.current.manager.onNotify(fn);
+    return () => {
+      if (this.noteHandler !== fn) return;
+      this.removeManagerNote?.();
+      this.removeManagerNote = null;
+      this.noteHandler = null;
     };
   }
 
@@ -72,7 +91,10 @@ export class PlayService implements OnApplicationBootstrap, OnApplicationShutdow
     this.removeImpactListener();
     this.removeManagerKick?.();
     this.removeManagerKick = null;
+    this.removeManagerNote?.();
+    this.removeManagerNote = null;
     this.kickHandler = null;
+    this.noteHandler = null;
     this.current?.manager.releaseAll();
   }
 }

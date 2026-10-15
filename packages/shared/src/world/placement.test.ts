@@ -77,7 +77,10 @@ describe('inventory drag-out placement', () => {
 
 describe('where things may be put', () => {
   it('every object may be at its starting place (back where it started is always allowed)', () => {
-    for (const o of objects.all()) expect(placementProblem(o, o.home.x, o.home.z, o.home.rot), o.id).toBeNull();
+    for (const o of objects.all()) {
+      if (CATALOGUE[o.type].mobility === 'fixed') expect(placementProblem(o, o.home.x, o.home.z, o.home.rot), o.id).toBe('not-movable'); // (the medkit is never moved)
+      else expect(placementProblem(o, o.home.x, o.home.z, o.home.rot), o.id).toBeNull();
+    }
   });
 
   it('a chair may be moved to open floor, and its seat and the place people walk to go with it', () => {
