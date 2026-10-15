@@ -146,6 +146,36 @@ describe('picking up', () => {
     expect(person.mechanics.inventoryRevision).toBe(revision + 1);
   });
 
+  it('brings the same object back when a stored one is dropped, however often, without growing the object list', async () => {
+    const { id, person } = await guest('ana');
+    const chair = diningChair();
+    stand(person, chair);
+    const count = objects.count();
+    for (let n = 0; n < 3; n++) {
+      stand(person, chair);
+      expect(manager.grabObject(id, chair.index, T())).toEqual({ ok: true, changed: 1 });
+      expect(manager.inventoryAction(id, 'assign', person.mechanics.inventoryRevision, undefined, undefined, chair.index)).toEqual(expect.objectContaining({ ok: true }));
+      expect(chair.removed).toBe(true);
+      const dropped = manager.inventoryAction(id, 'drop', person.mechanics.inventoryRevision, `world:${chair.id}`);
+      expect(dropped).toEqual(expect.objectContaining({ ok: true }));
+      expect(chair.removed).toBe(false);
+      expect(person.inventory.items).toEqual([]);
+    }
+    expect(objects.count()).toBe(count); // (nothing was added to the append-only list)
+  });
+
+  it('does not let a stored thing keep blocking the place it stood', async () => {
+    const { id, person } = await guest('ana');
+    const [a, b] = [diningChair(0), diningChair(1)];
+    stand(person, a); manager.grabObject(id, a.index, T());
+    manager.inventoryAction(id, 'assign', person.mechanics.inventoryRevision, undefined, undefined, a.index);
+    expect(a.removed).toBe(true);
+    stand(person, b); manager.grabObject(id, b.index, T());
+    stand(person, a.home, .0); person.pos.x = a.home.x + .5; person.pos.z = a.home.z;
+    // where the stored chair stood is free: it is not there
+    expect(manager.placeObject(id, a.home.x, a.home.z, 0, T())).toEqual({ ok: true, changed: 1 });
+  });
+
   it('refuses an inventory assignment when the player is empty-handed', async () => {
     const { id, person } = await guest('ana');
     const chair = diningChair();

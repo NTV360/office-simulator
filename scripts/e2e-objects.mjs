@@ -81,6 +81,11 @@ const lookAt = async (page, index) => {
   return false;
 };
 const thirdPerson = async page => { if (await page.evaluate(() => window.__sim.ctl.mode) === 'fp') { await page.keyboard.press('v'); await sleep(400); } };
+/**
+ * E with nothing aimed at means "sit down", which would seat the player and spoil every later attempt. So press it only while the page
+ * is actually aiming at this object and the player is standing.
+ */
+const readyForE = (page, index) => until(() => page.evaluate(i => window.__sim.objectPick === i && !window.__sim.player.sitting ? true : null, index), 3000);
 /** Hold E for the actor and wait for that actor's own authoritative mirror. */
 const holdPickup = async (page, index, target, attempts = 5) => {
   for (let attempt = 0; attempt < attempts; attempt++) {
@@ -88,8 +93,11 @@ const holdPickup = async (page, index, target, attempts = 5) => {
     if (!await lookAt(page, index)) continue;
     const offered = await until(() => page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up|Help carry/.test(b.textContent); }), 5000);
     if (!offered) continue;
+    if (!await readyForE(page, index)) continue;
     await page.keyboard.down('e');
-    await sleep(650);
+    // The page sends the pickup on the first frame after the 500 ms hold, and letting go earlier cancels it. Software-rendered pages
+    // running together can be slow to draw a frame, so hold well past the delay.
+    await sleep(2000);
     await page.keyboard.up('e');
     // Let the object-action bucket refill before a subsequent placement.
     await sleep(500);
@@ -114,8 +122,9 @@ const holdPickupAlreadyAimed = async (page, index) => {
       return !b.hidden && /Pick up|Help carry/.test(b.textContent);
     }), 3000);
     if (!offered) return null;
+    if (!await readyForE(page, index)) { await sleep(300); continue; }
     await page.keyboard.down('e');
-    await sleep(750);
+    await sleep(2000); // (as above: well past the 500 ms hold, so a slow frame cannot lose the pickup)
     await page.keyboard.up('e');
     // A successful grab spends one object-action token; leave enough time for
     // the server bucket to refill before the follow-up placement request.
@@ -299,7 +308,9 @@ try {
         aim: window.__sim.objectAim,
         prompt: document.getElementById('fpObj')?.textContent,
         mode: window.__sim.ctl.mode,
-        active: document.activeElement?.id ?? document.activeElement?.tagName
+        active: document.activeElement?.id ?? document.activeElement?.tagName,
+        sitting: !!window.__sim.player.sitting,
+        notices: [...document.querySelectorAll('.chat-line')].map(e => e.textContent).slice(-4)
       };
     }, diningIdx);
     throw new Error(`Cat did not observe dining chair pickup: ${JSON.stringify(state)}`);
@@ -419,6 +430,45 @@ try {
     return Array.isArray(result.body) && outOfPlace(result.body).length === 0 ? result.body : null;
   }, 15000);
   check('nothing is left out of place', !!finalObjects, JSON.stringify(finalObjects ?? (await admin('GET', '/api/admin/objects')).body));
+
+  // ---- 9. store a chair in the inventory and drag it out again: the same chair comes back, and the object list does not grow
+  const anaDesk = `interactables.of('desk').find(s => s.id === '${deskOf.obj_ana}').approach`;
+  await walkTo(A.page, anaDesk);
+  await lookAt(A.page, anaChair);
+  const toStore = await holdPickupAlreadyAimed(A.page, anaChair) ?? await holdPickup(A.page, anaChair, anaDesk);
+  check('Ana picks her chair up to store it', !!toStore);
+  const countBefore = await A.page.evaluate(() => window.__sim.objects.all().length);
+  await A.page.keyboard.down('e');
+  await sleep(2000); // (a deliberate hold, well past the storage delay, for the same slow-frame reason)
+  await A.page.keyboard.up('e');
+  const storedHere = await until(() => A.page.evaluate(i => window.__sim.objects.at(i).removed === true ? true : null, anaChair), 8000);
+  const storedThere = await until(() => B.page.evaluate(i => window.__sim.objects.at(i).removed === true ? true : null, anaChair), 8000);
+  check('storing it in the inventory shows as a consumed chair on both pages', !!storedHere && !!storedThere);
+  const stateOf = i => A.page.evaluate(i => {
+    const p = window.__sim.player.person, o = window.__sim.objects.at(i);
+    return {
+      removed: o.removed, carriedBy: o.carriedBy, items: p.inventory?.items?.map(x => x.id), revision: p.mechanics.inventoryRevision, sitting: !!window.__sim.player.sitting,
+      pos: { x: p.pos.x, z: p.pos.z, face: p.face }, notices: [...document.querySelectorAll('.chat-line')].map(e => e.textContent).slice(-4),
+    };
+  }, i);
+  if (!storedHere) { console.log('store diagnostics:', JSON.stringify(await stateOf(anaChair))); throw new Error('the chair was not stored; cannot continue with the drop'); }
+  // (a chair needs room to be put down in front of you: leave the crowded desk for open floor first)
+  await walkTo(A.page, "interactables.of('exit')[0].approach");
+  // The way a person does it: drag the item out of the inventory panel and let go outside it (the page sends the drop on `dragend`).
+  await A.page.evaluate(i => {
+    const itemEl = document.querySelector(`#inventoryGrid [data-item-id="world:${window.__sim.objects.at(i).id}"]`);
+    if (!itemEl) throw new Error('the stored chair is not shown in the inventory');
+    const dt = new DataTransfer();
+    itemEl.dispatchEvent(new DragEvent('dragstart', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    const r = document.getElementById('inventoryPanel').getBoundingClientRect();
+    const x = r.left > 60 ? r.left - 40 : r.right + 40, y = r.top > 60 ? r.top - 40 : r.bottom + 40;
+    itemEl.dispatchEvent(new DragEvent('dragend', { dataTransfer: dt, clientX: Math.max(1, x), clientY: Math.max(1, y), bubbles: true, cancelable: true }));
+  }, anaChair);
+  const backThere = await until(() => B.page.evaluate(i => { const o = window.__sim.objects.at(i); return o.removed === false && o.carriedBy === null ? true : null; }, anaChair), 8000);
+  if (!backThere) console.log('drop diagnostics:', JSON.stringify(await stateOf(anaChair)));
+  check('dragging it out brings the same chair back, on the other page too', !!backThere);
+  const countAfter = await A.page.evaluate(() => window.__sim.objects.all().length);
+  check('and the object list did not grow', countAfter === countBefore, `${countBefore} -> ${countAfter}`);
 
   const errors = [...A.errors, ...B.errors, ...C.errors].filter(e => !/401|403|Failed to load resource|WebSocket connection|WebSocket is already in CLOSING or CLOSED state|502/.test(e));
   check('no unexpected console errors in the browsers', errors.length === 0, errors.slice(0, 2).join(' | '));

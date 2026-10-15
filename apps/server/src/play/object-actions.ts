@@ -1,7 +1,7 @@
 import {
   CATALOGUE, canReach, canUseHands, throwVelocity, carriedBy, carryOf, holdFor, syncHolders, inReach, isSeated, freeSitOccupied, letGo, simEvents, movability, nearestGrip, objects, onItem, pickUp, placeDown, placementProblem, resetObject, restHeightAt,
   type Quat,
-  addObject, consumeObject, findInventoryDropPlacement, findFirstFit, placeItem, removeItem, type InventoryState, type InventoryDropPlacement,
+  addObject, consumeObject, reviveObject, findInventoryDropPlacement, findFirstFit, placeItem, removeItem, type InventoryState, type InventoryDropPlacement,
   isAtHome, type Person, type Refusal, type WorldObject,
 } from '@office/shared';
 
@@ -51,10 +51,18 @@ export function dropInventoryItem(person: Person, inventory: InventoryState, ite
   const placement = findInventoryDropPlacement(item, person, { rotation: item.rotation });
   if (!placement) return { ok: false, reason: 'blocked' };
   let object: WorldObject;
-  try {
-    object = addObject({ type: item.type, x: placement.x, z: placement.z, rot: placement.rot, y: placement.y, variant: 0, station: null, spot: null });
-  } catch {
-    return { ok: false, reason: 'blocked' };
+  // What was stored from the world comes back as that same object (the item remembers it as `world:<id>`), so storing and dropping
+  // never grows the object list. Anything else (an item that never was in the world) is a new object.
+  const source = item.id.startsWith('world:') ? objects.byId(item.id.slice('world:'.length)) : undefined;
+  if (source && source.removed && source.type === item.type) {
+    reviveObject(source, placement.x, placement.z, placement.rot, placement.y);
+    object = source;
+  } else {
+    try {
+      object = addObject({ type: item.type, x: placement.x, z: placement.z, rot: placement.rot, y: placement.y, variant: 0, station: null, spot: null });
+    } catch {
+      return { ok: false, reason: 'blocked' };
+    }
   }
   return { ok: true, changed: 1, inventory: removeItem(inventory, item.id), object, placement };
 }

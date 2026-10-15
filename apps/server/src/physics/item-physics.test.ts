@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { DESK_TOP, consumeObject, isAtHome, movedObjects, objects, parseSavedWorld, pickUp, placementProblem, putDown, resetObject, roster, serializeWorld, setObjectPose, setSeed, simEvents, type Employee, type WorldObject } from '@office/shared';
+import { DESK_TOP, consumeObject, isAtHome, movedObjects, objects, parseSavedWorld, pickUp, placementProblem, putDown, resetObject, reviveObject, roster, serializeWorld, setObjectPose, setSeed, simEvents, type Employee, type WorldObject } from '@office/shared';
 import { World, type WorldOptions } from '../world/world';
 import { loadPhysics, type StaticShape } from './physics';
 import shapes from './office-shapes.json';
@@ -88,6 +88,17 @@ describe('tombstones and physics bodies', () => {
     expect(w.itemPhysics!.physics.body(mug.index)).toBeUndefined();
     tick(w, 1);
     expect(w.itemPhysics!.physics.body(mug.index)).toBeUndefined();
+  });
+
+  it('gives a consumed object a body again when it is brought back into the world', () => {
+    const w = make();
+    const mug = ofType('mug')[0];
+    consumeObject(mug);
+    expect(w.itemPhysics!.physics.body(mug.index)).toBeUndefined();
+    const spot = freeSpot(mug);
+    reviveObject(mug, spot.x, spot.z, mug.rot, mug.y);
+    tick(w, 1);
+    expect(w.itemPhysics!.physics.body(mug.index)).toBeDefined();
   });
 });
 

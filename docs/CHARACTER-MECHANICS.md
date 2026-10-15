@@ -22,7 +22,7 @@ Inventory is a 4x5 authoritative grid with 0/90-degree rotations and three hotba
 
 ## Lifecycle
 
-Disconnect, reset, hand-back, and ragdoll cleanup release character holds and clear stale control references. World-object indices remain append-only; consumed objects become tombstones so clients cannot accidentally reuse an index.
+Disconnect, reset, hand-back, and ragdoll cleanup release character holds and clear stale control references. World-object indices remain append-only; consumed objects become tombstones so clients cannot accidentally reuse an index. Dropping a stored item that came from the world (its inventory id is `world:<object id>`) brings that same object back at the new pose, so storing and dropping never grows the object list; only an item that never was in the world creates a new object. A tombstone takes no part in placement.
 
 ## Wire compatibility
 

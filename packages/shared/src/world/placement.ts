@@ -125,7 +125,7 @@ export function restHeightAt(o: WorldObject, x: number, z: number): number | nul
   const [px, py] = toPx({ x, z }), rp = r / S;
   for (const t of fixedTops) if (px >= t[0] + rp && px <= t[2] - rp && py >= t[1] + rp && py <= t[3] - rp && (best === null || t[4] > best)) best = t[4];
   for (const q of objects.all()) {
-    const top = q === o || q.carriedBy !== null || q.q !== null ? undefined : shapeOf(q).top;
+    const top = q === o || q.removed || q.carriedBy !== null || q.q !== null ? undefined : shapeOf(q).top; // (a stored thing is not there)
     if (!top) continue;
     const dx = x - q.x, dz = z - q.z, c = Math.cos(q.rot), s = Math.sin(q.rot);
     const lx = dx * c - dz * s, lz = dx * s + dz * c; // (into its own frame, as objects.ts turns a seat)
@@ -147,7 +147,7 @@ export function placementProblem(o: WorldObject, x: number, z: number, rot: numb
   // thing has been put there since, it is crowded like anywhere else)
   const home = atHome(o, x, z, rot);
   const me = CATALOGUE[o.type];
-  const others = objects.all().filter(q => q !== o && q.carriedBy === null && CATALOGUE[q.type].rests === me.rests);
+  const others = objects.all().filter(q => q !== o && !q.removed && q.carriedBy === null && CATALOGUE[q.type].rests === me.rests);
   if (me.rests === 'surface') {
     const y = home ? o.home.y : restHeightAt(o, x, z);
     if (y === null) return 'off-desk';

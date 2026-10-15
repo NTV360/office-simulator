@@ -178,6 +178,20 @@ export function consumeObject(o: WorldObject): void {
   simEvents.emit('objectMoved', o);
 }
 
+/**
+ * Bring a consumed object back into the world at a pose. It is the same slot, so nothing is added to the append-only list; its seat (if
+ * it has one) comes back with it. A thing that began in an inventory has no starting place but where it is first put, so that is its home.
+ */
+export function reviveObject(o: WorldObject, x: number, z: number, rot: number, y: number): boolean {
+  if (!o.removed) return false;
+  o.removed = false;
+  o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
+  if (o.index >= layoutObjectCount) o.home = { x, z, rot, y };
+  restoreObjectLinks(o);
+  setObjectPose(o, x, z, wrapAngle(rot), y, null);
+  return true;
+}
+
 /** A person picks an object up (taking it the way `hold` says, when the server knows). Everybody is told (it is drawn in their hands from now on). */
 export function pickUp(o: WorldObject, personId: number, hold?: Hold): void {
   if (o.removed) return;

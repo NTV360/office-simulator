@@ -11,7 +11,7 @@ import { SAVE_VERSION, SaveError, parseSavedWorld, restoreWorld, serializeWorld 
 import { initState, meetings, people, resetSim, sim } from './state';
 import { stepSim } from './step';
 import { removeHelper } from './testing';
-import { addObject, consumeObject, objects } from '../world/objects';
+import { addObject, consumeObject, objects, reviveObject } from '../world/objects';
 import { placeItem, setHotbarSlot } from './inventory';
 
 const testRoster = (count = 40) => Array.from({ length: count }, (_, i) => ({
@@ -43,6 +43,23 @@ describe('saving and restoring the world', () => {
     expect(restored.link!.spot.object).toBeUndefined();
     expect(viaJson().objects).toContainEqual(expect.objectContaining({ id: chair.id, removed: true }));
     expect(spot.occupant).toBeNull();
+  });
+
+  it('a consumed object brought back after a restore is the same object, in place, and saves as an ordinary one', () => {
+    runningWorld(1, 0);
+    const chair = objects.all().find(o => o.link)!;
+    consumeObject(chair);
+    restoreWorld(parseSavedWorld(viaJson()));
+    const restored = objects.byId(chair.id)!, count = objects.count();
+    expect(restored.removed).toBe(true);
+    expect(reviveObject(restored, 4, 5, 1, 0)).toBe(true);
+    expect(restored).toMatchObject({ removed: false, x: 4, z: 5 });
+    expect(restored.link!.spot.object).toBe(restored.id);
+    expect(objects.count()).toBe(count);
+    const saved = viaJson();
+    expect(saved.objects).toContainEqual(expect.objectContaining({ id: chair.id, x: 4, z: 5 }));
+    expect(saved.objects.find((o: { id: string }) => o.id === chair.id).removed).toBeUndefined();
+    expect(reviveObject(restored, 1, 1, 0, 0)).toBe(false); // (only a consumed one comes back)
   });
 
   it('persists a runtime-created object definition through JSON restore', () => {

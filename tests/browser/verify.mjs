@@ -835,6 +835,17 @@ try {
       if (stored) pass('holding E again stores the carried chair in the owner inventory'); else fail('second-stage E did not store the carried chair');
       const tombstone = await B.page.waitForFunction(i => window.__sim.objects.at(i).removed === true, idx, { timeout: 8000 }).then(() => true, () => false);
       if (tombstone) pass('the other page receives the consumed-object tombstone'); else fail('the other page still shows the stored chair');
+      // Dragging it out of the inventory brings back that same object (same index), and the object list does not grow.
+      const countBefore = await A.page.evaluate(() => window.__sim.objects.all().length);
+      await A.page.evaluate(i => {
+        const id = `world:${window.__sim.objects.at(i).id}`;
+        const dt = new DataTransfer(); dt.setData('text/plain', id);
+        document.getElementById('inventoryPanel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      }, idx);
+      const revived = await B.page.waitForFunction(i => { const o = window.__sim.objects.at(i); return o.removed === false && o.carriedBy === null; }, idx, { timeout: 8000 }).then(() => true, () => false);
+      if (revived) pass('dragging it out of the inventory brings the same chair back, on the other page too'); else fail('the dropped chair did not come back as the same object');
+      const countAfter = await A.page.evaluate(() => window.__sim.objects.all().length);
+      if (countAfter === countBefore) pass('and the object list did not grow'); else fail(`the object list grew from ${countBefore} to ${countAfter}`);
       [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource/.test(e)).forEach(e => fail(e));
       await A.page.close(); await B.page.close();
       for (const n of [oa, ob]) { const u = (await adminJson(site.url, 'GET', '/api/admin/users')).body.find(x => x.username === n); if (u) await adminJson(site.url, 'POST', `/api/admin/users/${u.id}/disabled`, { disabled: true }); }
