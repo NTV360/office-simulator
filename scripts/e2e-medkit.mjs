@@ -192,6 +192,33 @@ try {
   check('and used up Ana\'s first-aid box', boxBefore && !(await myItems(A.page)).some(i => i.type === 'first-aid-box'));
   check('Ben is told Ana treated him', (await notices(B.page)).some(t => /treated you/.test(t)));
 
+  // ---- 6. Ben empties part of the box; after a server restart the box is full again (its stock is session-only, like health)
+  const openMenu = async (x) => {
+    await walkTo(x.page, "interactables.of('counter')[0].approach");
+    await fp(x.page);
+    if (!await aimAtMedkit(x.page, medkit)) return false;
+    await x.page.keyboard.press('e');
+    return !!await until(() => x.page.evaluate(() => { const p = document.getElementById('medboxPanel'); return p && !p.hidden ? true : null; }), 8000);
+  };
+  const opened = await openMenu(B);
+  check('Ben opens the medbox', opened);
+  if (opened) {
+    await until(async () => (await count(B.page, 'bandage')) >= 1 ? true : null, 8000);
+    for (let i = 0; i < 3; i++) { await B.page.click('#medboxGrid .medbox-item.bandage'); await sleep(400); }
+    const fewer = await until(async () => (await count(B.page, 'bandage')) <= 8 ? true : null, 8000);
+    check('after taking 3 bandages the box holds fewer', !!fewer, `${await count(B.page, 'bandage')}`);
+    await B.page.click('#medboxClose');
+  }
+  console.log('restarting the server ...');
+  await Promise.all([A, B].map(x => x.page.evaluate(() => { window.__sim.net.joined = false; })));
+  compose('restart', 'server');
+  await waitUp();
+  await Promise.all([A, B].map(x => joined(x.page)));
+  const reopened = await openMenu(B);
+  check('after the restart Ben can open the medbox again', reopened);
+  const refilled = await until(async () => (await count(B.page, 'bandage')) === 10 && (await count(B.page, 'first-aid-box')) === 5 ? true : null, 8000);
+  check('and it is full again: 10 bandages and 5 first-aid boxes', !!refilled, `${await count(B.page, 'bandage')} / ${await count(B.page, 'first-aid-box')}`);
+
   const errors = [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource|WebSocket connection|WebSocket is already in CLOSING or CLOSED state|502/.test(e));
   check('no unexpected console errors in the browsers', errors.length === 0, errors.slice(0, 2).join(' | '));
 } catch (err) {
