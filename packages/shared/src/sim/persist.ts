@@ -245,10 +245,30 @@ export function parseSavedWorld(raw: unknown): SavedWorld {
 }
 
 /**
+ * Everything in the saved objects that could make the rebuild fail, checked before anything is changed: a runtime object must come in
+ * creation order, be of a known kind, and be tied to seats this office has. (A restore that failed halfway would leave a world that is part
+ * the save and part what was running.) Mirrors what `addObject` refuses.
+ */
+function assertObjectsRestorable(saved: SavedWorld): void {
+  const spots = new Set(interactables.all().map(s => s.id));
+  let count = objects.count();
+  for (const s of saved.objects) {
+    if (objects.byId(s.id) || s.type === undefined) continue;
+    if (s.id !== `obj:${count}`) throw new SaveError(`runtime object ${s.id} is out of append order`);
+    if (!typeOf(s.type)) throw new SaveError(`runtime object ${s.id} is invalid: unknown object type "${s.type}"`);
+    for (const id of [...(s.spot ? [s.spot] : []), ...(s.spots ?? [])]) {
+      if (!spots.has(id)) throw new SaveError(`runtime object ${s.id} is invalid: it carries ${id}, which does not exist`);
+    }
+    count++;
+  }
+}
+
+/**
  * Rebuild the world from a save. The office layout must already be loaded. Starts from an empty simulation, so it
  * replaces whatever was there. Uses no random numbers. Announces every person with `personAdded`.
  */
 export function restoreWorld(saved: SavedWorld): void {
+  assertObjectsRestorable(saved);
   const bySpotId = new Map(interactables.of('desk').map(s => [s.id, s]));
   const wanted = saved.people.map(p => {
     if (p.slot === '') return null;

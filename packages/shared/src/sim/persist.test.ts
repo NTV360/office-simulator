@@ -164,6 +164,23 @@ describe('saving and restoring the world', () => {
     expect(people).toHaveLength(40);
   });
 
+  it('refuses a save whose later runtime object cannot be built, before changing anything in the running world', () => {
+    runningWorld();
+    const base = viaJson(), t = sim.t, count = objects.count();
+    const runtime = (id: string, over: object) => ({ id, x: 3, z: 3, rot: 0, y: 0, type: 'mug', variant: 0, station: null, spot: null, ...over });
+    for (const bad of [
+      [runtime(`obj:${count}`, {}), runtime(`obj:${count + 1}`, { type: 'no-such-kind' })], // a good one first, then an unknown kind
+      [runtime(`obj:${count}`, {}), runtime(`obj:${count + 1}`, { spot: 'desk:999' })], // a seat this office does not have
+      [runtime(`obj:${count}`, {}), runtime(`obj:${count + 2}`, {})], // out of creation order
+    ]) {
+      const saved = { ...base, objects: [...base.objects, ...bad] };
+      expect(() => restoreWorld(parseSavedWorld(saved))).toThrow(SaveError);
+      expect(objects.count()).toBe(count); // (the good runtime object before it was not added either)
+      expect(sim.t).toBe(t);
+      expect(people).toHaveLength(40);
+    }
+  });
+
   it('a desk the save did not know about is still handed out later', () => {
     runningWorld();
     const saved = viaJson();
