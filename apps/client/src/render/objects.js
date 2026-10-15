@@ -14,7 +14,6 @@ import { drawTable } from '../world/furniture/conference.js';
 import { drawConsole } from '../world/furniture/game.js';
 import { drawSofa } from '../world/furniture/lounge.js';
 import { box, cyl } from '../world/helpers.js';
-import { unregisterScreen } from './screens.js';
 
 // Drawing the movable objects (chairs, stools and the small things on desks), fast. Every kind of object is built once, from the same
 // furniture code as before, merged into one geometry per material, and drawn with one InstancedMesh per material: a hundred chairs cost
@@ -190,17 +189,13 @@ export function initObjectViews() {
     if (o.removed) {
       const s = slotOf.get(o.index);
       for (const p of s.kind.parts) { p.mesh.setMatrixAt(s.slot, new THREE.Matrix4().makeScale(0, 0, 0)); p.mesh.instanceMatrix.needsUpdate = true; }
-      const attachments = attached.get(o.index) ?? [];
-      for (const { mesh } of attachments) {
-        scene.remove(mesh);
-        unregisterScreen(o.station, mesh);
-        mesh.geometry?.dispose();
-      }
-      attached.delete(o.index);
+      // (what is fixed to it, a monitor's screen, is hidden rather than thrown away: the same object may come back out of the inventory)
+      for (const { mesh } of attached.get(o.index) ?? []) mesh.visible = false;
       shown.delete(o.index);
       carried.delete(o.index); carrierOf.delete(o.index); gliding.delete(o.index);
       return;
     }
+    for (const { mesh } of attached.get(o.index) ?? []) mesh.visible = true;
     // (everyone holding it holds their arms out to it; whoever has let go puts them down)
     const now = o.carriedBy === null ? [] : [o.carriedBy, ...o.helpers];
     for (const id of carrierOf.get(o.index) ?? []) if (!now.includes(id)) { const q = people.find(x => x.id === id); if (q) { q.carrying = false; q.carryAt = null; } }

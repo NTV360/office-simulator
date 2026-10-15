@@ -304,6 +304,19 @@ describe('a login', () => {
     expect(g.inventory.items).toEqual([]);
   });
 
+  it('drops a guest\'s stored items too when the server stops', async () => {
+    const ana = await account('ana');
+    const g = await manager.attach(ana);
+    const desk = interactables.of('desk')[0];
+    g.pos.x = desk.pos.x + 3; g.pos.z = desk.pos.z + 3; g.face = 0;
+    g.inventory = placeItem(createInventory(), { id: 'mug-1', type: 'mug', x: 0, y: 0, rotation: 0 });
+    const before = objects.count();
+    manager.releaseAll();
+    expect(people).not.toContain(g);
+    expect(objects.count()).toBe(before + 1);
+    expect(objects.at(before)!.type).toBe('mug');
+  });
+
   it('reconnecting inside the grace period gets the same guest back, not a new one', async () => {
     const ana = await account('ana');
     const g = await manager.attach(ana);

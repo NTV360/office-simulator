@@ -1,5 +1,5 @@
 import {
-  HAZEL_NAME, handBack, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
+  HAZEL_NAME, handBack, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, releaseCarried, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
 import { assignObjectToInventory, drop, dropInventoryItem, grab, holdInput, place, putBack, putBackStation, throwIt, type InventoryDropResult, type ObjectResult } from './object-actions';
@@ -143,6 +143,7 @@ export class PlayerManager {
    */
   private dropGuestInventory(person: Person): void {
     if (person.slot) return;
+    releaseCarried(person.id); // (what they carry goes home first, so what they stored is not put down where that is about to land)
     let lost = 0;
     for (const item of [...person.inventory.items]) {
       const result = dropInventoryItem(person, person.inventory, item.id);
@@ -471,6 +472,7 @@ export class PlayerManager {
       if (s.graceTimer !== null) this.timers.clear(s.graceTimer);
       this.inputs.delete(s.person.id);
       releaseCharacterPerson(s.person.id);
+      this.dropGuestInventory(s.person);
       handBack(s.person);
       this.sessions.delete(id);
     }

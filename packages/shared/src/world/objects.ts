@@ -186,9 +186,10 @@ export function reviveObject(o: WorldObject, x: number, z: number, rot: number, 
   if (!o.removed) return false;
   o.removed = false;
   o.carriedBy = null; o.holds = []; o.helpers = []; o.placing = undefined; o.released = undefined;
-  if (o.index >= layoutObjectCount) o.home = { x, z, rot, y };
+  const turned = wrapAngle(rot);
+  if (o.index >= layoutObjectCount) o.home = { x, z, rot: turned, y };
   restoreObjectLinks(o);
-  setObjectPose(o, x, z, wrapAngle(rot), y, null);
+  setObjectPose(o, x, z, turned, y, null);
   return true;
 }
 
