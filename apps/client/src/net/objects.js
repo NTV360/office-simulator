@@ -22,7 +22,9 @@ const PICKUP_HOLD_MS = 500;
 const aim = new THREE.Raycaster(), MIDDLE = new THREE.Vector2(0, 0);
 aim.far = 6;
 /** How far from where you stand a thing can be put down (m): your arm, and the thing's own size. */
-const PUT_REACH = REACH;
+// The ghost stops a little inside the real reach: the server measures from where the player really is, which can lag the page by a few
+// centimetres, and a target exactly at the edge would be refused as "too far" although the ghost showed green.
+const PUT_REACH = REACH - .3;
 const UP = new THREE.Vector3(0, 1, 0), RIGHT = new THREE.Vector3(-1, 0, 0), FORWARD = new THREE.Vector3(0, 0, 1), turnBy = new THREE.Quaternion();
 
 const labelOf = o => (CATALOGUE[o.type]?.label ?? 'thing').toLowerCase();
