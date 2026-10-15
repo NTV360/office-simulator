@@ -81,6 +81,9 @@ try {
     check('any other plain HTTP address is sent to HTTPS', moved.status === 301 && String(moved.headers.location).startsWith(`https://localhost:${HTTPS_PORT}/`), `${moved.status} ${moved.headers.location}`);
     const port = await edgeGet(false, '/lan.json');
     check('the setup page can learn the HTTPS port', port.status === 200 && JSON.parse(port.body).httpsPort === HTTPS_PORT, port.body);
+    // (the edge makes its certificates when it starts, a moment after it first answers on plain HTTP: wait for HTTPS to be ready, as a client would retry)
+    const httpsReady = host => waitFor(`HTTPS for ${host}`, async () => { const r = await edgeGet(true, '/', { host, ca: root.body }).catch(() => null); return r && r.status === 200 ? r : null; }, 60000).catch(() => null);
+    await httpsReady('localhost'); await httpsReady('voice.localhost');
     const trusted = await edgeGet(true, '/api/health', { ca: root.body }).catch(e => ({ error: e.code ?? e.message }));
     check('HTTPS verifies against the downloaded root', trusted.status === 200, JSON.stringify(trusted.error ?? trusted.status));
     const voiceHost = await edgeGet(true, '/', { host: 'voice.localhost', ca: root.body }).catch(e => ({ error: e.code ?? e.message }));
