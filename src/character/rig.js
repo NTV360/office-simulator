@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CATS } from '../people/data.js';
 import { Character, STYLES } from './pack/characters.js';
 import { mergeJoints } from './gfx.js';
-import { addFaces } from './parts.js';
+import { addFaces, addFigma } from './parts.js';
 import { makeGuitar, makeHeldProps } from './props.js';
 
 const ringGeo = new THREE.RingGeometry(.27, .33, 32);
@@ -92,6 +92,7 @@ function buildBody(spec) {
   const held = makeHeldProps(), hand = handR.getWorldPosition(new THREE.Vector3());
   for (const prop of Object.values(held)) { prop.position.add(hand); handR.attach(prop); }
   const guitar = makeGuitar(); guitar.position.set(-.04, chest.getCenter(v).y, chest.max.z + .07); guitar.rotation.z = .35; guitar.scale.setScalar(.85); guitar.visible = false; spine.attach(guitar);
+  if (spec.special === 'hazel') addFigma(spine, chest); // the Figma logo on her shirt
   const faces = spec.angry ? addFaces(head, head.children.filter(o => o.isMesh && skinMeshes.includes(o))) : null;
 
   const ring = new THREE.Mesh(ringGeo, ringMats.work); ring.rotation.x = -Math.PI / 2; ring.position.y = .015; ring.renderOrder = 2;

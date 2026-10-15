@@ -57,4 +57,26 @@ function addFaces(head, faceMeshes) {
   return { angry, laugh, worried };
 }
 
-export { addFaces };
+// The Figma logo printed on the middle of her shirt (Hazel, rig.js): the five shapes drawn on a canvas, on a
+// thin plane just in front of the chest. `chest` is the torso's box (world space, standing at rest facing +z).
+let figmaTex = null;
+function figmaTexture() {
+  if (figmaTex) return figmaTex;
+  const c = document.createElement('canvas'); c.width = 128; c.height = 192;
+  const g = c.getContext('2d'), u = 64, r = 32, shape = (color, x, y, radii) => { g.fillStyle = color; g.beginPath(); g.roundRect(x * u, y * u, u, u, radii); g.fill(); };
+  shape('#f24e1e', 0, 0, [r, 0, 0, r]);   // top left, red
+  shape('#ff7262', 1, 0, [0, r, r, 0]);   // top right, orange
+  shape('#a259ff', 0, 1, [r, 0, 0, r]);   // middle left, purple
+  shape('#0acf83', 0, 2, [r, 0, r, r]);   // bottom, green
+  g.fillStyle = '#1abcfe'; g.beginPath(); g.arc(1.5 * u, 1.5 * u, r, 0, Math.PI * 2); g.fill(); // middle right, the blue dot
+  figmaTex = new THREE.CanvasTexture(c); figmaTex.colorSpace = THREE.SRGBColorSpace; figmaTex.anisotropy = 4;
+  return figmaTex;
+}
+function addFigma(torso, chest) {
+  const h = (chest.max.y - chest.min.y) * .38, logo = new THREE.Mesh(new THREE.PlaneGeometry(h * 2 / 3, h), new THREE.MeshStandardMaterial({ map: figmaTexture(), transparent: true, roughness: .8 }));
+  logo.position.set((chest.min.x + chest.max.x) / 2, chest.min.y + (chest.max.y - chest.min.y) * .55, chest.max.z + .003);
+  torso.attach(logo);
+  return logo;
+}
+
+export { addFaces, addFigma };

@@ -52,6 +52,8 @@ function deskTags(tags) {
   });
 }
 
+const CHAIR_R = 6.6; // plan pixels: a chair's radius (.27 m)
+
 // Shared desk islands, from the static desk data (config/desks.js). Each chair is a 'desk' spot that knows its
 // seat id ('A3') and, for the HR office, the department it belongs to.
 function island(def, tags, gap = SEAT_GAP) {
@@ -73,6 +75,7 @@ function island(def, tags, gap = SEAT_GAP) {
       const deskId = def.id + (seatNo + 1), baby = deskId === HAZEL_DESK;
       const spot = mkSpot('desk', px, py, face, { sit: true, place: name, shared: false, hipY: baby ? .7 : undefined });
       spot.deskId = def.id + (++seatNo); spot.label = def.room ? `${name} · desk ${seatNo}` : `${name}${seatNo}`; spot.department = def.department ?? null;
+      addObs(px - CHAIR_R, py - CHAIR_R, px + CHAIR_R, py + CHAIR_R); // the chair is in the way too (people walk around it)
       const f = frame(px, py, face);
       if (baby) { highChair(f); buildTrike(W(x1 - .3 / S, (y1 + y2) / 2), SO); } // her tricycle, parked along the end of the desk
       else officeChair(f, (i + (top ? 0 : 1)) % 3 === 0 ? M.chairSeat2 : M.chairSeat);

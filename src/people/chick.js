@@ -9,7 +9,7 @@ import { trike } from '../world/furniture/trike.js';
 // her (a sofa, the keyboard) it flies up and sits on her head instead; when she walks (or rides)
 // it follows her trail a step behind; anywhere else it stays close to her on the floor. It goes home with her.
 // Updated from her step (people/hazel.js).
-const chick = { root: null, head: null, wings: [], pos: new THREE.Vector3(), y: 0, face: 0, goal: null, spot: null, wait: 0, t: 0, trail: [] };
+const chick = { root: null, head: null, wings: [], pos: new THREE.Vector3(), y: 0, face: 0, goal: null, spot: null, hop: null, wait: 0, t: 0, trail: [] };
 const BEHIND = .55;   // metres behind her on her trail
 const WANDER = .3;    // m/s pottering about
 const DESK_Y = .765;  // her desk top
@@ -49,7 +49,7 @@ function wanderGoal(p, seated) {
     const g = before(p.pos, p.face, rnd(-.35, .35), rnd(.4, .8)), y = tableAt(g.x, g.z);
     if (y != null) { g.y = y; return g; }
   }
-  if (seated) return { perch: true };
+  if (seated) return { perch: true, t: 0, from: null };
   return p.pos.clone().add(new THREE.Vector3(rnd(-.5, .5), 0, rnd(-.5, .5)));
 }
 // Her trail point `BEHIND` metres back along where she walked (her own position if the trail is shorter).
@@ -64,18 +64,37 @@ function trailPoint(p) {
 }
 
 const headBox = new THREE.Box3(), top = new THREE.Vector3();
-// Sitting on her head: flies up (flapping) and stays there, facing where she faces, pecking now and then.
-function perch(p, mdt) {
+const JUMP = .55; // seconds for a jump: onto a table, onto her head, or down
+// Sitting on her head: one flapping jump up in an arc from wherever it is, then it stays there, facing where
+// she faces and pecking now and then. `g` is the perch goal ({ perch, t: 0..1 through the jump, from }).
+function perch(p, g, mdt) {
   const b = p.body.root; b.position.set(p.pos.x, 0, p.pos.z); b.rotation.y = p.face; b.updateMatrixWorld(true); // where she is now (as syncBody puts her)
   headBox.setFromObject(p.body.head); headBox.getCenter(top); top.y = headBox.max.y - .005;
-  const k = Math.min(1, mdt * 6), far = flat(chick.pos, top) + Math.abs(top.y - chick.y);
-  chick.pos.lerp(new THREE.Vector3(top.x, 0, top.z), k); chick.y += (top.y - chick.y) * k;
-  if (far < .03) { chick.pos.set(top.x, 0, top.z); chick.y = top.y; } // sat down: move with her head
-  chick.face = p.face;
+  g.from ??= { x: chick.pos.x, z: chick.pos.z, y: chick.y };
+  g.t = Math.min(1, g.t + mdt / JUMP);
+  const t = g.t, f = g.from;
+  chick.pos.set(f.x + (top.x - f.x) * t, 0, f.z + (top.z - f.z) * t);
+  chick.y = f.y + (top.y - f.y) * t + Math.sin(Math.PI * t) * .35; // up and over, landing on top
+  if (t < 1) chick.face = Math.atan2(top.x - f.x, top.z - f.z); else chick.face = p.face;
   chick.root.position.set(chick.pos.x, chick.y, chick.pos.z); chick.root.rotation.y = chick.face;
-  chick.head.rotation.x = Math.sin(chick.t * 2.3) > .8 ? .5 : 0;
-  const flap = far > .03 ? Math.sin(chick.t * 30) * .6 : 0;
+  chick.head.rotation.x = t >= 1 && Math.sin(chick.t * 2.3) > .8 ? .5 : 0;
+  const flap = t < 1 ? Math.sin(chick.t * 30) * .6 : 0;
   chick.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * Math.max(0, flap); });
+}
+
+// One flapping jump in an arc from where it is to (x, y, z): up onto a table, or down to the floor. While a
+// jump is going (chick.hop) nothing else moves the chick.
+function hopTo(x, y, z) { chick.hop = { from: { x: chick.pos.x, y: chick.y, z: chick.pos.z }, to: { x, y, z }, t: 0 }; }
+function stepHop(mdt) {
+  const h = chick.hop, f = h.from, to = h.to;
+  h.t = Math.min(1, h.t + mdt / JUMP);
+  chick.pos.set(f.x + (to.x - f.x) * h.t, 0, f.z + (to.z - f.z) * h.t);
+  chick.y = f.y + (to.y - f.y) * h.t + Math.sin(Math.PI * h.t) * .3;
+  if (Math.hypot(to.x - f.x, to.z - f.z) > .01) chick.face = Math.atan2(to.x - f.x, to.z - f.z);
+  chick.root.position.set(chick.pos.x, chick.y, chick.pos.z); chick.root.rotation.y = chick.face;
+  chick.head.rotation.x = 0;
+  chick.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * Math.max(0, Math.sin(chick.t * 30) * .6); });
+  if (h.t >= 1) { chick.y = to.y; chick.hop = null; }
 }
 
 // Distance on the floor plan (the chick's own height is kept apart, in chick.y).
@@ -86,37 +105,42 @@ function chickStep(p, dt, mdt) {
   if (!chick.root) { Object.assign(chick, makeChick()); chick.root.visible = false; scene.add(chick.root); }
   const r = chick.root;
   if (p.state === 'away') { r.visible = false; chick.trail.length = 0; return; }
-  if (!r.visible) { r.visible = true; chick.pos.copy(p.pos); chick.y = 0; chick.goal = null; }
+  if (!r.visible) { r.visible = true; chick.pos.copy(p.pos); chick.y = 0; chick.goal = null; chick.hop = null; }
   chick.t += dt;
   const walking = p.state === 'walking', seated = p.state === 'doing' && !!p.task?.spot?.sit;
-  let goal, speed;
-  if (walking) {
+  if (walking) { // keep her trail even mid-jump
     const last = chick.trail[chick.trail.length - 1];
     if (!last || last.distanceTo(p.pos) > .05) { chick.trail.push(p.pos.clone()); if (chick.trail.length > 80) chick.trail.shift(); }
+  }
+  if (chick.hop) { stepHop(mdt); return; }
+  let goal, speed;
+  if (walking) {
+    if (chick.y > .05) { // she's off: jump down first, toward her
+      const g = trailPoint(p), d = flat(chick.pos, g), k = d > .35 ? .35 / d : 1;
+      hopTo(chick.pos.x + (g.x - chick.pos.x) * k, 0, chick.pos.z + (g.z - chick.pos.z) * k); chick.goal = null; return;
+    }
     goal = trailPoint(p); speed = Math.max(p.speed * 1.4, flat(chick.pos, goal) * 3); chick.goal = null;
   } else {
     chick.trail.length = 0;
     if (chick.spot !== p.task?.spot) { chick.spot = p.task?.spot; chick.goal = null; } // somewhere new: look again
     if (!chick.goal) chick.goal = wanderGoal(p, seated);
-    if (chick.goal.perch) { perch(p, mdt); return; }
-    if (flat(chick.pos, chick.goal) < .02) { // there: peck a while, then off somewhere else
+    else if (!chick.goal.perch && flat(chick.pos, chick.goal) < .02) { // there: peck a while, then off somewhere else
       if (chick.wait <= 0) chick.wait = rnd(1, 3.5);
       else if ((chick.wait -= mdt) <= 0) chick.goal = wanderGoal(p, seated);
     }
+    if (chick.goal.perch) { perch(p, chick.goal, mdt); return; } // (a new pick can be her head too)
+    if (Math.abs(chick.goal.y - chick.y) > .1) { hopTo(chick.goal.x, chick.goal.y, chick.goal.z); return; } // up onto the table (or down) in one jump
     goal = chick.goal; speed = flat(chick.pos, p.pos) > 2 ? 1.6 : WANDER; // catch up if left behind
   }
   const to = goal.clone().sub(chick.pos); to.y = 0;
   const d = to.length(), step = Math.min(d, speed * mdt), moving = step > 1e-4 && d > .02;
   if (moving) { chick.pos.addScaledVector(to, step / d); chick.face = Math.atan2(to.x, to.z); }
-  // up onto the table while she sits at one, down to the floor otherwise (flapping on the way)
-  const toY = walking ? 0 : chick.goal?.y ?? 0, climbing = Math.abs(toY - chick.y) > .01;
-  chick.y += (toY - chick.y) * Math.min(1, mdt * 5);
   // hop while moving; peck and flap now and then while still
   r.position.set(chick.pos.x, chick.y + (moving ? Math.abs(Math.sin(chick.t * 16)) * .025 : 0), chick.pos.z);
   r.rotation.y = chick.face;
   const peck = !moving && Math.sin(chick.t * 2.3) > .6;
   chick.head.rotation.x = peck ? .7 + Math.sin(chick.t * 20) * .15 : 0;
-  const flap = moving || climbing || Math.sin(chick.t * .9) > .93 ? Math.sin(chick.t * 30) * .6 : 0;
+  const flap = moving || Math.sin(chick.t * .9) > .93 ? Math.sin(chick.t * 30) * .6 : 0;
   chick.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * Math.max(0, flap); });
 }
 
