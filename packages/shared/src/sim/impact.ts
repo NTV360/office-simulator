@@ -80,6 +80,7 @@ export function applyImpact(state: CharacterMechanicsState, impact: ResolvedImpa
     seatMode: state.posture === 'seated' ? 'none' : state.seatMode,
     locomotion: 'knockback',
     grounded: true,
+    verticalVelocity: 0, // (a hit in mid-jump ends the jump: no stale upward speed is left for after the knockback)
     attack: null,
     knockbackUntil: at + IMPACT.knockbackSeconds,
   };

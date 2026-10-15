@@ -31,6 +31,14 @@ describe('physical impacts', () => {
     expect(ragdoll).toMatchObject({ posture: 'ragdoll', locomotion: 'ragdoll', seatId: null, seatMode: 'none' });
   });
 
+  it('a knockback in mid-jump ends the jump, leaving no upward speed behind', () => {
+    const jumping = { ...defaultCharacterMechanics(), locomotion: 'jump' as const, grounded: false, verticalVelocity: 4 };
+    const hit = resolveImpact({ normal: { x: 1, z: 0 }, relativeSpeed: 6, mass: 1 })!;
+    expect(hit.ragdoll).toBe(false);
+    const knocked = applyImpact(jumping, hit, 10);
+    expect(knocked).toMatchObject({ locomotion: 'knockback', grounded: true, verticalVelocity: 0 });
+  });
+
   it('recovers ragdolls in two server-observed phases', () => {
     const hit = resolveImpact({ normal: { x: 1, z: 0 }, relativeSpeed: 0, mass: 0, force: IMPACT.ragdollImpulse })!;
     const ragdoll = applyImpact(defaultCharacterMechanics(), hit, 10);

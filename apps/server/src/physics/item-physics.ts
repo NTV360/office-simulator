@@ -315,6 +315,7 @@ export class ItemPhysics {
         const key = `${o.index}:${p.id}`;
         if ((this.impactUntil.get(key) ?? -Infinity) > this.elapsed) continue;
         this.impactUntil.set(key, this.elapsed + IMPACT_COOLDOWN);
+        if (this.impactUntil.size > 256) for (const [k, until] of this.impactUntil) if (until <= this.elapsed) this.impactUntil.delete(k); // (expired cooldowns are not kept)
         const impact = { object: o, personId: p.id, normal: { x: nx, z: nz }, relativeSpeed: speed };
         this.pendingImpacts.push(impact);
         this.impactHandler?.(impact);
