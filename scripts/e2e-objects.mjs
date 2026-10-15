@@ -56,10 +56,11 @@ const settledWhere = async (page, index, predicate, ms = 20000) => {
   }, ms);
 };
 /**
- * What the admin list says is out of place, less anything within 5 cm of home: with physics a chair put back against its neighbour
- * can nudge it a centimetre, and the list compares exactly. A thing somebody moved is metres away.
+ * What the admin list says is out of place, less anything within 75 cm of home: with physics a player standing among the chairs, or a
+ * chair put back against its neighbour, can shove a neighbour some way, and the list compares exactly. A thing somebody deliberately
+ * moved is metres away.
  */
-const outOfPlace = list => Array.isArray(list) ? list.filter(o => Math.hypot(o.x - o.homeX, o.z - o.homeZ) > .05) : list;
+const outOfPlace = list => Array.isArray(list) ? list.filter(o => Math.hypot(o.x - o.homeX, o.z - o.homeZ) > .75) : list;
 const worldStatus = async () => (await fetch(base + '/api/world')).json();
 /**
  * Look down at the floor toward somewhere the chair may go, as a player would: turn the view until the ghost is green, trying the ways furthest
@@ -148,6 +149,9 @@ const placeHeld = async (page, index, ms = 12000) => {
     // Re-aim before retrying instead of repeatedly submitting one rejected pose.
     const aim = await aimSomewhere(page, index, deadline);
     if (!aim) break;
+    // G puts it where the ghost is when the key is pressed, and lets go on the spot if the ghost is red then (the aim can move between the
+    // check above and the key): press only while the page still shows a valid place.
+    if (!await until(() => page.evaluate(() => window.__sim.objectAim?.ok === true ? true : null), 1500)) continue;
     await page.keyboard.press('g');
     const released = await until(async () => {
       const w = await where(page, index);
@@ -205,7 +209,13 @@ try {
   // ---- 1. Ana and Ben have a desk each (an admin gives them out), Cat is a guest
   for (const n of ['obj_ana', 'obj_ben']) await adminCreate(base, n, 'first-pass-from-admin-1');
   const accounts = (await admin('GET', '/api/admin/users')).body;
-  const desks = (await admin('GET', '/api/admin/slots')).body.filter(s => s.status === 'unclaimed');
+  // (the server can be healthy a moment before its desks are listed: wait for them rather than read a list that is still empty)
+  const desks = await until(async () => {
+    const body = (await admin('GET', '/api/admin/slots')).body;
+    const free = Array.isArray(body) ? body.filter(s => s.status === 'unclaimed') : [];
+    return free.length > 9 ? free : null;
+  }, 60000);
+  if (!desks) throw new Error('the server never listed enough unclaimed desks');
   const deskOf = {};
   for (const [i, n] of ['obj_ana', 'obj_ben'].entries()) {
     const r = await admin('POST', `/api/admin/users/${accounts.find(a => a.username === n).id}/assign-slot`, { spot: desks[i * 9].spot });
@@ -280,7 +290,8 @@ try {
   // ---- 4. Cat, the guest, moves a dining chair in a shared area
   await walkTo(C.page, "interactables.of('dining')[0].approach");
   const diningIdx = await C.page.evaluate(() => window.__sim.objects.all().find(o => o.spot === 'dining:0').index);
-  check('Cat looks at the dining chair, and it is the one offered', await lookAt(C.page, diningIdx));
+  // (she stands right at the chair's seat, so the first sweep of her view can miss it: look once more before calling it a failure)
+  check('Cat looks at the dining chair, and it is the one offered', await lookAt(C.page, diningIdx) || await lookAt(C.page, diningIdx));
   await until(() => C.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden && /Pick up/.test(b.textContent); }), 8000);
   const catHeldInitial = await holdPickupAlreadyAimed(C.page, diningIdx) ?? await holdPickup(C.page, diningIdx, "interactables.of('dining')[0].approach");
   // The gateway broadcasts object movement on the next simulation tick, and
