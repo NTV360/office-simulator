@@ -39,6 +39,7 @@
     "e2e:medkit": "node scripts/e2e-medkit.mjs",
     "e2e:voice": "node scripts/e2e-voice.mjs",
     "e2e:lan": "node scripts/e2e-lan.mjs",
+    "lan:rebuild": "node scripts/lan-rebuild.mjs",
     "check:lan": "node --env-file=.env scripts/check-lan-config.mjs"
   },
   "engines": {
