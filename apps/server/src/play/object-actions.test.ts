@@ -458,9 +458,12 @@ describe('the medkit on the kitchen counter', () => {
 
   it('is refused from across the office', async () => {
     const { id, person } = await guest('ben');
+    const notes: Array<{ kind: string; text: string }> = [];
+    manager.onNotify((_id, note) => notes.push(note));
     const m = objects.all().find(o => o.type === 'medkit-box')!;
     person.pos.x = -6; person.pos.z = -5;
     expect(manager.medkitOpen(id, m.index)).toEqual({ ok: false, reason: 'too-far' });
+    expect(notes.at(-1)).toEqual({ kind: 'medkit', text: 'closed' }); // (the page closes its menu, with no chat notice)
     expect(manager.medkitTake(id, person.mechanics.inventoryRevision, m.index, 'bandage')).toEqual({ ok: false, reason: 'too-far' });
   });
 });

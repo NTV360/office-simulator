@@ -1,4 +1,4 @@
-import { CARE_REACH, angDiff, medicalHealSeconds, people } from '@office/shared';
+import { CARE_REACH, angDiff, medicalHealSeconds, mostHurtLimb, people } from '@office/shared';
 import { ctl } from '../player/control.js';
 import { player } from '../player/player.js';
 
@@ -62,8 +62,11 @@ export function careKey(down) {
   }
   const me = player.person;
   if (!state.item || !state.send || !me || !ctl.active || player.sitting || state.held) return false;
-  state.held = true;
   const target = careTarget();
+  // nothing to heal (as far as the page can tell): E means what it always meant, sitting down or standing up included
+  const health = (target ?? me).mechanics?.health;
+  if (health && mostHurtLimb(health) === null) return false;
+  state.held = true;
   state.send({ type: 'inventory', action: 'care', itemId: state.item.id, revision: state.revision(), ...(target ? { target: target.id } : {}) });
   return true;
 }

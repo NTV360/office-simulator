@@ -100,7 +100,9 @@ try {
   await fp(B.page);
   const hurt = await until(async () => {
     const a = await ana(); if (!a) return null;
-    await B.page.evaluate(([x, z]) => { const p = window.__sim.player.person; window.__sim.ctl.yaw = Math.atan2(x - p.pos.x, z - p.pos.z); window.__sim.ctl.pitch = 0; }, [a.x, a.z]);
+    // face Ana and, while further than a punch reaches (.95 m), step towards her first
+    const d = await B.page.evaluate(([x, z]) => { const p = window.__sim.player.person; window.__sim.ctl.yaw = Math.atan2(x - p.pos.x, z - p.pos.z); window.__sim.ctl.pitch = 0; return Math.hypot(x - p.pos.x, z - p.pos.z); }, [a.x, a.z]);
+    if (d > .8) { await B.page.keyboard.down('w'); await sleep(Math.min(900, (d - .6) * 600)); await B.page.keyboard.up('w'); return null; }
     await B.page.keyboard.down('p'); await sleep(700); await B.page.keyboard.up('p');
     await sleep(1500);
     const h = await myHealth(A.page);
@@ -116,16 +118,9 @@ try {
   await sleep(2500); // (the knockback ends)
 
   // ---- 4. Ana picks the bandage on the hotbar and holds E: 3 seconds, then the hurt limb heals and the bandage is used up
-  const placed = await A.page.evaluate(() => {
-    const p = window.__sim.player.person, item = p.inventory.items.find(i => i.type === 'bandage');
-    const slot = document.querySelector('#inventoryHotbar [data-slot="0"]');
-    if (!item || !slot) return false;
-    const dt = new DataTransfer(); dt.setData('text/inventory-item', item.id);
-    slot.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
-    return true;
-  });
-  await until(() => A.page.evaluate(() => window.__sim.player.person.inventory.hotbar[0] ? true : null), 8000);
-  check('the bandage is on the hotbar', placed && await A.page.evaluate(() => !!window.__sim.player.person.inventory.hotbar[0]));
+  // (what is taken from the medkit goes onto the first free hotbar slots by itself: the bandage on 1, the first-aid box on 2)
+  const slots = await until(() => A.page.evaluate(() => { const p = window.__sim.player.person, h = p.inventory.hotbar, t = id => p.inventory.items.find(i => i.id === id)?.type; return t(h[0]) === 'bandage' && t(h[1]) === 'first-aid-box' ? [h[0], h[1]] : null; }), 8000);
+  check('the bandage and the first-aid box are on the hotbar by themselves', !!slots, JSON.stringify(slots));
   await A.page.keyboard.press('1');
   const picked = await until(() => A.page.evaluate(() => document.querySelector('#inventoryHotbar [data-slot="0"]')?.classList.contains('selected') ? true : null), 5000);
   check('pressing 1 picks that slot', !!picked);

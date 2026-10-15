@@ -1,5 +1,5 @@
 import {
-  CARE_REACH, CARE_WALK_LIMIT, MEDKIT_REACH, canUseHands, createInventory, findFirstFit, hasLineOfSight, isSeated, medicalHealSeconds, medkitContents, mostHurtLimb, objects, placeItem, takeFromMedkit,
+  CARE_REACH, CARE_WALK_LIMIT, MEDKIT_REACH, canUseHands, createInventory, findFirstFit, hasLineOfSight, setHotbarSlot, isSeated, medicalHealSeconds, medkitContents, mostHurtLimb, objects, placeItem, takeFromMedkit,
   useMedicalItem, type MedicalItem, type MedkitContents, type MedkitItem, type Person, type InventoryState, type LimbHealth,
 } from '@office/shared';
 
@@ -51,7 +51,11 @@ export function takeFromMedkitInto(person: Person, index: number, item: MedkitIt
   const fit = findFirstFit(person.inventory ?? createInventory(), id, item, 0);
   if (!fit) return { ok: false, reason: 'no-room' };
   takeFromMedkit(m.index, item);
-  return { ok: true, object: m.index, contents: medkitContents(m.index), inventory: placeItem(person.inventory, fit) };
+  // a medical item goes on the first free hotbar slot too (it is used from there: hold E), when there is one
+  let inventory = placeItem(person.inventory, fit);
+  const slot = inventory.hotbar.indexOf(null);
+  if (slot >= 0) { try { inventory = setHotbarSlot(inventory, slot, id); } catch { /* it stays in the grid */ } }
+  return { ok: true, object: m.index, contents: medkitContents(m.index), inventory };
 }
 
 // ---- timed care
@@ -108,7 +112,7 @@ function inCareRange(medic: Person, target: Person): boolean {
 
 /** Where the care is now: still going, finished, or ended and why. `target` is undefined if that person has left. */
 export function advanceCare(job: CareJob, medic: Person, target: Person | undefined, now: number): 'running' | 'done' | CareCancel {
-  if (!target || !medicalItemOf(medic, job.itemId)) return 'gone';
+  if (!target || target.controller !== 'account' || !medicalItemOf(medic, job.itemId)) return 'gone';
   if (!canUseHands(medic.mechanics) || down(medic) || down(target)) return 'hurt';
   if (totalHealth(medic.mechanics.health) < job.health.medic || totalHealth(target.mechanics.health) < job.health.target) return 'hit';
   if (Math.hypot(medic.pos.x - job.from.x, medic.pos.z - job.from.z) > CARE_WALK_LIMIT) return 'moved';

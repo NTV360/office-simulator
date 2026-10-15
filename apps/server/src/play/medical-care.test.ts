@@ -58,6 +58,13 @@ describe('the medkit', () => {
     expect(medkitContents(medkit().index).bandage).toBe(1); // (nothing was taken from the box)
   });
 
+  it('puts what is taken on the first free hotbar slots, ready to use', () => {
+    const p = atCounter();
+    for (const kit of ['bandage', 'first-aid-box', 'bandage', 'bandage', 'bandage'] as const) { const r = takeFromMedkitInto(p, medkit().index, kit); if (r.ok) p.inventory = r.inventory; }
+    expect(p.inventory.items).toHaveLength(5);
+    expect(p.inventory.hotbar).toEqual(['medkit:bandage:1', 'medkit:first-aid-box:1', 'medkit:bandage:2']); // (three slots; the rest stay in the grid)
+  });
+
   it('names a new item so that it never clashes with one already in the inventory', () => {
     const p = atCounter();
     for (let i = 0; i < 3; i++) { const r = takeFromMedkitInto(p, medkit().index, 'bandage'); if (r.ok) p.inventory = r.inventory; }
@@ -119,5 +126,6 @@ describe('timed care', () => {
     { const { m, p, job } = fresh(); m.mechanics.locomotion = 'knockback'; expect(advanceCare(job, m, p, 1)).toBe('hurt'); }
     { const { m, p, job } = fresh(); m.inventory = createInventory(); expect(advanceCare(job, m, p, 1)).toBe('gone'); }
     { const { m, job } = fresh(); expect(advanceCare(job, m, undefined, 1)).toBe('gone'); }
+    { const { m, p, job } = fresh(); p.controller = 'ai'; expect(advanceCare(job, m, p, 1)).toBe('gone'); }
   });
 });

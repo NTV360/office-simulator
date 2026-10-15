@@ -229,7 +229,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         // the medkit and timed care answer through `noteTo` (what it holds, how the care is going), not with an inventory snapshot
         if (msg.action === 'medkit-open' || msg.action === 'medkit-take') {
           const taken = msg.action === 'medkit-open' ? manager.medkitOpen(accountId, msg.object!) : manager.medkitTake(accountId, msg.revision, msg.object!, msg.kit!);
-          if (taken && !taken.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: MEDKIT_REFUSAL_TEXT[taken.reason] }));
+          if (taken && !taken.ok && msg.action === 'medkit-take' && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: MEDKIT_REFUSAL_TEXT[taken.reason] }));
           return;
         }
         if (msg.action === 'care') { manager.careStart(accountId, msg.itemId!, msg.target); return; }

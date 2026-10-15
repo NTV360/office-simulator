@@ -156,6 +156,19 @@ describe('authoritative item impacts', () => {
     begin(); actor.mechanics.locomotion = 'knockback'; ends('hurt');
   });
 
+  it('ends the care when the medic loses their connection: nothing is healed or used up', async () => {
+    const a = await account('medic');
+    const actor = await manager.attach(a);
+    actor.mechanics.health.leftArm = 10;
+    actor.inventory = placeItem(createInventory(), { id: 'bandage-1', type: 'bandage', x: 0, y: 0, rotation: 0 });
+    expect(manager.careStart(a.id, 'bandage-1')).toEqual({ ok: true, seconds: 3 });
+    pass(1);
+    manager.detach(a.id);
+    pass(3, 10);
+    expect(actor.mechanics.health.leftArm).toBe(10);
+    expect(actor.inventory.items).toHaveLength(1);
+  });
+
   it('refuses care out of range, for a missing target, or when already caring', async () => {
     const a = await account('medic'), b = await account('patient');
     const actor = await manager.attach(a), target = await manager.attach(b);

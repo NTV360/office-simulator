@@ -214,7 +214,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     if (details) { details.hidden = inventoryCollapsed; details.setAttribute('aria-hidden', String(inventoryCollapsed)); }
     if (toggle) { toggle.setAttribute('aria-expanded', String(!inventoryCollapsed)); toggle.textContent = inventoryCollapsed ? 'Show' : 'Hide'; }
     panel.hidden = !inventory;
-    if (!inventory) { grid.replaceChildren(); hotbar.replaceChildren(); return; }
+    if (!inventory) { selectedSlot = null; selectCareItem(null); grid.replaceChildren(); hotbar.replaceChildren(); return; }
     const itemName = item => item.type.replace(/[-_]/g, ' ');
     const cellPoint = event => {
       const rect = grid.getBoundingClientRect();

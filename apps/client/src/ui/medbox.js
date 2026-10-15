@@ -48,12 +48,14 @@ const ask = () => state.send?.({ type: 'inventory', action: 'medkit-open', objec
 
 function tick() {
   const o = state.index === null ? null : objects.at(state.index), me = player.person;
-  if (!o || !me || Math.hypot(o.x - me.pos.x, o.z - me.pos.z) > MEDKIT_REACH + .4) { closeMedbox(); return; }
+  // (it closes a little inside the real reach, so the server is never asked from outside it)
+  if (!o || !me || player.sitting || Math.hypot(o.x - me.pos.x, o.z - me.pos.z) > MEDKIT_REACH - .15) { closeMedbox(); return; }
   ask();
 }
 
-/** The server's word on what the box holds now: `object,bandages,first-aid boxes`. */
+/** The server's word on what the box holds now: `object,bandages,first-aid boxes`; or `closed`, when it cannot be used from here any more. */
 export function medkitNote(text) {
+  if (text === 'closed') { closeMedbox(); return; }
   const [object, bandage, kit] = text.split(',').map(Number);
   if (![object, bandage, kit].every(Number.isInteger) || object !== state.index) return;
   state.contents = { bandage, 'first-aid-box': kit };

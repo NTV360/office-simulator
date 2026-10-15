@@ -175,6 +175,7 @@ export class PlayerManager {
   detach(accountId: number): void {
     const s = this.sessions.get(accountId);
     if (!s || s.graceTimer !== null) return;
+    s.care = null; // (nobody is there to hold E: any care ends, and nothing is used up)
     s.graceTimer = this.timers.set(() => {
       this.sessions.delete(accountId);
       this.inputs.delete(s.person.id);
@@ -331,7 +332,8 @@ export class PlayerManager {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     const r = openMedkit(s.person, index);
-    if (r.ok) this.notify?.(accountId, { kind: 'medkit', text: medkitText(r.object, r.contents) });
+    // (refused: the page closes the menu, quietly: it only asks while the menu is open, so a refusal means it cannot be used from here now)
+    this.notify?.(accountId, { kind: 'medkit', text: r.ok ? medkitText(r.object, r.contents) : 'closed' });
     return r;
   }
 
