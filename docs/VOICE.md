@@ -25,7 +25,7 @@ Logout, disconnect, grace expiry, manager replacement, and shutdown must clear a
 
 ## Verification boundary
 
-Automated coverage currently covers configuration gating, room validation, bounded proximity selection, token claims, TTL, and restricted grants in `apps/server/src/voice/voice.test.ts`. `scripts/e2e-voice.mjs` runs a disposable Docker/LiveKit two-browser check with fake microphones and verifies nearby remote tracks, range revocation/restoration, mute/unmute, logout cleanup, and post-logout token rejection. Focused voice tests, workspace typechecks, production builds, and this runtime check pass. Reconnect behavior remains explicit: gameplay disconnect tears down voice and requires the user to press Connect again after gameplay is restored.
+Automated coverage currently covers configuration gating, room validation, bounded proximity selection, token claims, TTL, and restricted grants in `apps/server/src/voice/voice.test.ts`. `scripts/e2e-voice.mjs` runs a disposable Docker/LiveKit two-browser check with fake microphones and verifies nearby remote tracks, the gradual volume drop with distance (playback gain 1.0 beside the other player and about 0.16 at 6 m, following `(1 - distance/range)^2`; it reads the gain the page applies, not the sound itself), range revocation/restoration, mute/unmute, logout cleanup, and post-logout token rejection. Focused voice tests, workspace typechecks, production builds, and this runtime check pass. Reconnect behavior remains explicit: gameplay disconnect tears down voice and requires the user to press Connect again after gameplay is restored.
 
 For LAN deployment, use the optional `lan` edge together with the `voice` profile:
 

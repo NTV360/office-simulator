@@ -97,10 +97,32 @@ try {
     );
     if (!walkTarget) return null;
     window.__sim.voiceFarTarget = { x: walkTarget.x, z: walkTarget.z };
+    window.__sim.voiceFarRoute = route.map(q => ({ x: q.x, z: q.z })); // (the middle of the walk is measured on the way)
     return { id: seat.id, approach: seat.approach, walkTarget: window.__sim.voiceFarTarget, path: route.length };
   });
   if (!farSeat) throw new Error('could not select a distant target');
   console.log('voice far target:', JSON.stringify(farSeat));
+  // Gradual attenuation: beside Ben the voice is loud, a few metres off it is quieter but still there, and past the range it is gone (below).
+  // The playback gain the page applies is read from its audio elements (the same number it gives its Web Audio gain).
+  const gainNow = async () => a.page.evaluate(() => {
+    const ben = window.__sim.people.find(p => p.name === 'voice_ben'), self = window.__sim.player.person;
+    const gains = window.__sim.net.voice?.diagnostics?.().audioGains ?? [];
+    return { distance: Math.hypot(self.pos.x - ben.pos.x, self.pos.z - ben.pos.z), gain: gains.find(g => Number.isFinite(g)) ?? null };
+  });
+  const near = await waitFor('a playback gain beside Ben', async () => { const g = await gainNow(); return g.gain !== null && g.gain > 0 ? g : null; }, 15000).catch(() => null);
+  const midTarget = await a.page.evaluate(() => {
+    const ben = window.__sim.people.find(p => p.name === 'voice_ben'), self = window.__sim.player.person;
+    const points = [{ x: self.pos.x, z: self.pos.z }, ...(window.__sim.voiceFarRoute ?? [])];
+    const dist = q => Math.hypot(q.x - ben.pos.x, q.z - ben.pos.z);
+    for (let i = 1; i < points.length; i++) {
+      const d0 = dist(points[i - 1]), d1 = dist(points[i]);
+      if (d0 < 5.5 && d1 >= 5.5) { const t = (5.5 - d0) / (d1 - d0); return window.__sim.voiceMidTarget = { x: points[i - 1].x + (points[i].x - points[i - 1].x) * t, z: points[i - 1].z + (points[i].z - points[i - 1].z) * t }; }
+    }
+    return null;
+  });
+  if (midTarget) await walkTo(a.page, 'voiceMidTarget');
+  const mid = midTarget ? await waitFor('a mid-range playback gain', async () => { const g = await gainNow(); return g.distance > 4 && g.distance < 8 && g.gain !== null && g.gain > 0 ? g : null; }, 15000).catch(() => null) : null;
+  check('volume drops gradually with distance: loud beside you, quieter further off, not cut off', !!near && !!mid && near.gain > mid.gain && Math.abs(mid.gain - (1 - mid.distance / 10) ** 2) < .15, JSON.stringify({ near, mid, midTarget }));
   const walked = await walkTo(a.page, 'voiceFarTarget');
   console.log('voice far walk result:', JSON.stringify(await a.page.evaluate(walked => ({
     walked,
