@@ -12,10 +12,10 @@ const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so 
 const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
   if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
-  if (p.state === 'walking') return p.task?.run || p.hazel ? 'run' : 'walk'; // Hazel always runs
+  if (p.state === 'walking') return p.riding ? 'ride' : p.task?.run || p.hazel ? 'run' : 'walk'; // Hazel runs, or rides her tricycle
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
-  if (t.kind === 'meeting') return t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
+  if (t.kind === 'meeting') return t.meeting?.teacher === p ? 'present' : t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen'; // a class's teacher stands
   if (t.kind === 'work' && p.chatWith) return 'listenSit';
   if (t.kind === 'work' && p.slack && p.slack.mode !== 'work') return p.slack.mode === 'movie' ? 'watch' : 'peek'; // Hazel (people/hazel.js)
   return t.anim;
@@ -51,6 +51,9 @@ function targetPose(p, k, T) {
     case 'watch': { sit(); o.lean = -.08; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; o.headX = .05;
       if (p.slack.face === 'laugh') { o.lean = -.14 + Math.sin(T * 16) * .04; o.headX = -.15 + Math.sin(T * 16) * .06; }
       break; }
+    // Hazel on her tricycle (people/hazelRide.js): on the seat, hands on the bars, legs going round with the pedals
+    case 'ride': { sit(); o.hipY = .34; o.lean = .12; o.lShX = o.rShX = -1.25; o.lEl = o.rEl = -.25; o.lShZ = .12; o.rShZ = -.12;
+      const a = p.pedal ?? 0; o.lHip = -1.05 + Math.sin(a) * .3; o.rHip = -1.05 - Math.sin(a) * .3; o.headX = -.05; break; }
     // alt-tabbed: hands back on the keys, looking over one shoulder, then the other (worried; people/hazel.js)
     case 'peek': sit(); o.lean = .12; o.lShX = o.rShX = -.6; o.lEl = o.rEl = -1.2; o.headX = -.05; o.headY = Math.sin(T * 4.5) * 1.0; break;
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;

@@ -2,7 +2,7 @@ import { OX, OY, S } from '../config/plan.js';
 import { angDiff } from '../core/util.js';
 import { walkPx } from '../nav/grid.js';
 import { SCREENS } from '../render/screens.js';
-import { hazelSlack } from '../people/hazel.js';
+import { hazelExtras, hazelSlack } from '../people/hazel.js';
 import { arriveNow } from './day.js';
 import { breakIndex } from './schedule.js';
 import { people, sim } from './state.js';
@@ -12,6 +12,7 @@ import { interactables } from '../world/interactables.js';
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
   if (p.state === 'player') return;
+  if (p.hazel) hazelExtras(p, dt, dt * sim.speed); // her tricycle and her chick (also put away when she is out)
   if (p.state === 'away') {
     if (p.toiletUntil) { if (sim.t >= p.toiletUntil) returnFromToilet(p); return; }
     if (!p.arrivedAt && sim.t >= p.arriveAt && sim.t < p.leaveAt) arriveNow(p);

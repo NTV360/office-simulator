@@ -73,7 +73,28 @@ function slidesScreen(i) {
     const bw = 18; for (let k = 0; k < 5; k++) { const bh = 30 + Math.random() * 70; g.fillStyle = k === 3 ? '#e2b65c' : '#3e6e9c'; g.fillRect(200 + k * (bw + 6), 160 - bh, bw, bh); }
   });
 }
-const TV_MATS = { slides: [0, 1, 2].map(i => screenMat(slidesScreen(i))), dash: SCREENS.dash };
+// Coding classes in Conference 1 (sim/meetings.js): each lesson's code on the room's TV while it runs.
+const LESSONS = [
+  { title: 'JavaScript basics', code: ['// Lesson 1: loops', "const names = ['Ana', 'Ben', 'Cy'];", '', 'for (const name of names) {', '  console.log(`Hi ${name}!`);', '}'] },
+  { title: 'Git workflow', code: ['# Lesson 2: branches', '$ git checkout -b feature/login', '$ git add .', '$ git commit -m "Add login form"', '$ git push -u origin feature/login'] },
+  { title: 'SQL joins', code: ['-- Lesson 3: joins', 'SELECT e.first_name, d.name', 'FROM employees e', 'JOIN departments d', '  ON d.id = e.department_id;'] },
+  { title: 'TypeScript types', code: ['// Lesson 4: interfaces', 'interface Employee {', '  id: number;', '  name: string;', '  desk?: string;', '}'] },
+];
+function lessonScreen({ title, code }) {
+  return canvasTex(512, 288, (g, w, h) => {
+    g.fillStyle = '#141b22'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2f8db3'; g.fillRect(0, 0, w, 40);
+    g.fillStyle = '#ffffff'; g.font = '700 20px Archivo, "Helvetica Neue", Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText(`Coding class · ${title}`, 18, 21);
+    g.font = '17px Menlo, Consolas, monospace';
+    code.forEach((line, i) => {
+      const y = 70 + i * 30;
+      g.fillStyle = '#4d5b68'; g.fillText(String(i + 1).padStart(2, ' '), 14, y);
+      g.fillStyle = /^\s*(\/\/|#|--)/.test(line) ? '#7d8b97' : ['#9ad19a', '#e8a87c', '#7fb4e8', '#d6dde3'][i % 4];
+      g.fillText(line, 52, y);
+    });
+  });
+}
+const TV_MATS = { slides: [0, 1, 2].map(i => screenMat(slidesScreen(i))), dash: SCREENS.dash, lesson: LESSONS.map(l => screenMat(lessonScreen(l))) };
 
 // The movies on Hazel's monitor: the files below in public/movies/ that are there (a gif plays, a still image
 // just shows), else the drawn one above. Loaded once at start (bootstrap.js); each sitting she picks one.
@@ -117,4 +138,4 @@ function movieAt(n, t) {
   return m.mat;
 }
 
-export { SCREENS, TV_MATS, initMovie, movieAt };
+export { LESSONS, SCREENS, TV_MATS, initMovie, movieAt };

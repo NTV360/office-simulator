@@ -116,11 +116,10 @@ function drawGame(dt) {
   gameTex.needsUpdate = true;
 }
 
-let loungeTV, loungeTVDefault, LOUNGE_TV_POS, gameCanvas, gameTex, gameMat;
+let loungeTV, LOUNGE_TV_POS, gameCanvas, gameTex, gameMat;
 
 function buildGame() {
   loungeTV = tv(317.9, 322.0, 329.0, 368.1, E, 'dash');
-  loungeTVDefault = loungeTV.material;
   LOUNGE_TV_POS = W(323.5, 345.05);
   interactables.of('lounge').slice(5).forEach(sp => { sp.game = true; sp.place = 'the TV lounge'; });
   // Game console standing beside the TV
@@ -141,4 +140,4 @@ function buildGame() {
   gameMat = new THREE.MeshBasicMaterial({ map: gameTex, toneMapped: false });
 }
 
-export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault, buildGame };
+export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, buildGame };

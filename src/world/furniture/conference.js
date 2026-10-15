@@ -1,5 +1,6 @@
 import { S, wx, wz } from '../../config/plan.js';
 import { M } from '../../render/materials.js';
+import { TV_MATS } from '../../render/screens.js';
 import { E, N, SO, WST, mkSpot, officeChair } from './basics.js';
 import { cabinet } from './cabinet.js';
 import { tv } from './tv.js';
@@ -17,13 +18,24 @@ function confSeat(n, px, py, face) {
 }
 
 
+// Conference 1 is used as a classroom: its meetings are coding classes (sim/meetings.js) with a teacher standing
+// by the TV, which shows the lesson while one runs.
+const classroom = { tv: null, idle: null };
+// Show lesson `i` (TV_MATS.lesson) on the classroom TV, or its usual slides with null.
+function showLesson(i) {
+  const m = i == null ? classroom.idle : TV_MATS.lesson[i];
+  if (classroom.tv && classroom.tv.material !== m) classroom.tv.material = m;
+}
+
 function buildConference() {
-  // Conference 1: two tables, ten seats facing the TV on the west wall
+  // Conference 1 (the classroom): two tables, eight seats facing the TV on the west wall, the teacher's spot
+  // beside the TV
   table(158, 96, 174, 168);
   table(205, 96, 221, 168);
   [107, 124, 141, 158].forEach(y => { confSeat(1, 183, y, WST); confSeat(1, 230, y, WST); });
   cabinet(119, 180, 158, 191.2);
-  tv(116.5, 108, 127, 156, E, 'slides');
+  classroom.tv = tv(116.5, 108, 127, 156, E, 'slides'); classroom.idle = classroom.tv.material;
+  mkSpot('teach', 141, 102, E, { place: 'Conference 1', room: 1, shared: false });
   // The old Conference 2 is the HR office now: its desks come from config/desks.js (buildDesks).
   // The room keeps its cabinet and wall TV.
   cabinet(384.5, 115, 397.6, 172);
@@ -37,4 +49,4 @@ function buildConference() {
   tv(116, 234, 126, 282, E, 'dash');
 }
 
-export { table, buildConference };
+export { buildConference, showLesson, table };

@@ -1,7 +1,7 @@
 import { rnd, shuffle } from '../core/util.js';
 import { makeHelper, makePerson, scheduleDay } from '../people/factory.js';
 import { roster } from '../people/roster.js';
-import { meetings } from './meetings.js';
+import { meetings, newClass } from './meetings.js';
 import { live, usesAttendance } from './live.js';
 import { DAY_START } from './schedule.js';
 import { addLog, people, sim } from './state.js';
@@ -60,17 +60,22 @@ function populate(n) {
 function initDay() {
   populate(roster.list ? roster.list.length : 40); // everyone on the staff list (as many as there are desks)
   { const h = makeHelper(); if (sim.t >= h.arriveAt && sim.t < h.leaveAt) seatNow(h); } // our helper, cleaning
-  // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion
+  // kick things off mid-morning (working hours, so no games): a coding class, a sync, a call, coffee and a whiteboard discussion
   // (only if the day starts during office hours)
   if (sim.t > 9 * 60 + 15 && sim.t < 17 * 60) {
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task.kind === 'work'));
-    const meet = (room, n, topic, mins) => {
-      const m = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic };
-      const seats = interactables.conf(room);
-      here().slice(0, n).forEach((p, i) => { placeNow(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: seats[i], until: m.end, meeting: m, onStart: q => q.meeting = m, onEnd: q => q.meeting = null }); m.members.push(p); });
-      meetings.push(m); addLog(`${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);
+    // Conference 1 is the classroom: its meeting is a coding class with the first person teaching at the front
+    const meet = (room, n, topic, mins, lesson = null) => {
+      const m = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic, lesson, teacher: null };
+      const seats = interactables.conf(room), them = here().slice(0, n);
+      const task = (spot, anim) => ({ kind: 'meeting', cat: 'meeting', anim, spot, until: m.end, meeting: m, onStart: q => q.meeting = m, onEnd: q => q.meeting = null });
+      const dev = them.findIndex(p => /dev|engineer/i.test(p.role)); if (dev > 0) them.unshift(...them.splice(dev, 1)); // a developer teaches if there is one
+      if (lesson != null && them.length) { m.teacher = them.shift(); placeNow(m.teacher, task(interactables.of('teach')[0], 'present')); m.members.push(m.teacher); }
+      them.forEach((p, i) => { placeNow(p, task(seats[i], 'listen')); m.members.push(p); });
+      meetings.push(m);
+      addLog(m.teacher ? `${m.teacher.name.split(' ')[0]} started teaching ${topic} in Conference ${room} (${m.members.length})` : `${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);
     };
-    meet(1, 6, 'training session', 30); meet(3, 4, 'client sync', 22);
+    { const c = newClass(); meet(1, 7, c.topic, 30, c.lesson); } meet(3, 4, 'client sync', 22);
     const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: interactables.of('booth')[1], dur: 12, onStart: q => q.body.phone.visible = true, onEnd: q => q.body.phone.visible = false });
     const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: interactables.of('counter')[0], dur: 5, onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => q.body.mug.visible = false });
     const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: interactables.of('bar')[0], dur: 6, onStart: q => q.body.mug.visible = true, onEnd: q => q.body.mug.visible = false });

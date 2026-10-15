@@ -39,7 +39,7 @@ function statusText(p) {
   const where = t.spot?.place;
   switch (t.kind) {
     case 'work': return going ? `Heading back to ${where}` : p.chatWith ? `Chatting with ${p.chatWith.name.split(' ')[0]} at ${where}` : `${VERB[p.role]} at ${where}`;
-    case 'meeting': return going ? `Walking to ${where} for ${t.meeting.topic}` : t.meeting.speaker === p ? `Presenting in ${where} (${t.meeting.topic})` : `In ${t.meeting.topic}, ${where}`;
+    case 'meeting': return going ? `Walking to ${where} for ${t.meeting.topic}` : t.meeting.teacher === p ? `Teaching the ${t.meeting.topic} in ${where}` : t.meeting.speaker === p ? `Presenting in ${where} (${t.meeting.topic})` : `In ${t.meeting.topic}, ${where}`;
     case 'phone': return going ? `Looking for a quiet booth` : `On a call in ${where}`;
     case 'coffee': return going ? 'Getting coffee' : 'Making coffee at the counter top';
     case 'bar': return going ? 'Taking coffee to the bar table' : 'Having coffee at the bar table';

@@ -41,7 +41,8 @@ import { ENTRY } from './world/entrance.js';
 import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { updateDiningTv } from './world/furniture/diningTv.js';
-import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
+import { awardsScreen } from './world/furniture/awards.js';
+import { drawGame, gameCanvas, gameMat, loungeTV } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
 import { updateKitchen } from './world/furniture/kitchen.js';
@@ -66,7 +67,8 @@ function tick(now) {
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
   keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now); updateKitchen(dt);
-  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
+  // the lounge TV: the game while someone plays, the office awards otherwise (world/furniture/awards.js)
+  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }

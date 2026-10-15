@@ -2,11 +2,14 @@ import { showFace } from '../character/rig.js';
 import { normalizeSpec } from '../character/spec.js';
 import { rnd } from '../core/util.js';
 import { movieAt } from '../render/screens.js';
+import { chickStep } from './chick.js';
+import { hazelRide } from './hazelRide.js';
 
 // Hazel Sellote: the one hand-written character. With the real staff list she is whoever has that name;
 // without it she is the first person created (see makePerson). She is a smaller cube character with only her
 // furious face (character/rig.js hazelize), runs everywhere (at walking speed), sits in a baby high chair at
-// her own desk (HAZEL_DESK), watches movies there instead of working (hazelSlack), and always leaves last. Her look can't be edited in the character lab.
+// her own desk (HAZEL_DESK), watches movies there instead of working (hazelSlack), sometimes rides her cow
+// tricycle, has a chick that follows her around (hazelExtras), and always leaves last. Her look can't be edited in the character lab.
 const HAZEL_NAME = 'Hazel Sellote';
 const HAZEL_LOCKED = "Sorry, you can't make Hazel taller than she is now.";
 
@@ -41,4 +44,7 @@ function hazelSlack(p, dt) {
   showFace(p.body, s.face);
 }
 
-export { HAZEL_LOCKED, HAZEL_NAME, applyHazel, hazelSlack };
+// Her tricycle (people/hazelRide.js) and her chick (people/chick.js). `dt` real seconds, `mdt` simulated.
+function hazelExtras(p, dt, mdt) { hazelRide(p); chickStep(p, dt, mdt); }
+
+export { HAZEL_LOCKED, HAZEL_NAME, applyHazel, hazelExtras, hazelSlack };

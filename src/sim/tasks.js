@@ -32,15 +32,16 @@ function placeNow(p, task) {
   endTask(p); const s = task.spot; if (s.shared) s.occupant = p;
   p.task = task; p.pos.copy(s.pos); p.face = p.faceGoal = s.face; arrive(p);
 }
+const HAZEL_MAX = 12; // sim minutes (30 s at 1×): the longest Hazel does anything she picked herself
 function arrive(p) {
   const t = p.task; p.state = 'doing'; p.path = null;
   p.pos.copy(t.spot.pos); p.faceGoal = t.spot.face;
-  p.until = t.until ?? sim.t + (t.dur ?? 0);
+  p.until = t.until ?? sim.t + (p.hazel ? Math.min(t.dur ?? 0, HAZEL_MAX) : t.dur ?? 0); // Hazel never stays long
   if (t.onStart) t.onStart(p);
 }
 const free = list => shuffle(list.filter(s => !s.occupant));
 
-function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
+function goWork(p) { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.seat, dur: Math.max(4, Math.min(p.hazel ? rnd(5, 12) : rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
 function coffee(p) {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.body.mug.visible = true; }, onEnd: q => { q.body.mug.visible = false; } });
@@ -184,6 +185,7 @@ function chooseNext(p) {
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
   if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) { p.hadLunch = true; if (lunch(p)) return; }
+  if (p.hazel && hazelNext(p)) return;
   if (onBreak(p, t)) { if (play(p)) return; }
   else if (p.task && p.task.kind !== 'work') { if (goWork(p)) return; }
   else if (work(p)) return;
@@ -255,6 +257,13 @@ function work(p) {
   if (r < .30) return storageTrip(p);
   if (r < .31) return bucketRun(p);
   return false;
+}
+// Hazel (people/hazel.js) is never still for long: after a short stint at her desk she is always off doing
+// something, games included at any time of day, and after that it's back to her desk or straight on to the next.
+function hazelNext(p) {
+  if (p.task?.kind !== 'work' && Math.random() < .5) return goWork(p);
+  if (Math.random() < .05 && bucketRun(p)) return true;
+  return shuffle([coffee, snack, chat, booth, whiteboard, sinkTrip, storageTrip, barTrip, lockerTrip, gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak, tvBreak]).some(f => f(p));
 }
 // Breaks: everybody plays. Joining a game or a group that is already going is likely; when the games are
 // full, people take whatever is free (the bar table, coffee, a snack, a chat) instead of going back to work.
