@@ -147,6 +147,10 @@ try {
     return { distance: Math.hypot(self.pos.x - ben.pos.x, self.pos.z - ben.pos.z), gain: gains.find(g => Number.isFinite(g)) ?? null };
   });
   const near = await waitFor('a playback gain beside Ben', async () => { const g = await gainNow(); return g.gain !== null && g.gain > 0 ? g : null; }, 15000).catch(() => null);
+  // The sound itself, not only the gain the page applies: the peak of the signal reaching the speakers while the fake microphone beeps.
+  const level = page => page.evaluate(() => window.__sim.net.voice.measureOutput(3000));
+  const peak = o => Math.max(o?.left ?? 0, o?.right ?? 0);
+  const nearOut = await level(a.page);
   const midTarget = await a.page.evaluate(() => {
     const ben = window.__sim.people.find(p => p.name === 'voice_ben'), self = window.__sim.player.person;
     const points = [{ x: self.pos.x, z: self.pos.z }, ...(window.__sim.voiceFarRoute ?? [])];
@@ -159,6 +163,10 @@ try {
   });
   if (midTarget) await walkTo(a.page, 'voiceMidTarget');
   const mid = midTarget ? await waitFor('a mid-range playback gain', async () => { const g = await gainNow(); return g.distance > 4 && g.distance < 8 && g.gain !== null && g.gain > 0 ? g : null; }, 15000).catch(() => null) : null;
+  const midOut = mid ? await level(a.page) : null;
+  console.log('voice output peaks (real signal): near', JSON.stringify(nearOut), 'mid', JSON.stringify(midOut));
+  check('the signal itself is there beside the speaker, and clearly quieter further off but still audible',
+    peak(nearOut) > .01 && peak(midOut) > .001 && peak(midOut) < .6 * peak(nearOut), JSON.stringify({ nearOut, midOut }));
   check('volume drops gradually with distance: loud beside you, quieter further off, not cut off', !!near && !!mid && near.gain > mid.gain && Math.abs(mid.gain - (1 - mid.distance / 10) ** 2) < .15, JSON.stringify({ near, mid, midTarget }));
   // Direction: facing Ben he is straight ahead; turn a quarter and he is at the listener's side (the page places the sound from the live view).
   const look = await a.page.evaluate(async () => {
@@ -170,11 +178,17 @@ try {
     const facing = window.__sim.net.voice.diagnostics().audioPlacement[0];
     ctl.yaw = ctl.yawGoal = face + Math.PI / 2; await wait(500);
     const turned = window.__sim.net.voice.diagnostics().audioPlacement[0];
+    const turnedOut = await window.__sim.net.voice.measureOutput(2500);
     ctl.yaw = ctl.yawGoal = face + Math.PI; await wait(500);
     const behind = window.__sim.net.voice.diagnostics().audioPlacement[0];
-    return { distance, facing, turned, behind };
+    ctl.yaw = ctl.yawGoal = face - Math.PI / 2; await wait(500);
+    const leftOut = await window.__sim.net.voice.measureOutput(2500);
+    return { distance, facing, turned, behind, turnedOut, leftOut };
   });
   const d = look.distance;
+  console.log('voice ears (real signal): speaker on the right', JSON.stringify(look.turnedOut), 'on the left', JSON.stringify(look.leftOut));
+  check('the sound reaches the ear on the speaker\'s side more: right ear when they are on your right, left ear when on your left',
+    look.turnedOut.right > 1.3 * look.turnedOut.left && look.leftOut.left > 1.3 * look.leftOut.right, JSON.stringify({ turnedOut: look.turnedOut, leftOut: look.leftOut }));
   check('the voice comes from where the speaker is: ahead when you face them, to the side when you turn, behind when you turn away',
     !!look.facing && !!look.turned && !!look.behind && look.facing.ahead > .8 * d && Math.abs(look.facing.right) < .2 * d && look.turned.right > .8 * d && Math.abs(look.turned.ahead) < .2 * d && look.behind.ahead < -.8 * d, JSON.stringify(look));
   // Volume controls: the voices slider scales how loud the other player is to you; the mic slider is a gain on what you send (a processor on the track).
@@ -196,6 +210,19 @@ try {
   });
   check('the voices slider halves how loud the other player is, and the mic slider reaches the microphone track (both saved, both shown)',
     vol.before > 0 && Math.abs(vol.half - vol.before / 2) < .02 && vol.mic === .4 && vol.micActive === true && vol.voices === .5 && vol.saved.mic === '0.4' && vol.saved.voices === '0.5' && vol.labels.mic === '40%' && vol.labels.voices === '50%' && Math.abs(vol.restored - vol.before) < .02, JSON.stringify(vol));
+  // The sliders on the real signal: Ana's Voices slider halves what reaches her speakers; Ben's Mic slider at 40% makes him that much quieter to her.
+  const setSlider = (page, id, v) => page.evaluate(([id, v]) => { const el = document.getElementById(id); el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, [id, v]);
+  await a.page.evaluate(() => { window.__sim.ctl.yaw = window.__sim.ctl.yawGoal = 0; });
+  await sleep(500);
+  const baseLevel = peak(await level(a.page));
+  await setSlider(a.page, 'voiceVoicesVolume', 50); await sleep(500);
+  const voicesHalf = peak(await level(a.page));
+  await setSlider(a.page, 'voiceVoicesVolume', 100); await setSlider(b.page, 'voiceMicVolume', 40); await sleep(800);
+  const micLow = peak(await level(a.page));
+  await setSlider(b.page, 'voiceMicVolume', 100); await sleep(500);
+  console.log('voice slider peaks (real signal): base', baseLevel, 'voices 50%', voicesHalf, 'ben mic 40%', micLow);
+  check('on the real signal: the Voices slider at 50% halves the level, and the other player\'s Mic slider at 40% lowers it to about 40%',
+    baseLevel > .001 && Math.abs(voicesHalf / baseLevel - .5) < .15 && Math.abs(micLow / baseLevel - .4) < .15, JSON.stringify({ baseLevel, voicesHalf, micLow }));
   const walked = await walkTo(a.page, 'voiceFarTarget');
   console.log('voice far walk result:', JSON.stringify(await a.page.evaluate(walked => ({
     walked,

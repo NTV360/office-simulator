@@ -219,6 +219,28 @@ describe('voice client lifecycle', () => {
     expect(voice.diagnostics().audioGains[0]).toBeCloseTo(0.81, 2);
   });
 
+  it('takes a remote voice from its stream, not through the element, which Chrome plays as silence; the element is muted', async () => {
+    makeDom();
+    class Stream { getAudioTracks() { return []; } }
+    vi.stubGlobal('MediaStream', Stream);
+    const calls: string[] = [];
+    const node = () => ({ connect(n: any) { return n; }, disconnect() {} });
+    vi.stubGlobal('AudioContext', class {
+      state = 'running'; currentTime = 0; destination = node();
+      async resume() {}
+      createMediaStreamSource() { calls.push('stream'); return node(); }
+      createMediaElementSource() { calls.push('element'); return node(); }
+      createGain() { return { ...node(), gain: { value: 1, setTargetAtTime() {} } }; }
+      createPanner() { return { ...node(), positionX: { setTargetAtTime() {} }, positionY: { setTargetAtTime() {} }, positionZ: { setTargetAtTime() {} } }; }
+    });
+    await connectVoice({ participants: ['2'], position: { x: 0, z: 0 }, range: 10, participantPositions: [{ accountId: 2, x: 5, z: 0 }] });
+    const track = new MockTrack();
+    track.attach = () => { const element = new MockElement() as MockElement & { srcObject?: unknown; muted?: boolean }; element.srcObject = new Stream(); track.attached.push(element); return element; };
+    rooms[0].emit('track-subscribed', track, {}, { identity: '2' });
+    expect(calls).toEqual(['stream']);
+    expect((track.attached[0] as MockElement & { muted?: boolean }).muted).toBe(true);
+  });
+
   it('with no known facing it is not panned, and with no Web Audio the element volume carries the fade', async () => {
     makeDom();
     const { voice } = await connectVoice({ participants: ['2'], position: { x: 0, z: 0 }, range: 10, participantPositions: [{ accountId: 2, x: 5, z: 0 }] });

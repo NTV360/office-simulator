@@ -146,7 +146,12 @@ export function initVoice({ base = '', onState = () => {}, listener = null } = {
     if (audioNodes.has(element) || typeof AudioContext === 'undefined') return;
     try {
       audioContext ??= new AudioContext();
-      const source = audioContext.createMediaElementSource(element);
+      // A remote voice is a WebRTC stream. Chrome gives silence when such a stream is routed through createMediaElementSource, so take it from the stream
+      // itself; the element stays (it keeps the stream playing) but is muted, because the sound now comes out through the Web Audio chain below.
+      const stream = element.srcObject;
+      const fromStream = typeof MediaStream !== 'undefined' && stream instanceof MediaStream && typeof audioContext.createMediaStreamSource === 'function';
+      const source = fromStream ? audioContext.createMediaStreamSource(stream) : audioContext.createMediaElementSource(element);
+      if (fromStream) element.muted = true;
       const gain = audioContext.createGain();
       // Where the voice comes from: an HRTF panner (left/right, and front/back on headphones). It does no distance fade of its own (the gain does).
       let panner = null;
@@ -377,6 +382,32 @@ export function initVoice({ base = '', onState = () => {}, listener = null } = {
       }
     }
   };
+  /**
+   * The loudest the sound has been, left ear and right ear, over the next `ms` (for runtime checks: it reads the real signal that reaches the speakers,
+   * the first voice that is playing). The analysers are connected for the measurement only, so nothing runs when nobody asks.
+   */
+  const measureOutput = async (ms = 2500) => {
+    const element = [...audioByParticipant.values()].flat()[0];
+    const node = element && audioNodes.get(element);
+    if (!node?.panner || !audioContext?.createChannelSplitter || !audioContext.createAnalyser) return null;
+    const splitter = audioContext.createChannelSplitter(2);
+    const left = audioContext.createAnalyser(), right = audioContext.createAnalyser();
+    left.fftSize = right.fftSize = 2048;
+    node.panner.connect(splitter);
+    splitter.connect(left, 0);
+    splitter.connect(right, 1);
+    const a = new Float32Array(left.fftSize), b = new Float32Array(right.fftSize);
+    let peakLeft = 0, peakRight = 0;
+    const end = performance.now() + ms;
+    while (performance.now() < end) {
+      left.getFloatTimeDomainData(a);
+      right.getFloatTimeDomainData(b);
+      for (let i = 0; i < a.length; i++) { peakLeft = Math.max(peakLeft, Math.abs(a[i])); peakRight = Math.max(peakRight, Math.abs(b[i])); }
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
+    try { node.panner.disconnect(splitter); splitter.disconnect(); } catch { /* the voice went away meanwhile */ }
+    return { left: peakLeft, right: peakRight };
+  };
   const setMicVolume = value => {
     micVolume = clampVolume(value);
     micProcessor.set(micVolume);
@@ -461,5 +492,5 @@ export function initVoice({ base = '', onState = () => {}, listener = null } = {
   if (panel) panel.hidden = true;
   addEventListener('pagehide', () => { void disconnect(); }, { once: true });
   report('disabled');
-  return { connect, disconnect, toggleMute, setMicVolume, setVoiceVolume, micVolume: () => micVolume, voiceVolume: () => voiceVolume, diagnostics, state: () => state, isMuted: () => muted, show: () => { if (panel) panel.hidden = false; }, hide: () => { if (panel) panel.hidden = true; void disconnect(); } };
+  return { connect, disconnect, toggleMute, setMicVolume, setVoiceVolume, measureOutput, micVolume: () => micVolume, voiceVolume: () => voiceVolume, diagnostics, state: () => state, isMuted: () => muted, show: () => { if (panel) panel.hidden = false; }, hide: () => { if (panel) panel.hidden = true; void disconnect(); } };
 }
