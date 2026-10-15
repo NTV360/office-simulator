@@ -151,6 +151,47 @@ try {
   const said = (await notices(A.page)).some(t => /Treated/.test(t));
   check('she is told it worked', said);
 
+  // ---- 5. Ana hurts Ben, then cares for HIM with the first-aid box (5 seconds): care for another player
+  const posOf = (page, name) => page.evaluate(n => { const p = window.__sim.people.find(x => x.name === n); return p && { x: p.pos.x, z: p.pos.z }; }, name);
+  /** Face `name` from where this page's player stands, and step towards them while further than `within` metres. Returns the distance. */
+  const faceAndClose = async (page, name, within) => {
+    const t = await posOf(page, name); if (!t) return Infinity;
+    const d = await page.evaluate(([x, z]) => { const p = window.__sim.player.person; window.__sim.ctl.yaw = Math.atan2(x - p.pos.x, z - p.pos.z); window.__sim.ctl.pitch = 0; return Math.hypot(x - p.pos.x, z - p.pos.z); }, [t.x, t.z]);
+    if (d > within) { await page.keyboard.down('w'); await sleep(Math.min(900, (d - within + .15) * 600)); await page.keyboard.up('w'); }
+    return d;
+  };
+  const benHurt = await until(async () => {
+    if (await faceAndClose(A.page, 'med_ben', .8) > .8) return null;
+    await A.page.keyboard.down('p'); await sleep(700); await A.page.keyboard.up('p');
+    await sleep(1500);
+    return sum(await myHealth(B.page)) < FULL ? true : null;
+  }, 40000);
+  check('Ana\'s punch hurt Ben', !!benHurt, JSON.stringify(await myHealth(B.page)));
+  await sleep(2500); // (the knockback ends)
+  const benBefore = sum(await myHealth(B.page));
+  const boxBefore = (await myItems(A.page)).some(i => i.type === 'first-aid-box');
+  await A.page.keyboard.press('2');
+  const pickedBox = await until(() => A.page.evaluate(() => document.querySelector('#inventoryHotbar [data-slot="1"]')?.classList.contains('selected') ? true : null), 5000);
+  check('pressing 2 picks the first-aid box', !!pickedBox);
+  // she must face Ben within 1.25 m, and look level so that E means care (nothing else is aimed at)
+  let near = Infinity;
+  for (let i = 0; i < 12 && near > 1.0; i++) near = await faceAndClose(A.page, 'med_ben', 1.0);
+  near = await faceAndClose(A.page, 'med_ben', 1.0);
+  check('Ana stands within reach of Ben', near <= 1.2, near.toFixed(2));
+  const hintBen = await until(() => A.page.evaluate(() => { const b = document.getElementById('fpObj'); return /Hold E: use the first-aid box on med_ben/.test(b?.textContent ?? '') ? b.textContent : null; }), 6000);
+  check('the page says she will treat Ben', !!hintBen, hintBen ?? '');
+  await A.page.keyboard.down('e');
+  const bar5 = await until(() => A.page.evaluate(() => { const b = document.getElementById('careBar'); return b && !b.hidden ? true : null; }), 5000);
+  await sleep(4000);
+  const stillRunning = await A.page.evaluate(() => !document.getElementById('careBar').hidden);
+  check('5 seconds, not 3: the bar is still filling after 4', !!bar5 && stillRunning);
+  await sleep(2200);
+  await A.page.keyboard.up('e');
+  const benAfter = await until(async () => sum(await myHealth(B.page)) > benBefore ? sum(await myHealth(B.page)) : null, 6000);
+  check('holding E for 5 seconds healed Ben', !!benAfter, `${benBefore} -> ${benAfter}`);
+  check('and used up Ana\'s first-aid box', boxBefore && !(await myItems(A.page)).some(i => i.type === 'first-aid-box'));
+  check('Ben is told Ana treated him', (await notices(B.page)).some(t => /treated you/.test(t)));
+
   const errors = [...A.errors, ...B.errors].filter(e => !/401|403|Failed to load resource|WebSocket connection|WebSocket is already in CLOSING or CLOSED state|502/.test(e));
   check('no unexpected console errors in the browsers', errors.length === 0, errors.slice(0, 2).join(' | '));
 } catch (err) {
