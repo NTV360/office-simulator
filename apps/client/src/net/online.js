@@ -11,6 +11,7 @@ import { predictCarried } from '../render/objects.js';
 import { addObjectView, updateCarriedObjects } from '../render/objects.js';
 import { setView, viewId } from '../camera/controller.js';
 import { player } from '../player/player.js';
+import { ctl } from '../player/control.js';
 import {
   CLOCK, HOTBAR_SIZE, INVENTORY_COLUMNS, INVENTORY_ROWS, Mirror, PROTOCOL_VERSION, Reconciler, addLog, angDiff, applyObjectPose, applyObjectPoses, decode, encode, footprintForItem, interactables, layoutCheck, live, materializeObject, people, simEvents, sim, hasSlot,
 } from '@office/shared';
@@ -64,7 +65,8 @@ function lockServerControls() {
 
 export function startOnline() {
   const base = serverBase();
-  const voice = initVoice({ base });
+  // the voice follows where you stand and which way you look (the camera's yaw, else the way you face)
+  const voice = initVoice({ base, listener: () => { const p = player.person; return p ? { x: p.pos.x, z: p.pos.z, yaw: Number.isFinite(ctl.yaw) ? ctl.yaw : p.face } : null; } });
   const mirror = new Mirror(interactables.all(), {
     added(p) {
       people.push(p);

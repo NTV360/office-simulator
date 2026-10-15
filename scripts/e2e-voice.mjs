@@ -4,7 +4,19 @@ import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import http from 'node:http';
+import https from 'node:https';
+import { X509Certificate } from 'node:crypto';
 import { adminJson, openPage, sleep, walkTo } from '../tests/browser/site.mjs';
+
+// E2E_VOICE_LAN=1 (npm run e2e:lan): the same check, but through the LAN HTTPS edge (Caddy) on spare ports: the certificate download and setup page
+// over plain HTTP, the certificate chain verified against the downloaded root (and refused without it), and voice over wss:// through the edge.
+const LAN = process.env.E2E_VOICE_LAN === '1';
+const HTTP_PORT = Number(process.env.E2E_LAN_HTTP_PORT) || 18580;
+const HTTPS_PORT = Number(process.env.E2E_LAN_HTTPS_PORT) || 18543;
+// The page and the browsers talk to the edge, whose certificate comes from its own authority: the Node side of this script (account set-up) and the
+// browser contexts do not verify it here. Whether the certificate really chains to the downloaded root is checked explicitly below, with the root.
+if (LAN) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.E2E_VOICE_PORT) || 18084;
@@ -14,20 +26,27 @@ const LIVEKIT_PORT = Number(process.env.E2E_VOICE_LIVEKIT_PORT) || 18180;
 const TOKEN = 'e2e-voice-admin-token';
 const KEY = 'e2e-voice-key';
 const SECRET = 'e2e-voice-secret-not-production';
-const base = `http://localhost:${PORT}`;
+const devBase = `http://localhost:${PORT}`; // (the plain development endpoint: always on this host)
+const base = LAN ? `https://localhost:${HTTPS_PORT}` : devBase;
 process.env.VERIFY_ADMIN_TOKEN = TOKEN;
 const env = {
   ...process.env,
-  COMPOSE_PROJECT_NAME: 'office-e2e-voice', WEB_PORT: String(PORT),
+  COMPOSE_PROJECT_NAME: LAN ? 'office-e2e-lan' : 'office-e2e-voice', WEB_PORT: String(PORT),
+  ...(LAN ? { SITE_ADDRESS: 'localhost', VOICE_SITE_ADDRESS: 'voice.localhost', LAN_HTTP_PORT: String(HTTP_PORT), LAN_HTTPS_PORT: String(HTTPS_PORT), COOKIE_SECURE: 'true', LIVEKIT_NODE_IP: '127.0.0.1' } : {}),
   LIVEKIT_HTTP_PORT: String(LIVEKIT_PORT), LIVEKIT_RTC_TCP_PORT: String(LIVEKIT_PORT + 1),
   LIVEKIT_RTC_PORT_RANGE_START: String(LIVEKIT_PORT + 2), LIVEKIT_RTC_PORT_RANGE_END: String(LIVEKIT_PORT + 22),
-  LIVEKIT_API_KEY: KEY, LIVEKIT_API_SECRET: SECRET, LIVEKIT_URL: `ws://localhost:${LIVEKIT_PORT}`, LIVEKIT_API_URL: 'http://voice:7880',
+  LIVEKIT_API_KEY: KEY, LIVEKIT_API_SECRET: SECRET, LIVEKIT_URL: LAN ? `wss://voice.localhost:${HTTPS_PORT}` : `ws://localhost:${LIVEKIT_PORT}`, LIVEKIT_API_URL: 'http://voice:7880',
   VOICE_ENABLED: 'true', VOICE_RANGE: '10', VOICE_ROOM: 'office-e2e', ADMIN_TOKEN: TOKEN,
   SAVE_INTERVAL_MS: '1000', GRACE_MS: '4000', WORLD_SEED: '', SUPABASE_URL: '', SUPABASE_SECRET_KEY: '',
   EMPLOYEE_IMPORT_MS: '86400000', ATTENDANCE_MS: '86400000', ADMIN_USERNAME: '', ADMIN_PASSWORD: '', DATABASE_URL: 'postgres://office:office_dev_password@db:5432/office',
 };
-const compose = (...args) => spawnSync('docker', ['compose', '--profile', 'voice', ...args], { cwd: root, env, encoding: 'utf8' });
+const compose = (...args) => spawnSync('docker', ['compose', '--profile', 'voice', ...(LAN ? ['--profile', 'lan'] : []), ...args], { cwd: root, env, encoding: 'utf8' });
 const admin = (method, endpoint, body) => adminJson(base, method, endpoint, body);
+/** One request to the edge by IP (no name lookup needed), as a client would: plain HTTP, or HTTPS with the given trust. */
+const edgeGet = (secure, pathname, { host = 'localhost', ca } = {}) => new Promise((resolve, reject) => {
+  const options = { host: '127.0.0.1', port: secure ? HTTPS_PORT : HTTP_PORT, path: pathname, headers: { host }, ...(secure ? { servername: host, rejectUnauthorized: true, ...(ca ? { ca } : {}) } : {}) };
+  (secure ? https : http).get(options, res => { let body = ''; res.on('data', d => { body += d; }); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body })); }).on('error', reject);
+});
 let failures = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`); if (!ok) failures++; };
 async function waitFor(label, fn, timeout = 60000) {
@@ -35,7 +54,7 @@ async function waitFor(label, fn, timeout = 60000) {
   for (;;) { const value = await fn().catch(() => null); if (value) return value; if (Date.now() >= end) throw new Error(`timed out waiting for ${label}`); await sleep(500); }
 }
 async function waitUp() {
-  return waitFor('voice stack', async () => { const r = await fetch(`${base}/api/health`); const j = await r.json(); return j.status === 'ok' && j.db === 'ok' ? j : null; }, 120000);
+  return waitFor('voice stack', async () => { const r = await fetch(`${devBase}/api/health`); const j = await r.json(); return j.status === 'ok' && j.db === 'ok' ? j : null; }, 120000);
 }
 const joined = page => page.waitForFunction(() => window.__sim.net?.joined && window.__sim.player.person, null, { timeout: 60000 });
 const diagnostics = page => page.evaluate(() => window.__sim.net.voice?.diagnostics?.() ?? null);
@@ -51,10 +70,28 @@ try {
   if (up.status !== 0) throw new Error(`docker compose up failed:\n${up.stderr}`);
   await waitUp();
   await waitFor('LiveKit', async () => { try { return (await fetch(`http://localhost:${LIVEKIT_PORT}`)).status < 500; } catch { return null; } }, 30000);
+  if (LAN) {
+    // a new computer's first minutes: the setup page and the root certificate over plain HTTP, then HTTPS that chains to that certificate
+    const root = await waitFor('the certificate download', async () => { const r = await edgeGet(false, '/ca.crt'); return r.status === 200 && r.body.includes('BEGIN CERTIFICATE') ? r : null; }, 60000);
+    const cert = new X509Certificate(root.body);
+    check('the root certificate can be downloaded over plain HTTP, and is a certificate authority', /x509-ca-cert/.test(root.headers['content-type'] ?? '') && cert.ca === true, `${root.headers['content-type']} ${cert.subject.replace(/\n/g, ' ')}`);
+    const page = await edgeGet(false, '/');
+    check('plain HTTP shows a setup page with the download and the install steps', page.status === 200 && /Download the certificate/.test(page.body) && /Trusted Root/.test(page.body));
+    const moved = await edgeGet(false, '/api/health');
+    check('any other plain HTTP address is sent to HTTPS', moved.status === 301 && String(moved.headers.location).startsWith(`https://localhost:${HTTPS_PORT}/`), `${moved.status} ${moved.headers.location}`);
+    const port = await edgeGet(false, '/lan.json');
+    check('the setup page can learn the HTTPS port', port.status === 200 && JSON.parse(port.body).httpsPort === HTTPS_PORT, port.body);
+    const trusted = await edgeGet(true, '/api/health', { ca: root.body }).catch(e => ({ error: e.code ?? e.message }));
+    check('HTTPS verifies against the downloaded root', trusted.status === 200, JSON.stringify(trusted.error ?? trusted.status));
+    const voiceHost = await edgeGet(true, '/', { host: 'voice.localhost', ca: root.body }).catch(e => ({ error: e.code ?? e.message }));
+    check('the voice address chains to the same root', voiceHost.status === 200, JSON.stringify(voiceHost.error ?? voiceHost.status));
+    const untrusted = await edgeGet(true, '/api/health').then(r => r.status, e => e.code ?? e.message);
+    check('HTTPS is refused by a computer that has not installed the certificate', typeof untrusted === 'string' && /SELF_SIGNED|UNABLE_TO_VERIFY|CERT/.test(untrusted), String(untrusted));
+  }
   browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
   // Disable client prediction so range assertions use authoritative snapshots,
   // not a locally predicted position that the server has not accepted yet.
-  const [a, b] = await Promise.all([openPage(browser, base, '?trace&nopredict', { login: 'voice_ana' }), openPage(browser, base, '?trace&nopredict', { login: 'voice_ben' })]);
+  const [a, b] = await Promise.all([openPage(browser, base, '?trace&nopredict', { login: 'voice_ana', ignoreHTTPSErrors: LAN }), openPage(browser, base, '?trace&nopredict', { login: 'voice_ben', ignoreHTTPSErrors: LAN })]);
   await Promise.all([a.context.grantPermissions(['microphone'], { origin: base }), b.context.grantPermissions(['microphone'], { origin: base }), joined(a.page), joined(b.page)]);
   check('two disposable accounts join gameplay', true);
   // The office opens in the overview camera; enter first-person before sending
@@ -123,6 +160,42 @@ try {
   if (midTarget) await walkTo(a.page, 'voiceMidTarget');
   const mid = midTarget ? await waitFor('a mid-range playback gain', async () => { const g = await gainNow(); return g.distance > 4 && g.distance < 8 && g.gain !== null && g.gain > 0 ? g : null; }, 15000).catch(() => null) : null;
   check('volume drops gradually with distance: loud beside you, quieter further off, not cut off', !!near && !!mid && near.gain > mid.gain && Math.abs(mid.gain - (1 - mid.distance / 10) ** 2) < .15, JSON.stringify({ near, mid, midTarget }));
+  // Direction: facing Ben he is straight ahead; turn a quarter and he is at the listener's side (the page places the sound from the live view).
+  const look = await a.page.evaluate(async () => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const ben = window.__sim.people.find(p => p.name === 'voice_ben'), self = window.__sim.player.person, ctl = window.__sim.ctl;
+    const distance = Math.hypot(ben.pos.x - self.pos.x, ben.pos.z - self.pos.z);
+    const face = Math.atan2(ben.pos.x - self.pos.x, ben.pos.z - self.pos.z);
+    ctl.yaw = ctl.yawGoal = face; await wait(500);
+    const facing = window.__sim.net.voice.diagnostics().audioPlacement[0];
+    ctl.yaw = ctl.yawGoal = face + Math.PI / 2; await wait(500);
+    const turned = window.__sim.net.voice.diagnostics().audioPlacement[0];
+    ctl.yaw = ctl.yawGoal = face + Math.PI; await wait(500);
+    const behind = window.__sim.net.voice.diagnostics().audioPlacement[0];
+    return { distance, facing, turned, behind };
+  });
+  const d = look.distance;
+  check('the voice comes from where the speaker is: ahead when you face them, to the side when you turn, behind when you turn away',
+    !!look.facing && !!look.turned && !!look.behind && look.facing.ahead > .8 * d && Math.abs(look.facing.right) < .2 * d && look.turned.right > .8 * d && Math.abs(look.turned.ahead) < .2 * d && look.behind.ahead < -.8 * d, JSON.stringify(look));
+  // Volume controls: the voices slider scales how loud the other player is to you; the mic slider is a gain on what you send (a processor on the track).
+  const vol = await a.page.evaluate(async () => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const diag = () => window.__sim.net.voice.diagnostics();
+    const set = (id, v) => { const el = document.getElementById(id); el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); };
+    window.__sim.ctl.yaw = window.__sim.ctl.yawGoal = 0;
+    await wait(300);
+    const before = diag().audioGains[0];
+    set('voiceVoicesVolume', 50); await wait(400);
+    const half = diag().audioGains[0];
+    set('voiceMicVolume', 40); await wait(400);
+    const d = diag();
+    const saved = { mic: localStorage.getItem('office.voice.mic'), voices: localStorage.getItem('office.voice.voices') };
+    const labels = { mic: document.getElementById('voiceMicValue').textContent, voices: document.getElementById('voiceVoicesValue').textContent };
+    set('voiceVoicesVolume', 100); set('voiceMicVolume', 100); await wait(400);
+    return { before, half, mic: d.micVolume, micActive: d.micVolumeActive, voices: d.voiceVolume, saved, labels, restored: diag().audioGains[0] };
+  });
+  check('the voices slider halves how loud the other player is, and the mic slider reaches the microphone track (both saved, both shown)',
+    vol.before > 0 && Math.abs(vol.half - vol.before / 2) < .02 && vol.mic === .4 && vol.micActive === true && vol.voices === .5 && vol.saved.mic === '0.4' && vol.saved.voices === '0.5' && vol.labels.mic === '40%' && vol.labels.voices === '50%' && Math.abs(vol.restored - vol.before) < .02, JSON.stringify(vol));
   const walked = await walkTo(a.page, 'voiceFarTarget');
   console.log('voice far walk result:', JSON.stringify(await a.page.evaluate(walked => ({
     walked,
@@ -143,6 +216,7 @@ try {
   }), 15000).catch(() => null);
   console.log(`voice far actor state: ${JSON.stringify(farState)}`);
   const out = await waitFor('range revocation', async () => { const s = await Promise.all([diagnostics(a.page), diagnostics(b.page)]); return s.every(x => x?.allowedParticipants?.length <= 1 && x.audioElements === 0 && x.remoteAudio.every(p => p.publications.every(pub => !pub.subscribed && !pub.track))) ? s : null; }, 45000).catch(() => null);
+  if (!out) console.log('range diagnostics:', JSON.stringify({ ana: await diagnostics(a.page), ben: await diagnostics(b.page), distance: await a.page.evaluate(() => { const s = window.__sim.player.person, q = window.__sim.people.find(p => p.name === 'voice_ben'); return Math.hypot(s.pos.x - q.pos.x, s.pos.z - q.pos.z); }) }));
   check('moving beyond range revokes subscriptions', !!out, out ? JSON.stringify(out) : 'subscriptions remained');
   await walkTo(a.page, "people.find(p => p.name === 'voice_ben').pos");
   const back = await waitFor('range restoration', async () => { const s = await Promise.all([diagnostics(a.page), diagnostics(b.page)]); return s.every(x => x?.allowedParticipants?.length === 2 && x.audioElements >= 1) ? s : null; }, 45000).catch(() => null);

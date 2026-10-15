@@ -38,3 +38,4 @@ body.clock-live [data-speed] { display: none; } /* Live follows the real time: t
 .medbox-panel small{color:var(--muted);font-size:10px}
 #careBar{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);z-index:36;width:240px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:11px var(--f-mono);display:flex;flex-direction:column;gap:6px}
 #careBar[hidden]{display:none}.care-track{height:8px;border-radius:4px;background:rgba(127,150,165,.28);overflow:hidden}.care-fill{height:100%;width:0;background:var(--accent)}
+.voice-slider{display:grid;grid-template-columns:48px 1fr 40px;align-items:center;gap:6px;font:11px var(--f-mono);color:var(--muted)}.voice-slider input{width:100%;accent-color:var(--accent)}.voice-slider output{text-align:right}

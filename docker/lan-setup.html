@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office: set up this computer</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1b2733; background: #f6f8fa; }
+  h1 { font-size: 22px; } h2 { font-size: 16px; margin-top: 28px; }
+  a.button { display: inline-block; padding: 10px 16px; border-radius: 6px; background: #2b6cb0; color: #fff; text-decoration: none; margin: 4px 8px 4px 0; }
+  a.button.secondary { background: #4a5568; }
+  code { background: #e6ebf0; padding: 1px 5px; border-radius: 3px; }
+  ol { padding-left: 20px; } li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>Set up this computer for the office</h1>
+<p>The office is served over HTTPS on this network, which it needs for the microphone. Its certificate comes from the office server itself, so each computer has to be told once to trust it. This takes about a minute.</p>
+
+<p><a class="button" href="/ca.crt" download="office-root-ca.crt">1. Download the certificate</a></p>
+
+<h2>2. Install it</h2>
+<p><b>Windows</b></p>
+<ol>
+  <li>Open the downloaded <code>office-root-ca.crt</code>.</li>
+  <li>Choose <b>Install Certificate</b>, then <b>Local Machine</b> (or <b>Current User</b> if you are not an administrator).</li>
+  <li>Choose <b>Place all certificates in the following store</b>, then <b>Browse</b> and pick <b>Trusted Root Certification Authorities</b>.</li>
+  <li>Finish, accept the warning, and restart the browser.</li>
+</ol>
+<p><b>macOS</b>: open the file (Keychain Access), add it to <b>System</b>, double-click it, expand <b>Trust</b>, and set <b>When using this certificate</b> to <b>Always Trust</b>.</p>
+<p><b>Android / iPhone</b>: open the file and follow the install prompt (on iPhone also enable it under Settings, General, About, Certificate Trust Settings).</p>
+<p><b>Firefox</b> keeps its own list: Settings, Privacy &amp; Security, Certificates, View Certificates, Authorities, Import (or turn on <i>security.enterprise_roots.enabled</i> to use the system list).</p>
+
+<h2>3. Open the office</h2>
+<p><a class="button secondary" id="go" href="#">Open the office (HTTPS)</a></p>
+<p id="note"></p>
+<script>
+  // The same name that was typed to get here, over HTTPS, on the port the office publishes it on (the server says which).
+  const go = document.getElementById('go');
+  go.href = 'https://' + location.hostname + '/';
+  fetch('/lan.json').then(r => r.json()).then(j => { if (j && j.httpsPort && j.httpsPort !== 443) go.href = 'https://' + location.hostname + ':' + j.httpsPort + '/'; }).catch(() => {});
+  document.getElementById('note').textContent = 'If your browser still warns about the certificate after installing it, close every browser window and open it again.';
+</script>
+</body>
+</html>

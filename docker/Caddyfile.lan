@@ -1,6 +1,9 @@
 # LAN HTTPS edge. SITE_ADDRESS and VOICE_SITE_ADDRESS are substituted by Caddy.
 {
 	admin off
+	# Certificates stay automatic, but the redirect from HTTP is done by the http:// block below (it must serve the setup page and the
+	# certificate first, and its redirect keeps the published HTTPS port).
+	auto_https disable_redirects
 }
 
 # Local-only target for the container health check (docker-compose.yml probes https://127.0.0.1/);
@@ -8,6 +11,36 @@
 https://127.0.0.1 {
 	tls internal
 	respond "ok" 200
+}
+
+# Plain HTTP, for onboarding a new computer only: the setup page, and the root certificate (a public certificate, never a key) that each
+# client installs once to trust the HTTPS below. Everything else on HTTP is sent to HTTPS.
+http:// {
+	@ca path /ca.crt
+	handle @ca {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		header Cache-Control "no-store"
+		file_server
+	}
+	@setup path / /setup /setup/
+	handle @setup {
+		rewrite * /index.html
+		root * /srv-setup
+		header Cache-Control "no-store"
+		file_server
+	}
+	# the HTTPS port as clients reach it (the published port, which is not 443 when LAN_HTTPS_PORT is changed): the setup page builds its link from this
+	@port path /lan.json
+	handle @port {
+		header Content-Type application/json
+		header Cache-Control "no-store"
+		respond `{"httpsPort":{$LAN_HTTPS_PORT:443}}` 200
+	}
+	handle {
+		redir https://{$SITE_ADDRESS}:{$LAN_HTTPS_PORT:443}{uri} permanent
+	}
 }
 
 {$SITE_ADDRESS} {

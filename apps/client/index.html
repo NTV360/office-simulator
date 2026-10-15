@@ -141,6 +141,8 @@
     <button class="btn" id="voiceConnect" type="button">Connect microphone</button>
     <button class="btn" id="voiceMute" type="button" hidden>Mute</button>
   </div>
+  <label class="voice-slider"><span>Mic</span><input id="voiceMicVolume" type="range" min="0" max="200" step="5" value="100" aria-label="Microphone volume: how loud you are to others"><output id="voiceMicValue">100%</output></label>
+  <label class="voice-slider"><span>Voices</span><input id="voiceVoicesVolume" type="range" min="0" max="200" step="5" value="100" aria-label="Voice volume: how loud other people are to you"><output id="voiceVoicesValue">100%</output></label>
 </section>
 
 <section class="card inventory-panel" id="inventoryPanel" hidden aria-label="Inventory">

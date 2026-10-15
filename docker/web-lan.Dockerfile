@@ -16,4 +16,5 @@ RUN npm run build -w @office/client
 FROM caddy:2-alpine
 COPY docker/Caddyfile.lan /etc/caddy/Caddyfile
 COPY --from=build /app/apps/client/dist /srv
+COPY docker/lan-setup.html /srv-setup/index.html
 EXPOSE 80 443

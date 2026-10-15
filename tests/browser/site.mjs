@@ -160,7 +160,7 @@ async function loginAs(context, url, username, password = TEST_PASSWORD) {
  * it is logged in first: as `opts.login` if given, else as the shared test account verify_a. Pass `login: null` to stay logged out.
  */
 async function openPage(browser, url, query = '', opts = {}) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, ...(opts.ignoreHTTPSErrors ? { ignoreHTTPSErrors: true } : {}) });
   const page = await context.newPage();
   const errors = collectErrors(page);
   const online = !/seed=|offline/.test(query) && await serverBehind(url);

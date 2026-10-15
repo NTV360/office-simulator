@@ -1,11 +1,59 @@
 import { mintVoiceToken } from './login.js';
 
+const MIN_VOLUME = 0, MAX_VOLUME = 2;
+const VOLUME_KEYS = { mic: 'office.voice.mic', voices: 'office.voice.voices' };
+const clampVolume = value => (Number.isFinite(Number(value)) ? Math.max(MIN_VOLUME, Math.min(MAX_VOLUME, Number(value))) : 1);
+/** A saved volume (1 = as is), or 1; storage can be missing or blocked, and the page works the same without it. */
+const savedVolume = name => { try { const v = globalThis.localStorage?.getItem(VOLUME_KEYS[name]); return v === null || v === undefined ? 1 : clampVolume(v); } catch { return 1; } };
+const saveVolume = (name, value) => { try { globalThis.localStorage?.setItem(VOLUME_KEYS[name], String(value)); } catch { /* not saved: it still applies now */ } };
+
+/**
+ * What others hear of you is scaled by a gain placed on the microphone track (a LiveKit audio processor: mic -> gain -> the track that is sent).
+ * `level` is read by whoever sets it; the node only exists once LiveKit has started the processor.
+ */
+function makeMicProcessor(initial) {
+  let source = null, gain = null, destination = null;
+  const processor = {
+    name: 'office-mic-volume',
+    level: initial,
+    processedTrack: undefined,
+    async init(opts) {
+      const context = opts.audioContext;
+      if (!context?.createMediaStreamSource) throw new Error('no Web Audio for the microphone volume');
+      source = context.createMediaStreamSource(new MediaStream([opts.track]));
+      gain = context.createGain();
+      destination = context.createMediaStreamDestination();
+      gain.gain.value = processor.level;
+      source.connect(gain).connect(destination);
+      processor.processedTrack = destination.stream.getAudioTracks()[0];
+    },
+    async restart(opts) { await processor.destroy(); await processor.init(opts); },
+    async destroy() {
+      try { source?.disconnect(); gain?.disconnect(); } catch { /* already gone */ }
+      source = gain = destination = null;
+      processor.processedTrack = undefined;
+    },
+    set(level) {
+      processor.level = level;
+      if (gain) gain.gain.setTargetAtTime?.(level, gain.context?.currentTime ?? 0, .02) ?? (gain.gain.value = level);
+    },
+    get active() { return !!gain; },
+  };
+  return processor;
+}
+
 /** Optional LiveKit voice lifecycle. Microphone access starts only after Connect is pressed. */
-export function initVoice({ base = '', onState = () => {} } = {}) {
+export function initVoice({ base = '', onState = () => {}, listener = null } = {}) {
   let kit = null;
   let room = null;
   let connecting = null;
   let proximityTimer = null;
+  let liveTimer = null;
+  // how loud you are to others (the mic) and how loud everybody else is to you (on top of the fade with distance); 1 is as it is, saved between visits
+  let micVolume = savedVolume('mic');
+  let voiceVolume = savedVolume('voices');
+  const micProcessor = makeMicProcessor(micVolume);
+  const processedTracks = new WeakSet();
   let allowedParticipants = new Set();
   let participantPositions = new Map();
   let ownPosition = null;
@@ -33,20 +81,55 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
     const ratio = Math.max(0, Math.min(1, distance / voiceRange));
     return Math.pow(1 - ratio, 2);
   };
+  /**
+   * Where the listener is and which way they face, live (`listener()` is the page's own position and view, so turning your head or walking
+   * changes the sound at once). Without it, the position the server last sent is used and nothing is panned.
+   */
+  const listenerPose = () => {
+    const live = listener?.();
+    if (live && Number.isFinite(live.x) && Number.isFinite(live.z)) return { x: live.x, z: live.z, yaw: Number.isFinite(live.yaw) ? live.yaw : null };
+    return ownPosition ? { x: ownPosition.x, z: ownPosition.z, yaw: null } : null;
+  };
   const distanceTo = identity => {
     const remote = participantPositions.get(String(identity));
-    if (!remote || !ownPosition) return null;
-    return Math.hypot(remote.x - ownPosition.x, remote.z - ownPosition.z);
+    const pose = listenerPose();
+    if (!remote || !pose) return null;
+    return Math.hypot(remote.x - pose.x, remote.z - pose.z);
+  };
+  /**
+   * Where the speaker is from the listener's ears: right (+) or left (-), and ahead (+) or behind (-), in metres. The game faces (sin yaw, cos yaw)
+   * with its right hand at (-cos yaw, sin yaw). Null when the listener's facing is not known.
+   */
+  const placementOf = identity => {
+    const remote = participantPositions.get(String(identity));
+    const pose = listenerPose();
+    if (!remote || !pose || pose.yaw === null) return null;
+    const dx = remote.x - pose.x, dz = remote.z - pose.z;
+    return { right: -dx * Math.cos(pose.yaw) + dz * Math.sin(pose.yaw), ahead: dx * Math.sin(pose.yaw) + dz * Math.cos(pose.yaw) };
   };
   const applyGain = identity => {
     const key = String(identity);
     const elements = audioByParticipant.get(key);
     if (!elements) return;
     const distance = distanceTo(key);
-    const gain = distance === null ? 0 : gainForDistance(distance);
+    const gain = distance === null ? 0 : gainForDistance(distance) * voiceVolume;
+    const placement = placementOf(key);
+    const now = audioContext?.currentTime ?? 0;
     for (const element of elements) {
-      element.volume = gain;
-      audioNodes.get(element)?.gain?.setValueAtTime?.(gain, audioContext?.currentTime ?? 0);
+      const node = audioNodes.get(element);
+      if (!node) { element.volume = Math.min(1, gain); continue; } // (no Web Audio here: the element's own volume is all there is, and it cannot go above 1)
+      // The volume is applied once, by the gain node (applied to the element as well it would be squared, far too quiet at a distance)
+      element.volume = 1;
+      node.level = gain;
+      node.gain.gain.setTargetAtTime(gain, now, .05);
+      node.placement = placement;
+      const panner = node.panner;
+      if (panner) {
+        // (the listener stays at the origin facing -z, the Web Audio default: the speaker is put where they are from the listener)
+        const x = placement ? placement.right : 0, z = placement ? -placement.ahead : -1;
+        if (panner.positionX) { panner.positionX.setTargetAtTime(x, now, .08); panner.positionY.setTargetAtTime(0, now, .08); panner.positionZ.setTargetAtTime(z, now, .08); }
+        else panner.setPosition?.(x, 0, z);
+      }
     }
   };
   const resumeAudio = async () => {
@@ -65,8 +148,18 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
       audioContext ??= new AudioContext();
       const source = audioContext.createMediaElementSource(element);
       const gain = audioContext.createGain();
-      source.connect(gain).connect(audioContext.destination);
-      audioNodes.set(element, { source, gain });
+      // Where the voice comes from: an HRTF panner (left/right, and front/back on headphones). It does no distance fade of its own (the gain does).
+      let panner = null;
+      if (audioContext.createPanner) {
+        panner = audioContext.createPanner();
+        panner.panningModel = 'HRTF';
+        panner.distanceModel = 'inverse';
+        panner.refDistance = 1;
+        panner.rolloffFactor = 0;
+      }
+      source.connect(gain);
+      if (panner) gain.connect(panner).connect(audioContext.destination); else gain.connect(audioContext.destination);
+      audioNodes.set(element, { source, gain, panner, level: 1, placement: null });
     } catch { /* element.volume remains the portable fallback */ }
   };
   const attachAudio = (track, identity) => {
@@ -92,20 +185,37 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
       const node = audioNodes.get(element);
       node?.source?.disconnect();
       node?.gain?.disconnect();
+      node?.panner?.disconnect();
       audioNodes.delete(element);
       element.remove();
     }
+  };
+  /** Drop every audio element held for this person, whatever state LiveKit's track is in (an out-of-range voice must not linger, even silent). */
+  const removeParticipantAudio = identity => {
+    const key = String(identity);
+    for (const element of audioByParticipant.get(key) ?? []) {
+      const node = audioNodes.get(element);
+      node?.source?.disconnect();
+      node?.gain?.disconnect();
+      node?.panner?.disconnect();
+      audioNodes.delete(element);
+      element.remove();
+    }
+    audioByParticipant.delete(key);
+    document.querySelectorAll(`[data-voice-audio="${CSS.escape(key)}"]`).forEach(element => element.remove());
   };
   const applyAllGains = () => { for (const identity of audioByParticipant.keys()) applyGain(identity); };
   const cleanup = () => {
     generation += 1;
     if (proximityTimer) { clearInterval(proximityTimer); proximityTimer = null; }
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
     allowedParticipants.clear();
     participantPositions.clear();
     ownPosition = null;
     for (const node of audioNodes.values()) {
       node.source?.disconnect();
       node.gain?.disconnect();
+      node.panner?.disconnect();
     }
     audioNodes.clear();
     audioByParticipant.clear();
@@ -154,12 +264,15 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
         await next.localParticipant.setMicrophoneEnabled(true);
         if (attempt !== generation) { await next.disconnect(); return false; }
         room = next;
+        await applyMicVolume(next);
         // Room connection and proximity ACL reconciliation are separate
         // concerns. LiveKit may briefly return 503 while its participant RPC
         // is catching up; keep the connected room alive and retry ACL work on
         // the interval instead of rejecting Connect.
         await updateProximity().catch(() => false);
         if (room !== next || attempt !== generation) { await next.disconnect(); cleanup(); return false; }
+        // the sound follows where you stand and look several times a second (the server's positions arrive once a second)
+        liveTimer = setInterval(applyAllGains, 100);
         proximityTimer = setInterval(() => {
           void updateProximity().catch(() => {
             // A transient token/ACL refresh failure must not turn an otherwise
@@ -235,6 +348,7 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
         } else {
           const track = publication.track;
           if (track) removeAudio(track);
+          removeParticipantAudio(participant.identity);
           if (publication.isSubscribed && publication.setSubscribed) {
             // Detach locally before awaiting LiveKit's room-service revoke.
             // A delayed RPC must not leave audible media attached after the
@@ -249,10 +363,38 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
     return true;
   };
 
+  /** Put the volume control on the microphone track (once per track). A browser without it keeps the plain microphone and says so. */
+  const applyMicVolume = async activeRoom => {
+    const publications = activeRoom?.localParticipant?.audioTrackPublications;
+    for (const publication of publications ? [...publications.values()] : []) {
+      const track = publication.track;
+      if (!track?.setProcessor || processedTracks.has(track)) continue;
+      try {
+        await track.setProcessor(micProcessor);
+        processedTracks.add(track);
+      } catch {
+        report(state, 'Microphone volume is not available in this browser');
+      }
+    }
+  };
+  const setMicVolume = value => {
+    micVolume = clampVolume(value);
+    micProcessor.set(micVolume);
+    saveVolume('mic', micVolume);
+    return micVolume;
+  };
+  const setVoiceVolume = value => {
+    voiceVolume = clampVolume(value);
+    saveVolume('voices', voiceVolume);
+    applyAllGains();
+    return voiceVolume;
+  };
+
   const toggleMute = async () => {
     if (!room) return false;
     muted = !muted;
     await room.localParticipant.setMicrophoneEnabled(!muted);
+    if (!muted) await applyMicVolume(room); // (a track made again after being muted gets the control too)
     report(muted ? 'muted' : 'connected');
     return true;
   };
@@ -266,9 +408,13 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
       connected: !!active,
       muted,
       attenuationReady,
+      micVolume,
+      micVolumeActive: micProcessor.active,
+      voiceVolume,
       allowedParticipants: [...allowedParticipants],
       audioElements: document.querySelectorAll('[data-voice-audio]').length,
-      audioGains: [...audioByParticipant.values()].flat().map(element => Number(element.volume)),
+      audioGains: [...audioByParticipant.values()].flat().map(element => audioNodes.get(element)?.level ?? Number(element.volume)),
+      audioPlacement: [...audioByParticipant.values()].flat().map(element => audioNodes.get(element)?.placement ?? null),
       ownPosition,
       participantPositions: [...participantPositions.entries()],
       localAudio: publications ? [...publications.values()].map(publication => ({
@@ -298,10 +444,22 @@ export function initVoice({ base = '', onState = () => {} } = {}) {
   };
   connectButton?.addEventListener('click', () => { void connect(); });
   muteButton?.addEventListener('click', () => { void toggleMute(); });
+  // the two sliders (percent): what others hear of you, and how loud everybody is to you
+  const micSlider = document.getElementById('voiceMicVolume');
+  const voicesSlider = document.getElementById('voiceVoicesVolume');
+  const showPercent = (slider, value) => {
+    if (slider) slider.value = String(Math.round(value * 100));
+    const label = document.getElementById(slider?.id === 'voiceMicVolume' ? 'voiceMicValue' : 'voiceVoicesValue');
+    if (label) label.textContent = `${Math.round(value * 100)}%`;
+  };
+  showPercent(micSlider, micVolume);
+  showPercent(voicesSlider, voiceVolume);
+  micSlider?.addEventListener('input', () => showPercent(micSlider, setMicVolume(Number(micSlider.value) / 100)));
+  voicesSlider?.addEventListener('input', () => showPercent(voicesSlider, setVoiceVolume(Number(voicesSlider.value) / 100)));
   const originalState = onState;
   onState = update => { originalState(update); updateControls(update); };
   if (panel) panel.hidden = true;
   addEventListener('pagehide', () => { void disconnect(); }, { once: true });
   report('disabled');
-  return { connect, disconnect, toggleMute, diagnostics, state: () => state, isMuted: () => muted, show: () => { if (panel) panel.hidden = false; }, hide: () => { if (panel) panel.hidden = true; void disconnect(); } };
+  return { connect, disconnect, toggleMute, setMicVolume, setVoiceVolume, micVolume: () => micVolume, voiceVolume: () => voiceVolume, diagnostics, state: () => state, isMuted: () => muted, show: () => { if (panel) panel.hidden = false; }, hide: () => { if (panel) panel.hidden = true; void disconnect(); } };
 }

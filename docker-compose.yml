@@ -37,6 +37,7 @@ services:
     environment:
       SITE_ADDRESS: "${SITE_ADDRESS:-office.lan}"
       VOICE_SITE_ADDRESS: "${VOICE_SITE_ADDRESS:-voice.office.lan}"
+      LAN_HTTPS_PORT: "${LAN_HTTPS_PORT:-443}" # (the port clients reach HTTPS on: the plain-HTTP page links to it)
     volumes:
       - caddy_data:/data
       - caddy_config:/config
