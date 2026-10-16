@@ -2,10 +2,10 @@ import { keys } from '../camera/input.js';
 import { setView } from '../camera/controller.js';
 import { FULL_H, LOW_H } from '../config/plan.js';
 import { renderer } from '../render/renderer.js';
-import { $ } from '../ui/dom.js';
+import { $, keyHints } from '../ui/dom.js';
 import { wall } from '../world/helpers.js';
 import { stepPlayer } from './locomotion.js';
-import { player } from './player.js';
+import { player, releaseControl } from './player.js';
 import { updatePrompts } from './prompts.js';
 import { standUp, toggleSit } from './seating.js';
 
@@ -16,6 +16,7 @@ const ctl = {
   active: false, mode: null, yaw: 0, pitch: 0, pitchMin: -1.2, pitchMax: 1.2, savedWall: LOW_H, coarse: false,
   stickId: null, stickO: null, stick: { x: 0, y: 0 }, lookId: null, lx: 0, ly: 0,
   keyHook: null, wheelHook: null, // a mode can claim extra keys / the mouse wheel
+  useHook: null, // E uses what you aim at (ui/interact.js); it returns false when there is nothing, and E sits or stands
 };
 
 // Start steering. `mode` is 'fp' or 'tp'; the HUD bar texts differ per mode.
@@ -25,12 +26,14 @@ function beginControl(mode, p, hud) {
   wall.goal = FULL_H;
   document.body.classList.add(mode);
   $('fpBar').hidden = false; $('stick').hidden = !ctl.coarse; $('fpPrompt').hidden = false;
-  $('fpMode').textContent = hud.title; $('fpKeys').textContent = hud.keys; $('fpWho').textContent = 'Walking as you';
+  $('fpMode').textContent = hud.title; keyHints($('fpKeys'), hud.keys); $('fpWho').textContent = p.id === -1 ? 'Walking as you' : `Walking as ${p.name}`;
+  $('fpCreator').hidden = p.id !== -1; // the look you can change is your own character's
 }
 const PLAY_VIEWS = new Set(['fp', 'third']);
 // Stop steering. Stand up unless we are just swapping between first and third person.
 function endControl(nextId) {
   const p = player.person; if (player.sitting && p && !PLAY_VIEWS.has(nextId)) standUp(p);
+  if (!PLAY_VIEWS.has(nextId)) releaseControl(); // whoever you took control of gets on with their day
   document.body.classList.remove(ctl.mode);
   Object.assign(ctl, { active: false, mode: null, stickId: null, lookId: null, keyHook: null, wheelHook: null });
   wall.goal = ctl.savedWall; ctl.stick.x = ctl.stick.y = 0;
@@ -64,6 +67,11 @@ function pointerUp(e) {
 
 // Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
 function driveLocomotion(dt, p) {
+  if (p.state !== 'player') { // in a Power Slap the sim moves them (sim/slap.js); someone you control may be sent home (a new day)
+    player.moving = false;
+    if (!p.task?.slap) exitPlay();
+    return { moved: 0, dx: 0, dz: 0 };
+  }
   let f = 0, r = 0, turn = 0;
   if (keys.has('w') || keys.has('arrowup')) f += 1; if (keys.has('s') || keys.has('arrowdown')) f -= 1;
   if (keys.has('a')) r -= 1; if (keys.has('d')) r += 1;
@@ -93,11 +101,21 @@ function initControl() {
   addEventListener('keydown', e => {
     if (!ctl.active || e.target.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
-    if (k === 'e' && !e.repeat) toggleSit();
+    if (k === 'e' && !e.repeat && !ctl.useHook?.()) toggleSit();
     if (k === 'escape' && !document.pointerLockElement) exitPlay();
     if (k === 'v' && !e.repeat) setView(ctl.mode === 'fp' ? 'third' : 'fp');
+    if (k === 'alt') { e.preventDefault(); if (!e.repeat) toggleCursor(); }
     if (ctl.keyHook && !e.repeat) ctl.keyHook(k);
   });
+  addEventListener('keyup', e => { if (ctl.active && e.key === 'Alt') e.preventDefault(); }); // not the browser's menu
+}
+// Alt frees the mouse (to click the cards on screen: a fight's buttons, the walk bar) and takes it back again.
+// Clicking the floor takes it back too.
+function toggleCursor() {
+  try {
+    if (document.pointerLockElement) document.exitPointerLock();
+    else if (!ctl.coarse && el.requestPointerLock) { const r = el.requestPointerLock(); if (r && r.catch) r.catch(() => {}); }
+  } catch (_) {}
 }
 // Stop steering the player; the camera stays free-orbiting around them.
 function exitPlay() { if (ctl.active) setView('free'); }

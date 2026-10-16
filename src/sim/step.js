@@ -5,6 +5,7 @@ import { SCREENS } from '../render/screens.js';
 import { hazelExtras, hazelSlack } from '../people/hazel.js';
 import { arriveNow } from './day.js';
 import { breakIndex } from './schedule.js';
+import { slapArgue } from './slap.js';
 import { people, sim } from './state.js';
 import { arrive, chooseNext, returnFromToilet } from './tasks.js';
 import { interactables } from '../world/interactables.js';
@@ -46,7 +47,7 @@ function stepPerson(p, dt, sdt) {
     if (p.task?.kind === 'work') { const b = breakIndex(p, sim.t), key = sim.day * 10 + b; if (b >= 0 && p.breakKey !== key) { p.breakKey = key; p.until = sim.t; } }
     if (sim.t >= p.until) {
       const wasExit = p.task?.kind === 'exit';
-      if (!wasExit) chooseNext(p);
+      if (!wasExit && !slapArgue(p)) chooseNext(p); // an argument over code can end in a Power Slap
     }
   } else if (p.state === 'idle') { chooseNext(p); }
   const k = 1 - Math.exp(-dt * 10 * Math.min(sim.speed, 3));

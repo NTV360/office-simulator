@@ -13,8 +13,8 @@ let eye = 1.6;
 function enterFP() {
   const p = spawnPlayer();
   select(null);
-  if (!player.sitting) p.task = null;
-  beginControl('fp', p, { title: 'First person', keys: 'WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit' });
+  if (!player.sitting && p.state === 'player') p.task = null; // (a Power Slap keeps its task)
+  beginControl('fp', p, { title: 'First person', keys: [['WASD', 'move'], ['Shift', 'run'], ['E', 'use · sit'], ['V', '3rd person'], ['Alt', 'cursor'], ['Esc', 'exit']] });
   ctl.pitchMin = -1.2; ctl.pitchMax = 1.2;
   eye = eyeHeight(p.body, player.sitting?.hipY);
   camera.fov = 68; camera.near = .05; camera.updateProjectionMatrix();
@@ -27,12 +27,12 @@ function leaveFP(nextId) {
   endControl(nextId);
   camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
   $('crosshair').hidden = true;
-  if (p) { p.body.root.visible = true; if (!player.sitting) p.task = null; settleOn(p); }
+  if (p) { p.body.root.visible = p.state !== 'away'; if (!player.sitting && p.state === 'player') p.task = null; settleOn(p); }
 }
 function fpUpdate(dt) {
   const p = player.person; if (!p) return;
   driveLocomotion(dt, p);
-  p.face = p.faceGoal = player.sitting ? player.sitting.face : ctl.yaw;
+  if (p.state === 'player') p.face = p.faceGoal = player.sitting ? player.sitting.face : ctl.yaw;
   const eyeGoal = eyeHeight(p.body, player.sitting?.hipY); eye += (eyeGoal - eye) * (1 - Math.exp(-dt * 8));
   const bob = player.moving ? Math.abs(Math.sin(p.walkPhase)) * .03 : 0;
   camera.position.set(p.pos.x + Math.sin(ctl.yaw) * .1, eye + bob, p.pos.z + Math.cos(ctl.yaw) * .1);

@@ -11,7 +11,9 @@ const FIGHTERS = [
   { name: 'KAI', skin: '#d9a27a', top: '#2f6fb3', pants: '#1d2733', hair: '#1b1817', belt: '#e2b65c' },
   { name: 'ROSA', skin: '#f0c9a4', top: '#c8403a', pants: '#2b2230', hair: '#5a2a1d', belt: '#f2f2f2' },
 ];
-const fightState = { hp: [1, 1], round: 1, wins: [0, 0], ko: 0, x: [110, 210], move: ['idle', 'idle'], mt: [0, 0], spark: null, shake: 0, clock: 60, nextAct: .6 };
+// `human`: 0 while you play KAI (null: the game plays itself); `input`: your controls (ui/games.js).
+const fightState = { hp: [1, 1], round: 1, wins: [0, 0], ko: 0, x: [110, 210], move: ['idle', 'idle'], mt: [0, 0], spark: null, shake: 0, clock: 60, nextAct: .6,
+  human: null, input: { left: false, right: false, block: false, attack: null }, matches: 0, champ: null }; // matches: best-of-three matches played; champ: who won the last
 function fighterPose(move, t) {
   // direct limb angles: 0 = straight down, π/2 = pointing forward, π = straight up
   const bob = Math.sin(gameT * 6) * .06;
@@ -55,6 +57,38 @@ function drawFighter(g, f, x, dir, move, t) {
   g.fillStyle = f.skin; g.beginPath(); g.arc(fist[0], fist[1], 4.5, 0, TAU); g.fill();
   return fist;
 }
+// You at the controller (ui/games.js fills F.input): you are KAI and move, block and attack with the keys; ROSA
+// (the CPU, or whoever you invited) closes in, attacks on her own and blocks now and then.
+const REACH = 74; // pixels: close enough to land a hit
+function startHumanFight() {
+  Object.assign(fightState, { human: 0, hp: [1, 1], round: 1, wins: [0, 0], ko: 0, x: [110, 210], move: ['idle', 'idle'], mt: [0, 0], clock: 60, nextAct: 1 });
+  Object.assign(fightState.input, { left: false, right: false, block: false, attack: null });
+}
+function stopHumanFight() { fightState.human = null; }
+function strike(a, atk) {
+  const F = fightState, d = 1 - a;
+  F.move[a] = atk; F.mt[a] = 0;
+  if (F.x[1] - F.x[0] > REACH) return; // too far: a whiff
+  if (d === 0 ? F.move[0] === 'block' : Math.random() < .3) { if (d === 1) { F.move[1] = 'block'; F.mt[1] = -.12; } return; }
+  F.move[d] = 'hit'; F.mt[d] = -.12;
+  F.hp[d] = Math.max(0, F.hp[d] - (atk === 'uppercut' ? .2 : atk === 'kick' ? .14 : .08));
+  F.x[d] += (d ? 1 : -1) * (atk === 'uppercut' ? 22 : 12); F.spark = { x: (F.x[0] + F.x[1]) / 2, y: atk === 'kick' ? 112 : 88, t: 0, big: atk === 'uppercut' }; F.shake = .15;
+}
+function humanStep(step) {
+  const F = fightState, I = F.input;
+  for (let i = 0; i < 2; i++) if (F.move[i] !== 'idle' && F.mt[i] > .45 && !(i === 0 && F.move[0] === 'block')) F.move[i] = 'idle';
+  if (F.move[0] === 'block' && !I.block) F.move[0] = 'idle';
+  if (I.block && F.move[0] === 'idle') F.move[0] = 'block';
+  if (F.move[0] === 'idle') F.x[0] += ((I.right ? 1 : 0) - (I.left ? 1 : 0)) * step * 70;
+  if (F.x[1] - F.x[0] > 66 && F.move[1] === 'idle') F.x[1] -= step * 34; // she closes in
+  if (I.attack && F.move[0] === 'idle') strike(0, I.attack);
+  I.attack = null;
+  F.nextAct -= step;
+  if (F.nextAct <= 0 && F.move[1] === 'idle' && F.x[1] - F.x[0] <= REACH) { strike(1, pick(['punch', 'punch', 'kick', 'uppercut'])); F.nextAct = rnd(.55, 1.25); }
+  F.x[0] = Math.max(40, Math.min(F.x[0], F.x[1] - 46)); F.x[1] = Math.max(F.x[0] + 46, Math.min(F.x[1], 290));
+  if (F.hp[0] <= 0 || F.hp[1] <= 0 || F.clock <= 0) { const w = F.hp[0] >= F.hp[1] ? 0 : 1; F.wins[w]++; F.move[w] = 'win'; F.move[1 - w] = 'ko'; F.mt = [0, 0]; F.ko = 3.2; }
+}
+
 function drawGame(dt) {
   gameT += dt; gameAcc += dt; if (gameAcc < .045) return;
   const step = gameAcc; gameAcc = 0;
@@ -63,8 +97,9 @@ function drawGame(dt) {
   F.mt[0] += step; F.mt[1] += step; F.clock = Math.max(0, F.clock - step * .8);
   if (F.ko > 0) {
     F.ko -= step;
-    if (F.ko <= 0) { F.hp = [1, 1]; F.x = [110, 210]; F.move = ['idle', 'idle']; F.clock = 60; if (Math.max(...F.wins) >= 2) { F.wins = [0, 0]; F.round = 1; } else F.round++; }
-  } else {
+    if (F.ko <= 0) { F.hp = [1, 1]; F.x = [110, 210]; F.move = ['idle', 'idle']; F.clock = 60; if (Math.max(...F.wins) >= 2) { F.champ = F.wins[0] >= 2 ? 0 : 1; F.matches++; F.wins = [0, 0]; F.round = 1; } else F.round++; }
+  } else if (F.human !== null) humanStep(step);
+  else {
     F.nextAct -= step;
     for (let i = 0; i < 2; i++) if (F.move[i] !== 'idle' && F.mt[i] > .45) F.move[i] = 'idle';
     const gap = F.x[1] - F.x[0];
@@ -140,4 +175,4 @@ function buildGame() {
   gameMat = new THREE.MeshBasicMaterial({ map: gameTex, toneMapped: false });
 }
 
-export { LOUNGE_TV_POS, drawGame, gameCanvas, gameMat, loungeTV, buildGame };
+export { LOUNGE_TV_POS, buildGame, drawGame, fightState, gameCanvas, gameMat, loungeTV, startHumanFight, stopHumanFight };

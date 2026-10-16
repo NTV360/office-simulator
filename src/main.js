@@ -10,6 +10,9 @@ import './styles/first-person.css';
 import './styles/creator.css';
 import './styles/search.css';
 import './styles/chat.css';
+import './styles/slap.css';
+import './styles/interact.css';
+import './styles/games.css';
 import './styles/veil.css';
 import './styles/responsive.css';
 
@@ -24,6 +27,7 @@ import { findPath } from './nav/astar.js';
 import { GC, GR, NAV, walkPx } from './nav/grid.js';
 import { roster } from './people/roster.js';
 import { fetchAttendance, fetchEmployees } from './persistence/store.js';
+import { updateDizzy } from './people/dizzy.js';
 import { syncBody } from './people/sync.js';
 import { player } from './player/player.js';
 import { buildLabels, labelGroup, labelState } from './render/labels.js';
@@ -33,14 +37,19 @@ import { newDay } from './sim/day.js';
 import { applyAttendance, initLive, live, tickLive } from './sim/live.js';
 import { DAY_END } from './sim/schedule.js';
 import { tickMeetings, tryMeeting } from './sim/meetings.js';
+import { updateSlap } from './sim/slap.js';
 import { CLOCK, log, people, sim } from './sim/state.js';
 import { stepPerson, updateScreens } from './sim/step.js';
 import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
+import { updateSlapCard } from './ui/slap.js';
+import { updateInteract } from './ui/interact.js';
+import { updateGames } from './ui/games.js';
 import { ENTRY } from './world/entrance.js';
 import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { updateDiningTv } from './world/furniture/diningTv.js';
+import { onAir, updateChannels } from './world/furniture/channels.js';
 import { awardsScreen } from './world/furniture/awards.js';
 import { drawGame, gameCanvas, gameMat, loungeTV } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
@@ -59,17 +68,21 @@ function tick(now) {
     tickMeetings();
     if (sim.t >= DAY_END) newDay();
     for (const p of people) stepPerson(p, dt);
+    const you = player.person?.id === -1 ? player.person : null; // (someone you took control of is in people)
+    if (you && you.state !== 'player') stepPerson(you, dt); // your character in a Power Slap
+    updateSlap(dt);
     updateScreens(); updateLight();
   }
   for (const p of people) syncBody(p, dt);
-  if (player.person) syncBody(player.person, dt);
+  if (player.person?.id === -1) syncBody(player.person, dt);
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
-  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now); updateKitchen(dt);
+  keyCam(dt); updateCamera(dt); updateGolf(dt); updateDarts(now, dt); updateMusic(now); updateKitchen(dt); updateDizzy(dt); updateSlapCard(); updateInteract(dt); updateGames(dt);
   // the lounge TV: the game while someone plays, the office awards otherwise (world/furniture/awards.js)
-  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
+  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming || onAir('game')) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
+  updateChannels(dt); // TVs someone changed the channel on (ui/interact.js)
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
   requestAnimationFrame(tick);
@@ -91,7 +104,7 @@ function start(employees, attendance) {
   window.__simReady = true;
   document.getElementById('veil').classList.add('gone');
   window.__sim = { sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
-    for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= DAY_END) newDay(); for (const p of people) stepPerson(p, dt); }
+    for (let i = 0; i < n; i++) { sim.t += dt * sim.speed * CLOCK; if (Math.floor(sim.t) !== sim.lastMinute) { sim.lastMinute = Math.floor(sim.t); tryMeeting(); } tickMeetings(); if (sim.t >= DAY_END) newDay(); for (const p of people) stepPerson(p, dt); updateSlap(dt); }
   }, log };
 }
 Promise.all([fetchEmployees(), fetchAttendance()]).then(([employees, attendance]) => start(employees, attendance));

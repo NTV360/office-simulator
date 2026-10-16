@@ -57,7 +57,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `nav/` | `grid.js` (walkable grid built from the obstacles), `astar.js` (pathfinding) |
 | `character/` | `pack/` the character pack (vendored, chibi and blocky styles; do not edit), `spec.js` CharacterSpec (plain data, no Three.js), `rig.js` builds a character from the pack and exposes its joints, `parts.js` face parts the pack lacks, `props.js` held props, `gfx.js` cached materials and the per-joint draw-call merge |
 | `people/` | NPC side: `data.js` (names, roles, activity categories), `factory.js` (create/remove people), `animation.js` (poses), `sync.js` (put meshes where the sim says), `hazel.js` (the special character) |
-| `sim/` | `state.js` (`sim`, `people`, log), `schedule.js` (24-hour day, shifts and breaks), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement) |
+| `sim/` | `state.js` (`sim`, `people`, log), `schedule.js` (24-hour day, shifts and breaks), `tasks.js` (what people do next), `meetings.js`, `day.js` (day cycle), `step.js` (per-frame movement), `slap.js` (Power Slap fights) |
 | `player/` | The player's character: `player.js` (the entity), `control.js` (look angles, keys, touch stick), `locomotion.js` (collision), `seating.js`, `prompts.js` |
 | `camera/` | `controller.js` (switches modes), `modes/` (one file per view), `state.js` (orbit state), `orbit.js` + `input.js` (pointer/keyboard), `collide.js` (wall collision), `spots.js` (jump-to, picking) |
 | `fp/` | The first-person camera (eye height, head bob) |
@@ -66,7 +66,7 @@ Some function-level cycles also exist (for example `camera/controller.js` and `p
 | `persistence/` | `store.js`: the API calls (`fetchEmployees`, `saveCharacter`) and the player's look in `localStorage` |
 | `assets/` | Static files imported by code (the logo) |
 
-Outside `src/`: `server/` (the BFF: `index.js` production server, `api.js` the `/api` app, `routes/`, `supabase.js` the server-only client) and `supabase/migrations/` (SQL for the tables). Server code may import plain-data modules from `src/` (it validates specs with `character/spec.js`); `src/` never imports from `server/`.
+Outside `src/`: `server/` (the BFF: `index.js` production server, `api.js` the `/api` app, `routes/`, `supabase.js` the server-only client, `chat.js` the office chat and `slap.js` online Power Slap, both on Socket.IO) and `supabase/migrations/` (SQL for the tables). Server code may import plain-data modules from `src/` (it validates specs with `character/spec.js`); `src/` never imports from `server/`.
 
 ## How the app starts
 
@@ -99,7 +99,8 @@ State is held in a few exported plain objects. **Mutate their properties; never 
 | `sim` | `sim/state.js` | `{ t, day, speed, paused, lastMinute }`. `t` is minutes since midnight |
 | `people` | `sim/state.js` | The NPC list. The player is **not** in it |
 | `logState`, `log` | `sim/state.js` | Event log shown in the ledger; set `logState.dirty` to redraw |
-| `player` | `player/player.js` | `{ person, spec, sitting, moving }`. `person` is null until first needed. `spec` is kept in `localStorage` (`officeSim.playerSpec`) |
+| `player` | `player/player.js` | `{ person, own, spec, sitting, moving, lookAt, aim }` (`aim`: the TV or whiteboard in reach that `E` uses, `ui/interact.js`). `person` is who you walk as: your own character (null until first needed), or someone you took control of (then `own` is your character). `spec` is kept in `localStorage` (`officeSim.playerSpec`) |
+| `slap` | `sim/slap.js` | `{ matches }`: the Power Slap fights going on (see the comment at the top of `sim/slap.js`) |
 | `roster` | `people/roster.js` | `{ list }`: the employees from the API (name, department, intern flag, saved look), or null when the API is unavailable |
 | `creator` | `ui/creator.js` | The character lab: `open`, the `draft` spec being edited, and its preview stage |
 | `ctl` | `player/control.js` | While the user steers the player: `active`, `mode` (`'fp'`/`'tp'`), look `yaw`/`pitch`, touch stick, key/wheel hooks |

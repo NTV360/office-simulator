@@ -16,7 +16,7 @@ function nearestSeat(p) {
 }
 function sitDown(p, sp) {
   if (sp.shared) sp.occupant = p;
-  player.sitting = sp; p.pos.copy(sp.pos); ctl.yaw = sp.face; ctl.pitch = -.12;
+  player.sitting = sp; p.pos.copy(sp.pos); ctl.yaw = sp.face; ctl.pitch = sp.kind === 'piano' ? -.4 : -.12; // at the keyboard, look down at the keys
   const anim = sp.kind === 'piano' ? 'piano' : sp.kind === 'guitar' ? 'guitar' : sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
   p.task = { kind: 'playerSit', spot: sp, anim };
   p.body.pad.visible = !!sp.game; p.body.guitar.visible = sp.kind === 'guitar'; p.body.phone.visible = sp.kind === 'booth'; p.body.mug.visible = sp.kind === 'bar';
@@ -28,7 +28,7 @@ function standUp(p) {
   p.body.pad.visible = p.body.phone.visible = p.body.mug.visible = p.body.guitar.visible = false;
 }
 function toggleSit() {
-  const p = player.person; if (!ctl.active || !p) return;
+  const p = player.person; if (!ctl.active || !p || p.state !== 'player') return; // not in the middle of a Power Slap
   if (player.sitting) standUp(p); else { const sp = nearestSeat(p); if (sp) sitDown(p, sp); }
   updatePrompts();
 }

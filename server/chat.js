@@ -39,4 +39,4 @@ function attachChat(httpServer) {
   return io;
 }
 
-export { attachChat };
+export { attachChat, clean };

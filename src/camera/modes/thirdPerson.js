@@ -24,8 +24,8 @@ const thirdPersonMode = {
   enter() {
     const p = spawnPlayer();
     select(null);
-    if (!player.sitting) p.task = null;
-    beginControl('tp', p, { title: 'Third person', keys: 'WASD move · drag look · wheel zoom · C swap shoulder · Shift run · E sit · V first person · Esc exit' });
+    if (!player.sitting && p.state === 'player') p.task = null; // (a Power Slap keeps its task)
+    beginControl('tp', p, { title: 'Third person', keys: [['WASD', 'move'], ['Shift', 'run'], ['E', 'use · sit'], ['C', 'shoulder'], ['V', '1st person'], ['Alt', 'cursor'], ['Esc', 'exit']] });
     ctl.pitchMin = -.75; ctl.pitchMax = .7; ctl.pitch = -.14;
     ctl.keyHook = k => { if (k === 'c') tp.side = -tp.side; };
     ctl.wheelHook = dy => { tp.dist = Math.max(tp.minDist, Math.min(tp.maxDist, tp.dist * Math.exp(dy * .0008))); };
@@ -39,7 +39,7 @@ const thirdPersonMode = {
     endControl(ctrl.nextId);
     camera.fov = 38; camera.near = .1; camera.updateProjectionMatrix();
     $('crosshair').hidden = true;
-    if (p) { p.body.root.visible = true; p.task = player.sitting ? p.task : null; settleOn(p); }
+    if (p) { p.body.root.visible = p.state !== 'away'; p.task = player.sitting || p.state !== 'player' ? p.task : null; settleOn(p); }
   },
   update(dt) {
     const p = player.person; if (!p) return;

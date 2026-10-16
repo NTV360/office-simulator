@@ -275,4 +275,4 @@ function play(p) {
   return [...games, ...rest].some(f => f(p));
 }
 
-export { arrive, chooseNext, cleanNext, endTask, goDo, goWork, lockerTrip, placeNow, putBucketBack, returnFromToilet, whiteboard };
+export { arrive, chooseNext, cleanNext, endTask, goDo, goExit, goWork, lockerTrip, placeNow, putBucketBack, returnFromToilet, whiteboard };

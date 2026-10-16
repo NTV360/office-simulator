@@ -14,12 +14,16 @@ import { initPlayer } from './player/player.js';
 import { initLedger } from './ui/ledger.js';
 import { initPerson } from './ui/person.js';
 import { initSearch } from './ui/search.js';
+import { initSlap } from './ui/slap.js';
+import { initInteract } from './ui/interact.js';
+import { initGames } from './ui/games.js';
 import { buildBake } from './world/bake.js';
 import { buildDoors } from './world/doors.js';
 import { buildEntrance } from './world/entrance.js';
 import { buildFloor } from './world/floor.js';
 import { buildBar } from './world/furniture/bar.js';
 import { buildBooths } from './world/furniture/booths.js';
+import { initChannels } from './world/furniture/channels.js';
 import { buildDiningTv } from './world/furniture/diningTv.js';
 import { buildConference } from './world/furniture/conference.js';
 import { buildDarts } from './world/furniture/darts.js';
@@ -63,6 +67,7 @@ export function bootstrap() {
   buildPlants();
   buildEntrance();
   buildBake();
+  initChannels(); // every TV screen, for changing channels
   initLabels();
   initMovie();
   // navigation reads the obstacles registered by the world
@@ -81,5 +86,8 @@ export function bootstrap() {
   initCreator();
   initSearch();
   initChat();
+  initSlap();
+  initInteract();
+  initGames();
   initAttendance();
 }
