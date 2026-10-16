@@ -109,11 +109,21 @@ function strike() {
 }
 
 // ----- who you are online, and who else is
+// Who you are online. The server gives the first browser to be an employee a token that keeps them theirs
+// (server/slap.js); it is kept with the choice in this browser.
 function setMe(key) {
-  const p = key ? byKey(key) : null;
-  ui.me = p ? { key, name: p.name } : null;
-  try { localStorage.setItem(ME_KEY, JSON.stringify(ui.me)); } catch (_) {}
-  chatSocket().emit('slap:iam', ui.me);
+  const p = key ? byKey(key) : null, was = ui.me;
+  ui.me = p ? { key, name: p.name, token: was?.key === key ? was.token : ui.token?.[key] } : null;
+  claim(was);
+}
+function claim(was) {
+  chatSocket().timeout(5000).emit('slap:iam', ui.me, (err, res) => {
+    if (err) return; // offline: tried again on connect
+    if (!res?.ok) { note(res?.error || 'That did not work'); ui.me = was ?? null; fillMe(); renderOnline(); return; }
+    if (ui.me && res.token) { ui.me.token = res.token; (ui.token ??= {})[ui.me.key] = res.token; }
+    try { localStorage.setItem(ME_KEY, JSON.stringify(ui.me)); } catch (_) {}
+    renderOnline();
+  });
   renderOnline();
 }
 function fillMe() {
@@ -204,7 +214,7 @@ function challengeLooked() { if (ctl.active && player.lookAt && !$('fpSlap').hid
 
 function initSocket() {
   const s = chatSocket();
-  s.on('connect', () => { if (ui.me) s.emit('slap:iam', ui.me); });
+  s.on('connect', () => { if (ui.me) claim(null); });
   s.on('slap:online', list => { ui.online = Array.isArray(list) ? list : []; renderOnline(); });
   s.on('slap:invite', inv => { ui.invite = inv; });
   s.on('slap:invite-closed', ({ id }) => { if (ui.invite?.id === id) ui.invite = null; });
@@ -222,7 +232,7 @@ function initSocket() {
 }
 
 function initSlap() {
-  try { const saved = JSON.parse(localStorage.getItem(ME_KEY)); if (saved?.key && byKey(saved.key)) ui.me = { key: saved.key, name: byKey(saved.key).name }; } catch (_) {}
+  try { const saved = JSON.parse(localStorage.getItem(ME_KEY)); if (saved?.key && byKey(saved.key)) ui.me = { key: saved.key, name: byKey(saved.key).name, token: saved.token }; } catch (_) {}
   initSocket();
   $('slapMeter').style.setProperty('--ko', `${SLAP_KO_FROM * 100}%`); // the KO mark on the power meter
   $('slapBtn').addEventListener('click', fillMe); // the dock pop-up itself opens and closes like the others (ui/controls.js)

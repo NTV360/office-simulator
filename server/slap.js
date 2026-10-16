@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { SLAP_LATE, SLAP_ROUNDS, SLAP_TIME, koChance } from '../src/config/slap.js';
 import { clean as text } from './chat.js';
 
@@ -7,17 +8,21 @@ import { clean as text } from './chat.js';
 // are refereed here so everyone sees the same fight: whose turn it is, how hard each slap was (the slapper's power
 // meter, or a weak slap when they take too long), knockouts and the winner. Each browser shows the fight with
 // its own copies of the two employees.
-// Who someone is is taken on trust: there is no sign-in.
+// There is no sign-in, so who someone is is taken on trust, with one guard: the first browser to say it is an employee
+// gets a token for them, and nobody else can be that employee while it is online (or for a while after it leaves).
 const MAX_KEY = 80, MAX_NAME = 60;
 const INVITE_MS = 20000;  // a challenge lapses
 const SPACING_MS = 3000;  // between two challenges from one connection
-const TABLES = 6;         // the dining area's slap spots (world/furniture/dining.js)
+const TABLES = 6;         // the dining area's slap spots (world/furniture/dining.js): at most this many fights at once
+const MAX_INVITES = 50;   // open challenges, all together
+const RECLAIM_MS = 10 * 60000; // how long an employee stays reserved for their browser after it leaves
 const ms = s => s * 1000;
 
 function attachSlap(io) {
   const who = new Map();     // socket id → { key, name }
   const invites = new Map(); // id → { id, from, to, timer }
   const matches = new Map(); // id → { id, a, b, table, slapper, turn, power, waiting, timer }
+  const owners = new Map();  // employee key → { token, until }: the browser that is that employee
   let nextId = 1;
 
   const sockets = key => [...io.of('/').sockets.values()].filter(s => who.get(s.id)?.key === key);
@@ -27,6 +32,8 @@ function attachSlap(io) {
   const list = () => [...new Map([...who.values()].map(w => [w.key, { ...w, busy: fighting(w.key) }])).values()];
   const online = () => io.emit('slap:online', list());
 
+  // When nobody is that employee any more, their browser keeps them reserved for a while.
+  function free(me) { if (me && !sockets(me.key).length && owners.has(me.key)) owners.get(me.key).until = Date.now() + RECLAIM_MS; }
   function closeInvite(inv, why) {
     clearTimeout(inv.timer); invites.delete(inv.id);
     tell(inv.to.key, 'slap:invite-closed', { id: inv.id });
@@ -67,10 +74,17 @@ function attachSlap(io) {
   io.on('connection', socket => {
     socket.emit('slap:online', list());
     let lastChallenge = 0;
-    socket.on('slap:iam', me => {
-      const key = text(me?.key, MAX_KEY), name = text(me?.name, MAX_NAME);
-      if (key && name) who.set(socket.id, { key, name }); else who.delete(socket.id);
-      online();
+    socket.on('slap:iam', (me, ack) => {
+      const reply = typeof ack === 'function' ? ack : () => {};
+      const was = who.get(socket.id), key = text(me?.key, MAX_KEY), name = text(me?.name, MAX_NAME), token = text(me?.token, 64);
+      if (was && was.key !== key && busy(was.key)) return reply({ ok: false, error: 'Finish your challenge or fight first' });
+      if (!key || !name) { who.delete(socket.id); free(was); online(); return reply({ ok: true }); }
+      const owner = owners.get(key);
+      if (owner && owner.token !== token && (sockets(key).length || Date.now() < owner.until)) return reply({ ok: false, error: `Someone else is online as ${name}` });
+      const mine = owner?.token === token ? owner.token : randomUUID();
+      owners.set(key, { token: mine, until: 0 });
+      who.set(socket.id, { key, name }); if (was?.key !== key) free(was);
+      online(); reply({ ok: true, token: mine });
     });
     socket.on('slap:challenge', (msg, ack) => {
       const reply = typeof ack === 'function' ? ack : () => {};
@@ -81,6 +95,8 @@ function attachSlap(io) {
       if (busy(me.key)) return reply({ ok: false, error: 'You already have a challenge or a fight going' });
       if (busy(them.key)) return reply({ ok: false, error: `${them.name} is busy, try again in a bit` });
       if (Date.now() - lastChallenge < SPACING_MS) return reply({ ok: false, error: 'Slow down a little' });
+      if (invites.size >= MAX_INVITES) return reply({ ok: false, error: 'Too many open challenges, try again in a bit' });
+      if (matches.size >= TABLES) return reply({ ok: false, error: 'All the tables are taken, try again in a bit' });
       lastChallenge = Date.now();
       const inv = { id: nextId++, from: me, to: them, timer: null };
       inv.timer = setTimeout(() => closeInvite(inv, 'did not answer'), INVITE_MS);
@@ -92,6 +108,7 @@ function attachSlap(io) {
       const inv = invites.get(Number(msg?.id)), me = who.get(socket.id);
       if (!inv || me?.key !== inv.to.key) return;
       if (msg.accept !== true) return closeInvite(inv, 'said no');
+      if (matches.size >= TABLES) return closeInvite(inv, 'could not find a free table');
       closeInvite(inv, null);
       start(inv);
     });
@@ -101,7 +118,7 @@ function attachSlap(io) {
       hit(m, Math.max(0, Math.min(1, power)));
     });
     socket.on('disconnect', () => {
-      const me = who.get(socket.id); who.delete(socket.id);
+      const me = who.get(socket.id); who.delete(socket.id); free(me);
       // their challenges lapse when this was their last tab; a fight goes on (their slaps come late and weak)
       if (me && !sockets(me.key).length) for (const inv of [...invites.values()]) {
         if (inv.to.key === me.key) closeInvite(inv, 'went offline');
