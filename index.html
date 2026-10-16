@@ -64,6 +64,21 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Chat</span><b class="badge" id="chatBadge" hidden>0</b>
   </button>
   <div class="pop-wrap">
+    <button type="button" class="dock-btn" id="slapBtn" data-pop="slapPop" aria-expanded="false" aria-controls="slapPop" title="Challenge people online to a Power Slap">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.4 0-4-1.4-5.4-3.4l-2-3a1.5 1.5 0 0 1 2.4-1.8L8 14"/></svg><span>Power Slap</span>
+    </button>
+    <div class="card pop" id="slapPop" hidden aria-label="Power Slap">
+      <div class="pop-title">Power Slap</div>
+      <div class="pop-row">
+        <label class="pop-lbl" for="slapMe">You are</label>
+        <select id="slapMe"></select>
+      </div>
+      <ul id="slapOnline" aria-label="Online now"></ul>
+      <p class="pop-note" id="slapNobody">No one else is online.</p>
+      <p class="pop-note">People online see you as this employee and can challenge you. For anyone else, click them in the office and press Power Slap.</p>
+    </div>
+  </div>
+  <div class="pop-wrap">
     <button type="button" class="dock-btn" data-pop="goPop" aria-expanded="false" aria-controls="goPop">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Go to</span>
     </button>
@@ -155,11 +170,15 @@
     <div id="pRole">—</div>
     <div id="pStatus">—</div>
     <div id="pMeta">—</div>
-    <div id="pActions">
-      <button class="btn" id="pFollow" type="button">Follow</button>
-      <button class="btn" id="pEdit" type="button">Edit character</button>
-      <button class="btn" id="pClose" type="button">Close</button>
-    </div>
+  </div>
+  <button class="icon-btn" id="pClose" type="button" aria-label="Close" title="Close (Esc)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>
+  </button>
+  <div id="pActions">
+    <button class="btn" id="pFollow" type="button">Follow</button>
+    <button class="btn" id="pEdit" type="button">Edit character</button>
+    <button class="btn" id="pControl" type="button" title="Walk as them in third person (V for first person, Esc to let go)">Take control</button>
+    <button class="btn" id="pSlap" type="button">Power Slap</button>
   </div>
 </section>
 
@@ -202,13 +221,92 @@
     <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
   </button>
 </div>
+<!-- Top centre, under the search: Power Slap challenges and the fight going on (ui/slap.js) -->
+<section class="card" id="slapCard" hidden aria-label="Power Slap">
+  <div id="slapMsg" aria-live="polite" hidden></div>
+  <div class="slap-acts" id="slapAnswer" hidden>
+    <button class="btn primary" id="slapYes" type="button">Accept</button>
+    <button class="btn" id="slapNo" type="button">Decline</button>
+  </div>
+  <!-- Simulate: who takes them on (you control them) -->
+  <div id="slapPick" hidden>
+    <div class="slap-head"><label class="slap-pick-title" id="slapPickTitle" for="slapWho"></label>
+      <button class="icon-btn" id="slapPickNo" type="button" aria-label="Cancel" title="Cancel (Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button></div>
+    <div class="slap-pick-row"><select id="slapWho"></select><button class="btn primary" id="slapPickGo" type="button">Challenge</button></div>
+    <p class="pop-note">You control who you pick, in third person.</p>
+  </div>
+  <div id="slapBoard" hidden>
+    <div class="slap-head"><span class="eyebrow">Power Slap</span><span id="slapRound"></span></div>
+    <!-- each side's slap power so far fills toward the middle -->
+    <div class="slap-tape">
+      <div class="slap-side" id="slapSideA"><b class="slap-name" id="slapA"></b><span class="slap-bar"><i id="slapBarA"></i></span><span class="slap-pts" id="slapPtsA"></span></div>
+      <span class="slap-vs" aria-hidden="true">vs</span>
+      <div class="slap-side" id="slapSideB"><b class="slap-name" id="slapB"></b><span class="slap-bar"><i id="slapBarB"></i></span><span class="slap-pts" id="slapPtsB"></span></div>
+    </div>
+    <div id="slapState" aria-live="polite"></div>
+    <div id="slapMeterRow" hidden>
+      <div id="slapMeter" title="Past the KO mark a slap can knock them down"><i id="slapMark"></i></div>
+      <button class="btn" id="slapGo" type="button">Slap</button>
+    </div>
+    <div class="slap-acts" id="slapActs">
+      <button class="btn sm" id="slapAsA" type="button" hidden></button>
+      <button class="btn sm" id="slapAsB" type="button" hidden></button>
+      <button class="btn sm" id="slapWatch" type="button">Watch</button>
+    </div>
+  </div>
+</section>
 <section class="card" id="fpBar" hidden aria-label="First person controls">
   <div class="fp-who"><div class="eyebrow" id="fpMode">First person</div><div id="fpWho">Walking as —</div></div>
   <div class="hint fp-keys" id="fpKeys">WASD or arrows to move · drag to look · Shift to run · E to sit or stand · Esc to exit</div>
   <button class="btn" id="fpCreator" type="button" title="Change how you look">Look</button>
   <button class="btn" id="fpExit" type="button">Exit</button>
 </section>
-<div id="fpPrompt" hidden><div id="fpLook"></div><button class="btn" id="fpAct" type="button" hidden></button></div>
+<div id="fpPrompt" hidden><div id="fpLook"></div><button class="btn" id="fpUse" type="button" hidden></button><button class="btn" id="fpSlap" type="button" hidden></button><button class="btn" id="fpAct" type="button" hidden></button></div>
+<!-- Walking around: drawing on a whiteboard, and the instrument you sit at (ui/interact.js) -->
+<section class="card" id="boardBar" hidden aria-label="Whiteboard">
+  <span class="eyebrow">Whiteboard</span>
+  <div class="pens" role="group" aria-label="Pen">
+    <button type="button" class="pen" data-pen="0" aria-pressed="true" aria-label="Black pen"></button>
+    <button type="button" class="pen" data-pen="1" aria-pressed="false" aria-label="Blue pen"></button>
+    <button type="button" class="pen" data-pen="2" aria-pressed="false" aria-label="Red pen"></button>
+    <button type="button" class="pen" data-pen="3" aria-pressed="false" aria-label="Green pen"></button>
+    <button type="button" class="pen eraser" data-pen="4" aria-pressed="false" aria-label="Eraser" title="Eraser">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16l9-9 6 6-6 6H8zM10 19h10"/></svg>
+    </button>
+  </div>
+  <button class="btn" id="boardClear" type="button">Erase board</button>
+  <span class="board-hint" id="boardHint"></span>
+  <button class="btn primary" id="boardDone" type="button"><kbd>Esc</kbd><span>Done</span></button>
+</section>
+<!-- Playing darts or mini golf (ui/games.js): the score, like the chalkboard by the board; the stroke and power, on turf -->
+<section class="card game-card" id="dartsCard" hidden aria-label="Darts">
+  <div class="game-head"><span class="eyebrow" id="dartsRound">Darts</span><button class="game-leave" id="dartsLeave" type="button"><kbd>Esc</kbd><span>Leave</span></button></div>
+  <div class="darts-row">
+    <ol class="darts-slots" id="dartsSlots" aria-label="This round's darts"><li><b></b><span></span></li><li><b></b><span></span></li><li><b></b><span></span></li></ol>
+    <div class="darts-total"><b id="dartsTotal">0</b><span id="dartsBest">best —</span></div>
+  </div>
+  <div class="game-keys" id="dartsKeys"></div>
+</section>
+<section class="card game-card" id="golfCard" hidden aria-label="Mini golf">
+  <div class="game-head"><span class="eyebrow">Mini golf</span><button class="game-leave" id="golfLeave" type="button"><kbd>Esc</kbd><span>Leave</span></button></div>
+  <div class="golf-row">
+    <div class="golf-stroke"><b id="golfStroke">1</b><span>stroke</span></div>
+    <div class="golf-power"><div id="golfMeter" aria-hidden="true"><i id="golfFill"></i></div><span id="golfNote" aria-live="polite"></span></div>
+  </div>
+  <div class="game-keys" id="golfKeys"></div>
+</section>
+<section class="card game-card" id="ps5Card" hidden aria-label="PS5">
+  <div class="game-head"><span class="eyebrow">PS5 · Fight night</span><button class="game-leave" id="ps5Leave" type="button"><kbd>Esc</kbd><span>Get up</span></button></div>
+  <div class="ps5-vs"><b>You</b><span id="ps5Score">0 – 0</span><b id="ps5Rival">CPU</b></div>
+  <div class="ps5-ask" id="ps5Ask"><select id="ps5Who" aria-label="Who to invite"></select><button class="btn" id="ps5Invite" type="button">Invite to play</button></div>
+  <div id="ps5Note" aria-live="polite"></div>
+  <div class="game-keys" id="ps5Keys"></div>
+</section>
+<section class="card" id="instPanel" hidden aria-label="Instrument">
+  <div class="inst-head"><span class="eyebrow" id="instTitle"></span><span id="instHint"></span></div>
+  <div id="pianoKeys" hidden></div>
+  <div id="guitarChords" hidden></div>
+</section>
 <div id="crosshair" hidden></div>
 <div id="stick" hidden><div id="knob"></div></div>
 <section id="creator" hidden role="dialog" aria-modal="true" aria-labelledby="creatorTitle">

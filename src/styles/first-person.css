@@ -1,10 +1,20 @@
-#fpBar{top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;padding:10px 12px 10px 16px;max-width:calc(100% - 32px)}
+#fpBar{top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:max-content;box-sizing:border-box;display:flex;align-items:center;gap:16px;padding:10px 12px 10px 16px;max-width:calc(100% - 32px)}
 #fpWho{font:700 14px var(--f-display);white-space:nowrap}
-.fp-keys{max-width:340px}
+/* keycaps: the actual key that does each thing, in the walk bar, the prompts and the instruments (ui/dom.js keyed) */
+kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:var(--chip);color:var(--ink);font:600 10.5px/1 var(--f-mono);letter-spacing:.02em;white-space:nowrap}
+.fp-keys{display:flex;flex-wrap:wrap;gap:6px 14px;max-width:520px;font-size:12px;color:var(--muted)}
+.fp-keys span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fp-keys kbd+kbd{margin-left:-3px}
 #fpPrompt{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;max-width:calc(100% - 32px)}
 #fpLook:empty{display:none}
 #fpLook{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12.5px;box-shadow:var(--shadow)}
-#fpAct{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+/* what E (or P) does right now: a keycap and the action, one pill each */
+#fpPrompt .btn{display:inline-flex;align-items:center;gap:9px;padding:5px 14px 5px 5px;border-radius:999px;font-size:12.5px;box-shadow:var(--shadow)}
+#fpPrompt .btn kbd{height:24px;min-width:24px;border-radius:999px}
+#fpAct,#fpUse{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#fpAct kbd,#fpUse kbd{background:color-mix(in srgb,var(--accent-ink) 22%,var(--accent));border-color:transparent;color:var(--accent-ink)}
+#fpSlap{background:var(--panel);border-color:color-mix(in srgb,var(--slap) 40%,var(--line));color:var(--slap)}
+#fpSlap kbd{background:var(--slap);border-color:transparent;color:var(--slap-ink)}
 #crosshair{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(20,30,40,.55);z-index:3;pointer-events:none}
 #stick{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.6);z-index:3;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 2px 8px rgba(0,0,0,.2)}

@@ -1,5 +1,6 @@
 import { TAU, angDiff } from '../core/util.js';
 import { player } from '../player/player.js';
+import { slap } from '../sim/slap.js';
 import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 
@@ -11,7 +12,7 @@ const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
-  if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : 'stand');
+  if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : p.task?.anim || 'stand'); // (standing: a game's pose, ui/games.js)
   if (p.state === 'walking') return p.riding ? 'ride' : p.task?.run || p.hazel ? 'run' : 'walk'; // Hazel runs, or rides her tricycle
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
@@ -81,6 +82,19 @@ function targetPose(p, k, T) {
       if (ph > 4.3 && ph < 5.2) { o.rShX = -2.6; o.rEl = -.3; o.headX = -.1; }
       break;
     }
+    // you putting (ui/games.js): addressing the ball; `swing` seconds after you putt, the stroke, then watching it roll
+    case 'putter': {
+      const ph = p.task.swing, sw = ph < 1.2 ? Math.sin(ph / 1.2 * TAU) * .32 : 0;
+      o.lean = .32; o.lShX = -.42; o.rShX = -.42; o.lShZ = -.22 + sw; o.rShZ = .22 + sw; o.lEl = o.rEl = -.12;
+      o.lHip = o.rHip = -.12; o.lKnee = o.rKnee = .22; o.hipY = .85; o.headX = .45;
+      if (ph > .6 && ph < 3) { o.headY = .9; o.headX = .15; }
+      break;
+    }
+    // you at a whiteboard (ui/interact.js): the pen hand up on the board, moving while you draw
+    case 'drawBoard': { const d = p.task.drawing; o.rShX = -1.75 + (d ? Math.sin(T * 9) * .12 : 0); o.rShZ = -.15 + (d ? Math.cos(T * 7) * .15 : 0); o.rEl = -.45; o.lShX = -.15; o.lEl = -.3; o.headX = -.12; o.lean = .03; break; }
+    // you at the dartboard (ui/games.js): a dart held up by your eye, and for a moment after `throwT` the throw
+    case 'dartAim': { const t = p.task.throwT; o.lShX = -.3; o.lEl = -.6; o.headX = -.05; o.lean = .04;
+      if (t < .3) { const k = t / .3; o.rShX = -1.75 + k * .45; o.rEl = -1.7 + k * 1.45; o.lean = .1; } else { o.rShX = -1.75; o.rEl = -1.85; o.rShZ = -.1; } break; }
     case 'game': { sit(); o.lean = .06 + Math.sin(T * 1.3) * .04; o.lShX = -.85; o.rShX = -.85; o.lShZ = -.32; o.rShZ = .32; o.lEl = -1.05 + Math.sin(T * 9) * .04; o.rEl = -1.05 + Math.sin(T * 11 + 1) * .04; o.headX = .05; break; }
     case 'drinkSit': { sit(); o.lShX = -.5; o.lEl = -1.1; o.rShX = -.5; o.rEl = -1.4; if ((T % 7) < 1.3) { o.rEl = -2.35; o.rShX = -.6; o.headX = -.18; } o.headY = Math.sin(T * .35) * .5; break; }
     case 'drink': { o.rShX = -.45; o.rEl = -1.5; const sip = (T % 6) < 1.2; if (sip) { o.rEl = -2.35; o.rShX = -.55; o.headX = -.18; } o.lShZ = .12; o.headY = Math.sin(T * .4) * .4; break; }
@@ -88,6 +102,16 @@ function targetPose(p, k, T) {
     case 'locker': o.lShX = -1.1 + Math.sin(T * 2) * .2; o.lEl = -.4; o.rShX = -.6; o.rEl = -.5 + Math.sin(T * 3) * .2; o.headX = Math.sin(T) * .1; break;
     case 'present': o.rShX = -1.75 + Math.sin(T * 1.7) * .25; o.rShZ = -.25 + Math.sin(T * 2.3) * .2; o.rEl = -.35; o.lShX = Math.sin(T * 1.1) * .15; o.headY = Math.sin(T * .6) * .5; o.headX = -.08; break;
     case 'talkStand': o.rShX = -.55 + Math.sin(T * 2.7) * .3; o.rEl = -1.2 + Math.sin(T * 3.9) * .3; o.rShZ = -.15; o.lShX = Math.sin(T * 1.3) * .1; o.headX = Math.sin(T * 4.4) * .05; break;
+    // Power Slap (sim/slap.js): squared up, winding up and swinging the right hand across, taking it with the hands
+    // behind the back (the head snaps round, harder for a harder slap), seeing birds, knocked down flat, arms up
+    case 'slapReady': o.lShZ = .2; o.rShZ = -.2; o.lEl = o.rEl = -.5; o.hipY = .87 + Math.sin(T * 5) * .008; o.headX = -.05; break;
+    case 'slapWind': o.rShX = .55; o.rShZ = -1.35; o.rEl = -.35; o.lShX = -.2; o.lShZ = .25; o.lean = -.06; o.headX = -.05; break;
+    case 'slapHit': o.rShX = -1.45; o.rShZ = .55; o.rEl = -.05; o.lShX = .25; o.lShZ = .2; o.lean = .14; break;
+    case 'slapBrace': o.lShX = o.rShX = .6; o.lShZ = .12; o.rShZ = -.12; o.lEl = o.rEl = -.3; o.headX = -.12; break;
+    case 'slapTake': { const s = .5 + p.task.slap.last * .7; o.lShX = o.rShX = .6; o.lShZ = .12; o.rShZ = -.12; o.lEl = o.rEl = -.3; o.headY = -s; o.headX = .25; o.lean = -.2 - s * .1; o.hipY = .86; break; }
+    case 'slapDizzy': o.lShX = o.rShX = .45; o.lShZ = .3; o.rShZ = -.3; o.lEl = o.rEl = -.2; o.headY = Math.sin(T * 6) * .35; o.headX = .1 + Math.cos(T * 6) * .12; o.lean = Math.sin(T * 3) * .1; break;
+    case 'slapKO': o.hipY = POSE_HIP - p.body.standHip + .12; o.lean = -1.35; o.lHip = o.rHip = -1.5; o.lShX = o.rShX = -.3; o.lShZ = 1.1; o.rShZ = -1.1; o.lEl = o.rEl = -.1; o.headX = -.25; o.headY = .4; break;
+    case 'cheer': { const h = Math.max(0, Math.sin(T * 7)); o.lShX = o.rShX = -2.7 - h * .2; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -.15; o.hipY = .88 + h * .05; o.headX = -.2; break; }
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
   }
   o.lean += breathe;
@@ -99,11 +123,18 @@ function targetPose(p, k, T) {
   else if (k === 'talkStand' && p.task?.partner) look = p.task.partner.pos;
   else if ((k === 'game' || (k === 'relax' && p.task?.spot?.game)) && p.state !== 'player') look = LOUNGE_TV_POS;
   else if (p.state === 'doing' && (p.task?.kind === 'tv' || (p.task?.kind === 'lunch' && p.task.spot?.kind === 'dining'))) look = DINING_TV_POS; // watching the dining TV
+  if (p.state === 'doing' && p.task?.kind !== 'slap') look = fightNear(p) ?? look; // a Power Slap nearby beats all that
   if (look) { const a = Math.atan2(look.x - p.pos.x, look.z - p.pos.z); o.headY = Math.max(-1.1, Math.min(1.1, angDiff(p.face, a))); }
   return o;
 }
+// Where a bystander looks when a Power Slap is going on within 7 m of them (null: none).
+function fightNear(p) {
+  for (const m of slap.matches) if (m.fighters && m.phase !== 'gather' && m.spots[0].pos.distanceToSquared(p.pos) < 49) return m.spots[0].pos;
+  return null;
+}
+const SNAPPY = new Set(['walk', 'run', 'slapHit', 'slapTake']); // poses reached quickly
 function applyPose(p, dt) {
-  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : 9));
+  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (SNAPPY.has(k) ? 22 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
   const b = p.body, hold = HOLDING.has(k) ? b.hold : null;
   // standing poses move the hips relative to this character's own leg length; seated poses put them on the seat

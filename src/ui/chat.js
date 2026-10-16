@@ -120,4 +120,7 @@ function initChat() {
   socket.on('chat:message', m => { addMessage(m); if (!chat.open && m.name !== chat.name) setUnread(chat.unread + 1); });
 }
 
-export { initChat };
+// The chat's connection, shared with online Power Slap (ui/slap.js). Set by initChat.
+const chatSocket = () => chat.socket;
+
+export { chatSocket, initChat };

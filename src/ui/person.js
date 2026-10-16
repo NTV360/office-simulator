@@ -2,10 +2,13 @@ import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
 import { VERB } from '../people/data.js';
 import { HAZEL_LOCKED } from '../people/hazel.js';
+import { player, takeControl } from '../player/player.js';
+import { live } from '../sim/live.js';
 import { scene } from '../render/renderer.js';
 import { openCreator } from './creator.js';
 import { fillAvatar } from './avatar.js';
 import { $ } from './dom.js';
+import { renderSlapButton } from './slap.js';
 
 /* ================= Selection + UI ================= */
 let selected = null;
@@ -64,6 +67,10 @@ function statusText(p) {
     case 'toilet': return 'Deploying to the toilet';
     case 'bucketBack': return 'Putting the bucket back';
     case 'exit': return 'Heading home';
+    case 'slap': { const them = t.partner.id === -1 ? 'you' : t.partner.name.split(' ')[0], m = t.slap;
+      if (going) return `Running to the dining area for a Power Slap with ${them}`;
+      if (m.phase === 'end' && m.winner !== null) return m.fighters[m.winner] === p ? `Won a Power Slap against ${them}` : m.how === 'ko' ? `Knocked out by ${them}` : `Lost a Power Slap to ${them}`;
+      return m.reason ? `Settling ${m.reason} with ${them}: Power Slap` : `Power Slap against ${them}`; }
   }
   return '';
 }
@@ -76,6 +83,10 @@ function renderPerson() {
   $('pMeta').hidden = !Number.isFinite(p.arrivedAt);
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
   $('pEdit').hidden = !p.userId && !p.hazel; // only real employees have a saved character (Hazel's button just says no)
+  renderSlapButton(p);
+  // walking as them: only in Simulate (in Live they are the real people at work), and not mid-fight for your own character
+  const you = player.person?.id === -1 ? player.person : null;
+  $('pControl').hidden = live.mode === 'live' || p.state === 'away' || !!p.task?.slap?.online || !!you?.task?.slap;
 }
 
 
@@ -87,6 +98,7 @@ function initPerson() {
   $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
   addEventListener('resize', placeCard);
+  $('pControl').onclick = () => { if (selected) { takeControl(selected); setView('third'); } };
   $('pEdit').onclick = () => {
     if (selected?.hazel) alert(HAZEL_LOCKED); // her look is fixed
     else if (selected?.userId) openCreator(selected.userId);

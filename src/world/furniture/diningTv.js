@@ -8,7 +8,7 @@ import { box, dynamic, frame } from '../helpers.js';
 // the dining tables) it plays a short animated movie; otherwise a standby screen.
 const TV_X = 582, BOOTH_BACK = 938.7; // plan pixels: centre of the TV, south face of the booths' back wall
 const tvState = { canvas: null, tex: null, t: 0, acc: 0, watching: false };
-let DINING_TV_POS = null;
+let DINING_TV_POS = null, diningScreen = null; // where people look; the screen (world/furniture/channels.js)
 
 const SUBTITLES = [
   'Are we there yet?', 'Just one more hill.', 'Look, the sun is setting.', 'Did anyone pack snacks?',
@@ -56,7 +56,7 @@ function buildDiningTv() {
   drawStandby(tvState.canvas.getContext('2d'), 320, 180);
   tvState.tex = new THREE.CanvasTexture(tvState.canvas); tvState.tex.colorSpace = THREE.SRGBColorSpace;
   const scr = dynamic(new THREE.Mesh(new THREE.PlaneGeometry(tvW - .03, tvH - .03), new THREE.MeshBasicMaterial({ map: tvState.tex, toneMapped: false })));
-  scr.position.set(0, yc, .108); f.add(scr);
+  scr.position.set(0, yc, .108); f.add(scr); diningScreen = scr;
   DINING_TV_POS = new THREE.Vector3(wx(TV_X), yc, z + .1);
 }
 
@@ -70,4 +70,4 @@ function updateDiningTv(dt, watching) {
   tvState.acc = 0; drawMovie(g, 320, 180, tvState.t); tvState.tex.needsUpdate = true;
 }
 
-export { DINING_TV_POS, buildDiningTv, updateDiningTv };
+export { DINING_TV_POS, buildDiningTv, diningScreen, drawMovie, updateDiningTv };

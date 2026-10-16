@@ -1,4 +1,7 @@
-#person{left:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:292px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+/* avatar, who they are and the close button on top; the actions get the card's full width below */
+#person{left:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:376px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:14px 14px 14px 16px;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:start}
+#pClose{width:28px;height:28px;margin:-2px -2px 0 0;background:transparent;border-color:transparent;color:var(--muted)}
+#pClose:hover{background:var(--chip);border-color:var(--line);color:var(--ink)}
 #pAvatar{width:44px;height:44px;flex:none}
 /* round avatar: a profile picture, or initials on the person's shirt colour */
 .avatar,#pAvatar{display:grid;place-items:center;border-radius:50%;overflow:hidden;border:2px solid var(--line);font:700 15px var(--f-display);letter-spacing:.02em;user-select:none}
@@ -10,4 +13,6 @@
 #pRole{font:500 10.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 #pStatus{font-size:13px;margin-top:4px}
 #pMeta{font:400 11.5px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
-#pActions{display:flex;gap:6px;margin-top:8px}
+#pActions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+#pActions .btn{flex:1 1 auto;padding:9px 10px}
+#pSlap{color:var(--slap);border-color:color-mix(in srgb,var(--slap) 35%,var(--line))} /* the fight action: in Power Slap red */
