@@ -1,0 +1,2 @@
+# With a publicly trusted certificate there is nothing to install: the plain-HTTP port only sends every request on to HTTPS (the last
+# `handle` in Caddyfile.lan), so there is no certificate download and no setup page.

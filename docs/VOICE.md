@@ -56,3 +56,25 @@ The LAN edge listens on host ports 80/443, uses Caddy's persistent internal CA, 
 The repository does not claim LAN verification merely from this configuration. First run `npm run check:lan` on the host; it checks the non-secret URL, address, port, secure-cookie, and credential prerequisites without printing secret values. Then repeat the two-browser check from two LAN clients through trusted HTTPS/WSS and the published RTC TCP/UDP path, and record certificate trust, firewall, ICE/media connectivity, browser errors, and logout/range cleanup. A Docker, certificate, firewall, or browser environment failure is a blocked check, not a source-code pass.
 
 Health, inventory, holds, ragdoll/recovery, and medical contents remain session-only under the existing legacy world-save boundary.
+
+## Real certificates instead (no client setup)
+
+By default the LAN edge signs its certificates with Caddy's own CA, which every client has to trust once. With `LAN_TLS=cloudflare` it gets real, publicly trusted Let's Encrypt certificates for a domain you own, so browsers need nothing installed (the microphone needs a secure page, so this is also what makes voice work on every computer without warnings). The server need not be reachable from the internet: Caddy proves ownership with the DNS-01 challenge, briefly adding a TXT record to the domain's DNS through the Cloudflare API.
+
+What it needs:
+
+- A domain whose DNS is on **Cloudflare**, and two names under it, for example `office-sim.example.com` (the site) and `voice.office-sim.example.com` (voice). Let's Encrypt cannot certify `.internal`, `.local` or `.lan` names.
+- A Cloudflare **API token** limited to the one zone, with Zone:DNS:Edit and Zone:Zone:Read. Keep it secret: it goes only in the server's `.env` as `CLOUDFLARE_API_TOKEN`.
+- The office's own DNS answering those names with the server's LAN address (a small zone for just `office-sim.example.com` on the office DNS server, with `@` and `voice` A records). Nothing is added to the public DNS for them; the only public record is the short-lived `_acme-challenge` TXT that Caddy creates and removes itself. Caddy checks that record against public resolvers (`1.1.1.1`), because the office DNS is authoritative for the site names.
+- If the HTTPS port is not 443, the voice address must include it: `LIVEKIT_URL=wss://voice.office-sim.example.com:8443`.
+
+```text
+LAN_TLS=cloudflare
+CLOUDFLARE_API_TOKEN=<the token>
+ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory
+SITE_ADDRESS=office-sim.example.com
+VOICE_SITE_ADDRESS=voice.office-sim.example.com
+LIVEKIT_URL=wss://voice.office-sim.example.com:8443
+```
+
+Try it first with the Let's Encrypt **staging** endpoint (`ACME_CA` above: no rate limits, but browsers do not trust its certificates), check the Caddy log for the certificate being obtained, then remove `ACME_CA` to get the real one. `npm run check:lan` checks the settings (a token that looks right, names under a real domain) without printing the token, and `npm run check:caddy` checks the edge's configuration in both modes without contacting Let's Encrypt or Cloudflare. In this mode the plain-HTTP port only redirects to HTTPS: there is no certificate download or setup page.

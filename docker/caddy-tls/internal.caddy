@@ -1,0 +1,3 @@
+# TLS mode "internal" (the default, LAN_TLS=internal): Caddy's own CA signs the certificates, so each client has to trust that CA once
+# (the setup page on the plain-HTTP port offers it). Used by the local stack and the tests (localhost names cannot get a public certificate).
+tls internal

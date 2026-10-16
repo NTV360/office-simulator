@@ -28,7 +28,8 @@ services:
     restart: unless-stopped
 
   # LAN edge is opt-in: start with `docker compose --profile lan up --build`.
-  # It uses Caddy's internal CA; install that CA on each LAN client before browsing.
+  # By default it uses Caddy's internal CA (install that CA on each LAN client before browsing). With LAN_TLS=cloudflare it gets real Let's
+  # Encrypt certificates for your own domain instead (DNS-01 through the Cloudflare API), and no client needs to install anything.
   web-lan:
     profiles: ["lan"]
     build:
@@ -38,6 +39,9 @@ services:
       SITE_ADDRESS: "${SITE_ADDRESS:-office.lan}"
       VOICE_SITE_ADDRESS: "${VOICE_SITE_ADDRESS:-voice.office.lan}"
       LAN_HTTPS_PORT: "${LAN_HTTPS_PORT:-443}" # (the port clients reach HTTPS on: the plain-HTTP page links to it)
+      LAN_TLS: "${LAN_TLS:-internal}" # internal (Caddy's own CA) or cloudflare (Let's Encrypt): see docker/caddy-tls/
+      CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_API_TOKEN:-}" # only for LAN_TLS=cloudflare: a token that can edit DNS in the one zone of the site's domain
+      ACME_CA: "${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}" # the staging endpoint is for trying the setup (its certificates are not trusted)
     volumes:
       - caddy_data:/data
       - caddy_config:/config

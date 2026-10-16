@@ -33,6 +33,8 @@ const udp = /--udp-port (\d+)-(\d+)/.exec(cmd), node = /--node-ip (\S+)/.exec(cm
 
 const settings = {
   SITE_ADDRESS: edge.SITE_ADDRESS, VOICE_SITE_ADDRESS: edge.VOICE_SITE_ADDRESS,
+  // where the certificates come from (see docker/caddy-tls/): a stack started before this existed has none of these, and stays as it was
+  LAN_TLS: edge.LAN_TLS, ACME_CA: edge.ACME_CA, CLOUDFLARE_API_TOKEN: edge.CLOUDFLARE_API_TOKEN,
   LAN_HTTP_PORT: hostPort(containers['web-lan'], '80/tcp'), LAN_HTTPS_PORT: hostPort(containers['web-lan'], '443/tcp'),
   WEB_PORT: hostPort(containers.web, '80/tcp'),
   LIVEKIT_HTTP_PORT: hostPort(containers.voice, '7880/tcp'), LIVEKIT_RTC_TCP_PORT: hostPort(containers.voice, '7881/tcp'),
@@ -46,7 +48,7 @@ for (const name of ['VOICE_ENABLED', 'LIVEKIT_URL', 'LIVEKIT_API_URL', 'LIVEKIT_
 const secret = /SECRET|PASSWORD|TOKEN|KEY/;
 console.log(`Stack "${project}" will be rebuilt with the current code and these settings (secrets hidden):`);
 for (const [k, v] of Object.entries(settings)) if (v !== undefined) console.log(`  ${k}=${secret.test(k) && v ? '***' : v}`);
-const missing = Object.entries(settings).filter(([k, v]) => v === undefined && !/^(POSTGRES_|SUPABASE_|ADMIN_|AUTH_|EMPLOYEE_|ATTENDANCE_|WORLD_SEED|TZ$|RESET_WORLD|SAVE_INTERVAL)/.test(k)).map(([k]) => k);
+const missing = Object.entries(settings).filter(([k, v]) => v === undefined && !/^(POSTGRES_|SUPABASE_|ADMIN_|AUTH_|EMPLOYEE_|ATTENDANCE_|WORLD_SEED|TZ$|RESET_WORLD|SAVE_INTERVAL|LAN_TLS$|ACME_CA$|CLOUDFLARE_)/.test(k)).map(([k]) => k);
 if (missing.length) { console.error(`\nCould not read: ${missing.join(', ')}. Nothing was changed.`); process.exit(1); }
 
 if (!yes) { console.log('\nDry run: nothing was changed. Add --yes to rebuild (the server restarts and everybody online is disconnected for a minute).'); process.exit(0); }
@@ -63,7 +65,10 @@ for (let i = 0; i < 90 && !healthy; i++) {
   try { const j = await (await fetch(`${base}/api/health`)).json(); healthy = j.status === 'ok' && j.db === 'ok'; } catch { /* not up yet */ }
   if (!healthy) await new Promise(r => setTimeout(r, 1000));
 }
-const cert = await fetch(`http://127.0.0.1:${settings.LAN_HTTP_PORT}/ca.crt`).then(r => r.text()).catch(() => '');
+const real = settings.LAN_TLS === 'cloudflare'; // real Let's Encrypt certificates: there is no certificate to download, the edge only has to answer
+const cert = real
+  ? await fetch(`http://127.0.0.1:${settings.LAN_HTTP_PORT}/lan.json`).then(r => r.text()).catch(() => '')
+  : await fetch(`http://127.0.0.1:${settings.LAN_HTTP_PORT}/ca.crt`).then(r => r.text()).catch(() => '');
 console.log(healthy ? 'The server is healthy.' : 'The server did not report healthy within 90 s: check `docker compose logs`.');
-console.log(cert.includes('BEGIN CERTIFICATE') ? `The setup page and certificate are at http://${settings.SITE_ADDRESS}:${settings.LAN_HTTP_PORT}/ (the certificate is unchanged: computers that already installed it keep working).` : 'The certificate download did not answer yet.');
+console.log(real ? (cert.includes('httpsPort') ? `The site is at https://${settings.SITE_ADDRESS}:${settings.LAN_HTTPS_PORT}/ (a real certificate: nothing to install on any computer; if it was only just started, the first certificate can take a minute).` : 'The edge did not answer yet.') : cert.includes('BEGIN CERTIFICATE') ? `The setup page and certificate are at http://${settings.SITE_ADDRESS}:${settings.LAN_HTTP_PORT}/ (the certificate is unchanged: computers that already installed it keep working).` : 'The certificate download did not answer yet.');
 process.exitCode = healthy ? 0 : 1; // (not process.exit: on Windows it can trip a harmless Node assertion while the last request closes)

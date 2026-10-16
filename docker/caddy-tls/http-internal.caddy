@@ -1,0 +1,16 @@
+# What the plain-HTTP port serves when the certificates come from Caddy's internal CA: the root certificate to install, and the setup page.
+@ca path /ca.crt
+handle @ca {
+	root * /data/caddy/pki/authorities/local
+	rewrite * /root.crt
+	header Content-Type application/x-x509-ca-cert
+	header Cache-Control "no-store"
+	file_server
+}
+@setup path / /setup /setup/
+handle @setup {
+	rewrite * /index.html
+	root * /srv-setup
+	header Cache-Control "no-store"
+	file_server
+}

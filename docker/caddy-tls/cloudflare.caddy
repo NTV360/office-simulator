@@ -1,0 +1,11 @@
+# TLS mode "cloudflare" (LAN_TLS=cloudflare): a real, publicly trusted Let's Encrypt certificate for a domain you own, so no client needs to
+# trust anything. The server is not reachable from the internet, so ownership is proved with the DNS-01 challenge: Caddy briefly puts a TXT
+# record in the domain's Cloudflare DNS with CLOUDFLARE_API_TOKEN (a token limited to editing DNS in that one zone) and removes it again.
+# `resolvers` makes Caddy check that record against public DNS, not the office's own DNS (which answers for the site names itself).
+# ACME_CA picks the Let's Encrypt endpoint: leave it unset for production, or use the staging endpoint to try the setup without rate limits
+# (a staging certificate is not trusted by browsers).
+tls {
+	dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	resolvers 1.1.1.1
+	ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+}

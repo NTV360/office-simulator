@@ -13,24 +13,14 @@ https://127.0.0.1 {
 	respond "ok" 200
 }
 
-# Plain HTTP, for onboarding a new computer only: the setup page, and the root certificate (a public certificate, never a key) that each
-# client installs once to trust the HTTPS below. Everything else on HTTP is sent to HTTPS.
+# Where the certificates come from is LAN_TLS (default "internal"): see docker/caddy-tls/. With "internal" each client trusts Caddy's own CA once;
+# with "cloudflare" the certificates are real Let's Encrypt ones (DNS-01 through the Cloudflare API) and nothing needs installing.
+# The names of the files below are built from it: caddy-tls/<LAN_TLS>.caddy (the TLS setting) and caddy-tls/http-<LAN_TLS>.caddy (what plain HTTP serves).
+
+# Plain HTTP. In "internal" mode it onboards a new computer: the setup page, and the root certificate (a public certificate, never a key) that
+# each client installs once to trust the HTTPS below. Everything else on HTTP is sent to HTTPS.
 http:// {
-	@ca path /ca.crt
-	handle @ca {
-		root * /data/caddy/pki/authorities/local
-		rewrite * /root.crt
-		header Content-Type application/x-x509-ca-cert
-		header Cache-Control "no-store"
-		file_server
-	}
-	@setup path / /setup /setup/
-	handle @setup {
-		rewrite * /index.html
-		root * /srv-setup
-		header Cache-Control "no-store"
-		file_server
-	}
+	import /etc/caddy/tls/http-{$LAN_TLS:internal}.caddy
 	# the HTTPS port as clients reach it (the published port, which is not 443 when LAN_HTTPS_PORT is changed): the setup page builds its link from this
 	@port path /lan.json
 	handle @port {
@@ -44,7 +34,7 @@ http:// {
 }
 
 {$SITE_ADDRESS} {
-	tls internal
+	import /etc/caddy/tls/{$LAN_TLS:internal}.caddy
 	encode zstd gzip
 
 	@admin path /admin /admin/
@@ -75,6 +65,6 @@ http:// {
 }
 
 {$VOICE_SITE_ADDRESS} {
-	tls internal
+	import /etc/caddy/tls/{$LAN_TLS:internal}.caddy
 	reverse_proxy voice:7880
 }

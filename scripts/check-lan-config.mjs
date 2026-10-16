@@ -35,6 +35,34 @@ check('voice site address is configured', () => {
   const value = required('VOICE_SITE_ADDRESS');
   if (value.includes('/') || value.includes(':') || value === 'localhost') throw new Error('use a LAN DNS name, not a URL or localhost');
 });
+// Where the certificates come from (docker/caddy-tls/): "internal" is Caddy's own CA (each client trusts it once); "cloudflare" is real Let's Encrypt
+// certificates for a domain you own, so nothing is installed anywhere.
+const tlsMode = (process.env.LAN_TLS || 'internal').trim().toLowerCase();
+check('certificate mode is known', () => {
+  if (!['internal', 'cloudflare'].includes(tlsMode)) throw new Error('LAN_TLS must be internal or cloudflare');
+});
+if (tlsMode === 'cloudflare') {
+  check('real certificates: a Cloudflare API token is set', () => {
+    const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
+    if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required (a token limited to editing DNS in the domain\'s one zone)');
+    if (!/^[A-Za-z0-9_-]{40}$/.test(token)) throw new Error('CLOUDFLARE_API_TOKEN does not look like a Cloudflare API token (40 letters, digits, - or _)');
+  });
+  check('real certificates: both names are under a domain you own', () => {
+    for (const name of ['SITE_ADDRESS', 'VOICE_SITE_ADDRESS']) {
+      const value = required(name).toLowerCase();
+      if (isIP(value) || !/^([a-z0-9-]+\.){2,}[a-z]{2,}$/.test(value)) throw new Error(`${name} must be a name like office-sim.example.com`);
+      if (/\.(internal|local|lan|localhost|test|example|invalid|arpa|home)$/.test(value)) throw new Error(`${name} must be under a real, public domain: Let's Encrypt cannot certify ".${value.split('.').pop()}" names`);
+    }
+  });
+  check('real certificates: the ACME endpoint is a URL', () => {
+    const value = process.env.ACME_CA?.trim();
+    if (!value) return;
+    let parsed;
+    try { parsed = new URL(value); } catch { throw new Error('ACME_CA must be a URL'); }
+    if (parsed.protocol !== 'https:') throw new Error('ACME_CA must use https:');
+    if (/staging/.test(parsed.hostname)) console.log('NOTE  ACME_CA is the Let\'s Encrypt STAGING endpoint: browsers do not trust its certificates. Remove ACME_CA once it works.');
+  });
+}
 check('voice is enabled', () => {
   if (!['true', '1'].includes((process.env.VOICE_ENABLED || '').toLowerCase())) throw new Error('set VOICE_ENABLED=true');
 });
