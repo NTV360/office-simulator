@@ -10,6 +10,8 @@ import { camera, renderer, scene } from '../render/renderer.js';
 import { inSlap } from '../sim/slap.js';
 import { people, sim } from '../sim/state.js';
 import { goDo, placeNow } from '../sim/tasks.js';
+import { SONGS, playSong, stopSong } from '../player/instruments.js';
+import { channelName, nextChannel, playOnTv, tvOf } from '../world/furniture/channels.js';
 import { MY_DARTS, throwDart } from '../world/furniture/darts.js';
 import { LOUNGE_TV_POS, fightState, loungeTV, startHumanFight, stopHumanFight } from '../world/furniture/game.js';
 import { GOLF_HOLE, PUTT, golfBall, putt, resetPutt } from '../world/furniture/golf.js';
@@ -23,9 +25,10 @@ import { $, keyHints } from './dom.js';
 // Golf: the camera sits behind the ball looking down the line and you stand beside it with the putter; the mouse
 // (or A D) turns the line, hold Space (or the mouse button) to build power and let go to putt. The camera follows
 // the ball, then you walk up to it for the next stroke. Esc leaves either.
-// The PS5: sit at one of the TV lounge's gaming seats and you have the controller; the view is the TV, you are KAI
-// in the fight game (world/furniture/game.js) against the CPU, or against someone you invite over, who sits down
-// beside you and plays ROSA. Esc gets you up. While you play any of these, the keys are the game's.
+// The TV lounge: sit at one of its seats and a menu offers watching TV (A D change the channel), the PS5 or music
+// (songs on the lounge TV, player/instruments.js). With the PS5 the view is the TV and you are KAI in the fight game
+// (world/furniture/game.js) against the CPU, or against someone you invite over, who sits down beside you and plays
+// ROSA. Esc goes back to the menu; E gets you up. While you play any of these, the keys are the game's.
 const AIM = .2;        // radians: how far the darts aim can move off the board's middle
 const SWAY = .006;     // metres: the darts aim's gentle hand sway
 const PUTT_MAX = 5.5;  // metres: a full-power putt
@@ -36,6 +39,8 @@ const game = {
 };
 const v = new THREE.Vector3(), n = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Quaternion();
 const inGame = () => !!game.kind;
+// Whether you are playing the PS5 (main.js shows the fight game on the lounge TV).
+const playingConsole = () => game.kind === 'ps5';
 const pingPong = x => { const k = x % 2; return k < 1 ? k : 2 - k; };
 
 // ----- shared
@@ -46,11 +51,12 @@ function begin(kind) {
 function endGame() {
   const p = player.person, kind = game.kind; if (!kind) return;
   game.kind = null; camera.fov = game.fov; camera.updateProjectionMatrix();
-  document.body.classList.remove('gaming'); $('dartsCard').hidden = $('golfCard').hidden = $('ps5Card').hidden = true;
+  document.body.classList.remove('gaming'); for (const id of ['dartsCard', 'golfCard', 'ps5Card', 'tvCard', 'musicCard']) $(id).hidden = true;
   for (const s of interactables.of(kind)) if (s.occupant === p) s.occupant = null;
   if (kind === 'darts') { game.ring.visible = false; if (p?.task?.kind === 'darts') p.task = null; }
   else if (kind === 'ps5') { stopHumanFight(); if (game.rival) letGo(); }
-  else { game.line.visible = false; resetPutt(); if (p) { p.body.putter.visible = false; p.task = null; } }
+  else if (kind === 'music') { stopSong(); playOnTv(tvOf(loungeTV), null); }
+  else if (kind === 'golf') { game.line.visible = false; resetPutt(); if (p) { p.body.putter.visible = false; p.task = null; } }
   if (p) p.body.root.visible = ctl.mode !== 'fp'; // first person hides you; third person shows you
 }
 
@@ -223,13 +229,17 @@ function invite() {
 }
 // Your opponent gets up and goes back to what they were doing.
 function letGo() { const r = game.rival; game.rival = null; if (r?.task?.kind === 'game' && r.until === Infinity) r.until = sim.t; }
-function consoleFrame() {
-  const p = player.person, F = fightState, r = game.rival;
-  // the view: straight in front of the screen, just far enough back that all of it fits above the card
+// The view for the lounge TV (playing, watching, music): straight in front of the screen, just far enough back that
+// all of it fits above the card.
+function tvView() {
   const half = Math.tan(camera.fov * Math.PI / 360), back = Math.max(TV.h * .75 / half, TV.w * .62 / (half * camera.aspect));
   loungeTV.getWorldQuaternion(q); w.set(0, 0, 1).applyQuaternion(q); // the way the screen faces
   camera.position.set(LOUNGE_TV_POS.x + w.x * back, TV.y, LOUNGE_TV_POS.z + w.z * back); camera.lookAt(v.set(LOUNGE_TV_POS.x, TV.y - .22, LOUNGE_TV_POS.z));
-  p.body.root.visible = false;
+  player.person.body.root.visible = false;
+}
+function consoleFrame() {
+  const F = fightState, r = game.rival;
+  tvView();
   if (r && r.task?.kind !== 'game') { game.rival = null; game.msg = `${firstName(r)} had to go`; } // called away
   else if (r && game.coming && r.state === 'doing') { game.coming = false; startHumanFight(); game.matches = F.matches; game.msg = `You against ${firstName(r)}`; }
   if (F.matches !== game.matches) { // a best-of-three is over
@@ -247,15 +257,44 @@ function renderConsole() {
   $('ps5Ask').hidden = !!r;
 }
 
+// ----- sitting in the TV lounge: you just sit; a menu offers watching TV, the PS5 or music
+const SEAT = [() => startWatch(), () => startConsole(), () => startMusic()];
+function startWatch() {
+  begin('tv'); camera.fov = 45; camera.updateProjectionMatrix();
+  keyHints($('tvKeys'), [['A D', 'channel']]);
+}
+function startMusic() {
+  begin('music'); camera.fov = 45; camera.updateProjectionMatrix();
+  keyHints($('musicKeys'), [['A D', 'song'], ['Space', 'pause']]);
+  playTrack(game.track ?? 0);
+}
+function playTrack(i) { game.track = (i + SONGS.length) % SONGS.length; game.paused = false; playSong(game.track); playOnTv(tvOf(loungeTV), SONGS[game.track]); }
+function togglePause() { game.paused = !game.paused; if (game.paused) { stopSong(); playOnTv(tvOf(loungeTV), null); } else playTrack(game.track); }
+function renderSeat() {
+  if (game.kind === 'tv') $('tvChannel').textContent = channelName(tvOf(loungeTV));
+  else { $('musicSong').textContent = SONGS[game.track].name; $('musicNote').textContent = game.paused ? 'Paused' : 'Playing on the lounge TV'; }
+}
+
 // ----- input: the keys and the mouse button are the game's while you play
 function onKey(e) {
-  if (!game.kind || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
   const down = e.type === 'keydown';
-  if (e.key === 'Escape') { e.stopPropagation(); if (down) { if (game.kind === 'ps5') getUp(); else endGame(); } return; }
+  if (!game.kind) { // the TV lounge seat menu: 1 2 3
+    const m = /^Digit([1-3])$/.exec(e.code); if (!m || $('seatMenu').hidden) return;
+    e.preventDefault(); e.stopPropagation(); if (down && !e.repeat) SEAT[+m[1] - 1](); return;
+  }
+  if (e.key === 'Escape') { e.stopPropagation(); if (down) endGame(); return; } // (at the lounge TV: back to the menu, still sitting)
   if (e.key.length !== 1 && !e.key.startsWith('Arrow')) return; // Shift, Tab, F-keys...
   e.preventDefault(); e.stopPropagation();
   if (down) game.held.add(e.code); else game.held.delete(e.code);
   if (game.kind === 'ps5') { const I = fightState.input; if (e.code in PAD) I[PAD[e.code]] = down; else if (down && !e.repeat && e.code in MOVES) I.attack = MOVES[e.code]; return; }
+  if (game.kind === 'tv' || game.kind === 'music') {
+    if (!down || e.repeat) return;
+    const dir = { KeyA: -1, ArrowLeft: -1, KeyD: 1, ArrowRight: 1 }[e.code];
+    if (dir) { if (game.kind === 'tv') nextChannel(tvOf(loungeTV), dir); else playTrack(game.track + dir); }
+    else if (e.code === 'Space' && game.kind === 'music') togglePause();
+    return;
+  }
   if (e.repeat) return;
   if (e.code === 'Space' || e.code === 'KeyE') { if (game.kind === 'darts') { if (down) throwNow(); } else if (down) startCharge(); else release(); }
   if (game.kind === 'darts' && down && e.code.startsWith('Arrow')) { const s = .02; if (e.code === 'ArrowLeft') ctl.yaw += s; if (e.code === 'ArrowRight') ctl.yaw -= s; if (e.code === 'ArrowUp') ctl.pitch += s; if (e.code === 'ArrowDown') ctl.pitch -= s; }
@@ -271,13 +310,14 @@ function onPointer(e) {
 // Per frame, after the walking camera: the game's own view and card.
 function updateGames(dt) {
   const seat = ctl.active ? player.sitting : null;
-  if (seat?.game && !game.kind) startConsole(); // you sat down at the PS5
+  const menu = !!seat?.game && !game.kind; if ($('seatMenu').hidden === menu) $('seatMenu').hidden = !menu; // you sat down in the TV lounge
   if (!game.kind) return;
-  const p = player.person;
-  if (!ctl.active || !p || p.state !== 'player' || (game.kind === 'ps5' && !seat?.game)) { endGame(); return; } // stopped walking around, got up, or a fight came up
+  const p = player.person, atTv = ['ps5', 'tv', 'music'].includes(game.kind);
+  if (!ctl.active || !p || p.state !== 'player' || (atTv && !seat?.game)) { endGame(); return; } // stopped walking around, got up, or a fight came up
   if (game.kind === 'darts') { dartsAim(dt); renderDarts(); }
   else if (game.kind === 'golf') { golfFrame(dt); renderGolf(); }
-  else { consoleFrame(); renderConsole(); }
+  else if (game.kind === 'ps5') { consoleFrame(); renderConsole(); }
+  else { tvView(); renderSeat(); }
 }
 function getUp() { const p = player.person; if (player.sitting && p) { standUp(p); updatePrompts(); } endGame(); }
 
@@ -286,9 +326,11 @@ function initGames() {
   renderer.domElement.addEventListener('pointerdown', onPointer, { capture: true });
   renderer.domElement.addEventListener('pointerup', onPointer, { capture: true });
   addEventListener('blur', () => { game.held.clear(); release(); });
-  $('dartsLeave').onclick = endGame; $('golfLeave').onclick = endGame; $('ps5Leave').onclick = getUp;
+  $('dartsLeave').onclick = endGame; $('golfLeave').onclick = endGame; $('ps5Leave').onclick = endGame;
+  $('tvLeave').onclick = endGame; $('musicLeave').onclick = endGame; $('seatUp').onclick = getUp;
+  [...$('seatOptions').children].forEach((b, i) => { b.onclick = SEAT[i]; });
   $('ps5Invite').onclick = invite;
   $('ps5Who').addEventListener('pointerdown', fillRivals); // who is free right now
 }
 
-export { inGame, initGames, startDarts, startGolf, updateGames };
+export { inGame, initGames, playingConsole, startDarts, startGolf, updateGames };

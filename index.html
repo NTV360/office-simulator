@@ -296,11 +296,31 @@
   <div class="game-keys" id="golfKeys"></div>
 </section>
 <section class="card game-card" id="ps5Card" hidden aria-label="PS5">
-  <div class="game-head"><span class="eyebrow">PS5 · Fight night</span><button class="game-leave" id="ps5Leave" type="button"><kbd>Esc</kbd><span>Get up</span></button></div>
+  <div class="game-head"><span class="eyebrow">PS5 · Fight night</span><button class="game-leave" id="ps5Leave" type="button"><kbd>Esc</kbd><span>Back</span></button></div>
   <div class="ps5-vs"><b>You</b><span id="ps5Score">0 – 0</span><b id="ps5Rival">CPU</b></div>
   <div class="ps5-ask" id="ps5Ask"><select id="ps5Who" aria-label="Who to invite"></select><button class="btn" id="ps5Invite" type="button">Invite to play</button></div>
   <div id="ps5Note" aria-live="polite"></div>
   <div class="game-keys" id="ps5Keys"></div>
+</section>
+<!-- Sitting in the TV lounge (ui/games.js): what to do, then watching TV or a song on it -->
+<section class="card game-card" id="seatMenu" hidden aria-label="TV lounge">
+  <div class="game-head"><span class="eyebrow">TV lounge</span><button class="game-leave" id="seatUp" type="button"><kbd>E</kbd><span>Get up</span></button></div>
+  <div class="seat-options" id="seatOptions">
+    <button type="button" class="seat-option"><kbd>1</kbd><b>Watch TV</b><span>Flip through the channels</span></button>
+    <button type="button" class="seat-option"><kbd>2</kbd><b>Play PS5</b><span>Fight the CPU or a colleague</span></button>
+    <button type="button" class="seat-option"><kbd>3</kbd><b>Play music</b><span>Songs on the lounge TV</span></button>
+  </div>
+</section>
+<section class="card game-card" id="tvCard" hidden aria-label="Watching TV">
+  <div class="game-head"><span class="eyebrow">Watching TV</span><button class="game-leave" id="tvLeave" type="button"><kbd>Esc</kbd><span>Back</span></button></div>
+  <b class="seat-now" id="tvChannel"></b>
+  <div class="game-keys" id="tvKeys"></div>
+</section>
+<section class="card game-card" id="musicCard" hidden aria-label="Music">
+  <div class="game-head"><span class="eyebrow">Music</span><button class="game-leave" id="musicLeave" type="button"><kbd>Esc</kbd><span>Back</span></button></div>
+  <b class="seat-now" id="musicSong"></b>
+  <span class="seat-sub" id="musicNote" aria-live="polite"></span>
+  <div class="game-keys" id="musicKeys"></div>
 </section>
 <section class="card" id="instPanel" hidden aria-label="Instrument">
   <div class="inst-head"><span class="eyebrow" id="instTitle"></span><span id="instHint"></span></div>
