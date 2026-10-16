@@ -22,8 +22,8 @@ if (!noBuild) {
   if (b.status !== 0) { console.error('the image did not build'); process.exit(1); }
 }
 
-// a made-up token in the shape of a real Cloudflare one (40 characters): the plugin refuses anything else
-const token = 'A'.repeat(40);
+// made-up tokens in the shape of real Cloudflare ones, the old 40-character kind and the newer 53-character cfut_ kind: the plugin refuses anything of another shape
+const token = 'A'.repeat(40), newToken = 'cfut_' + 'A'.repeat(48);
 const modes = {
   internal: { LAN_TLS: 'internal' },
   cloudflare: { LAN_TLS: 'cloudflare', CLOUDFLARE_API_TOKEN: token, ACME_CA: 'https://acme-staging-v02.api.letsencrypt.org/directory' },
@@ -63,6 +63,10 @@ for (const [mode, env] of Object.entries(modes)) {
     check('cloudflare: the token is read from the environment, not written into the configuration', !adapted.stdout.includes(token));
   }
 }
+
+// the newer Cloudflare tokens (cfut_...) are longer than the old 40-character ones: the edge must accept both
+const newer = run({ ...modes.cloudflare, CLOUDFLARE_API_TOKEN: newToken }, 'validate');
+check('cloudflare: the newer, longer (cfut_) token shape is accepted too', newer.status === 0);
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
 process.exit(failures ? 1 : 0);

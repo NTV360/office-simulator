@@ -45,7 +45,7 @@ if (tlsMode === 'cloudflare') {
   check('real certificates: a Cloudflare API token is set', () => {
     const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
     if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required (a token limited to editing DNS in the domain\'s one zone)');
-    if (!/^[A-Za-z0-9_-]{40}$/.test(token)) throw new Error('CLOUDFLARE_API_TOKEN does not look like a Cloudflare API token (40 letters, digits, - or _)');
+    if (!/^[A-Za-z0-9_-]{35,55}$/.test(token)) throw new Error('CLOUDFLARE_API_TOKEN does not look like a Cloudflare API token (35 to 55 letters, digits, - or _)');
   });
   check('real certificates: both names are under a domain you own', () => {
     for (const name of ['SITE_ADDRESS', 'VOICE_SITE_ADDRESS']) {
