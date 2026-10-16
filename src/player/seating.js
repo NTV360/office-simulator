@@ -1,3 +1,4 @@
+import { LOUNGE_TV_POS } from '../world/furniture/game.js';
 import { interactables } from '../world/interactables.js';
 import { ctl } from './control.js';
 import { player } from './player.js';
@@ -17,6 +18,7 @@ function nearestSeat(p) {
 function sitDown(p, sp) {
   if (sp.shared) sp.occupant = p;
   player.sitting = sp; p.pos.copy(sp.pos); ctl.yaw = sp.face; ctl.pitch = sp.kind === 'piano' ? -.4 : -.12; // at the keyboard, look down at the keys
+  if (sp.game) ctl.yaw = Math.atan2(LOUNGE_TV_POS.x - sp.pos.x, LOUNGE_TV_POS.z - sp.pos.z); // in the TV lounge, look at the TV
   const anim = sp.kind === 'piano' ? 'piano' : sp.kind === 'guitar' ? 'guitar' : sp.game ? 'game' : sp.kind === 'desk' ? (sp.owner === p ? 'type' : 'listenSit') : sp.kind === 'booth' ? 'phone' : sp.kind === 'bar' ? 'drinkSit' : 'listenSit';
   p.task = { kind: 'playerSit', spot: sp, anim };
   p.body.pad.visible = !!sp.game; p.body.guitar.visible = sp.kind === 'guitar'; p.body.phone.visible = sp.kind === 'booth'; p.body.mug.visible = sp.kind === 'bar';

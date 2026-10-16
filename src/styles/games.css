@@ -3,7 +3,7 @@
 .game-card{left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(440px,calc(100vw - 32px));box-sizing:border-box;padding:12px 14px 14px 16px;display:flex;flex-direction:column;gap:12px;z-index:3;background:var(--g-bg);border-color:var(--g-line);color:var(--g-ink);color-scheme:dark;backdrop-filter:none}
 #dartsCard{--g-bg:#1f2a25;--g-raised:#2a3731;--g-line:#3a4a42;--g-ink:#eef0e6;--g-muted:#a3b0a8}
 #golfCard{--g-bg:#173021;--g-raised:#21402d;--g-line:#2f5540;--g-ink:#eef6ef;--g-muted:#9fbfa9}
-#ps5Card{--g-bg:#0f1628;--g-raised:#1b2440;--g-line:#2b3760;--g-ink:#eef1fb;--g-muted:#9aa6c8}
+#ps5Card,#seatMenu,#tvCard,#musicCard{--g-bg:#0f1628;--g-raised:#1b2440;--g-line:#2b3760;--g-ink:#eef1fb;--g-muted:#9aa6c8}
 .game-card kbd{background:var(--g-raised);border-color:var(--g-line);color:var(--g-ink)}
 .game-card .eyebrow{color:var(--g-muted)}
 .game-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -45,5 +45,18 @@
 #ps5Who:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #ps5Invite{background:var(--g-raised);border-color:var(--g-line);color:var(--g-ink)}
 #ps5Note{font:600 13px/1.3 var(--f-body);min-height:1.3em}
+
+/* the TV lounge seat: what to do (1 2 3), and what is on */
+.seat-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seat-option{display:grid;grid-template-rows:auto auto 1fr;justify-items:start;gap:6px;padding:10px 10px 12px;border:1px solid var(--g-line);border-bottom-width:3px;border-radius:10px;background:var(--g-raised);color:var(--g-ink);text-align:left;cursor:pointer;transition:transform .08s,border-color .15s}
+.seat-option:hover{border-color:var(--g-muted)}
+.seat-option:active{transform:translateY(2px);border-bottom-width:1px}
+.seat-option:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seat-option b{font:800 15px/1.1 var(--f-display)}
+.seat-option span{font-size:11.5px;line-height:1.3;color:var(--g-muted)}
+.seat-now{font:800 20px/1.15 var(--f-display)}
+.seat-sub{font-size:12.5px;color:var(--g-muted)}
+@media (max-width:760px){.seat-option span{display:none}}
+@media (prefers-reduced-motion: reduce){.seat-option{transition:none}}
 
 body.gaming #fpPrompt,body.gaming #crosshair,body.gaming #fpBar{display:none!important} /* the card has the keys */

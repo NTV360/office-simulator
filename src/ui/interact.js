@@ -44,7 +44,7 @@ function aimTarget(mesh) {
 }
 function aimAt() {
   const p = player.person; player.aim = null;
-  if (!ctl.active || !p || p.state !== 'player' || use.board || use.inst || inGame()) return;
+  if (!ctl.active || !p || p.state !== 'player' || player.sitting || use.board || use.inst || inGame()) return; // seated, E gets you up
   const meshes = [...tvScreens(), ...SURFACES.map(b => b.mesh), MY_DARTS.board], near = (pt, t) => Math.hypot(pt.x - p.pos.x, pt.z - p.pos.z) < t.reach;
   ray.setFromCamera(centre, camera);
   const hit = ray.intersectObjects(meshes, false)[0];

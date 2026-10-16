@@ -44,7 +44,7 @@ import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
 import { updateSlapCard } from './ui/slap.js';
 import { updateInteract } from './ui/interact.js';
-import { updateGames } from './ui/games.js';
+import { playingConsole, updateGames } from './ui/games.js';
 import { ENTRY } from './world/entrance.js';
 import { interactables } from './world/interactables.js';
 import { updateDarts } from './world/furniture/darts.js';
@@ -80,7 +80,7 @@ function tick(now) {
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
   keyCam(dt); updateCamera(dt); updateGolf(dt); updateDarts(now, dt); updateMusic(now); updateKitchen(dt); updateDizzy(dt); updateSlapCard(); updateInteract(dt); updateGames(dt);
   // the lounge TV: the game while someone plays, the office awards otherwise (world/furniture/awards.js)
-  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming || onAir('game')) drawGame(dt); }
+  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || playingConsole(); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming || onAir('game')) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
   updateChannels(dt); // TVs someone changed the channel on (ui/interact.js)
   renderer.render(scene, camera);
