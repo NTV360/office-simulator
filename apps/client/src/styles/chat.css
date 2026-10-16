@@ -1,5 +1,5 @@
-/* Local chat: the panel at the bottom left. */
-#chat { position: fixed; left: 12px; bottom: 96px; z-index: 29; width: min(340px, calc(100vw - 24px)); font: 13px/1.4 system-ui, sans-serif; color: #fff; pointer-events: none; }
+/* Local chat: the panel at the bottom left, and its history panel (a card you can drag by its title). */
+#chat { position: fixed; left: 12px; bottom: max(96px, var(--card-top, 0px)); z-index: 29; width: min(340px, calc(100vw - 24px)); font: 13px/1.4 system-ui, sans-serif; color: #fff; pointer-events: none; }
 #chat[hidden] { display: none; }
 #chatLog { max-height: 180px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
 #chat.typing #chatLog { overflow-y: auto; pointer-events: auto; }
@@ -18,4 +18,17 @@
 .chat-tool.emote { background: rgba(60, 90, 120, .8); }
 .chat-tool:disabled { opacity: .45; cursor: default; }
 #chat.typing #chatTools .emote { display: none; }
-@media (max-width: 640px) { #chat { bottom: 104px; } }
+@media (max-width: 640px) { #chat { bottom: max(104px, var(--card-top, 0px)); } }
+#chatHistory { position: fixed; z-index: 31; width: min(340px, calc(100vw - 24px)); height: min(320px, 50vh); display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+#chatHistory[hidden] { display: none; }
+.chat-history-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--line); font: 600 12px var(--f-display, system-ui); letter-spacing: .06em; text-transform: uppercase; cursor: grab; user-select: none; touch-action: none; }
+.chat-history-head:active { cursor: grabbing; }
+.chat-history-close { border: 0; background: none; color: inherit; font-size: 18px; line-height: 1; padding: 2px 8px; border-radius: 6px; cursor: pointer; }
+.chat-history-close:hover { background: var(--chip); }
+#chatHistoryList { list-style: none; margin: 0; padding: 8px 10px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+#chatHistoryList .chat-line { background: none; color: var(--ink); padding: 0; border-radius: 0; width: auto; font-size: 12.5px; }
+#chatHistoryList .chat-line b { color: var(--accent, #3e6e9c); }
+#chatHistoryList .chat-line time { font: 500 10.5px var(--f-mono, monospace); color: var(--muted); }
+#chatHistoryList .chat-line.notice { color: #8a5a10; font-style: italic; }
+#chatHistoryList .chat-line.announce { color: #1f6b43; }
+#chatHistoryList .chat-line.old { opacity: 1; }

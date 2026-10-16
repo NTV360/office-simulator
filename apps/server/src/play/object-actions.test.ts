@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   ARMS, REFUSAL_TEXT, carriedBy, closestPointOnItem, fromItemFrame, mulQuat, orientationOf, handBack, initDay, initState, interactables, isSeated, loadLayout, makeGuest, movedObjects, objects, officeLayout, people, placementProblem, resetAllObjects,
-  createInventory, placeItem, freeSitOccupied, sitFree, resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
+  createInventory, placeItem, freeSitOccupied, seatInUse, seatOf, sitFree, resetSim, roster, setSeed, simEvents, takeControl, type Employee, type Person, type WorldObject,
 } from '@office/shared';
 import { MemoryAccountStore } from '../auth/account-store';
 import { OBJECT_BUCKET, PlayerManager } from './player-manager';
@@ -286,7 +286,7 @@ describe('putting back', () => {
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 1 });
     expect(movedObjects()).toEqual([]);
     expect(manager.resetObjects(id, 'object', chair.index, T())).toEqual({ ok: true, changed: 0 });
-    const npcChair = objects.all().find(o => o.station && o.type === 'chair-office')!;
+    const npcChair = objects.all().find(o => o.station && o.type === 'chair-office' && !seatInUse(seatOf(o)!))!; // (one nobody is sitting at: who is at their desk depends on the day's draws)
     stand(person, npcChair);
     expect(manager.resetObjects(id, 'object', npcChair.index, T())).toEqual({ ok: true, changed: 0 }); // (somebody else's desk: allowed, and it was home)
   });

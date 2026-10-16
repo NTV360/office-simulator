@@ -1,4 +1,4 @@
-#person{left:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:292px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
+#person{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:292px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
 #pAvatar{width:44px;height:44px;flex:none}
 /* round avatar: a profile picture, or initials on the person's shirt colour */
 .avatar,#pAvatar{display:grid;place-items:center;border-radius:50%;overflow:hidden;border:2px solid var(--line);font:700 15px var(--f-display);letter-spacing:.02em;user-select:none}

@@ -4,6 +4,7 @@ import { initDay, initGrid, initState, lockLayoutCheck, objects, refreshFootprin
 import { OBS, TOPS } from './world/helpers.js';
 import { flushLaterObjects, placeObject } from './world/objects.js';
 import { initLabels } from './render/labels.js';
+import { initMovie } from './render/screens.js';
 import { initPeopleGroup } from './people/group.js';
 import { initPeopleViews } from './people/views.js';
 import { initControls } from './ui/controls.js';
@@ -69,6 +70,7 @@ export function bootstrap({ simulate = true } = {}) {
   buildBake();
   initObjectViews(); // the chairs and desk things: drawn instanced, from the object data (not baked)
   initLabels();
+  initMovie();
   // navigation reads the obstacles registered by the world
   initGrid(OBS);
   for (const o of objects.all()) refreshFootprint(o); // (items that block walking: tables, sofas, cabinets)

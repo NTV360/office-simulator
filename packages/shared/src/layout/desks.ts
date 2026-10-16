@@ -31,6 +31,9 @@ export const DESK_ISLANDS: readonly DeskIsland[] = [
   { id: 'HR', name: 'HR Office', rect: [296, 112, 366, 146], cols: 3, sides: ['top', 'bottom'], department: 'Human Resources', room: true },
 ];
 
+/** Hazel Sellote's seat (sim/hazel.ts): always hers, with a baby high chair instead of an office chair. */
+export const HAZEL_DESK = 'C1';
+
 /** How far a chair sits from the edge of its desk island, in plan pixels. */
 export const SEAT_GAP = 12.8;
 

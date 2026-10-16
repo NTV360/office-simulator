@@ -16,6 +16,25 @@ function officeChair(parent, mat = M.chairSeat) {
   box(g, .04, .2, .3, M.chairBase, .25, .58, 0); box(g, .04, .2, .3, M.chairBase, -.25, .58, 0);
   return g;
 }
+// A baby high chair, the kind toddlers eat in: splayed legs, a raised padded seat, a footrest and a tray. Hazel's seat (HAZEL_DESK in
+// shared/layout/desks.ts); it is the office chair item's third look (variant 2, render/objects.js), so it is a chair like any other. Same frame
+// as officeChair: +z faces the desk.
+const HIGH = { frame: new THREE.MeshStandardMaterial({ color: 0xf4f3ef, roughness: .45 }), pad: new THREE.MeshStandardMaterial({ color: 0x9fd0e4, roughness: .8 }) };
+function highChair(f) {
+  const g = new THREE.Group(); f.add(g);
+  [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+    const leg = box(g, .035, .74, .035, HIGH.frame, sx * .2, .36, sz * .18); leg.rotation.set(-sz * .14, 0, sx * .14); // feet splayed out wider than the seat
+  });
+  box(g, .5, .03, .03, HIGH.frame, 0, .02, .23); box(g, .5, .03, .03, HIGH.frame, 0, .02, -.23); // floor bars between the feet
+  box(g, .3, .03, .04, HIGH.frame, 0, .32, .2);                   // footrest
+  box(g, .36, .05, .32, HIGH.frame, 0, .66, 0);                   // seat
+  box(g, .32, .03, .28, HIGH.pad, 0, .695, 0);                    // seat cushion
+  box(g, .34, .34, .05, HIGH.frame, 0, .86, -.15); box(g, .3, .3, .02, HIGH.pad, 0, .86, -.12); // padded back
+  [-1, 1].forEach(s => box(g, .03, .14, .26, HIGH.frame, s * .18, .76, .0));                     // side rails
+  box(g, .42, .025, .2, HIGH.frame, 0, .84, .22);                 // the eating tray
+  box(g, .42, .03, .02, HIGH.frame, 0, .855, .32);                // tray lip
+  return g;
+}
 function woodChair(f) {
   box(f, .42, .05, .42, M.diningWood, 0, .45, 0);
   [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(f, .035, .44, .035, M.diningWood2, a * .18, .22, b * .18));
@@ -38,4 +57,4 @@ function drawPlant(g, big = 1) {
 /** A floor plant is an item (shared/world/shapes.ts): it blocks walking where it stands, and can be carried. */
 const plant = (px, py, big = 1) => placeLater(() => placeObject('plant-floor', px, py, 0, { dims: [big] }));
 
-export { E, N, SO, WST, barStool, drawPlant, mkSpot, officeChair, plant, woodChair };
+export { E, N, SO, WST, barStool, drawPlant, highChair, mkSpot, officeChair, plant, woodChair };

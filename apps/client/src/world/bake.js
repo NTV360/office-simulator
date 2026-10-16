@@ -36,7 +36,7 @@ function bake(root) {
   const buckets = new Map(), kill = [];
   root.traverse(o => {
     if (!o.isMesh || o.userData.dynamic || Array.isArray(o.material)) return;
-    recordShape(o);
+    if (!o.userData.decor) recordShape(o); // (decor, such as the food in the fridge, is only drawn)
     const k = o.material.uuid + (o.castShadow ? 'c' : 'n');
     if (!buckets.has(k)) buckets.set(k, { mat: o.material, cast: o.castShadow, geos: [] });
     const g = o.geometry.index ? o.geometry.clone() : o.geometry.clone();

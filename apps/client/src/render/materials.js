@@ -59,6 +59,8 @@ const M = {
   lockerLine: new THREE.MeshStandardMaterial({ color: 0xb4a8c4, roughness: .6 }),
   counter: new THREE.MeshStandardMaterial({ color: 0xe5e9ec, roughness: .6 }),
   sinkCab: new THREE.MeshStandardMaterial({ color: 0xd5ebf2, roughness: .6 }),
+  fridge: new THREE.MeshStandardMaterial({ color: 0xe9edf0, roughness: .35, metalness: .25 }),
+  fridgeIn: new THREE.MeshStandardMaterial({ color: 0xf6fbff, emissive: 0xdff1ff, emissiveIntensity: .45, roughness: .5 }),
   steel: new THREE.MeshStandardMaterial({ color: 0xc6ced4, roughness: .25, metalness: .8 }),
   diningWood: new THREE.MeshStandardMaterial({ color: 0xc9a77c, roughness: .6 }),
   diningWood2: new THREE.MeshStandardMaterial({ color: 0x9c7a55, roughness: .6 }),

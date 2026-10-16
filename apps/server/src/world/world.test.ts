@@ -34,7 +34,7 @@ describe('World', () => {
     expect(people.filter(hasSlot).every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
     roster.list = [...rosterFor(74), ...Array.from({ length: 6 }, (_, i) => employee(`hr-${i + 1}`, 'Human Resources'))];
     const many = new World({ ...base, slotCount: 500 }); many.init();
-    expect(many.status().staff).toBe(80);
+    expect(many.status().staff).toBe(79); // (80 desks, but C1 is Hazel's and stays empty with her not on the list)
     expect(people.filter(hasSlot).every(p => roster.list!.some(e => e.userId === p.userId))).toBe(true);
   });
 

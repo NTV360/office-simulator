@@ -1,7 +1,7 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Header, Inject, Logger, Injectable, NotFoundException, Param, PipeTransform, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { HAZEL_NAME, deskSeat, freeSitOccupied, interactables, isAtHome, live, movedObjects, objects, people, resetObject, seatInUse, seatOf, type Person } from '@office/shared';
+import { HAZEL_DESK, HAZEL_NAME, deskSeat, freeSitOccupied, interactables, isAtHome, live, movedObjects, objects, people, resetObject, seatInUse, seatOf, type Person } from '@office/shared';
 import { AuthError, generatePassword, publicAccount, type PublicAccount } from '../auth/auth.service';
 import { AuthProvider } from '../auth/auth.provider';
 import { clientAddress, type Req as HttpReq } from '../auth/http';
@@ -318,6 +318,7 @@ export class AdminController {
     }
     const store = this.employees.require(), emp = await store.byId(userId);
     if (!emp || emp.removed) throw new NotFoundException('there is no such employee');
+    if (desk === HAZEL_DESK && `${emp.firstName} ${emp.lastName}`.trim().toLowerCase() !== HAZEL_NAME.toLowerCase()) throw new ConflictException(`${desk} is Hazel's desk (with her high chair) and cannot be chosen`);
     if (desk) {
       const seat = deskSeat(desk)!;
       if (seat.island.department && seat.island.department !== emp.department) throw new ConflictException(`${seat.label} is for ${seat.island.department} only`);

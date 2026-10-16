@@ -53,12 +53,34 @@ describe('canonical desk allocation', () => {
   });
 });
 
+describe("Hazel's desk", () => {
+  const desks = [{ deskId: 'A1' }, { deskId: 'C1' }, { deskId: 'C2' }];
+  const hazel = (over: Partial<Employee> = {}) => emp('hazel', { firstName: 'Hazel', lastName: 'Sellote', ...over });
+
+  it('is hers whatever the order, and nobody else is given it', () => {
+    const result = allocateDesks([emp('a'), hazel(), emp('b')], desks);
+    expect(result.get('hazel')).toBe('C1');
+    expect([...result.entries()].filter(([, d]) => d === 'C1').map(([id]) => id)).toEqual(['hazel']);
+    expect(allocateDesks([emp('a'), hazel()], desks).get('a')).toBe('A1');
+  });
+  it('stays empty without her, even for someone who asks for it', () => {
+    const result = allocateDesks([emp('a', { desk: 'C1' }), emp('b'), emp('c')], desks);
+    expect(result.get('a')).toBe('A1');
+    expect([...result.values()]).not.toContain('C1');
+  });
+  it('is not taken from an account that sits there: she sits elsewhere', () => {
+    expect(allocateDesks([hazel()], desks, ['C1']).get('hazel')).toBe('A1');
+  });
+});
+
 describe('what the card says', () => {
-  it('a department staff member is "<Department> Department", an intern is "Intern <Department>", and a few names are shortened', () => {
-    expect(jobTitle({ department: 'UI/UX', intern: false })).toBe('UI/UX Department');
+  it('a staff member is their (short) department, an intern is "Intern <Department>", and the long names are abbreviated', () => {
+    expect(jobTitle({ department: 'UI/UX', intern: false })).toBe('UI/UX');
     expect(jobTitle({ department: 'UI/UX', intern: true })).toBe('Intern UI/UX');
-    expect(jobTitle({ department: 'Human Resources', intern: false })).toBe('HR Department');
-    expect(jobTitle({ department: 'Internet of Things (IoT)', intern: false })).toBe('IoT Department');
+    expect(jobTitle({ department: 'Human Resources', intern: false })).toBe('HR');
+    expect(jobTitle({ department: 'Internet of Things (IoT)', intern: false })).toBe('IoT');
+    const short: Array<[string, string]> = [['Research and Development', 'RND'], ['Quality Assurance', 'QA'], ['Software Development', 'Software Dev'], ['Website Development', 'Web Dev'], ['Project Management', 'PM'], ['Graphics Design', 'Graphics']];
+    for (const [department, title] of short) { expect(jobTitle({ department, intern: false })).toBe(title); expect(jobTitle({ department, intern: true })).toBe('Intern ' + title); }
     expect(jobTitle({ department: null, intern: false })).toBe('Staff');
     expect(jobTitle({ department: null, intern: true })).toBe('Intern');
   });
@@ -82,8 +104,8 @@ describe('the staff list becomes the people in the office', () => {
     roster.list = [emp('a', { department: 'UI/UX' }), emp('b', { department: 'Quality Assurance', intern: true }), emp('c', { department: null })];
     initDay();
     expect(staff()).toHaveLength(3);
-    expect(by('a')).toMatchObject({ name: 'a Cruz', title: 'UI/UX Department', department: 'UI/UX', role: 'Designer', userId: 'a' });
-    expect(by('b')).toMatchObject({ title: 'Intern Quality Assurance', role: 'QA Engineer' });
+    expect(by('a')).toMatchObject({ name: 'a Cruz', title: 'UI/UX', department: 'UI/UX', role: 'Designer', userId: 'a' });
+    expect(by('b')).toMatchObject({ title: 'Intern QA', role: 'QA Engineer' });
     expect(by('c')).toMatchObject({ title: 'Staff', department: null });
   });
   it('the desk someone chose is theirs, and a chosen desk stays free for the one who chose it even if they are created later', () => {

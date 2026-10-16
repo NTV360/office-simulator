@@ -393,7 +393,9 @@ try {
   const list = outOfPlace((await admin('GET', '/api/admin/objects')).body);
   const id = await C.page.evaluate(i => window.__sim.objects.at(i).id, diningIdx);
   check('the admin API lists exactly what is out of place', Array.isArray(list) && list.length === 1 && list[0].id === id, JSON.stringify(list));
-  const reset = await admin('POST', '/api/admin/objects/reset', { object: id });
+  // (Hazel plays at any hour, and may be sitting in that very chair just now: the admin API refuses a chair somebody sits in, so try again until she gets up)
+  let reset = await admin('POST', '/api/admin/objects/reset', { object: id });
+  for (let i = 0; i < 40 && reset.status === 409; i++) { await sleep(1500); reset = await admin('POST', '/api/admin/objects/reset', { object: id }); }
   check('putting it back works', reset.status === 201 && reset.body.reset === 1);
   const back = await until(async () => { const w = await where(A.page, diningIdx); return !moved(w) ? w : null; });
   check('and every page sees the chair go home', !!back);

@@ -1,11 +1,16 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown, ServiceUnavailableException } from '@nestjs/common';
-import { allocateDesks, applyAttendance, hasSlot, interactables, live, people, type AttendanceRecord } from '@office/shared';
+import { allocateDesks, applyAttendance, fullName, hasSlot, interactables, live, people, type AttendanceRecord } from '@office/shared';
 import { DbService } from '../db.service';
 import { WorldService } from '../world/world.service';
 import { PlayService } from '../play/play.service';
 import { PgEmployeeStore, type EmployeeStore, type ImportResult } from './employee-store';
 import { syncRoster, type SyncResult } from './roster-sync';
 import { SourceError, SupabaseSource } from './supabase-source';
+
+/** Who has not tapped in today, for the page's "Absent" tab: names only. `today` is the office's date (YYYY-MM-DD). */
+export interface AttendanceSummary { today: string; absent: string[] }
+/** The absent list is read from the records at most this often, however many pages ask. */
+const SUMMARY_TTL_MS = 60_000;
 
 /** What the last import and the last attendance read did, for the admin page. */
 export interface ImportStatus {
@@ -37,6 +42,8 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
   private source: SupabaseSource | null = null;
   private running: Promise<unknown> = Promise.resolve();
   private timers: NodeJS.Timeout[] = [];
+  private summary: { at: number; value: AttendanceSummary } | null = null;
+  private summaryRead: Promise<AttendanceSummary | null> | null = null;
   private readonly log = new Logger('Employees');
   readonly status: ImportStatus = {
     configured: false, lastImportAt: null, lastImportOk: null, lastImportError: null, lastResult: null,
@@ -167,6 +174,31 @@ export class EmployeeService implements OnApplicationBootstrap, OnApplicationShu
       await this.play.reconcile();
       return result;
     });
+  }
+
+  /**
+   * The names of the people in the staff list who have no clock-in today (office time), or null when there is nothing to read from (no source of
+   * records, or no staff list). Cached for a minute, and a read already under way is shared, so a page full of players costs one read.
+   */
+  attendanceSummary(now: Date = new Date()): Promise<AttendanceSummary | null> {
+    if (!this.source || !this.store) return Promise.resolve(null);
+    if (this.summary && now.getTime() - this.summary.at < SUMMARY_TTL_MS && now.getTime() >= this.summary.at) return Promise.resolve(this.summary.value);
+    if (this.summaryRead) return this.summaryRead;
+    const source = this.source, store = this.store;
+    const read = (async (): Promise<AttendanceSummary | null> => {
+      try {
+        const [{ today, userIds }, records] = await Promise.all([source.clockedInToday(now), store.list()]);
+        const absent = records.filter(r => !r.removed && !userIds.has(r.userId.toLowerCase())).map(r => fullName(r)).sort((a, b) => a.localeCompare(b));
+        const value = { today, absent };
+        this.summary = { at: now.getTime(), value };
+        return value;
+      } catch (err) {
+        this.log.warn(`the absent list could not be read: ${err instanceof Error ? err.message : String(err)}`);
+        return this.summary?.value ?? null; // (the last known list, if there is one)
+      } finally { this.summaryRead = null; }
+    })();
+    this.summaryRead = read;
+    return read;
   }
 
   /** Who is clocked in right now, from the records. Without a source there is nothing to read. */

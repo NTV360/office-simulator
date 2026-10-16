@@ -25,8 +25,8 @@ describe('the office layout data', () => {
   it('has the recorded shape', () => {
     const kinds: Record<string, number> = {};
     for (const s of officeLayout.spots) kinds[s.kind] = (kinds[s.kind] || 0) + 1;
-    expect(kinds).toEqual({ desk: 80, whiteboard: 6, conf: 16, lounge: 12, bar: 4, booth: 4, dining: 18, golf: 1, darts: 2, piano: 1, guitar: 1, counter: 2, sink: 2, snack: 1, bucket: 1, storage: 2, locker: 4, exit: 1 });
-    expect(officeLayout.obstacles).toHaveLength(75); // (113 before 38 pieces of furniture became items: they block where they stand instead)
+    expect(kinds).toEqual({ desk: 80, whiteboard: 6, conf: 16, teach: 1, lounge: 12, bar: 4, booth: 4, dining: 18, golf: 1, darts: 2, piano: 1, guitar: 1, counter: 2, sink: 2, snack: 2, bucket: 1, storage: 2, locker: 4, exit: 1 });
+    expect(officeLayout.obstacles).toHaveLength(76); // (113 before 38 pieces of furniture became items: they block where they stand instead; the fridge is the 76th)
   });
   it('rebuilds the same spots with the same ids, in the same order', () => {
     expect(interactables.all().map(s => s.id)).toEqual(officeLayout.spots.map(s => s.id));
@@ -38,8 +38,8 @@ describe('the office layout data', () => {
     const again = spotsToLayout(interactables.all(), officeLayout.obstacles, objects.all(), officeLayout.tops);
     expect(JSON.parse(JSON.stringify(again))).toEqual(JSON.parse(JSON.stringify(officeLayout)));
   });
-  it('builds the same walkable grid the browser has (12,212 cells)', () => {
-    expect(NAV.reduce((a, v) => a + v, 0)).toBe(12212);
+  it('builds the same walkable grid the browser has (12,207 cells)', () => {
+    expect(NAV.reduce((a, v) => a + v, 0)).toBe(12207);
   });
   it('has a route from the door to every desk, and an exit', () => {
     for (const d of interactables.of('desk')) expect(findPath(ENTRY, d.approach), d.id).not.toBeNull();

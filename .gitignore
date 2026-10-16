@@ -14,3 +14,4 @@ vitest-results.json
 graphify-out/
 tests/browser/golden-local/
 tests/fixtures/
+.DS_Store

@@ -1,5 +1,10 @@
-#ledger{top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:250px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
-.ledger-head{display:flex;justify-content:space-between;align-items:baseline}
+/* Top right: On the floor, with a tab for who is absent today */
+#ledger{top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:290px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.ledger-tabs button{font-size:11px;padding:7px 4px}
+.ledger-tabs b{font:600 10.5px var(--f-mono);margin-left:2px;opacity:.75}
+.ledger-tabs button[hidden]{display:none}
+#floorPane,#attPane{display:flex;flex-direction:column;gap:10px;min-height:0}
+#floorPane[hidden],#attPane[hidden]{display:none}
 #present{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
 #acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
 #acts li{display:grid;grid-template-columns:10px 1fr 22px;align-items:center;gap:8px;font-size:12.5px}
@@ -9,3 +14,10 @@
 #acts .bar i{display:block;height:100%;border-radius:2px;transition:width .4s}
 #log{list-style:none;margin:0;padding:10px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.35}
 #log time{font:500 11px var(--f-mono);color:var(--muted);margin-right:6px}
+
+/* Attendance tab: a title and a list of names */
+.att-sub{font-size:11.5px;color:var(--muted)}
+#attList{list-style:none;margin:0;padding:0;overflow-y:auto;max-height:min(360px,calc(100vh - 170px));display:flex;flex-direction:column}
+.att-row{display:flex;align-items:baseline;gap:8px;width:100%;padding:3px 6px;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.att-row:hover,.att-row:focus-visible{background:var(--chip);border-color:var(--line)}
+.att-name{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

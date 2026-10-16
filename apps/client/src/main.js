@@ -17,7 +17,7 @@ import './styles/responsive.css';
 import { bootstrap } from './bootstrap.js';
 import { fingerprint, screenMismatches } from './debug.js';
 import { OBS, STATIC_SHAPES, TOPS } from './world/helpers.js';
-import { ENTRY, findPath, presetList, spotsToLayout, GC, GR, interactables, log, NAV, objects, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
+import { ENTRY, findPath, presetList, spotsToLayout, GC, GR, interactables, lessonOf, log, meetings, NAV, objects, people, setSeed, sim, stepSim, toPx, walkPx } from '@office/shared';
 import { keyCam } from './camera/input.js';
 import { following, setView, updateCamera, viewId } from './camera/controller.js';
 import { camGoal, camState } from './camera/state.js';
@@ -37,10 +37,12 @@ import { renderUI } from './ui/ledger.js';
 import { selRing, select, selected } from './ui/person.js';
 import { updateDarts } from './world/furniture/darts.js';
 import { updateDiningTv } from './world/furniture/diningTv.js';
-import { drawGame, gameCanvas, gameMat, loungeTV, loungeTVDefault } from './world/furniture/game.js';
+import { awardsScreen } from './world/furniture/awards.js';
+import { drawGame, gameCanvas, gameMat, loungeTV } from './world/furniture/game.js';
 import { updateGolf } from './world/furniture/golf.js';
 import { updateMusic } from './world/furniture/music.js';
-import { updateBucket } from './world/furniture/kitchen.js';
+import { updateBucket, updateKitchen } from './world/furniture/kitchen.js';
+import { showLesson } from './world/furniture/conference.js';
 import { creator } from './ui/creator.js';
 import { buildBody, disposeBody } from './character/rig.js';
 import { scalers, wall } from './world/helpers.js';
@@ -74,8 +76,9 @@ function tick(now) {
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
   updateBucket(people);
-  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now);
-  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : loungeTVDefault; if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
+  keyCam(dt); updateCamera(dt); updateGolf(); updateDarts(now); updateMusic(now); updateKitchen(dt); showLesson(lessonOf(meetings.find(m => m.room === 1)?.topic ?? ''));
+  // the lounge TV: the game while someone plays, the office awards otherwise (world/furniture/awards.js)
+  { const gaming = people.some(q => q.state === 'doing' && q.task?.kind === 'game') || (ctl.active && player.sitting?.game); const m = gaming ? gameMat : awardsScreen(); if (loungeTV.material !== m) loungeTV.material = m; if (gaming) drawGame(dt); }
   updateDiningTv(dt, people.some(q => q.state === 'doing' && (q.task?.kind === 'tv' || (q.task?.kind === 'lunch' && q.task.spot?.kind === 'dining'))));
   renderer.render(scene, camera);
   uiAcc += dt; if (uiAcc > .25) { uiAcc = 0; renderUI(); }
@@ -89,6 +92,6 @@ renderUI();
 requestAnimationFrame(t => { last = t; tick(t); });
 window.__simReady = true;
 document.getElementById('veil').classList.add('gone');
-window.__sim = { net: live ? live.net : null, online, placementProblem, carriedBy, lab: creator, buildBody, disposeBody, presets: presetList().map(p => p.spec), renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all(), TOPS), staticShapes: () => STATIC_SHAPES, fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
+window.__sim = { camera, net: live ? live.net : null, online, placementProblem, carriedBy, lab: creator, buildBody, disposeBody, presets: presetList().map(p => p.spec), renderer, scene, objects, peopleGroup, objectDrawCalls, stressObjects(n) { const made = []; for (let i = 0; i < n; i++) { const t = ['chair-office', 'chair-wood', 'stool-bar'][i % 3]; const o = addObject({ type: t, x: -45 + (i % 40) * 2.2, z: -20 + Math.floor(i / 40) * 1.6, rot: i, y: 0, variant: 0, station: null, spot: null }); addObjectView(o); made.push(o); } return made; }, shakeObjects(list, k) { for (const o of list) setObjectPose(o, o.x + Math.sin(k + o.index) * .01, o.z, o.rot + .02); }, layoutData: () => spotsToLayout(interactables.all(), OBS, objects.all(), TOPS), staticShapes: () => STATIC_SHAPES, fingerprint, screenMismatches, sim, people, player, ctl, tp, wall, interactables, NAV, GC, GR, camGoal, camState, updateCamera, viewId, following, select, setView, gameCanvas, drawGame, findPath, walkPx, toPx, ENTRY, advance(n, dt = .05) {
   for (let i = 0; i < n; i++) stepSim(dt);
 }, log };

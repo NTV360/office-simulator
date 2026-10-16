@@ -5,10 +5,10 @@ import { normalizeSpec, type CharacterSpec } from '../character/spec';
 // `main`: her permanently furious face, `angry`, stays.)
 export const HAZEL_NAME = 'Hazel Sellote';
 
-/** Her look: a short blocky character (square head) with a bob, a skirt and a permanently furious face. */
+/** Her look: a short blocky character (square head) with a bob, navy pants and a permanently furious face. */
 export const HAZEL_LOOK = {
   type: 'blocky', name: 'Hazel', body: 'female', build: 'average', height: 'short', skin: '#d9a27a', eyes: { color: '#1d1411' },
-  hair: { style: 'bob', color: '#2b201b' }, top: { style: 'tshirt', color: '#9b4d62' }, bottom: { style: 'skirt', color: '#2f3d6b' },
+  hair: { style: 'bob', color: '#2b201b' }, top: { style: 'tshirt', color: '#9b4d62' }, bottom: { style: 'pants', color: '#2f3d6b' }, // pants: they move with her legs when she runs
   shoes: { style: 'simple', color: '#2a2228' }, accessories: [], angry: true,
 };
 

@@ -127,10 +127,20 @@
   </div>
 </nav>
 
+<!-- Top right: who is doing what (On the floor), and who is absent today -->
 <aside class="card" id="ledger" aria-label="Who is doing what">
-  <div class="ledger-head"><span class="eyebrow">On the floor</span><span id="present">0 / 0</span></div>
-  <ul id="acts"></ul>
-  <ul id="log" aria-live="polite"></ul>
+  <div class="seg full ledger-tabs" role="group" aria-label="Floor and attendance">
+    <button type="button" data-ltab="floor" aria-pressed="true" title="Who is in and what they are doing">On the floor <b id="present">0/0</b></button>
+    <button type="button" data-ltab="absent" aria-pressed="false" title="Absent, or did not tap in today" hidden>Absent <b id="attAbsentN">0</b></button>
+  </div>
+  <div id="floorPane">
+    <ul id="acts"></ul>
+    <ul id="log" aria-live="polite"></ul>
+  </div>
+  <div id="attPane" hidden>
+    <div class="att-sub" id="attTitle"></div>
+    <ul id="attList"></ul>
+  </div>
 </aside>
 
 

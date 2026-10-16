@@ -34,7 +34,7 @@ describe('the gateway', () => {
     expect(w.people.filter(p => p.info.controller === 'ai')).toHaveLength(staffCount + 1); // roster staff and the helper
     const me = w.people.find(p => p.info.id === w.you)!;
     expect(me.info).toMatchObject({ controller: 'account', name: 'solo', role: 'Guest' }); // no desk yet: a guest at the entrance
-    expect(w.layout.spots).toBe(158);
+    expect(w.layout.spots).toBe(160);
     expect(w).toMatchObject({ tickRate: 20, paused: false, speed: 1 });
     expect(w.people.some(p => p.info.name === 'Hazel Sellote')).toBe(true);
     c.socket.close();

@@ -41,6 +41,9 @@ export interface Meeting {
   speaker: Person | null;
   swap: number;
   topic: string;
+  /** A coding class (Conference 1): which of the shared LESSONS, and the person teaching it (they stand at the front and are the speaker). Neither is sent: `topic` names the lesson, and the teacher is the speaker. */
+  lesson?: number | null;
+  teacher?: Person | null;
 }
 
 /** One person in the office: a staff member the simulation drives, or a human-controlled one. */
@@ -84,7 +87,7 @@ export interface Person {
   screenVariant: number;
   /** The employee this person is (the id in the staff list), or null/unset for made-up staff and guests. */
   userId?: string | null;
-  /** What the card says they are: "UI/UX Department", "Intern HR". Falls back to the role. */
+  /** What the card says they are: "UI/UX", "Intern HR". Falls back to the role. */
   title?: string;
   department?: string | null;
   /** Their profile picture (an https address), or null: the page shows their initials. */

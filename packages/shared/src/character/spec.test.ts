@@ -138,7 +138,7 @@ describe('Hazel', () => {
   it('is a short blocky character with a bob, a skirt and a furious face', () => {
     const h = applyHazel();
     expect(h).toMatchObject({ first: 'Hazel', last: 'Sellote', role: 'UX/UI Designer' });
-    expect(h.spec).toMatchObject({ type: 'blocky', body: 'female', height: 'short', angry: true, hair: { style: 'bob' }, bottom: { style: 'skirt' } });
+    expect(h.spec).toMatchObject({ type: 'blocky', body: 'female', height: 'short', angry: true, hair: { style: 'bob' }, bottom: { style: 'pants' } });
     expect(normalizeSpec(HAZEL_LOOK)).toEqual(h.spec);
   });
 });

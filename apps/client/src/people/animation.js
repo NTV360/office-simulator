@@ -1,4 +1,4 @@
-import { TAU, angDiff } from '@office/shared';
+import { HAZEL_NAME, TAU, angDiff } from '@office/shared';
 import { isLocalPlayer, player } from '../player/player.js';
 import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
@@ -10,6 +10,8 @@ const JOINTS = ['hipY', 'seat', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', '
 const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(['walk', 'run', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
+// Hazel (the one hand-written character): she runs everywhere, and has her own movie, peek and ride poses below.
+const isHazel = p => p.name === HAZEL_NAME;
 function animKey(p) {
   const posture = p.mechanics?.posture;
   // A held character is attached to another player's hands; show the carried
@@ -23,11 +25,12 @@ function animKey(p) {
   if (attack && (attack.phase === 'charging' || attack.phase === 'active')) return `attack-${attack.kind}`;
   if (isLocalPlayer(p)) return player.sitting || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (player.moving ? 'walk' : 'stand'));
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (p.moving ? 'walk' : 'stand')); // a human somewhere else (online)
-  if (p.state === 'walking') return p.task?.run ? 'run' : 'walk';
+  if (p.state === 'walking') return p.riding ? 'ride' : p.task?.run || isHazel(p) ? 'run' : 'walk'; // Hazel runs, or rides her tricycle
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
-  if (t.kind === 'meeting') return t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
+  if (t.kind === 'meeting') return t.spot?.kind === 'teach' ? 'present' : t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen';
   if (t.kind === 'work' && p.chatWith) return 'listenSit';
+  if (t.kind === 'work' && p.slack && p.slack.mode !== 'work') return p.slack.mode === 'movie' ? 'watch' : 'peek'; // Hazel (people/hazel.js)
   return t.anim;
 }
 // An emote a player is acting out: arms and head are overridden for a couple of seconds (see net/online.js, which sets `p.emote`). Walking
@@ -106,7 +109,8 @@ function targetPose(p, k, T) {
     }
     case 'run': {
       const s = Math.sin(p.walkPhase), c = Math.cos(p.walkPhase);
-      o.lHip = -.85 * s; o.rHip = .85 * s;
+      const stride = isHazel(p) ? .55 : .85; // Hazel: quick, short steps
+      o.lHip = -stride * s; o.rHip = stride * s;
       o.lKnee = .2 + 1.1 * Math.max(0, c); o.rKnee = .2 + 1.1 * Math.max(0, -c);
       o.lShX = .8 * s; o.lEl = -1.2; o.rShX = p.body.bucket.visible ? -.1 * s : -.8 * s; o.rEl = p.body.bucket.visible ? -.1 : -1.2; // the bucket hand stays down
       o.hipY = .86 + .05 * Math.abs(Math.cos(p.walkPhase)); o.lean = .22;
@@ -117,6 +121,15 @@ function targetPose(p, k, T) {
     case 'windowWipe': o.rShX = -2.5 + Math.cos(T * 5) * .15; o.rShZ = -.25 + Math.sin(T * 5) * .4; o.rEl = -.2; o.lShX = -.3; o.lEl = -.4; o.headX = -.3; o.lean = -.04; break;
     case 'mop': { const s = Math.sin(T * 3); o.lean = .18; o.lShX = -.75; o.lEl = -.5; o.rShX = -.55; o.rEl = -.4; o.lShZ = .1 + s * .3; o.rShZ = -.1 + s * .3; o.headX = .3; o.headY = s * .2; break; }
     case 'type': sit(); o.lean = .12; o.lShX = -.6; o.rShX = -.6; o.lEl = -1.2 + Math.sin(T * 13) * .06; o.rEl = -1.2 + Math.sin(T * 13 + 2) * .06; o.lShZ = -.05; o.rShZ = .05; o.headX = .1 + Math.sin(T * .4) * .05; o.headY = Math.sin(T * .23) * .15; break;
+    // Hazel's movie: leaning back with her hands on the desk; laughing shakes her
+    case 'watch': { sit(); o.lean = -.08; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; o.headX = .05;
+      if (p.slack.face === 'laugh') { o.lean = -.14 + Math.sin(T * 16) * .04; o.headX = -.15 + Math.sin(T * 16) * .06; }
+      break; }
+    // Hazel on her tricycle (people/hazelRide.js): on the seat, hands on the bars, legs going round with the pedals
+    case 'ride': { sit(); o.hipY = .34; o.lean = .12; o.lShX = o.rShX = -1.25; o.lEl = o.rEl = -.25; o.lShZ = .12; o.rShZ = -.12;
+      const a = p.pedal ?? 0; o.lHip = -1.05 + Math.sin(a) * .3; o.rHip = -1.05 - Math.sin(a) * .3; o.headX = -.05; break; }
+    // alt-tabbed: hands back on the keys, looking over one shoulder, then the other (worried; people/hazel.js)
+    case 'peek': sit(); o.lean = .12; o.lShX = o.rShX = -.6; o.lEl = o.rEl = -1.2; o.headX = -.05; o.headY = Math.sin(T * 4.5) * 1.0; break;
     case 'eat': sit(); o.lean = .1; o.lShX = -.5; o.rShX = -.55 - Math.max(0, Math.sin(T * 1.3)) * .5; o.rEl = -1.3 - Math.max(0, Math.sin(T * 1.3)) * .8; o.lEl = -1.1; o.headX = .15; break;
     case 'listen': sit(); o.lean = -.03; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -1.0; o.headX = Math.sin(T * 2.1) * .04; break;
     case 'listenSit': sit(); o.lean = -.02; o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.9; break;

@@ -5,6 +5,7 @@ import { Vec3 } from '../vec3';
 import { walkPx } from '../nav/grid';
 import { seatUnusable } from '../world/objects';
 import { interactables, type Spot } from './interactables';
+import { HAZEL_NAME } from './hazel';
 import { isHelper } from './person';
 import { onBreak } from './schedule';
 import { addLog, people, sim } from './state';
@@ -34,15 +35,17 @@ export function placeNow(p: Person, task: Task): void {
   endTask(p); const s = task.spot; if (s.shared) s.occupant = p;
   p.task = task; p.pos.copy(s.pos); p.face = p.faceGoal = s.face; arrive(p);
 }
+const HAZEL_MAX = 12; // sim minutes (30 s at 1x): the longest Hazel does anything she picked herself
+const isHazel = (p: Person): boolean => p.name === HAZEL_NAME;
 export function arrive(p: Person): void {
   const t = p.task!; p.state = 'doing'; p.path = null;
   p.pos.copy(t.spot.pos); p.faceGoal = t.spot.face;
-  p.until = t.until ?? sim.t + (t.dur ?? 0);
+  p.until = t.until ?? sim.t + (isHazel(p) ? Math.min(t.dur ?? 0, HAZEL_MAX) : t.dur ?? 0); // Hazel never stays long
   if (t.onStart) t.onStart(p);
 }
 const free = (list: Spot[]): Spot[] => shuffle(list.filter(s => !s.occupant));
 
-export function goWork(p: Person): boolean { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: Math.max(4, Math.min(rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
+export function goWork(p: Person): boolean { return goDo(p, { kind: 'work', cat: 'work', anim: 'type', spot: p.slot!, dur: Math.max(4, Math.min(isHazel(p) ? rnd(5, 12) : rnd(16, 48), p.leaveAt - sim.t + 2)) }); }
 function coffee(p: Person): boolean {
   const s = free(interactables.of('counter'))[0]; if (!s) return false;
   const ok = goDo(p, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: s, dur: rnd(2, 4), onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
@@ -190,6 +193,7 @@ export function chooseNext(p: Person): void {
   const t = sim.t;
   if (t >= p.leaveAt) return leave(p);
   if (!p.hadLunch && t >= p.lunchAt && t < p.lunchAt + 90) { p.hadLunch = true; if (lunch(p)) return; }
+  if (isHazel(p) && hazelNext(p)) return;
   if (onBreak(p, t)) { if (play(p)) return; }
   else if (p.task && p.task.kind !== 'work') { if (goWork(p)) return; }
   else if (work(p)) return;
@@ -239,6 +243,16 @@ export function cleanNext(p: Person): void {
   const show = (q: Person, on: boolean): void => { if (c.prop) q.props[c.prop] = on; };
   if (spot && goDo(p, { kind: 'clean', cat: 'clean', anim: c.anim, spot, dur: rnd(4, 10), onStart: q => show(q, true), onEnd: q => show(q, false) })) return;
   p.until = sim.t + .5; // nothing free right now: try again shortly (step.ts waits for it while she is idle)
+}
+
+/**
+ * Hazel (sim/hazel.ts) is never still for long: after a short stint at her desk she is always off doing something, games included at any time of
+ * day, and after that it is back to her desk or straight on to the next.
+ */
+function hazelNext(p: Person): boolean {
+  if (p.task?.kind !== 'work' && random() < .5) return goWork(p);
+  if (random() < .05 && bucketRun(p)) return true;
+  return shuffle([coffee, snack, chat, booth, whiteboard, sinkTrip, storageTrip, barTrip, lockerTrip, gameBreak, golfBreak, dartsBreak, musicBreak, sofaBreak, tvBreak]).some(f => f(p));
 }
 
 /** Working hours: mostly staying at the desk, sometimes an errand that is part of work. */

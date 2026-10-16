@@ -242,11 +242,11 @@ describe('what version 4 adds: who the employee is, their shift, the toilet run,
   it('employee details, the shift and the toilet run come back', () => {
     runningWorld(3, 4000);
     const p = people.filter(hasSlot)[5];
-    Object.assign(p, { userId: 'u-5', title: 'UI/UX Department', department: 'UI/UX', shift: { code: 'NIGHT', start: 21 * 60, end: 6 * 60 }, shiftStart: 21 * 60, absent: true, toiletUntil: 700 });
+    Object.assign(p, { userId: 'u-5', title: 'UI/UX', department: 'UI/UX', shift: { code: 'NIGHT', start: 21 * 60, end: 6 * 60 }, shiftStart: 21 * 60, absent: true, toiletUntil: 700 });
     const saved = viaJson();
     restoreWorld(parseSavedWorld(saved));
     const back = people.find(q => q.id === p.id)!;
-    expect(back).toMatchObject({ userId: 'u-5', title: 'UI/UX Department', department: 'UI/UX', shift: { code: 'NIGHT', start: 1260, end: 360 }, shiftStart: 1260, absent: true, toiletUntil: 700 });
+    expect(back).toMatchObject({ userId: 'u-5', title: 'UI/UX', department: 'UI/UX', shift: { code: 'NIGHT', start: 1260, end: 360 }, shiftStart: 1260, absent: true, toiletUntil: 700 });
     expect(viaJson()).toEqual(saved);
   });
   it('the clock mode is kept (Live stays Live over a restart)', () => {

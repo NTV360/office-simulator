@@ -7,21 +7,76 @@ import { sph, stdMat } from './gfx.js';
 
 const ray = new THREE.Raycaster(), back = new THREE.Vector3(0, 0, -1), from = new THREE.Vector3();
 
-// A furious face over the pack's own: slanted brows, a frown and flushed cheeks. `faceMeshes` are the
-// head's skin meshes; the character stands at rest at the origin facing +z, so parts are placed in world
-// space on the face surface (found with a ray from the front) and then attached to the head.
-function addAngry(head, faceMeshes) {
+// Hazel's faces (the pack's own eyes, brows and mouth are taken off first, see rig.js hazelize). Each is a group
+// on the head and only one shows at a time (rig.js showFace):
+// - angry: slanted brows, narrowed eyes, a hard frown and flushed cheeks (the default);
+// - laugh: raised brows, eyes squeezed shut, a wide open mouth;
+// - worried: brows up in the middle, wide eyes, a wobbly mouth and a drop of sweat.
+// `faceMeshes` are the head's skin meshes; the character stands at rest at the origin facing +z, so parts are
+// placed in world space on the face surface (found with a ray from the front) and then attached.
+function addFaces(head, faceMeshes) {
   const face = new THREE.Box3(); faceMeshes.forEach(m => face.expandByObject(m));
   const w = face.max.x - face.min.x, h = face.max.y - face.min.y, cy = face.min.y + h * .5;
-  const onFace = (m, x, y, out = .006) => {
-    ray.set(from.set(x, y, face.max.z + 1), back);
-    const hit = ray.intersectObjects(faceMeshes, false)[0];
-    m.position.set(x, y, (hit ? hit.point.z : face.max.z) + out); head.attach(m);
+  const dark = stdMat('#1d1714', .6), white = stdMat('#ffffff', .4), lip = stdMat('#6b2a2a', .6), blush = stdMat('#d9705f', .8);
+  const box = (x, y, m) => new THREE.Mesh(boxGeo(x, y, .01), m);
+  const group = build => {
+    const g = new THREE.Group(); head.add(g);
+    build((m, x, y, out = .006) => {
+      ray.set(from.set(x, y, face.max.z + 1), back);
+      const hit = ray.intersectObjects(faceMeshes, false)[0];
+      m.position.set(x, y, (hit ? hit.point.z : face.max.z) + out); g.attach(m);
+    });
+    return g;
   };
-  const bm = stdMat('#1d1714', .6);
-  [-1, 1].forEach(sd => { const b = new THREE.Mesh(boxGeo(w * .26, h * .06, .012), bm); b.rotation.z = sd * .5; onFace(b, sd * w * .2, cy + h * .2); });
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(w * .09, h * .02, 6, 12, Math.PI), stdMat('#6b2a2a', .6)); onFace(mouth, 0, cy - h * .24);
-  [-1, 1].forEach(sd => { const c = new THREE.Mesh(sph(.018, 8, 6), stdMat('#d9705f', .8)); c.scale.set(w * 5, w * 3, 1.5); onFace(c, sd * w * .3, cy - h * .08, 0); });
+  const brows = (on, tilt, y) => [-1, 1].forEach(sd => { const b = box(w * .26, h * .06, dark); b.rotation.z = sd * tilt; on(b, sd * w * .2, cy + y); });
+  const cheeks = on => [-1, 1].forEach(sd => { const c = new THREE.Mesh(sph(.018, 8, 6), blush); c.scale.set(w * 5, w * 3, 1.5); on(c, sd * w * .3, cy - h * .08, 0); });
+
+  const angry = group(on => {
+    brows(on, .5, h * .2);
+    [-1, 1].forEach(sd => { on(box(w * .2, h * .08, white), sd * w * .2, cy + h * .08, .004); on(box(w * .08, h * .08, dark), sd * w * .18, cy + h * .08, .009); });
+    on(box(w * .28, h * .045, lip), 0, cy - h * .22);
+    [-1, 1].forEach(sd => on(box(w * .06, h * .09, lip), sd * w * .15, cy - h * .26));
+    cheeks(on);
+  });
+  const laugh = group(on => {
+    brows(on, -.15, h * .26);
+    // eyes shut tight: a ^ on each side
+    [-1, 1].forEach(sd => [-1, 1].forEach(k => { const e = box(w * .12, h * .04, dark); e.rotation.z = -k * .6; on(e, sd * w * .2 + k * w * .045, cy + h * .09); }));
+    on(box(w * .34, h * .16, stdMat('#3a1414', .7)), 0, cy - h * .22);
+    on(box(w * .2, h * .05, stdMat('#d95b5b', .7)), 0, cy - h * .27, .009);
+    on(box(w * .3, h * .035, white), 0, cy - h * .155, .009);
+    cheeks(on);
+  });
+  const worried = group(on => {
+    brows(on, -.45, h * .24);
+    [-1, 1].forEach(sd => { on(box(w * .18, h * .14, white), sd * w * .2, cy + h * .08, .004); on(box(w * .06, h * .07, dark), sd * w * .2, cy + h * .07, .009); });
+    [-2, -1, 0, 1, 2].forEach(i => on(box(w * .07, h * .035, lip), i * w * .06, cy - h * (.23 + (i % 2 ? .025 : 0))));
+    const drop = new THREE.Mesh(sph(.02, 8, 6), stdMat('#8fd0f0', .2)); drop.scale.set(.8, 1.3, .8); on(drop, w * .4, cy + h * .28, .01);
+  });
+  laugh.visible = worried.visible = false;
+  return { angry, laugh, worried };
 }
 
-export { addAngry };
+// The Figma logo printed on the middle of her shirt (Hazel, rig.js): the five shapes drawn on a canvas, on a
+// thin plane just in front of the chest. `chest` is the torso's box (world space, standing at rest facing +z).
+let figmaTex = null;
+function figmaTexture() {
+  if (figmaTex) return figmaTex;
+  const c = document.createElement('canvas'); c.width = 128; c.height = 192;
+  const g = c.getContext('2d'), u = 64, r = 32, shape = (color, x, y, radii) => { g.fillStyle = color; g.beginPath(); g.roundRect(x * u, y * u, u, u, radii); g.fill(); };
+  shape('#f24e1e', 0, 0, [r, 0, 0, r]);   // top left, red
+  shape('#ff7262', 1, 0, [0, r, r, 0]);   // top right, orange
+  shape('#a259ff', 0, 1, [r, 0, 0, r]);   // middle left, purple
+  shape('#0acf83', 0, 2, [r, 0, r, r]);   // bottom, green
+  g.fillStyle = '#1abcfe'; g.beginPath(); g.arc(1.5 * u, 1.5 * u, r, 0, Math.PI * 2); g.fill(); // middle right, the blue dot
+  figmaTex = new THREE.CanvasTexture(c); figmaTex.colorSpace = THREE.SRGBColorSpace; figmaTex.anisotropy = 4;
+  return figmaTex;
+}
+function addFigma(torso, chest) {
+  const h = (chest.max.y - chest.min.y) * .38, logo = new THREE.Mesh(new THREE.PlaneGeometry(h * 2 / 3, h), new THREE.MeshStandardMaterial({ map: figmaTexture(), transparent: true, roughness: .8 }));
+  logo.position.set((chest.min.x + chest.max.x) / 2, chest.min.y + (chest.max.y - chest.min.y) * .55, chest.max.z + .003);
+  torso.attach(logo);
+  return logo;
+}
+
+export { addFaces, addFigma };

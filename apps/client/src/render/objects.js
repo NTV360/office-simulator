@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { S, closestPointOnItem, objects, people, simEvents } from '@office/shared';
 import { M } from './materials.js';
 import { scene } from './renderer.js';
-import { barStool, drawPlant, officeChair, woodChair } from '../world/furniture/basics.js';
+import { barStool, drawPlant, highChair, officeChair, woodChair } from '../world/furniture/basics.js';
 import { drawBarTable } from '../world/furniture/bar.js';
 import { drawCabinet } from '../world/furniture/cabinet.js';
 import { drawGuitarStand, drawPiano, drawPianoStand, drawStoolLow } from '../world/furniture/music.js';
@@ -25,6 +25,7 @@ import { box, cyl } from '../world/helpers.js';
 const PREFABS = {
   'chair-office:0': g => officeChair(g, M.chairSeat),
   'chair-office:1': g => officeChair(g, M.chairSeat2),
+  'chair-office:2': highChair, // Hazel's baby high chair
   'chair-wood:0': woodChair,
   'stool-bar:0': barStool,
   'mug:0': g => { cyl(g, .04, .035, .1, M.white, 0, .05, 0, 10); },

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setSeed } from '../util';
 import { ensureHelper, initDay } from './day';
 import { makeHelper, removeStaff, setStaffCount } from './factory';
+import { HAZEL_NAME } from './hazel';
 import { HELPER_NAME } from './helper';
 import { hasSlot, isAi, isHelper } from './person';
 import { parseSavedWorld, restoreWorld, serializeWorld } from './persist';
@@ -168,7 +169,7 @@ describe('the dining TV', () => {
         const t = p.task;
         if (!t || seen.has(t)) continue;
         seen.add(t);
-        if (t.kind === 'tv') { tv++; expect(t.spot.kind).toBe('dining'); expect(t.cat).toBe('break'); expect(onBreak(p, sim.t), `${p.name} started a movie at ${sim.t.toFixed(1)}, not on a break`).toBe(true); }
+        if (t.kind === 'tv') { tv++; expect(t.spot.kind).toBe('dining'); expect(t.cat).toBe('break'); if (p.name !== HAZEL_NAME) expect(onBreak(p, sim.t), `${p.name} started a movie at ${sim.t.toFixed(1)}, not on a break`).toBe(true); }
       }
     }
     expect(tv).toBeGreaterThan(5);

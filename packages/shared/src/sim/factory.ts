@@ -3,6 +3,7 @@ import { clampSlotCount } from '../server-defaults';
 import { TAU, random, rnd, seededRandom } from '../util';
 import { FIRST, LAST, SCREEN_VARIANTS, type ScreenKind } from './data';
 import { simEvents } from './events';
+import { HAZEL_DESK } from '../layout/desks';
 import { HAZEL_NAME, applyHazel } from './hazel';
 import { helperIdentity } from './helper';
 import { liveSchedule, usesAttendance } from './live';
@@ -20,7 +21,7 @@ import { releaseCharacterPerson } from './character-hold-actions';
 import { createInventory } from './inventory';
 
 /** What the choice of a desk depends on. */
-type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'>;
+type DeskWish = Pick<Who, 'desk' | 'department' | 'userId'> & { name?: string };
 
 /** Who is about to be created: always a real roster employee. */
 interface Who { name: string; role: string; title: string; userId: string; department: string | null; desk: string | null; shift: Shift | null; photo?: string | null; spec: CharacterSpec }
@@ -56,15 +57,15 @@ function createPerson(who: Who | ReturnType<typeof helperIdentity>, slot: Spot |
 }
 
 /**
- * A real employee: their name, department (shown as their job) and their saved look (or a generated one). Hazel, if she works here,
- * keeps her furious face.
+ * A real employee: their name, department (shown as their job) and their saved look (or a generated one). Hazel, if she works here, always has her
+ * own look (a smaller character with her furious face) and her own desk (HAZEL_DESK).
  */
 function employee(e: (typeof roster.list & object)[number]): Who {
   const role = simRole(e.department), title = jobTitle(e);
   const hazel = fullName(e).toLowerCase() === HAZEL_NAME.toLowerCase(), name = hazel ? HAZEL_NAME : fullName(e);
   let spec = e.character ? normalizeSpec(e.character) : randomSpec(role, seededRandom(e.userId)); // (the same look on every load)
-  if (hazel) spec = e.character ? normalizeSpec({ ...e.character, angry: true }) : applyHazel().spec;
-  return { name, role, title, userId: e.userId, department: e.department, desk: e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
+  if (hazel) spec = applyHazel().spec;
+  return { name, role, title, userId: e.userId, department: e.department, desk: hazel ? HAZEL_DESK : e.desk, shift: e.shift ?? null, photo: e.photo ?? null, spec };
 }
 
 /** The next employee not yet in the office who has a desk to go to (one without a free desk is skipped). */
@@ -86,9 +87,11 @@ function nextSeated(): { who: Who; seat: Spot } | null {
  */
 function seatFor(who: DeskWish): Spot | null {
   const chosen = new Set((roster.list ?? []).filter(e => e.desk && e.userId !== who.userId).map(e => e.desk));
+  const hers = who.name === HAZEL_NAME;
+  if (!hers) chosen.add(HAZEL_DESK); // Hazel's high chair is hers
   const open = (s: Spot) => !s.owner && !chosen.has(s.deskId ?? '');
   const mayUse = (s: Spot) => !s.department || s.department === who.department; // the HR office is for HR, even if someone asks for a desk in it
-  return deskPool.find(s => who.desk && s.deskId === who.desk && !s.owner && mayUse(s))
+  return deskPool.find(s => who.desk && s.deskId === who.desk && !s.owner && mayUse(s) && (hers || s.deskId !== HAZEL_DESK))
     ?? deskPool.find(s => open(s) && !!s.department && s.department === who.department)
     ?? deskPool.find(s => open(s) && !s.department) ?? null;
 }
@@ -153,17 +156,19 @@ export function applyEmployee(p: Person, e: Employee): boolean {
   set('title', jobTitle(e)); set('department', e.department); set('role', simRole(e.department)); set('photo', e.photo ?? null);
   const a = p.shift ?? null, b = e.shift;
   if (a === null || b === null ? a !== b : a.code !== b.code || a.start !== b.start || a.end !== b.end) { p.shift = b; changed = true; }
-  if (e.character && p.owner === undefined) {
-    const spec = normalizeSpec(hazel ? { ...e.character, angry: true } : e.character);
+  if ((hazel || e.character) && p.owner === undefined) {
+    const spec = hazel ? applyHazel().spec : normalizeSpec(e.character);
     if (JSON.stringify(spec) !== JSON.stringify(p.spec)) { p.spec = spec; changed = true; }
   }
   if (changed) simEvents.emit('personUpdated', p);
   const currentAllowed = p.slot && (!p.slot.department || p.slot.department === e.department);
-  const requested = e.desk ? seatById(e.desk) : null;
+  const wish = hazel ? HAZEL_DESK : e.desk === HAZEL_DESK ? null : e.desk; // (her desk is hers alone)
+  const requested = wish ? seatById(wish) : null;
   const requestedAllowed = requested && (!requested.department || requested.department === e.department);
-  const wanted = e.desk
-    ? requestedAllowed ? requested : seatFor({ userId: e.userId, department: e.department, desk: null })
-    : currentAllowed ? p.slot : seatFor({ userId: e.userId, department: e.department, desk: null });
+  const name = hazel ? HAZEL_NAME : undefined;
+  const wanted = wish
+    ? requestedAllowed ? requested : seatFor({ userId: e.userId, department: e.department, desk: null, name })
+    : currentAllowed && p.slot?.deskId !== HAZEL_DESK ? p.slot : seatFor({ userId: e.userId, department: e.department, desk: null, name });
   if (wanted && wanted !== p.slot) {
     const other = wanted.owner as Person | null | undefined;
     if (!other || (isAi(other) && other.owner === undefined)) {

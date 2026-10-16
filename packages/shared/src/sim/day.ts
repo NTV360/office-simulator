@@ -1,15 +1,16 @@
 import { random, rnd, shuffle } from '../util';
 import { makeHelper, makeStaff, scheduleDay } from './factory';
 import { seatUnusable } from '../world/objects';
-import { interactables } from './interactables';
+import { interactables, type Spot } from './interactables';
 import { live, usesAttendance } from './live';
 import { isAi, isHelper } from './person';
+import { newClass } from './meetings';
 import { roster } from './roster';
 import { DAY_START } from './schedule';
 import { addLog, meetings, people, sim } from './state';
 import { ENTRY } from './spots';
 import { cleanNext, endTask, goWork, lockerTrip, placeNow, putBucketBack, whiteboard } from './tasks';
-import type { Meeting, Person } from './types';
+import type { Meeting, Person, Task } from './types';
 
 /* ---------- Day cycle ---------- */
 export function phaseName(t: number): string {
@@ -70,18 +71,24 @@ export function ensureHelper(): void {
 export function initDay(staff: number = roster.list?.length ?? 0): void {
   populate(staff);
   ensureHelper(); // our helper, cleaning
-  // kick things off mid-morning (working hours, so no games): a training, a sync, a call, coffee and a whiteboard discussion (only if the
+  // kick things off mid-morning (working hours, so no games): a coding class, a sync, a call, coffee and a whiteboard discussion (only if the
   // day starts during office hours)
   if (sim.t > 9 * 60 + 15 && sim.t < 17 * 60) {
     const here = () => shuffle(people.filter(p => p.state === 'doing' && p.task!.kind === 'work'));
-    const meet = (room: number, n: number, topic: string, mins: number) => {
-      const m: Meeting = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic };
-      const seats = interactables.conf(room).filter(s => !seatUnusable(s));
-      n = Math.min(n, seats.length); if (n < 2) return;
-      here().slice(0, n).forEach((p, i) => { placeNow(p, { kind: 'meeting', cat: 'meeting', anim: 'listen', spot: seats[i], until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } }); m.members.push(p); });
-      meetings.push(m); addLog(`${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);
+    // Conference 1 is the classroom: its meeting is a coding class with the first person teaching at the front
+    const meet = (room: number, n: number, topic: string, mins: number, lesson: number | null = null) => {
+      const m: Meeting = { room, start: sim.t, end: sim.t + mins, members: [], speaker: null, swap: 0, topic, lesson, teacher: null };
+      const seats = interactables.conf(room).filter(s => !seatUnusable(s)), teach = lesson != null ? interactables.of('teach')[0] : undefined;
+      n = Math.min(n, seats.length + (teach ? 1 : 0)); if (n < 2) return;
+      const them = here().slice(0, n);
+      const task = (spot: Spot, anim: Task['anim']): Task => ({ kind: 'meeting', cat: 'meeting', anim, spot, until: m.end, meeting: m, onStart: q => { q.meeting = m; }, onEnd: q => { q.meeting = null; } });
+      const dev = them.findIndex(p => /dev|engineer/i.test(p.role)); if (dev > 0) them.unshift(...them.splice(dev, 1)); // a developer teaches if there is one
+      if (teach && them.length) { m.teacher = them.shift()!; placeNow(m.teacher, task(teach, 'present')); m.members.push(m.teacher); m.speaker = m.teacher; }
+      them.forEach((p, i) => { placeNow(p, task(seats[i], 'listen')); m.members.push(p); });
+      meetings.push(m);
+      addLog(m.teacher ? `${m.teacher.name.split(' ')[0]} started teaching ${topic} in Conference ${room} (${m.members.length})` : `${topic[0].toUpperCase() + topic.slice(1)} started in Conference ${room} (${m.members.length})`);
     };
-    meet(1, 6, 'training session', 30); meet(3, 4, 'client sync', 22);
+    { const c = newClass(); meet(1, 7, c.topic, 30, c.lesson); } meet(3, 4, 'client sync', 22);
     const a = here()[0]; if (a) placeNow(a, { kind: 'phone', cat: 'phone', anim: 'phone', spot: interactables.of('booth')[1], dur: 12, onStart: q => { q.props.phone = true; }, onEnd: q => { q.props.phone = false; } });
     const b = here()[0]; if (b) placeNow(b, { kind: 'coffee', cat: 'pantry', anim: 'drink', spot: interactables.of('counter')[0], dur: 5, onStart: q => { q.coffees++; q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });
     const c = here()[0]; if (c) placeNow(c, { kind: 'bar', cat: 'pantry', anim: 'drinkSit', spot: interactables.of('bar')[0], dur: 6, onStart: q => { q.props.mug = true; }, onEnd: q => { q.props.mug = false; } });

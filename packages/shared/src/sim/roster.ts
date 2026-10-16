@@ -1,4 +1,6 @@
 import type { CharacterSpec } from '../character/spec';
+import { HAZEL_DESK } from '../layout/desks';
+import { HAZEL_NAME } from './hazel';
 import type { Shift } from './schedule';
 
 // The authoritative staff list: every autonomous staff person comes from these employee records. A null list means the roster is unavailable;
@@ -48,6 +50,9 @@ export interface DeskAllocationEmployee {
   userId: string;
   department?: string | null;
   desk?: string | null;
+  /** Their name, so that Hazel is found: she always gets HAZEL_DESK, and nobody else does. */
+  firstName?: string;
+  lastName?: string;
 }
 
 /** A desk identifier and the department allowed to use it, if it is restricted. */
@@ -69,7 +74,8 @@ const deskIdOrder = (a: string, b: string): number => {
  * Allocate desks without depending on either input order or the order desks were registered.
  * Explicit eligible claims win first; remaining eligible restricted desks then ordinary desks
  * are assigned by canonical employee id order. `blockedDeskIds` represents desks occupied by
- * account/human-controlled people and is never reassigned.
+ * account/human-controlled people and is never reassigned. Hazel's desk (HAZEL_DESK, with her high chair) is hers alone: she gets it, and with her
+ * not on the list it stays empty.
  */
 export function allocateDesks(
   employees: readonly DeskAllocationEmployee[],
@@ -93,6 +99,9 @@ export function allocateDesks(
   const used = new Set(blockedDeskIds);
   const assignments = new Map<string, string>();
   const byId = new Set<string>();
+  const hazel = orderedEmployees.find(e => `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim().toLowerCase() === HAZEL_NAME.toLowerCase());
+  if (hazel && orderedDesks.some(d => d.deskId === HAZEL_DESK) && !used.has(HAZEL_DESK)) { assignments.set(hazel.userId, HAZEL_DESK); byId.add(hazel.userId); }
+  used.add(HAZEL_DESK); // (taken for her, or kept for her)
   const eligible = (employee: DeskAllocationEmployee, desk: DeskAllocationDesk): boolean =>
     !desk.department || desk.department === employee.department;
 
@@ -120,12 +129,16 @@ export function allocateDesks(
   return assignments;
 }
 
-// What the person card says they are: "UI/UX Department", "HR Department", or "Intern UI/UX".
-const SHORT: Record<string, string> = { 'Human Resources': 'HR', 'Internet of Things (IoT)': 'IoT', 'Frontend (FE)': 'Frontend' };
+// What the person card says they are: their department, abbreviated ("UI/UX", "RND", "Software Dev"), or "Intern QA".
+const SHORT: Record<string, string> = {
+  'Human Resources': 'HR', 'Internet of Things (IoT)': 'IoT', 'Frontend (FE)': 'Frontend', 'Research and Development': 'RND',
+  'Software Development': 'Software Dev', 'Website Development': 'Web Dev', 'Quality Assurance': 'QA', 'Project Management': 'PM',
+  'Graphics Design': 'Graphics',
+};
 export function jobTitle(e: Pick<Employee, 'department' | 'intern'>): string {
   const dept = e.department ? SHORT[e.department] ?? e.department : null;
   if (e.intern) return dept ? `Intern ${dept}` : 'Intern';
-  return dept ? `${dept} Department` : 'Staff';
+  return dept ?? 'Staff';
 }
 
 /** Employees not yet in the office, in list order. */

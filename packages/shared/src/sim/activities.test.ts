@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setSeed } from '../util';
 import { initDay } from './day';
+import { HAZEL_NAME } from './hazel';
+import { LESSONS, classTopic, lessonOf } from './lessons';
 import { hasSlot } from './person';
 import { roster, type Employee } from './roster';
 import { onBreak } from './schedule';
@@ -36,13 +38,42 @@ function watchDay(seed: number, each?: (started: Started[]) => void): Started[] 
 beforeEach(() => { roster.list = null; });
 afterEach(() => { roster.list = null; setSeed(null); });
 
+describe('the classroom', () => {
+  it('Conference 1 holds coding classes: a teacher at the front, the lesson named by the topic, and the teacher is the one speaking', () => {
+    let classes = 0;
+    for (const seed of [1, 2, 3]) {
+      setSeed(seed); buildTestLayout({ desks: 40, hr: 6 }); initDay();
+      const seen = new Set<unknown>(), spoke = new Set<unknown>();
+      while (sim.day === 1) {
+        stepSim(DT);
+        for (const m of meetings) {
+          if (m.room !== 1) { expect(lessonOf(m.topic), m.topic).toBe(null); continue; }
+          expect(m.lesson, m.topic).toBe(lessonOf(m.topic)); expect(m.lesson).not.toBe(null);
+          expect(m.teacher && m.members.includes(m.teacher)).toBeTruthy();
+          const seated = m.teacher!.state === 'doing' && m.teacher!.task?.meeting === m;
+          expect(m.speaker === null || m.speaker === m.teacher, 'only the teacher speaks').toBe(true);
+          if (seated) { expect(m.teacher!.task!.spot.kind).toBe('teach'); spoke.add(m); }
+          if (!seen.has(m)) { seen.add(m); classes++; }
+        }
+      }
+      expect(spoke.size, `seed ${seed}: every class was taught from the front`).toBe(seen.size);
+    }
+    expect(classes).toBeGreaterThan(2);
+  });
+  it('every lesson has a topic that names it, and no other meeting has one', () => {
+    for (let i = 0; i < LESSONS.length; i++) expect(lessonOf(classTopic(i))).toBe(i);
+    expect(lessonOf('client sync')).toBe(null);
+  });
+});
+
 describe('breaks and work', () => {
   it('games, golf, darts, the music corner and the sofa are only ever started on a break', () => {
     for (const seed of [1, 2, 3]) {
       const started = watchDay(seed);
       const play = started.filter(s => PLAY.includes(s.task.kind));
       expect(play.length, `seed ${seed}: people do play on their breaks`).toBeGreaterThan(10);
-      for (const s of play) expect(s.onBreak, `seed ${seed}: ${s.p.name} started ${s.task.kind} at ${s.t.toFixed(1)} (not on a break)`).toBe(true);
+      for (const s of play.filter(x => x.p.name !== HAZEL_NAME)) expect(s.onBreak, // (Hazel plays at any time of day: sim/tasks.ts hazelNext)
+         `seed ${seed}: ${s.p.name} started ${s.task.kind} at ${s.t.toFixed(1)} (not on a break)`).toBe(true);
     }
   });
   it('a night shift plays on its own breaks, not the day shift\'s', () => {

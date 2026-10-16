@@ -20,6 +20,17 @@ A worked example is at the bottom: the "angry hazel" commit (`eb60c07`) was port
 | `src/character/spec.js` | `packages/shared/src/character/spec.ts` (the pack itself stays in `apps/client/src/character/pack/`; its option lists reach shared through `npm run pack:dump`) |
 | `server/**` (Express: employees, attendance, characters) | `apps/server/src/employees/` and `auth/character.controller.ts` (NestJS; see [SUPABASE.md](SUPABASE.md)) |
 
+Files that `main` has as one piece and this branch splits (a feature of `main` is found in two places here):
+
+| In `main` | Here |
+|---|---|
+| `src/people/hazel.js` (her look, her movies, her tricycle and chick) | her identity, look and desk: `packages/shared/src/sim/hazel.ts` and `layout/desks.ts` (`HAZEL_DESK`); her extras, drawn on every page from her mirrored state: `apps/client/src/people/{hazel,hazelRide,chick}.js` and `world/furniture/trike.js` (nothing is simulated or sent for them) |
+| `src/render/screens.js` `LESSONS` | `packages/shared/src/sim/lessons.ts` (the simulation names a class by its lesson; the page draws the code) |
+| `spot.area` on a desk (the desk's size, for clicking it and for the chick) | `deskAreas`, a map in `apps/client/src/world/furniture/desks.js` (a spot is plain layout data and holds no such field) |
+| `src/ui/attendance.js` and `server/routes/attendance.js` `/attendance/summary` | `apps/client/src/ui/attendance.js`; `apps/server/src/employees/attendance.controller.ts` (signed-in players only, names only) |
+| `src/ui/chat.js` (Socket.IO chat) | not ported: the server-authoritative chat is `apps/client/src/net/chat.js`; its draggable history panel is `net/chat-layout.js` |
+| the high chair at Hazel's desk (drawn as furniture) | the office chair item's third look (`render/objects.js`, `'chair-office:2'`), so it is a chair like any other |
+
 Two things change in how you write it: anything the simulation does must be **seeded** (`random()` from shared, never `Math.random`) and must **work the same on the server and in the browser**, and anything other people must see has to travel over the protocol (see [MULTIPLAYER-HOW-TO.md](MULTIPLAYER-HOW-TO.md)).
 
 ## Quick procedure

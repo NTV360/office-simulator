@@ -32,7 +32,7 @@ export interface PersonInfo {
   id: number;
   name: string;
   role: string;
-  /** What the card says they are ("UI/UX Department"); the role when they have no better. */
+  /** What the card says they are ("UI/UX", "Intern QA"); the role when they have no better. */
   title: string;
   /** '' when they have none. */
   department: string;

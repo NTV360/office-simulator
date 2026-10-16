@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { follow, following, setView, viewId } from '../camera/controller.js';
-import { VERB, isHelper } from '@office/shared';
+import { NEVER, VERB, isHelper } from '@office/shared';
 import { isLocalPlayer } from '../player/player.js';
 import { scene } from '../render/renderer.js';
 import { fillAvatar } from './avatar.js';
@@ -10,13 +10,27 @@ import { $ } from './dom.js';
 let selected = null;
 const selRing = new THREE.Mesh(new THREE.RingGeometry(.4, .47, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false }));
 
+// The card sits in the bottom-left corner, lifted above the dock only when they would overlap (phones: the stylesheet places it). The chat panel
+// (net/chat.js) stands above the card while it is open: `--card-top` is how far up the card reaches from the bottom of the window.
+function placeCard() {
+  const card = $('person'), root = document.documentElement.style;
+  card.style.bottom = '';
+  if (card.hidden) { root.removeProperty('--card-top'); return; }
+  if (!matchMedia('(max-width:760px)').matches) {
+    const dock = $('dock').getBoundingClientRect(), r = card.getBoundingClientRect();
+    const clash = dock.width > 0 && r.left < dock.right && r.right > dock.left; // a hidden dock has no size
+    card.style.bottom = clash ? `${Math.round(innerHeight - dock.top + 10)}px` : '16px';
+  }
+  root.setProperty('--card-top', `${Math.round(innerHeight - card.getBoundingClientRect().top + 10)}px`);
+}
 function select(p) {
   selected = p; $('person').hidden = !p; selRing.visible = !!p;
   if (p) $('pAvatar').dataset.key = ''; // (renderPerson fills it)
   if (!p && viewId() === 'follow') setView('free');
   renderPerson();
 }
-const fmt = t => { const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
+// Sim minutes as HH:MM. No time (still clocked in, not in today) shows as a dash.
+const fmt = t => { if (!Number.isFinite(t) || t >= NEVER) return '—'; const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (isLocalPlayer(p)) return 'Controlled by you';
   if (p.toiletUntil) return 'Deploying to the toilet';
@@ -28,7 +42,7 @@ function statusText(p) {
   const where = t.spot?.place;
   switch (t.kind) {
     case 'work': return going ? `Heading back to ${where}` : p.chatWith ? `Chatting with ${p.chatWith.name.split(' ')[0]} at ${where}` : `${VERB[p.role]} at ${where}`;
-    case 'meeting': return going ? `Walking to ${where} for ${t.meeting.topic}` : t.meeting.speaker === p ? `Presenting in ${where} (${t.meeting.topic})` : `In ${t.meeting.topic}, ${where}`;
+    case 'meeting': return going ? `Walking to ${where} for ${t.meeting.topic}` : t.spot?.kind === 'teach' ? `Teaching the ${t.meeting.topic} in ${where}` : t.meeting.speaker === p ? `Presenting in ${where} (${t.meeting.topic})` : `In ${t.meeting.topic}, ${where}`;
     case 'phone': return going ? `Looking for a quiet booth` : `On a call in ${where}`;
     case 'coffee': return going ? 'Getting coffee' : 'Making coffee at the counter top';
     case 'bar': return going ? 'Taking coffee to the bar table' : 'Having coffee at the bar table';
@@ -46,7 +60,7 @@ function statusText(p) {
     case 'chat': return going ? `Walking over to ${t.partner.name.split(' ')[0]}` : `Chatting with ${t.partner.name.split(' ')[0]}`;
     case 'clean': return going ? 'Heading off to clean' : { wipe: `Wiping the table at ${where}`, windowWipe: 'Wiping the windows', mop: 'Mopping the floor' }[t.anim] ?? `Tidying up ${where}`;
     case 'tv': return going ? 'Heading to the dining area to watch TV' : 'Watching a movie in the dining area';
-    case 'snack': return going ? 'Getting a snack' : 'Grabbing a snack from the cabinet';
+    case 'snack': return going ? 'Getting a snack' : `Grabbing a snack from ${where}`;
     case 'snackDesk': return going ? `Taking a snack back to ${where}` : `Having a snack at ${where}`;
     case 'whiteboard': return going ? 'Heading to the whiteboard' : t.anim === 'present' ? 'Leading a whiteboard discussion' : `Discussing at the whiteboard with ${t.partner.name.split(' ')[0]}`;
     case 'bucket': return 'Running for the bucket';
@@ -64,8 +78,12 @@ function renderPerson() {
     if (a.dataset.key !== key) { a.dataset.key = key; fillAvatar(a, { name: p.name, photo: p.photo, color }); }
   }
   $('pStatus').textContent = statusText(p);
-  $('pMeta').textContent = `In ${p.arrivedAt ? fmt(p.arrivedAt) : '—'} · leaves ~${fmt(p.leaveAt)} · coffee ×${p.coffees}`;
+  // just the time in; nothing when they have not arrived (the status line already says so)
+  const inAt = p.arrivedAt && Number.isFinite(p.arrivedAt) && p.arrivedAt < NEVER ? p.arrivedAt : null;
+  $('pMeta').textContent = inAt === null ? '' : `Time in ${fmt(inAt)}`;
+  $('pMeta').hidden = inAt === null;
   $('pFollow').textContent = following() === p ? 'Following' : 'Follow';
+  placeCard();
 }
 
 
@@ -76,6 +94,7 @@ function initPerson() {
   scene.add(selRing);
   $('pFollow').onclick = () => { if (!selected || selected.state === 'away') return; follow(selected); renderPerson(); };
   $('pClose').onclick = () => select(null);
+  addEventListener('resize', placeCard);
 }
 
 export { fmt, renderPerson, selRing, select, selected, statusText, initPerson };

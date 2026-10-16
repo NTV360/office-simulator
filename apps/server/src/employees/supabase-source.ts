@@ -1,4 +1,4 @@
-import { PHOTO_URL, deskSeat, fromDbUtc, normalizeSpec, type AttendanceRecord, type Shift } from '@office/shared';
+import { PHOTO_URL, deskSeat, fromDbUtc, normalizeSpec, officeDate, type AttendanceRecord, type Shift } from '@office/shared';
 import type { ImportedEmployee } from './employee-store';
 
 // Reads the company's employee records (Supabase, through its REST interface) for the server to import. Read only, with the server-only secret
@@ -27,6 +27,8 @@ const MAX_ROWS = 20_000;
 const INTERN = /intern|ojt|trainee/i;
 /** How far back attendance is read: long enough to cover a night shift that started yesterday. */
 export const ATTENDANCE_WINDOW_HOURS = 20;
+/** How far back the "absent today" list reads: a day's clock-ins in office time (Manila is 8 hours ahead of UTC) can begin more than 20 hours ago. */
+export const ABSENT_WINDOW_HOURS = 26;
 
 // control characters, zero-width and bidi marks: never part of a name (a NUL makes the database refuse the row, the others fool the eye)
 const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g;
@@ -143,6 +145,20 @@ export class SupabaseSource {
     }
     if (skipped) this.log.warn(`${skipped} employee record${skipped === 1 ? '' : 's'} skipped (no valid id or name)`);
     return out;
+  }
+
+  /** Who has clocked in today (office time, from the last 26 hours of clock-ins), and what today's date is there. Ids only; no times leave this function. */
+  async clockedInToday(now: Date = new Date()): Promise<{ today: string; userIds: Set<string> }> {
+    const today = officeDate(now);
+    const since = new Date(now.getTime() - ABSENT_WINDOW_HOURS * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+    const data = await this.rows('attendances', `select=employee_id,clock_in&clock_in=gte.${encodeURIComponent(since)}`);
+    const userIds = new Set<string>();
+    for (const a of data) {
+      const id = typeof a.employee_id === 'string' && UUID.test(a.employee_id) ? a.employee_id.toLowerCase() : null;
+      const at = typeof a.clock_in === 'string' ? fromDbUtc(a.clock_in) : null;
+      if (id && at && !Number.isNaN(at.getTime()) && officeDate(at) === today) userIds.add(id);
+    }
+    return { today, userIds };
   }
 
   /** Each employee's latest attendance from the last 20 hours: who is clocked in (no clock-out), who has gone home. */

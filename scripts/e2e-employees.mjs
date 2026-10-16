@@ -96,7 +96,7 @@ try {
   });
   check('the person card shows the picture, or the initials when there is none', cards['Ana Lopez'].img === 'https://img.example.test/ana.png' && cards['Cat Dizon'].img === null && cards['Cat Dizon'].text === 'CD', JSON.stringify(cards));
   const titles = await watcher.page.evaluate(() => Object.fromEntries(window.__sim.people.map(p => [p.name, p.title])));
-  check('Eve is an intern, Ben is QA', titles['Eve Santos'] === 'Intern UI/UX' && titles['Ben Reyes'] === 'Quality Assurance Department', JSON.stringify(titles));
+  check('Eve is an intern, Ben is QA', titles['Eve Santos'] === 'Intern UI/UX' && titles['Ben Reyes'] === 'QA', JSON.stringify(titles));
   const hazel = await watcher.page.evaluate(() => { const h = window.__sim.people.find(p => p.name === 'Hazel Sellote'); return h && h.spec.angry; });
   check('Hazel is whoever has that name, with her furious face', hazel === true);
 
@@ -143,8 +143,9 @@ try {
   check('the watcher sees Gus come in and Ben go, and Ana renamed, while she is playing', !!names2 && names2.includes('Anna Lopez'), names2 ? names2.join() : 'no change');
   const stillMine = await me.page.evaluate(() => window.__sim.player.person.name);
   check('she is still the same person (now Anna Lopez)', stillMine === 'Anna Lopez', stillMine);
-  const empty = await (async () => { const keep = records.employees.splice(0); const r = await admin('POST', '/api/admin/import', {}); records.employees.push(...keep); return r; })();
-  check('an empty answer from the records is refused and nobody is removed', empty.status === 409 && (await (await fetch(base + '/api/world')).json()).staff === 6);
+  // (an empty answer is authoritative since the character-mechanics work: the company really has nobody. A list far shorter than the stored one is what is refused as a likely partial answer)
+  const empty = await (async () => { const keep = records.employees.splice(1); const r = await admin('POST', '/api/admin/import', {}); records.employees.push(...keep); return r; })();
+  check('a much shorter answer from the records is refused and nobody is removed', empty.status === 409 && (await (await fetch(base + '/api/world')).json()).staff === 6);
 
   // ---- 5. Live: the clock follows the real time and who is clocked in
   // (a minute ago: the office's day starts at 06:00, and a clock-in before that belongs to the day before)
@@ -161,6 +162,86 @@ try {
   check('when Hazel clocks in she walks in (the records are read again every few seconds)', !!hazelIn);
   const back = await admin('PUT', '/api/admin/settings', { clockMode: 'sim' });
   check('and Simulate comes back, starting the day', back.body.clockMode === 'sim');
+
+  // ---- 5a. what came over from main on 15 October: Hazel's extras, the person card, the kitchen door, the desk click
+  const hz = await watcher.page.evaluate(() => {
+    const s = window.__sim, h = s.people.find(p => p.name === 'Hazel Sellote'), other = s.people.find(p => p.name === 'Ben Reyes' || p.name === 'Ana Lopez' || p.name === 'Anna Lopez');
+    const chair = s.objects.all().find(o => o.spot === h.slot?.id);
+    return { desk: h.slot?.deskId, hazelTop: h.body.topY, otherTop: other.body.topY, chair: chair ? { type: chair.type, variant: chair.variant } : null, trike: !!s.scene.getObjectByName('hazelTrike'), hipY: h.slot?.hipY };
+  });
+  check('Hazel sits at C1 in the baby high chair (the office chair item\'s third look, seat raised)', hz.desk === 'C1' && hz.chair?.type === 'chair-office' && hz.chair?.variant === 2 && hz.hipY > .6, JSON.stringify(hz));
+  check('Hazel is drawn smaller than the others', hz.hazelTop < hz.otherTop - .1, `${hz.hazelTop} against ${hz.otherTop}`);
+  check('her cow tricycle is parked by her desk, and her chick exists', hz.trike && await until(async () => watcher.page.evaluate(() => !!window.__sim.scene.getObjectByName('hazelChick'))));
+  const card = await watcher.page.evaluate(async () => {
+    const s = window.__sim; s.setView('angle'); await new Promise(r => setTimeout(r, 800)); // (the card is not shown in the walking views)
+    s.select(s.people.find(p => p.name === 'Hazel Sellote'));
+    const c = document.getElementById('person'), r = c.getBoundingClientRect(), meta = document.getElementById('pMeta');
+    return { hidden: c.hidden, left: r.left, bottom: innerHeight - r.bottom, top: r.top, h: innerHeight, meta: meta.hidden ? '' : meta.textContent, role: document.getElementById('pRole').textContent };
+  });
+  check('the person card is in the bottom-left corner', !card.hidden && card.left < 40 && card.top > card.h / 2 && card.bottom >= 0, JSON.stringify(card));
+  check('it says "Time in" (or nothing when they have not come in), never "NaN" or a leave time', /^(Time in \d\d:\d\d)?$/.test(card.meta) && !/NaN|leaves/.test(card.meta), JSON.stringify(card.meta));
+  check('and the title is the short department ("UI/UX")', /^UI\/UX · /.test(card.role), card.role);
+  const door = async () => watcher.page.evaluate(() => { // the hinge of the fridge's door: the dynamic group nearest the fridge's snack spot
+    const s = window.__sim, at = s.interactables.of('snack')[1].pos; let best = null, bd = 1.6;
+    s.scene.traverse(o => { if (o.isGroup && o.userData.dynamic) { const d = Math.hypot(o.position.x - at.x, o.position.z - at.z); if (d < bd) { bd = d; best = o; } } });
+    return best ? Math.abs(best.rotation.y) : -1; });
+  const closed = await door();
+  await watcher.page.evaluate(() => { const spot = window.__sim.interactables.of('snack')[1], who = { state: 'doing', task: { kind: 'snack' } }; window.__fakeSnack = setInterval(() => { spot.occupant = who; }, 30); }); // (held there, as the page's own seat bookkeeping may clear it)
+  const opened = await until(async () => (await door()) > 1, 5000);
+  await watcher.page.evaluate(() => { clearInterval(window.__fakeSnack); window.__sim.interactables.of('snack')[1].occupant = null; });
+  const shut = await until(async () => (await door()) < .2, 5000);
+  check('the fridge door swings open for someone taking a snack, and closes again', closed >= 0 && closed < .2 && !!opened && !!shut, `closed ${closed.toFixed(2)}, opened ${opened}, shut ${shut}, now ${(await door()).toFixed(2)}`);
+  const aim = await watcher.page.evaluate(async () => {
+    const s = window.__sim, d = s.interactables.of('desk').find(x => x.owner && x.owner.name !== 'Hazel Sellote');
+    if (!d) return { none: true };
+    s.select(null); s.setView('top');
+    s.camGoal.target.set(d.pos.x, 0, d.pos.z); s.camGoal.dist = 7; // (look straight at that desk, so it is mid-screen and clear of the panels)
+    await new Promise(r => setTimeout(r, 2500));
+    const v = new s.camera.position.constructor(d.pos.x + Math.sin(d.face) * .65, .76, d.pos.z + Math.cos(d.face) * .65).project(s.camera);
+    return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight, owner: d.owner.name, desk: d.deskId };
+  });
+  if (aim && !aim.none) {
+    await watcher.page.mouse.click(aim.x, aim.y);
+    const opened2 = await until(async () => watcher.page.evaluate(n => !document.getElementById('person').hidden && document.getElementById('pName').textContent === n, aim.owner), 4000);
+    check(`clicking desk ${aim.desk} opens the card of whoever sits there (${aim.owner})`, !!opened2, JSON.stringify({ aim, state: await watcher.page.evaluate(() => ({ ctl: window.__sim.ctl.active, view: window.__sim.viewId(), card: document.getElementById('pName').textContent, hidden: document.getElementById('person').hidden })) }));
+  } else check('a desk with someone at it can be clicked', false, JSON.stringify(aim));
+  await watcher.page.evaluate(() => { window.__sim.select(null); window.__sim.setView('angle'); });
+
+  // a pg2 page, for the "Absent" tab and the chat history panel
+  const pg2 = await openPage(browser, base, '?trace', { login: 'e2e_absent' });
+  await joined(pg2.page);
+  const absentOf = async () => pg2.page.evaluate(() => fetch('/api/attendance/summary', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null));
+  const sum = await until(async () => { const s = await absentOf(); return s && !s.absent.includes('Eve Santos') ? s : null; }, 90000); // (read once a minute at most)
+  check('the absent list names who has not tapped in today, and not who has', !!sum && sum.absent.includes('Cat Dizon') && !sum.absent.includes('Eve Santos') && !sum.absent.includes('Hazel Sellote') && /^\d{4}-\d\d-\d\d$/.test(sum.today), JSON.stringify(sum));
+  check('and it is only names', !!sum && JSON.stringify(sum).indexOf('0000') < 0 && Object.keys(sum).sort().join() === 'absent,today');
+  check('a visitor who is not signed in is refused', (await fetch(base + '/api/attendance/summary')).status === 401);
+  await pg2.page.evaluate(() => { document.querySelector('[data-ltab="absent"]')?.click(); });
+  const tab = await until(async () => pg2.page.evaluate(() => { const b = document.querySelector('[data-ltab="absent"]'); return !b.hidden && !document.getElementById('attPane').hidden ? { n: document.getElementById('attAbsentN').textContent, rows: document.querySelectorAll('#attList .att-row').length, title: document.getElementById('attTitle').textContent } : null; }), 20000);
+  check('the Absent tab shows the list with a count and a title', !!tab && Number(tab.n) === tab.rows && /tap/.test(tab.title) && tab.rows > 0, JSON.stringify(tab));
+  // the chat history panel: opens, is dragged, stays in the window, remembers its place, goes back on a double-click
+  await pg2.page.click('#chatHistoryBtn');
+  const rectOf = () => pg2.page.evaluate(() => { const r = document.getElementById('chatHistory').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: innerWidth, h: innerHeight, hidden: document.getElementById('chatHistory').hidden }; });
+  const r0 = await rectOf();
+  check('the chat history opens in the bottom-right corner', !r0.hidden && r0.r > r0.w - 40 && r0.b > r0.h - 140, JSON.stringify(r0));
+  const head = await pg2.page.evaluate(() => { const r = document.querySelector('.chat-history-head').getBoundingClientRect(); return { x: r.left + 40, y: r.top + r.height / 2 }; });
+  await pg2.page.mouse.move(head.x, head.y); await pg2.page.mouse.down(); await pg2.page.mouse.move(head.x - 300, head.y - 200, { steps: 6 }); await pg2.page.mouse.up();
+  const r1 = await rectOf(), saved = await pg2.page.evaluate(() => localStorage.getItem('office.chatHistory.pos'));
+  check('it is dragged by its title, and its place is remembered', r1.l < r0.l - 200 && r1.t < r0.t - 150 && !!saved, JSON.stringify({ r1, saved }));
+  await pg2.page.mouse.move(head.x - 300, head.y - 200); await pg2.page.mouse.down(); await pg2.page.mouse.move(-500, -500, { steps: 4 }); await pg2.page.mouse.up();
+  const r2 = await rectOf();
+  check('it cannot be dragged out of the window', r2.l >= 0 && r2.t >= 0, JSON.stringify(r2));
+  await pg2.page.dblclick('.chat-history-head span');
+  const r3 = await rectOf();
+  check('a double-click on the title puts it back in the corner and forgets the place', r3.r > r3.w - 40 && (await pg2.page.evaluate(() => localStorage.getItem('office.chatHistory.pos'))) === null, JSON.stringify(r3));
+  await pg2.page.keyboard.press('Escape');
+  await pg2.page.click('#chatBtn');
+  await pg2.page.fill('#chatInput', 'hello history <b>x</b>');
+  await pg2.page.press('#chatInput', 'Enter');
+  await pg2.page.click('#chatHistoryBtn');
+  const line = await until(async () => pg2.page.evaluate(() => { const li = [...document.querySelectorAll('#chatHistoryList li')].find(x => x.textContent.includes('hello history')); return li ? { text: li.textContent, markup: li.querySelector('b b, b > b') !== null || li.innerHTML.includes('<b>x</b>') } : null; }), 8000);
+  check('what is said is in the history with a time, as text and not as markup', !!line && /\d:\d\d/.test(line.text) && line.markup === false, JSON.stringify(line));
+  const errors2 = pg2.errors.filter(e => !/401|403|Failed to load resource|WebSocket connection|502/.test(e));
+  check('the pg2 page threw no errors', errors2.length === 0, errors2.slice(0, 2).join(' | '));
 
   // ---- 5b. the admin page: the staff list, linking, desks, the clock
   await admin('POST', '/api/admin/import', {}); // (a good import again: the page shows the last one, which was the refused empty answer)

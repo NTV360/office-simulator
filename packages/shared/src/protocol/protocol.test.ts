@@ -22,7 +22,7 @@ const testRoster: Employee[] = Array.from({ length: 40 }, (_, i) => ({
   intern: false, shift: null, character: null, desk: null,
 }));
 const info = (over: Partial<PersonInfo> = {}): PersonInfo => ({
-  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX Department', department: 'UI/UX', photo: 'https://img.example.test/ana.png', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
+  id: 7, name: 'Ana B.', role: 'Developer', title: 'UI/UX', department: 'UI/UX', photo: 'https://img.example.test/ana.png', controller: 'ai', spec: { ...DEFAULT_SPEC, hair: { style: 'bun', color: '#2b201b' } }, slot: 12, screenKind: 'design', screenVariant: 2, arriveAt: 512.5, ...over,
 });
 const snap = (over: Partial<PersonSnap> = {}): PersonSnap => ({
   id: 7, state: 'doing', shown: true, absent: false, toilet: false, x: -3.25, z: 11.125, face: 1.5, walkPhase: 0.5, kind: 'coffee', anim: 'drink', cat: 'pantry', spot: 31,
@@ -173,7 +173,7 @@ describe('round trips', () => {
       const m = decode(encode({ type: 'person', info: info(), snap: snap({ absent, toilet, shown: !toilet, kind: 'bucket', anim: 'stand', cat: 'walk', props: 0b100000 }) }));
       if (m.type !== 'person') throw new Error('not a person');
       expect(m.snap.absent).toBe(absent); expect(m.snap.toilet).toBe(toilet); expect(m.snap.shown).toBe(!toilet); expect(m.snap.kind).toBe('bucket'); expect(m.snap.props).toBe(0b100000);
-      expect(m.info.title).toBe('UI/UX Department'); expect(m.info.department).toBe('UI/UX');
+      expect(m.info.title).toBe('UI/UX'); expect(m.info.department).toBe('UI/UX');
     }
   });
   it('snapshot with a one-off chat place, ids that are none, and meetings', () => {
@@ -328,7 +328,7 @@ describe('from the real simulation', () => {
 
   it('the layout check is stable, and changes when a spot moves', () => {
     const a = layoutCheck();
-    expect(a.spots).toBe(158);
+    expect(a.spots).toBe(160);
     loadLayout(officeLayout);
     expect(layoutCheck()).toEqual(a);
     const moved = JSON.parse(JSON.stringify(officeLayout));

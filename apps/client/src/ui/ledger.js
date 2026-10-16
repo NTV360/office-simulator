@@ -8,7 +8,7 @@ function renderUI() {
   let present = 0;
   const staff = people.filter(p => hasSlot(p) || isHelper(p)); // (the staff, and the helper who cleans)
   for (const p of staff) { if (p.state === 'away') continue; present++; counts[p.state === 'walking' ? 'walk' : p.task?.kind === 'work' && p.chatWith ? 'chat' : (p.task?.cat || 'walk')]++; }
-  $('present').textContent = `${present} / ${staff.length} in`;
+  $('present').textContent = `${present}/${staff.length}`;
   actsEl.querySelectorAll('li').forEach(li => { const n = counts[li.dataset.k]; li.querySelector('.n').textContent = n; li.querySelector('.bar i').style.width = (present ? n / present * 100 : 0) + '%'; });
   if (logState.dirty) { $('log').innerHTML = log.map(l => `<li><time>${fmt(l.t)}</time>${l.msg.replace(/</g, '&lt;')}</li>`).join(''); logState.dirty = false; }
   renderPerson();

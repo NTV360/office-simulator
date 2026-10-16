@@ -4,6 +4,7 @@ import { initVoice } from './voice.js';
 import { setCreatorHandler } from '../ui/creator.js';
 import { getCharacter, showCreator } from './creator.js';
 import { initChat } from './chat.js';
+import { initAttendance } from '../ui/attendance.js';
 import { initObjectControls, tickObjectControls } from './objects.js';
 import { careNote, initCare, selectCareItem } from './care.js';
 import { initMedbox, medkitNote } from '../ui/medbox.js';
@@ -100,6 +101,7 @@ export function startOnline() {
 
   const socket = io(base || undefined, { transports: ['websocket'], reconnectionDelay: 500, reconnectionDelayMax: 4000, autoConnect: false });
   const send = msg => socket.emit('m', encode(msg));
+  const attendance = initAttendance({ base }); // (the "Absent" tab of the ledger: names of who has not tapped in today, from the server)
   const chat = initChat({ send: text => send({ type: 'say', text }), sendEmote: kind => send({ type: 'emote', kind }), personById: id => mirror.people.get(id) });
 
   // ---- driving: what the player wants goes to the server (at most about 20 inputs a second), the result comes back in snapshots
@@ -190,6 +192,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
     player.person = null; player.sitting = null; player.moving = false;
     if (player.controlling) setView('free');
     chat.setActive(false);
+    attendance.setActive(false);
     showWho();
   }
 
@@ -426,6 +429,7 @@ biggest frame step (5 s) ${dbgBig.d.toFixed(2)} m`;
         showWho();
         renderInventory();
         chat.setActive(true);
+        attendance.setActive(true);
         setStatus('ok', `Online · ${people.length} people`);
         if (!net.autoView && player.person && viewId() !== 'fp' && viewId() !== 'third') { net.autoView = true; setView('third'); } // you arrive as your person
         break;

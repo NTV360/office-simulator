@@ -4,6 +4,7 @@ import { ringMats } from '../character/rig.js';
 import { applyPose } from './animation.js';
 import { updateBubble } from './bubbles.js';
 import { updateNameTag } from './nametags.js';
+import { hazelFrame, isHazel } from './hazel.js';
 
 // Show or hide a person's meshes from their state: the simulation never touches meshes. The local player's own body
 // visibility belongs to the camera (you do not see your own head), so only their props are applied here.
@@ -32,6 +33,7 @@ function syncBody(p, dt) {
   applyVisibility(p);
   updateNameTag(p);
   updateBubble(p);
+  if (isHazel(p)) { const speed = sim.paused ? 0 : Math.min(sim.speed, 2.5); hazelFrame(p, dt, dt * speed); } // her tricycle, her chick and her movies (people/hazel.js)
   if (p.state === 'away') return;
   if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)
   const b = p.body;

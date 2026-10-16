@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { hasSlot, interactables, normalizeSpec, people, roster, simEvents, takeControl, type Person } from '@office/shared';
+import { HAZEL_DESK, hasSlot, interactables, normalizeSpec, people, roster, simEvents, takeControl, type Person } from '@office/shared';
 import { World } from '../world/world';
 import type { EmployeeRecord } from './employee-store';
 import { setRoster, syncRoster } from './roster-sync';
@@ -32,8 +32,8 @@ describe('an office made from a staff list', () => {
   it('everyone on the list is there, with their name, title and department, and nobody else', () => {
     fresh([rec(1), rec(2, { department: 'Quality Assurance', intern: true }), rec(3, { department: null })]);
     expect(staff()).toHaveLength(3);
-    expect(by(1)).toMatchObject({ name: 'First1 Last1', title: 'UI/UX Department', department: 'UI/UX', role: 'Designer' });
-    expect(by(2)).toMatchObject({ title: 'Intern Quality Assurance', role: 'QA Engineer' });
+    expect(by(1)).toMatchObject({ name: 'First1 Last1', title: 'UI/UX', department: 'UI/UX', role: 'Designer' });
+    expect(by(2)).toMatchObject({ title: 'Intern QA', role: 'QA Engineer' });
     expect(by(3)).toMatchObject({ title: 'Staff', department: null });
   });
   it('an employee is at the desk they chose; HR staff are in the HR office; nobody else is', () => {
@@ -78,7 +78,7 @@ describe('keeping the office in line with the list', () => {
     const r = syncRoster([rec(1, { firstName: 'Renamed', department: 'Human Resources', shift: { code: 'MID', start: 900, end: 0 } })]);
     expect(r.updated).toBe(1);
     expect(by(1)).toBe(p); // the same person
-    expect(p).toMatchObject({ name: 'Renamed Last1', department: 'Human Resources', title: 'HR Department', role: 'Support', shift: { code: 'MID', start: 900, end: 0 } });
+    expect(p).toMatchObject({ name: 'Renamed Last1', department: 'Human Resources', title: 'HR', role: 'Support', shift: { code: 'MID', start: 900, end: 0 } });
     expect(events).toEqual(['updated']);
     expect(syncRoster([rec(1, { firstName: 'Renamed', department: 'Human Resources', shift: { code: 'MID', start: 900, end: 0 } })]).updated).toBe(0); // nothing changed: nothing said
   });
@@ -135,14 +135,28 @@ describe('keeping the office in line with the list', () => {
     expect(staff()).toHaveLength(0);
     expect(roster.list).toEqual([]);
   });
+  it("Hazel's desk (C1) is hers alone: she has it, and with her away nobody is moved into it, even when it is the only seat left", () => {
+    // Hazel on the list: she is at C1 and no one else is
+    const withHazel = [rec(100, { firstName: 'Hazel', lastName: 'Sellote' }), ...Array.from({ length: 20 }, (_, i) => rec(i + 1))];
+    fresh(withHazel);
+    expect(people.find(p => p.name === 'Hazel Sellote')!.slot!.deskId).toBe('C1');
+    expect(staff().filter(p => p.slot!.deskId === 'C1').map(p => p.name)).toEqual(['Hazel Sellote']);
+    // Hazel not on the list: 73 ordinary desks are taken, one HR employee changes department and would need an ordinary seat: C1 is the only one free
+    const others = Array.from({ length: 73 }, (_, i) => rec(i + 1));
+    const hr = rec(200, { department: 'Human Resources' });
+    fresh([...others, hr]);
+    expect(staff().some(p => p.slot!.deskId === 'C1')).toBe(false);
+    syncRoster([...others, { ...hr, department: 'UI/UX' }]);
+    expect(staff().some(p => p.slot!.deskId === 'C1')).toBe(false);
+  });
   it('more employees than desks: the ones who fit come in, and the rest wait (the other HR desks are for HR only)', () => {
     const many = Array.from({ length: 90 }, (_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' }));
     fresh(many);
-    expect(staff().length).toBe(74 + 3); // the 74 ordinary desks and the 3 HR desks the 3 HR staff fill
-    expect(interactables.of('desk').filter(d => !d.owner).every(d => d.department === 'Human Resources')).toBe(true);
+    expect(staff().length).toBe(73 + 3); // the 73 ordinary desks (the 74th, C1, is Hazel's) and the 3 HR desks the 3 HR staff fill
+    expect(interactables.of('desk').filter(d => !d.owner).every(d => d.department === 'Human Resources' || d.deskId === HAZEL_DESK)).toBe(true);
     const result = syncRoster(many.map((_, i) => rec(i + 1, { department: i < 3 ? 'Human Resources' : 'UI/UX' })));
-    expect(result.assigned).toBe(74 + 3);
-    expect(result.unassigned).toBe(13);
-    expect(result.unassignedUserIds).toHaveLength(13);
+    expect(result.assigned).toBe(73 + 3);
+    expect(result.unassigned).toBe(14);
+    expect(result.unassignedUserIds).toHaveLength(14);
   });
 });

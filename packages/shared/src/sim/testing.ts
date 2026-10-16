@@ -62,6 +62,7 @@ export function buildTestLayout({ desks = 40, hr = 0 }: TestLayoutOptions = {}):
   { const [x, y] = next(); mkSpot('piano', x, y, 0, { sit: true, group: 'music' }); }
   { const [x, y] = next(); mkSpot('guitar', x, y, 0, { sit: true, group: 'music' }); }
   put('conf', 8, { sit: true, room: 1 }); // (room 2 is the HR office: desks, not meeting seats)
+  put('teach', 1, { shared: false, room: 1 }); // the teacher's place at the front of Conference 1, the classroom
   put('conf', 8, { sit: true, room: 3 });
   { const [x, y] = next(); mkSpot('exit', x, y, 0, { shared: false, place: 'the exit' }); }
 
