@@ -17,6 +17,7 @@ import { keys } from "../camera/input.js";
 import { renderer } from "../render/renderer.js";
 import { $ } from "../ui/dom.js";
 import { wall } from "../world/helpers.js";
+import { gunDown, gunUp, gunsShow, reloadGun, selectGun } from "./guns.js";
 import { player } from "./player.js";
 import { updatePrompts } from "./prompts.js";
 import { standUp, toggleSit } from "./seating.js";
@@ -611,6 +612,7 @@ function initControl() {
     if (!ctl.active || isEditableTarget(e.target)) return;
     const k = e.key.toLowerCase();
     if (k >= "1" && k <= "4" && !e.repeat) selectGun(+k - 1);
+    if (k === "r" && !e.repeat) reloadGun();
     if (k === "e" && !e.repeat) {
       const handled = ctl.pickupHook?.(true) || ctl.keyHook?.(k, true);
       if (!handled) toggleSit();

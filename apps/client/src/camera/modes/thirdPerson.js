@@ -36,7 +36,7 @@ const thirdPersonMode = {
     if (!player.sitting && !player.online) p.task = null;
     beginControl("tp", p, {
       title: "Third person",
-      keys: "WASD move · drag look · wheel zoom · C swap shoulder · Shift run · Space jump · 1-4 gun · R-click aim · Click shoot · E sit · V first person · Esc exit",
+      keys: "WASD move · drag look · wheel zoom · C swap shoulder · Shift run · Space jump · 1-4 gun · R reload · R-click aim · Click shoot · E sit · V first person · Esc exit",
     });
     ctl.pitchMin = -0.75;
     ctl.pitchMax = 0.7;
@@ -76,9 +76,13 @@ const thirdPersonMode = {
     const p = player.person;
     if (!p) return;
     const { dx, dz } = driveLocomotion(dt, p);
-    // the character turns toward where it walks; when seated it faces its seat
+    // the character turns toward camera aim when armed, or toward where it walks; when seated it faces its seat
     if (player.sitting) p.face = p.faceGoal = player.sitting.face;
-    else {
+    else if (player.gun != null && player.controlling) {
+      // armed: the character squares up with the camera, whatever way it is walking
+      p.faceGoal = ctl.yaw;
+      p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 18));
+    } else {
       if (ctl.faceTo !== null) p.faceGoal = ctl.faceTo;
       else if (dx || dz) p.faceGoal = Math.atan2(dx, dz);
       p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12));

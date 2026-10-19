@@ -55,6 +55,7 @@ import { peopleGroup } from "./people/group.js";
 import { updateScreens } from "./people/screens.js";
 import { syncBody } from "./people/sync.js";
 import { ctl } from "./player/control.js";
+import { fire, selectGun, updateGuns } from "./player/guns.js";
 import { player } from "./player/player.js";
 import { buildLabels, labelGroup, labelState } from "./render/labels.js";
 import { updateLight } from "./render/lighting.js";

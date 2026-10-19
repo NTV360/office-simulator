@@ -1,4 +1,5 @@
 import { HAZEL_NAME, TAU, angDiff } from "@office/shared";
+import { ctl } from "../player/control.js";
 import { isLocalPlayer, player } from "../player/player.js";
 import { DINING_TV_POS } from "../world/furniture/diningTv.js";
 import { LOUNGE_TV_POS } from "../world/furniture/game.js";
@@ -566,13 +567,16 @@ function targetPose(p, k, T) {
       o.headX = -0.25;
       o.headY = 0.4;
       break;
-    case "aim": // gun drawn, right arm levelled forward
-      o.rShX = -1.45;
-      o.rShZ = -0.12;
-      o.rEl = -0.08;
-      o.lShZ = 0.16;
-      o.headY = -0.1;
-      o.lean = 0.04;
+    case "aim": // gun drawn, two-handed combat stance levelled at camera pitch
+      o.rShX = -1.42 - (ctl.active ? ctl.pitch * 0.75 : 0);
+      o.rShZ = 0.08;
+      o.rEl = -0.1;
+      o.lShX = -1.28 - (ctl.active ? ctl.pitch * 0.68 : 0);
+      o.lShZ = -0.44;
+      o.lEl = -0.22;
+      o.headY = -0.06;
+      o.headX = ctl.active ? -ctl.pitch * 0.55 : 0;
+      o.lean = 0.05;
       break;
     case "jump": // Roblox-style: arms up, knees tucked
       o.lShX = o.rShX = -2.6;
@@ -590,6 +594,25 @@ function targetPose(p, k, T) {
       o.rShX = -Math.sin(T * 0.9) * 0.05;
       break;
   }
+  // Keep upper-body two-handed gun aim while walking, running, or jumping as the player
+  if (
+    isLocalPlayer(p) &&
+    !player.sitting &&
+    player.gun != null &&
+    k !== "down" &&
+    k !== "scratch"
+  ) {
+    const pit = ctl.active ? ctl.pitch : 0;
+    const bob = player.moving ? Math.sin(p.walkPhase * 2) * 0.035 : 0;
+    o.rShX = -1.42 - pit * 0.75 + bob;
+    o.rShZ = 0.08;
+    o.rEl = -0.1;
+    o.lShX = -1.28 - pit * 0.68 + bob;
+    o.lShZ = -0.44;
+    o.lEl = -0.22;
+    o.headY = -0.05;
+    o.headX = -pit * 0.55;
+  }
   o.lean += breathe;
   if (p.carrying) {
     o.lShX = -1.15;
@@ -605,6 +628,15 @@ function targetPose(p, k, T) {
     armsAt(p, o, reach); // reaching out to take hold of something
   else if (p.carrying && p.carryAt) armsAt(p, o, p.carryAt); // holding it: the hands on it
   emoteOverlay(p, o);
+  // Hit flinch jolt when taking blaster damage before getting knocked out
+  if (p.flinch > 0 && k !== "down") {
+    const f = p.flinch;
+    o.lean -= f * 0.28;
+    o.headX -= f * 0.35;
+    o.headY += (p.flinchSide || 1) * f * 0.42;
+    o.lShZ += f * 0.25;
+    o.rShZ -= f * 0.25;
+  }
   // look at someone
   let look = null;
   if (p.task?.meeting && p.task.meeting.speaker && p.task.meeting.speaker !== p)
@@ -657,7 +689,7 @@ function armsAt(p, o, at) {
   o.lShZ = 0.5 * Math.atan2(side + 0.2, Math.max(0.2, fwd));
   o.rShZ = 0.5 * Math.atan2(side - 0.2, Math.max(0.2, fwd));
 }
-
+const SNAPPY = new Set(["walk", "run", "jump", "aim"]); // poses reached quickly
 function applyPose(p, dt) {
   trackAttack(p, p.mechanics?.attack ?? null, performance.now() / 1000);
   const k = animKey(p),
@@ -676,7 +708,8 @@ function applyPose(p, dt) {
   for (const j of JOINTS)
     c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
   const b = p.body,
-    hold = HOLDING.has(k) ? b.hold : null;
+    armedPlayer = isLocalPlayer(p) && !player.sitting && player.gun != null,
+    hold = HOLDING.has(k) && !armedPlayer ? b.hold : null;
   // standing poses move the hips relative to this character's own leg length; seated poses put them on the seat
   const hip = (b.standHip + c.hipY - POSE_HIP) * (1 - c.seat) + c.hipY * c.seat;
   b.hips.position.y = hip / b.unit;
