@@ -84,7 +84,8 @@ function updateBumps(dt) {
   }
   const me = player.person;
   for (const p of people) {
-    if (p.state !== "walking" || p.scratch > 0 || p.bumpCd > 0) continue;
+    if (p.state !== "walking" || p.scratch > 0 || p.down > 0 || p.bumpCd > 0)
+      continue;
     for (const q of people) {
       if (q === p || q.state === "away") continue;
       if (headOn(p, q)) {

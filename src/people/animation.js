@@ -28,6 +28,7 @@ const POSE_HIP = 0.88; // the standing hip height the poses are written for
 const ARM_BEND = 0.5; // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(["walk", "stand"]); // poses in which a carried pack item (coffee, phone...) is shown
 function animKey(p) {
+  if (p.down > 0) return "down"; // shot: flat on the floor, outranks everything
   if (p.scratch > 0) return "scratch";
   if (p.state === "player")
     return player.sitting
@@ -36,7 +37,9 @@ function animKey(p) {
         ? "jump"
         : player.moving
           ? "walk"
-          : p.task?.anim || "stand"; // (standing: a game's pose, ui/games.js)
+          : player.gun != null
+            ? "aim"
+            : p.task?.anim || "stand"; // (standing: a game's pose, ui/games.js)
   if (p.state === "walking")
     return p.riding ? "ride" : p.task?.run || p.hazel ? "run" : "walk"; // Hazel runs, or rides her tricycle
   if (p.state !== "doing" || !p.task) return "stand";
@@ -521,6 +524,25 @@ function targetPose(p, k, T) {
       o.lean = 0.06;
       o.headX = 0.12 + Math.sin(T * 4) * 0.03;
       o.headY = Math.sin(T * 2.5) * 0.1;
+      break;
+    case "down": // shot: flat on their back for a couple of seconds
+      o.hipY = POSE_HIP - p.body.standHip + 0.12;
+      o.lean = -1.35;
+      o.lHip = o.rHip = -1.5;
+      o.lShX = o.rShX = -0.3;
+      o.lShZ = 1.1;
+      o.rShZ = -1.1;
+      o.lEl = o.rEl = -0.1;
+      o.headX = -0.25;
+      o.headY = 0.4;
+      break;
+    case "aim": // gun drawn, right arm levelled forward
+      o.rShX = -1.45;
+      o.rShZ = -0.12;
+      o.rEl = -0.08;
+      o.lShZ = 0.16;
+      o.headY = -0.1;
+      o.lean = 0.04;
       break;
     case "jump": // Roblox-style: arms up, knees tucked
       o.lShX = o.rShX = -2.6;

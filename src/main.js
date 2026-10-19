@@ -35,6 +35,7 @@ import { roster } from "./people/roster.js";
 import { syncBody } from "./people/sync.js";
 import { fetchAttendance, fetchEmployees } from "./persistence/store.js";
 import { ctl } from "./player/control.js";
+import { fire, selectGun, updateGuns } from "./player/guns.js";
 import { stepPlayer, tickJump } from "./player/locomotion.js";
 import { player } from "./player/player.js";
 import { buildLabels, labelGroup, labelState } from "./render/labels.js";
@@ -91,6 +92,7 @@ function tick(now) {
     const you = player.person?.id === -1 ? player.person : null; // (someone you took control of is in people)
     if (you && you.state !== "player") stepPerson(you, dt); // your character in a Power Slap
     updateSlap(dt);
+    updateGuns(dt);
     updateScreens();
     updateLight();
   }
@@ -191,6 +193,7 @@ function start(employees, attendance) {
     GR,
     camGoal,
     camState,
+    camera,
     updateCamera,
     viewId,
     following,
@@ -204,6 +207,8 @@ function start(employees, attendance) {
     supportAt,
     stepPlayer,
     tickJump,
+    fire,
+    selectGun,
     toPx,
     ENTRY,
     advance(n, dt = 0.05) {
@@ -218,6 +223,7 @@ function start(employees, attendance) {
         updateBumps(dt);
         for (const p of people) stepPerson(p, dt);
         updateSlap(dt);
+        updateGuns(dt);
       }
     },
     log,

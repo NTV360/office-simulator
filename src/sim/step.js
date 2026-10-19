@@ -12,7 +12,7 @@ import { arrive, chooseNext, returnFromToilet } from "./tasks.js";
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
-  if (p.scratch > 0) {
+  if (p.scratch > 0 || p.down > 0) {
     p.animT += dt;
     return;
   }

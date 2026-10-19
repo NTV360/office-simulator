@@ -4,6 +4,7 @@ import { FULL_H, LOW_H } from "../config/plan.js";
 import { renderer } from "../render/renderer.js";
 import { $, keyHints } from "../ui/dom.js";
 import { wall } from "../world/helpers.js";
+import { gunDown, gunUp, gunsShow, selectGun } from "./guns.js";
 import { stepPlayer, tickJump } from "./locomotion.js";
 import { player, releaseControl } from "./player.js";
 import { updatePrompts } from "./prompts.js";
@@ -52,6 +53,7 @@ function beginControl(mode, p, hud) {
   $("fpWho").textContent =
     p.id === -1 ? "Walking as you" : `Walking as ${p.name}`;
   $("fpCreator").hidden = p.id !== -1; // the look you can change is your own character's
+  gunsShow(true);
 }
 const PLAY_VIEWS = new Set(["fp", "third"]);
 // Stop steering. Stand up unless we are just swapping between first and third person.
@@ -68,6 +70,7 @@ function endControl(nextId) {
     keyHook: null,
     wheelHook: null,
   });
+  gunsShow(false);
   wall.goal = ctl.savedWall;
   ctl.stick.x = ctl.stick.y = 0;
   try {
@@ -86,6 +89,7 @@ function look(dx, dy) {
   );
 }
 function pointerDown(e) {
+  gunDown(e);
   try {
     el.setPointerCapture(e.pointerId);
   } catch (_) {}
@@ -140,6 +144,7 @@ function pointerMove(e) {
   }
 }
 function pointerUp(e) {
+  gunUp(e);
   if (e.pointerId === ctl.stickId) {
     ctl.stickId = null;
     ctl.stick.x = ctl.stick.y = 0;
@@ -211,6 +216,7 @@ function initControl() {
     if (!ctl.active || e.target.tagName === "INPUT") return;
     const k = e.key.toLowerCase();
     if (k === " ") e.preventDefault(); // the page scrolls on Space otherwise
+    if (k >= "1" && k <= "4" && !e.repeat) selectGun(+k - 1);
     if (k === "e" && !e.repeat && !ctl.useHook?.()) toggleSit();
     if (k === "escape" && !document.pointerLockElement) exitPlay();
     if (k === "v" && !e.repeat) setView(ctl.mode === "fp" ? "third" : "fp");

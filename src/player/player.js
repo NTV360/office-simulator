@@ -26,6 +26,7 @@ const player = {
   feet: 0,
   vy: 0,
   air: false,
+  gun: 0, // which gun the number keys picked (player/guns.js); null for none
 };
 const PROPS = [
   "mug",
