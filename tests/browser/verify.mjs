@@ -734,10 +734,14 @@ try {
       await A.page.keyboard.press('Escape');
       await sleep(600);
       if ((await state(B.page, ea)).kind === null) pass('typing 1 2 3 4 into the chat box does not trigger emotes'); else fail('an emote fired while typing');
+      // the number keys are the hotbar, not emotes
+      await A.page.keyboard.press('1'); await A.page.keyboard.press('2'); await A.page.keyboard.press('3'); await A.page.keyboard.press('4');
+      await sleep(600);
+      if ((await state(B.page, ea)).kind === null) pass('the number keys 1 to 4 no longer trigger emotes (they pick the hotbar)'); else fail('a number key still fires an emote');
 
-      await A.page.keyboard.press('1');
-      await A.page.keyboard.press('2'); // straight away: inside the cooldown
-      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'wave'; }, ea, { timeout: 8000 }).then(() => pass('pressing 1 makes the other player see you wave'), () => fail('the other page did not see a wave'));
+      await A.page.click('[data-emote="wave"]');
+      await A.page.click('[data-emote="cheer"]'); // straight away: inside the cooldown
+      await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'wave'; }, ea, { timeout: 8000 }).then(() => pass('the Wave button makes the other player see you wave'), () => fail('the other page did not see a wave'));
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.pose.rShX < -1.2; }, ea, { timeout: 8000 }).then(() => pass('with your arm up in the air'), () => fail('the arm did not go up'));
       await screenshotOf(B.page, 'emote-wave.png');
       if ((await B.page.evaluate(() => window.__sim.net.emotesSeen)) === 1) pass('a second emote straight away is ignored (2.5 s apart)'); else fail('the cooldown did not hold');
@@ -751,7 +755,7 @@ try {
 
       // walking ends an emote at once
       await sleep(2600);
-      await A.page.keyboard.press('3');
+      await A.page.click('[data-emote="clap"]');
       await B.page.waitForFunction(n => { const p = window.__sim.people.find(x => x.name === n); return p && p.emote && p.emote.kind === 'clap'; }, ea, { timeout: 8000 });
       await A.page.keyboard.down('w'); await sleep(500); await A.page.keyboard.up('w');
       let stopped = false; // (the server hears the key and says so a moment later: wait for it rather than look once)

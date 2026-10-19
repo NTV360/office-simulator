@@ -1,5 +1,5 @@
 import {
-  HAZEL_NAME, handBack, stepMedkits, type MedkitContents, type MedkitItem, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, releaseCarried, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
+  HAZEL_NAME, aimedLimb, sanePitch, handBack, stepMedkits, type MedkitContents, type MedkitItem, sanitizeInput, sit, sitFree, stand, stepAllDriven, stepPlayer, syncCharacterHoldTransforms, advanceAttack, attackDamage, attackForce, attackIsActive, applyDamage, beginAttack, releaseAttack, updateStruggle, canEscapeStruggle, escapeCharacter, applyImpact, resolveImpact, advanceImpact, useMedicalItem, canUseHands, hasLineOfSight, characterHolds, sim, simEvents, type ActKind, type AttackKind, type AttackSide, type DrivenInput, type Limb, interactables, isAi, makeGuest, normalizeSpec, npcName, people, removeGuest, setLook, takeControl, releaseCharacterPerson, releaseCarried, grabCharacter, releaseCharacter, throwCharacter, type CharacterHoldResult, type Person, objects, carriedBy, CATALOGUE, canUseHand, setHotbarSlot, moveItem, rotateItem, removeItem, employeeById, fullName,
 } from '@office/shared';
 import type { Account, AccountStore } from '../auth/account-store';
 import { assignObjectToInventory, drop, dropInventoryItem, grab, holdInput, place, putBack, putBackStation, throwIt, type InventoryDropResult, type ObjectResult } from './object-actions';
@@ -46,6 +46,8 @@ interface Session {
   objectTokens: number;
   objectTick: number;
   attackHit: number | null;
+  /** Where the player last said they look (up positive, radians): sent with their attack messages, it decides which body part a hit lands on. */
+  aimPitch: number;
   /** Care being given right now (hold E on a medical item in the hotbar), or null. */
   care: CareJob | null;
 }
@@ -151,7 +153,7 @@ export class PlayerManager {
     }
     person ??= makeGuest(account.id, account.username, account.spec ?? undefined);
     this.inputs.delete(person.id); // a new session starts with no movement and its own message numbers
-    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0, attackHit: null, care: null });
+    this.sessions.set(account.id, { person, graceTimer: null, lastActTick: -Infinity, objectTokens: OBJECT_BUCKET.burst, objectTick: 0, attackHit: null, aimPitch: 0, care: null });
     return person;
   }
 
@@ -354,13 +356,13 @@ export class PlayerManager {
    * The player starts caring for somebody (themselves, or `targetId`) with a medical item from their inventory: hold E on it in the hotbar.
    * It takes 3 seconds (bandage) or 5 (first-aid box) and is ended by anything in `advanceCare`; the item is used up only when it works.
    */
-  careStart(accountId: number, itemId: string, targetId?: number): { ok: true; seconds: number } | { ok: false; reason: CareRefusal | 'busy' } | null {
+  careStart(accountId: number, itemId: string, targetId?: number, limb?: Limb): { ok: true; seconds: number } | { ok: false; reason: CareRefusal | 'busy' } | null {
     const s = this.sessions.get(accountId);
     if (!s) return null;
     if (s.care) return { ok: false, reason: 'busy' };
     const target = targetId === undefined ? s.person : people.find(p => p.id === targetId);
     if (!target) return this.refuseCare(accountId, 'target');
-    const r = startCare(s.person, itemId, target, this.mechanicsTime);
+    const r = startCare(s.person, itemId, target, this.mechanicsTime, limb);
     if (!r.ok) return this.refuseCare(accountId, r.reason);
     s.care = r.job;
     this.notify?.(accountId, { kind: 'care', text: `start:${r.job.seconds}` });
@@ -417,8 +419,9 @@ export class PlayerManager {
   mechanicsNow(): number { return this.mechanicsTime; }
 
   /** Begin or release one authoritative punch/kick. Target selection and damage happen on the server. */
-  attack(accountId: number, phase: 'begin' | 'release', kind: AttackKind, now: number = this.mechanicsTime, side?: AttackSide): boolean {
+  attack(accountId: number, phase: 'begin' | 'release', kind: AttackKind, now: number = this.mechanicsTime, side?: AttackSide, pitch?: number): boolean {
     const s = this.sessions.get(accountId);
+    if (s && pitch !== undefined) s.aimPitch = sanePitch(pitch); // (the latest look wins: a hit lands where they looked at the release)
     if (!s || !Number.isFinite(now) || (kind !== 'punch' && kind !== 'kick' && kind !== 'bash')) return false;
     const selectedSide = side ?? s.person.mechanics.dominantHand;
     if (phase === 'release' && (!s.person.mechanics.attack || s.person.mechanics.attack.kind !== kind || (side !== undefined && s.person.mechanics.attack.side !== side))) return false;
@@ -495,8 +498,13 @@ export class PlayerManager {
     }
     if (target) {
       const damage = bash?.damage ?? attackDamage(attack.kind, attack.charge);
-      target.mechanics.health = applyDamage(target.mechanics.health, 'body', bash ? damage * Math.max(0, Math.min(1, attack.charge)) : damage);
       const dx = target.pos.x - source.person.pos.x, dz = target.pos.z - source.person.pos.z;
+      // where it lands: the part the attacker's line of sight crosses (shared/sim/aim.ts)
+      const limb = aimedLimb({
+        kind: attack.kind, attackerPosture: source.person.mechanics.posture, attackerCrouch: source.person.mechanics.crouchLevel, pitch: source.aimPitch,
+        attackerFace: source.person.face, targetFace: target.face, targetPosture: target.mechanics.posture, targetCrouch: target.mechanics.crouchLevel, dx, dz,
+      });
+      target.mechanics.health = applyDamage(target.mechanics.health, limb, bash ? damage * Math.max(0, Math.min(1, attack.charge)) : damage);
       const impact = resolveImpact({
         normal: { x: dx, z: dz },
         relativeSpeed: 0,

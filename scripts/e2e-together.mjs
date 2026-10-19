@@ -77,7 +77,7 @@ try {
   check('Cat, far away, hears nothing', (await lines(C.page)).filter(l => l.includes('hello Ana')).length === 0);
 
   // ---- 6. a wave, seen by everyone
-  await A.page.keyboard.press('1');
+  await A.page.click('[data-emote="wave"]');
   const wavedB = await B.page.waitForFunction(() => window.__sim.people.find(p => p.name === 'tog_ana')?.emote?.kind === 'wave', null, { timeout: 8000 }).then(() => true, () => false);
   const wavedC = await C.page.waitForFunction(() => window.__sim.people.find(p => p.name === 'tog_ana')?.emote?.kind === 'wave', null, { timeout: 8000 }).then(() => true, () => false);
   check('Ana waves and both the others see it, near or far', wavedB && wavedC);
@@ -106,7 +106,7 @@ try {
   await waitUp('after kill');
   await Promise.all([A, B, C].map(x => joined(x.page)));
   await sleep(1500);
-  await A.page.keyboard.press('2');
+  await A.page.click('[data-emote="cheer"]');
   check('after a hard kill all three are back, and an emote still reaches the others', await B.page.waitForFunction(() => window.__sim.people.find(p => p.name === 'tog_ana')?.emote?.kind === 'cheer', null, { timeout: 10000 }).then(() => true, () => false));
 
   // ---- 10. an admin mutes Ben: he can still play, nobody sees what he types; unmuting brings him back at once

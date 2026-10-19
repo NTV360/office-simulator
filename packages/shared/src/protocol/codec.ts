@@ -1,6 +1,6 @@
 import { normalizeSpec, type CharacterSpec } from '../character/spec';
 import { validateInventory, type InventoryItem } from '../sim/inventory';
-import { defaultCharacterMechanics } from '../sim/character-state';
+import { defaultCharacterMechanics, type Limb } from '../sim/character-state';
 import type { PersonState } from '../sim/types';
 import { DecodeError, Reader, Writer } from './binary';
 import {
@@ -42,6 +42,8 @@ const NO_U8 = 0xff;
 const TAU = Math.PI * 2;
 
 // 0xffff and 0xff mean "none", so real ids and indexes stop one short of them
+const LIMB_ORDER: readonly Limb[] = ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'];
+const NO_LIMB = 255;
 const toU16 = (id: number) => { if (id === NONE) return NO_U16; if (id >= NO_U16) throw new RangeError(`id ${id} is too big for the protocol`); return id; };
 const fromU16 = (v: number) => (v === NO_U16 ? NONE : v);
 
@@ -336,6 +338,8 @@ export function encode(msg: Message): Uint8Array {
     case 'attack':
       w.u8(T.attack).u8(index(ATTACK_INTENT_PHASES, msg.phase, 'attack intent phase')).u8(index(ATTACK_KINDS, msg.kind, 'attack kind'));
       w.u8(msg.side === undefined ? 0xff : index(ATTACK_SIDES, msg.side, 'attack side'));
+      if (msg.pitch !== undefined && !Number.isFinite(msg.pitch)) throw new RangeError('invalid attack pitch');
+      if (msg.pitch === undefined) w.u8(0); else w.u8(1).f32(msg.pitch);
       break;
     case 'grab': w.u8(T.grab).u16(toU16(msg.object)).u8(msg.at ? 1 : 0); if (msg.at) w.f32(msg.at[0]).f32(msg.at[1]).f32(msg.at[2]); break;
     case 'place': w.u8(T.place).f32(msg.x).f32(msg.z).f32(msg.rot); break;
@@ -363,6 +367,8 @@ export function encode(msg: Message): Uint8Array {
         if (!inventory.itemId || inventory.itemId.length > MAX_HOLD_ID) throw new RangeError('invalid medical care');
         if (inventory.target !== undefined && (!Number.isInteger(inventory.target) || inventory.target < 0 || inventory.target >= NO_U16)) throw new RangeError('invalid medical target');
         w.str(inventory.itemId).u16(toU16(inventory.target ?? NONE));
+        if (inventory.limb !== undefined && !LIMB_ORDER.includes(inventory.limb)) throw new RangeError('invalid medical limb');
+        w.u8(inventory.limb === undefined ? NO_LIMB : LIMB_ORDER.indexOf(inventory.limb));
       } else if (inventory.action === 'care-stop') {
         // (nothing more: it ends whatever care is going on)
       } else if (inventory.action === 'medkit-open') {
@@ -461,7 +467,10 @@ export function decode(bytes: Uint8Array): Message {
       const kind = readIndex(r, ATTACK_KINDS, 'attack kind');
       const side = r.u8();
       if (side !== 0xff && side >= ATTACK_SIDES.length) throw new DecodeError('unknown attack side');
-      msg = { type: 'attack', phase, kind, ...(side === 0xff ? {} : { side: ATTACK_SIDES[side] }) };
+      const hasPitch = r.u8();
+      if (hasPitch > 1) throw new DecodeError('invalid attack pitch flag');
+      const pitch = hasPitch ? r.f32() : undefined;
+      msg = { type: 'attack', phase, kind, ...(side === 0xff ? {} : { side: ATTACK_SIDES[side] }), ...(pitch === undefined ? {} : { pitch: Math.max(-1.5, Math.min(1.5, pitch)) }) };
       break;
     }
     case T.grab: { const object = fromU16(r.u16()); msg = r.u8() ? { type: 'grab', object, at: [r.f32(), r.f32(), r.f32()] } : { type: 'grab', object }; break; }
@@ -488,9 +497,10 @@ export function decode(bytes: Uint8Array): Message {
         if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid inventory item');
         msg = { type: 'inventory', action, itemId, revision };
       } else if (action === 'care') {
-        const itemId = r.str(), target = fromU16(r.u16());
+        const itemId = r.str(), target = fromU16(r.u16()), limbIndex = r.u8();
         if (!itemId || itemId.length > MAX_HOLD_ID) throw new DecodeError('invalid medical care');
-        msg = { type: 'inventory', action, itemId, ...(target === NONE ? {} : { target }), revision };
+        if (limbIndex !== NO_LIMB && limbIndex >= LIMB_ORDER.length) throw new DecodeError('invalid medical limb');
+        msg = { type: 'inventory', action, itemId, ...(target === NONE ? {} : { target }), ...(limbIndex === NO_LIMB ? {} : { limb: LIMB_ORDER[limbIndex] }), revision };
       } else if (action === 'care-stop') {
         msg = { type: 'inventory', action, revision };
       } else if (action === 'medkit-open') {

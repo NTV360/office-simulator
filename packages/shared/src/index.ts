@@ -56,6 +56,7 @@ export * from './sim/driven';
 export * from './sim/free-sitting';
 export { freeSitOccupied } from './sim/driven';
 export * from './sim/character-state';
+export * from './sim/aim';
 export * from './sim/combat';
 export * from './sim/character-holds';
 export * from './sim/character-hold-actions';

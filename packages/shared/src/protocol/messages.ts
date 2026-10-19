@@ -2,12 +2,12 @@ import type { CharacterSpec } from '../character/spec';
 import type { ScreenKind } from '../sim/data';
 import type { PersonState } from '../sim/types';
 import type { InventoryItem } from '../sim/inventory';
-import type { AttackKind, AttackPhase, AttackSide, LocomotionMode, Posture, SeatMode } from '../sim/character-state';
+import type { AttackKind, AttackPhase, AttackSide, Limb, LocomotionMode, Posture, SeatMode } from '../sim/character-state';
 
 // What travels between server and client. See docs/MULTIPLAYER-PLAN.md section 11 and docs/PHASE-2-BREAKDOWN.md step 2.
 
 /** Bump when the layout of any message changes. A client with another version is refused. */
-export const WIRE_VERSION = 24;
+export const WIRE_VERSION = 26;
 
 /** A profile picture address the wire carries: https, no spaces, quote marks or angle brackets, at most 2000 characters (signed links are long). */
 export const PHOTO_URL = /^https:\/\/[^\s"'<>]{1,2000}$/;
@@ -214,7 +214,11 @@ export type ActKind = 'sit' | 'stand';
 export interface Act { type: 'act'; kind: ActKind }
 /** A server-authoritative punch or kick intent. Press begins charging; release opens the hit window. */
 export type AttackIntentPhase = 'begin' | 'release';
-export interface AttackIntent { type: 'attack'; phase: AttackIntentPhase; kind: AttackKind; side?: AttackSide }
+export interface AttackIntent {
+  type: 'attack'; phase: AttackIntentPhase; kind: AttackKind; side?: AttackSide;
+  /** Where the attacker looks, up positive (radians): with it the server picks the body part that is hit. Missing means level. */
+  pitch?: number;
+}
 /** Something the player says in local chat: heard by people within about 10 m. */
 export interface Say { type: 'say'; text: string }
 /** The short list of things a player can act out. The order is part of the protocol: add to the end. */
@@ -266,6 +270,8 @@ export interface InventoryIntent {
   kit?: 'bandage' | 'first-aid-box';
   /** The person to care for (hold E on a medical item); omitted means self. */
   target?: number;
+  /** Which body part to treat (care only); omitted means the most-hurt one. */
+  limb?: Limb;
   revision: number;
 }
 /** Take hold of another character; the server validates reach and graph invariants. */

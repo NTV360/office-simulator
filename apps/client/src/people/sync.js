@@ -1,10 +1,13 @@
 import { JUMP, PROP_KEYS, people, sim } from '@office/shared';
-import { isLocalPlayer } from '../player/player.js';
+import { isLocalPlayer, player } from '../player/player.js';
+import { observeOwnHealth } from '../player/hit-fx.js';
 import { ringMats } from '../character/rig.js';
 import { applyPose } from './animation.js';
 import { updateBubble } from './bubbles.js';
 import { updateNameTag } from './nametags.js';
 import { hazelFrame, isHazel } from './hazel.js';
+import { paintLimbShells } from '../character/limb-tint.js';
+import { limbReport } from '../player/limb-health.js';
 
 // Show or hide a person's meshes from their state: the simulation never touches meshes. The local player's own body
 // visibility belongs to the camera (you do not see your own head), so only their props are applied here.
@@ -30,9 +33,11 @@ function heldRenderTransform(p, seen = new Set()) {
 }
 
 function syncBody(p, dt) {
+  if (p === player.person) observeOwnHealth(p); // (red flash, edge glow and the message about what is hurt: player/hit-fx.js)
   applyVisibility(p);
   updateNameTag(p);
   updateBubble(p);
+  paintLimbShells(p.body.shells, limbReport(p.mechanics?.health)); // a hurt body part shows colour on the character
   if (isHazel(p)) { const speed = sim.paused ? 0 : Math.min(sim.speed, 2.5); hazelFrame(p, dt, dt * speed); } // her tricycle, her chick and her movies (people/hazel.js)
   if (p.state === 'away') return;
   if (!sim.paused || isLocalPlayer(p) || p.state === 'controlled') applyPose(p, dt); // (a paused office is frozen, but players still move)

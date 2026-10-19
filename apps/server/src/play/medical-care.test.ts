@@ -93,6 +93,16 @@ describe('timed care', () => {
     expect(finishCare(start.job, medic, patient)).toMatchObject({ body: 55, leftArm: 30 }); // (the body, missing 40, first; 15 hp)
   });
 
+  it('heals the body part the medic chose, even when another is hurt worse, and refuses one that is not hurt', () => {
+    const [medic, patient] = two();
+    withItems(medic, 'bandage');
+    hurt(patient, 'leftArm', 30); hurt(patient, 'body', 40);
+    const start = startCare(medic, 'bandage-0', patient, 0, 'leftArm');
+    if (!start.ok) throw new Error('start');
+    expect(finishCare(start.job, medic, patient)).toMatchObject({ body: 40, leftArm: 35 }); // (the arm was missing only 5)
+    expect(startCare(medic, 'bandage-0', patient, 0, 'rightLeg')).toEqual({ ok: false, reason: 'unhurt' });
+  });
+
   it('works on yourself too, and finishes nothing when the patient is whole', () => {
     const [medic, other] = two();
     withItems(medic, 'bandage');

@@ -2,11 +2,12 @@ import { HAZEL_NAME, TAU, angDiff } from '@office/shared';
 import { isLocalPlayer, player } from '../player/player.js';
 import { DINING_TV_POS } from '../world/furniture/diningTv.js';
 import { LOUNGE_TV_POS } from '../world/furniture/game.js';
+import { swing, swingPose, trackAttack } from './attack-anim.js';
 
 /* ================= Animation ================= */
 // Poses are written for a human with an elbow and a knee: hipY in metres for a .88 m hip, angles in radians.
 // applyPose maps them onto the character pack's skeleton, which has no elbows or knees (see below).
-const JOINTS = ['hipY', 'seat', 'lean', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
+const JOINTS = ['hipY', 'seat', 'lean', 'twist', 'lShX', 'lShZ', 'lEl', 'rShX', 'rShZ', 'rEl', 'lHip', 'lKnee', 'rHip', 'rKnee', 'headY', 'headX'];
 const POSE_HIP = .88;   // the standing hip height the poses are written for
 const ARM_BEND = .5;    // share of the elbow bend folded into the shoulder, so a bent arm still reaches forward
 const HOLDING = new Set(['walk', 'run', 'stand']); // poses in which a carried pack item (coffee, phone...) is shown
@@ -21,8 +22,9 @@ function animKey(p) {
   if (posture === 'prone') return 'prone';
   if (posture === 'ragdoll') return 'ragdoll';
   if (posture === 'recovering') return 'recovering';
+  if (p._atk) return `attack-${p._atk.kind}`; // a punch or kick being drawn (people/attack-anim.js), through its recovery
   const attack = p.mechanics?.attack;
-  if (attack && (attack.phase === 'charging' || attack.phase === 'active')) return `attack-${attack.kind}`;
+  if (attack && attack.kind === 'bash' && (attack.phase === 'charging' || attack.phase === 'active')) return `attack-${attack.kind}`;
   if (isLocalPlayer(p)) return player.sitting || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (player.moving ? 'walk' : 'stand'));
   if (p.state === 'controlled') return p.task?.kind === 'playerSit' || posture === 'seated' ? (p.task?.anim || 'listenSit') : (posture === 'crouching' ? 'crouch' : (p.moving ? 'walk' : 'stand')); // a human somewhere else (online)
   if (p.state === 'walking') return p.riding ? 'ride' : p.task?.run || isHazel(p) ? 'run' : 'walk'; // Hazel runs, or rides her tricycle
@@ -54,20 +56,19 @@ function emoteOverlay(p, o) {
 }
 
 function targetPose(p, k, T) {
-  const o = { hipY: POSE_HIP, seat: 0, lean: 0, lShX: 0, lShZ: .07, lEl: -.12, rShX: 0, rShZ: -.07, rEl: -.12, lHip: 0, lKnee: 0, rHip: 0, rKnee: 0, headY: 0, headX: 0 };
+  const o = { hipY: POSE_HIP, seat: 0, lean: 0, twist: 0, lShX: 0, lShZ: .07, lEl: -.12, rShX: 0, rShZ: -.07, rEl: -.12, lHip: 0, lKnee: 0, rHip: 0, rKnee: 0, headY: 0, headX: 0 };
   const breathe = Math.sin(T * 1.6) * .012;
   const sit = () => { o.seat = 1; o.hipY = p.task?.spot?.hipY ?? .53; const hi = o.hipY > .65; o.lHip = o.rHip = hi ? -1.2 : -1.5; o.lKnee = o.rKnee = hi ? .95 : 1.45; o.lShX = o.rShX = -.45; o.lEl = o.rEl = -.75; };
   switch (k) {
     case 'attack-punch':
-      o.lShX = o.rShX = -.15; o.lEl = o.rEl = -.35;
-      if (p.mechanics?.attack?.side === 'left') o.lShX = -1.55; else o.rShX = -1.55;
-      o.lean = .1;
+    case 'attack-kick': {
+      const a = p._atk, now = performance.now() / 1000;
+      if (!a) break; // (cannot happen: this pose is only chosen while a swing is being drawn)
+      o.lShX = o.rShX = -.2; o.lEl = o.rEl = -.45; // a fighter's guard
+      const at = a.rel === null ? swing(now - a.t0, Math.min(1, (now - a.t0) / .9), null) : swing(a.rel - a.t0, a.charge, now - a.rel);
+      for (const [j, v] of Object.entries(swingPose(a.kind, a.side, at))) o[j] += v;
       break;
-    case 'attack-kick':
-      o.lShX = o.rShX = -.1; o.lEl = o.rEl = -.35;
-      if (p.mechanics?.attack?.side === 'left') { o.lHip = -1.0; o.lKnee = .25; } else { o.rHip = -1.0; o.rKnee = .25; }
-      o.lean = -.12;
-      break;
+    }
     case 'attack-bash':
       o.lShX = o.rShX = -1.0; o.lEl = o.rEl = -.45; o.lean = .15;
       break;
@@ -200,12 +201,13 @@ function armsAt(p, o, at) {
 }
 
 function applyPose(p, dt) {
-  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : 9));
+  trackAttack(p, p.mechanics?.attack ?? null, performance.now() / 1000);
+  const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (k === 'walk' || k === 'run' ? 22 : k.startsWith('attack-') ? 40 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
   const b = p.body, hold = HOLDING.has(k) ? b.hold : null;
   // standing poses move the hips relative to this character's own leg length; seated poses put them on the seat
   const hip = (b.standHip + c.hipY - POSE_HIP) * (1 - c.seat) + c.hipY * c.seat;
-  b.hips.position.y = hip / b.unit; b.spine.rotation.x = c.lean;
+  b.hips.position.y = hip / b.unit; b.spine.rotation.x = c.lean; b.spine.rotation.y = c.twist;
   arm(b.armL, hold?.L, c.lShX, c.lShZ, c.lEl, 1);
   arm(b.armR, hold?.R, c.rShX, c.rShZ, c.rEl, -1);
   b.legL.rotation.x = c.lHip; b.legR.rotation.x = c.rHip;

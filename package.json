@@ -37,6 +37,7 @@
     "e2e:employees": "node scripts/e2e-employees.mjs",
     "e2e:objects": "node scripts/e2e-objects.mjs",
     "e2e:medkit": "node scripts/e2e-medkit.mjs",
+    "e2e:limbs": "node scripts/e2e-limbs.mjs",
     "e2e:voice": "node scripts/e2e-voice.mjs",
     "e2e:lan": "node scripts/e2e-lan.mjs",
     "lan:rebuild": "node scripts/lan-rebuild.mjs",

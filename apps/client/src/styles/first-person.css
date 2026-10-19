@@ -16,3 +16,48 @@ body.fp #stage canvas,body.tp #stage canvas{cursor:crosshair}
 /* how hard a throw will be: fills while the right button is held (net/objects.js) */
 #fpThrow{width:220px;height:10px;border-radius:5px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--line)}
 #fpThrowFill{height:100%;width:0;background:linear-gradient(90deg,#55c27a,#e8b84a 60%,#d66f5a)}
+/* hurt feedback (player/hit-fx.js): the red flash at the screen edges, a slow red heartbeat while something is broken, and the sentence at the bottom */
+#hitVignette,#lowVignette{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(170,0,0,0) 30%,rgba(200,10,10,.6) 70%,rgba(150,0,0,1) 100%)}
+body:not(.fp):not(.tp) #hitVignette,body:not(.fp):not(.tp) #lowVignette{display:none}
+#lowVignette[data-tone]{animation:heartbeat 2s ease-in-out infinite}
+#lowVignette[data-tone="broken"]{animation-duration:1.6s}
+#lowVignette[data-tone="severe"]{animation-duration:1.15s}
+@keyframes heartbeat{0%,100%{opacity:.04}12%{opacity:.6}24%{opacity:.14}36%{opacity:.45}62%{opacity:.05}}
+#fpCondition{max-width:min(560px,92vw);padding:9px 18px;border-radius:12px;font:600 13.5px/1.35 var(--f-display);text-align:center;color:#fff;background:rgba(122,20,18,.9);border:1px solid rgba(255,150,130,.55);box-shadow:0 6px 22px rgba(120,0,0,.35);backdrop-filter:blur(6px);pointer-events:none}
+#fpCondition[hidden]{display:none}
+#fpCondition[data-tone="warn"]{background:rgba(128,78,8,.92);border-color:rgba(255,200,110,.6);box-shadow:0 6px 22px rgba(120,70,0,.35)}
+#fpCondition[data-tone="severe"]{background:rgba(96,6,10,.95);border-color:rgba(255,110,100,.75);animation:conditionPulse 1.15s ease-in-out infinite}
+@keyframes conditionPulse{50%{box-shadow:0 0 0 3px rgba(255,70,60,.35),0 6px 22px rgba(120,0,0,.5)}}
+/* body figure (player/limb-hud.js): one per person, each part coloured by health left */
+#limbHud{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;gap:12px;align-items:flex-start;pointer-events:none}
+body:not(.fp):not(.tp) #limbHud{display:none}
+.limb-fig{display:flex;flex-direction:column;align-items:center;gap:6px;width:112px;padding:12px 12px 10px;color:#e8eef2;background:rgba(10,16,22,.88);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.13);border-radius:16px;box-shadow:0 8px 26px rgba(0,0,0,.28)}
+.limb-fig[hidden]{display:none}
+.limb-fig svg{width:78px;height:148px;overflow:visible}
+.limb-name{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 10.5px var(--f-display);letter-spacing:.09em;text-transform:uppercase;color:#aebcc6}
+.limb-bar{width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.limb-bar i{display:block;height:100%;width:100%;border-radius:2px;background:#46d39a;transition:width .35s ease,background-color .35s ease}
+.limb-bar i[data-level="hurt"]{background:#f0b93b}
+.limb-bar i[data-level="critical"]{background:#ff5a4d}
+.limb-out{font-size:10.5px;font-weight:700;line-height:1.25;color:#ff8e82;text-align:center}
+.limb-out:empty,.limb-fig[data-fig="self"] .limb-out{display:none}
+.neck{fill:rgba(255,255,255,.16)}
+.limb{--c:#46d39a;fill:var(--c);stroke:rgba(0,0,0,.28);stroke-width:1;transition:fill .3s ease,stroke .3s ease,filter .3s ease}
+.limb.cap{fill:none;stroke:var(--c);stroke-width:10;stroke-linecap:round}
+.limb.cap[data-limb$="Leg"]{stroke-width:13}
+.limb[data-level="hurt"]{--c:#f0b93b}
+.limb[data-level="critical"]{--c:#ff5a4d;filter:drop-shadow(0 0 3px rgba(255,70,55,.85));animation:limbPulse 1.1s ease-in-out infinite}
+.limb[data-level="out"]{--c:#6d747b;filter:saturate(.6);opacity:.78}
+.limb.hit{animation:limbHit .6s ease-out}
+@keyframes limbPulse{50%{opacity:.5}}
+@keyframes limbHit{0%{filter:brightness(3.2) drop-shadow(0 0 9px #fff)}100%{filter:none}}
+.marks text{display:none;text-anchor:middle;font:700 17px var(--f-display);fill:#e8eef2;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.limb[data-level="critical"]{animation:none}#lowVignette[data-tone]{animation:none;opacity:.12}#fpCondition[data-tone="severe"]{animation:none}}
+@media (max-width:760px){#limbHud{gap:8px;left:8px}.limb-fig{width:80px;padding:8px 8px 7px}.limb-fig svg{width:50px;height:95px}}
+#fpInspect{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+#limbHud .limb-fig.inspecting{pointer-events:auto;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 8px 26px rgba(0,0,0,.28)}
+.limb-fig.inspecting .limb{cursor:pointer}
+.limb.chosen{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #fff)}
+.limb-tools{display:flex;flex-direction:column;align-items:stretch;gap:5px;margin-top:2px;width:100%}
+.limb-tools .btn{font-size:11px;padding:4px 8px;touch-action:none}
+.limb-pick{font-size:10.5px;font-weight:700;text-align:center;color:#e8eef2}

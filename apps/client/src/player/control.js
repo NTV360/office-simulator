@@ -52,19 +52,19 @@ function endControl(nextId) {
 // stream of walking orders.
 function releaseSticks() {
   ctl.stickId = null; ctl.lookId = null; ctl.stick.x = ctl.stick.y = 0;
-  if (ctl.attackKind && player.online?.attack) { player.online.attack('release', ctl.attackKind); ctl.attackKind = null; ctl.attackPointerId = null; ctl.attackSource = null; }
+  if (ctl.attackKind && player.online?.attack) { player.online.attack('release', ctl.attackKind, undefined, ctl.pitch); ctl.attackKind = null; ctl.attackPointerId = null; ctl.attackSource = null; }
 }
 
 function beginAttack(kind, source = 'keyboard') {
   if (!ctl.active || ctl.attackKind || !player.online?.attack) return false;
-  if (!player.online.attack('begin', kind)) return false;
+  if (!player.online.attack('begin', kind, undefined, ctl.pitch)) return false;
   ctl.attackKind = kind; ctl.attackPointerId = null; ctl.attackSource = source;
   return true;
 }
 
 function endAttack(source) {
   if (!ctl.attackKind || (source && ctl.attackSource !== source) || !player.online?.attack) return false;
-  player.online.attack('release', ctl.attackKind);
+  player.online.attack('release', ctl.attackKind, undefined, ctl.pitch);
   ctl.attackKind = null; ctl.attackPointerId = null; ctl.attackSource = null;
   return true;
 }
@@ -251,7 +251,14 @@ function driveOnline(dt, p) {
 
 // Refresh the sit/stand button and the "who am I looking at" label a few times a second.
 let promptAcc = 0;
-function tickPrompts(dt) { promptAcc += dt; if (promptAcc > .2) { promptAcc = 0; updatePrompts(); } }
+let promptFailed = false;
+// (the prompts are only text and buttons: if building them ever fails, say so once and carry on, rather than stopping the whole frame loop)
+function tickPrompts(dt) {
+  promptAcc += dt;
+  if (promptAcc <= .2) return;
+  promptAcc = 0;
+  try { updatePrompts(); } catch (error) { if (!promptFailed) { promptFailed = true; console.error('updating the prompts failed:', error); } }
+}
 
 function initControl() {
   ctl.coarse = matchMedia('(pointer: coarse)').matches;

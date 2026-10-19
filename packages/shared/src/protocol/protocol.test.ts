@@ -54,9 +54,16 @@ describe('round trips', () => {
     for (const intent of [
       { type: 'attack', phase: 'begin', kind: 'punch' },
       { type: 'attack', phase: 'release', kind: 'kick', side: 'left' },
+      { type: 'attack', phase: 'release', kind: 'punch', pitch: -.5 },
     ] as const) {
-      expect(decodeClient(encode(intent))).toEqual(intent);
+      const back = decodeClient(encode(intent)) as { pitch?: number };
+      const { pitch, ...rest } = intent as { pitch?: number };
+      expect(back).toMatchObject(rest);
+      if (pitch === undefined) expect('pitch' in back).toBe(false); else expect(back.pitch).toBeCloseTo(pitch, 5);
     }
+    // a look angle that is not a number is refused, and an absurd one is clamped by the decoder
+    expect(() => encode({ type: 'attack', phase: 'release', kind: 'punch', pitch: Number.NaN })).toThrow();
+    expect((decodeClient(encode({ type: 'attack', phase: 'release', kind: 'punch', pitch: 9 })) as { pitch?: number }).pitch).toBeCloseTo(1.5, 5);
   });
 
   it('round-trips non-default character mechanics without losing nested state', () => {
@@ -97,12 +104,15 @@ describe('round trips', () => {
     expect(decodeClient(encode(intent))).toEqual(intent);
     const { target: _target, ...self } = intent;
     expect(decodeClient(encode(self))).toEqual(self);
+    const limbIntent = { type: 'inventory', action: 'care', itemId: 'bandage-1', target: 17, limb: 'leftArm', revision: 4 } as const;
+    expect(decodeClient(encode(limbIntent))).toEqual(limbIntent);
     const stop = { type: 'inventory', action: 'care-stop', revision: 4 } as const;
     expect(decodeClient(encode(stop))).toEqual(stop);
   });
 
   it('rejects malformed medical care intents', () => {
     expect(() => encode({ type: 'inventory', action: 'care', revision: 0 })).toThrow();
+    expect(() => encode({ type: 'inventory', action: 'care', itemId: 'bandage', limb: 'tail' as never, revision: 0 })).toThrow();
     expect(() => encode({ type: 'inventory', action: 'care', itemId: 'bandage', target: -1, revision: 0 })).toThrow();
   });
 

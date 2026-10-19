@@ -242,15 +242,54 @@ describe('authoritative item impacts', () => {
 });
 
 describe('authoritative attacks', () => {
+  /** One full punch (or kick) from the attacker at the origin, looking along +z with `pitch`, at a target `dz` ahead and `dx` to the side facing back at them. */
+  async function hitOnce(opts: { kind?: 'punch' | 'kick'; pitch?: number; dx?: number; dz?: number; targetFace?: number }) {
+    const a = await account('attacker'), b = await account('target');
+    const attacker = await manager.attach(a), target = await manager.attach(b);
+    attacker.pos.x = 0; attacker.pos.z = 0; attacker.face = 0;
+    target.pos.x = opts.dx ?? 0; target.pos.z = opts.dz ?? .5; target.face = opts.targetFace ?? Math.PI;
+    const kind = opts.kind ?? 'punch';
+    expect(manager.attack(a.id, 'begin', kind, undefined, undefined, opts.pitch)).toBe(true);
+    manager.stepAll(.45, 1);
+    expect(manager.attack(a.id, 'release', kind, undefined, undefined, opts.pitch)).toBe(true);
+    const h = target.mechanics.health, hurt = (Object.keys(h) as (keyof typeof h)[]).filter(l => h[l] < ({ head: 40, body: 80, leftArm: 35, rightArm: 35, leftLeg: 45, rightLeg: 45 })[l]);
+    return { hurt, health: { ...h } };
+  }
+
+  it('lands a punch on the part the attacker looks at: level is the head, down is the body, further down the legs', async () => {
+    expect((await hitOnce({})).hurt).toEqual(['head']);
+  });
+  it('a punch aimed at the chest hurts only the body', async () => {
+    expect((await hitOnce({ pitch: -.35 })).hurt).toEqual(['body']);
+  });
+  it('a punch aimed at the feet hurts a leg', async () => {
+    const r = await hitOnce({ pitch: -1.05 });
+    expect(r.hurt).toHaveLength(1);
+    expect(r.hurt[0]).toMatch(/Leg$/);
+  });
+  it('a punch to one side of the chest hurts that arm, as the target sees it (facing the attacker, the target right arm is on the attacker left)', async () => {
+    expect((await hitOnce({ pitch: -.35, dx: .2 })).hurt).toEqual(['rightArm']);
+  });
+  it('and to the other side, the other arm', async () => {
+    expect((await hitOnce({ pitch: -.35, dx: -.2 })).hurt).toEqual(['leftArm']);
+  });
+  it('a high kick lands on the body, not the head', async () => {
+    expect((await hitOnce({ kind: 'kick' })).hurt).toEqual(['body']);
+  });
+  it('does not believe an absurd look angle sent by a broken client', async () => {
+    const r = await hitOnce({ pitch: 1e9 });
+    expect(r.hurt).toEqual(['head']); // clamped to looking up: still the head, nothing odd
+  });
+
   it('requires one active attack, charges in real seconds, and damages a nearby target once', async () => {
     const a = await account('attacker'), b = await account('target');
     const attacker = await manager.attach(a), target = await manager.attach(b);
     attacker.pos.x = 0; attacker.pos.z = 0; attacker.face = 0;
     target.pos.x = 0; target.pos.z = .5;
-    expect(manager.attack(a.id, 'begin', 'punch')).toBe(true);
+    expect(manager.attack(a.id, 'begin', 'punch', undefined, undefined, -.35)).toBe(true); // looking down at the chest
     expect(manager.attack(a.id, 'begin', 'kick')).toBe(false);
     manager.stepAll(.45, 1);
-    expect(manager.attack(a.id, 'release', 'punch')).toBe(true);
+    expect(manager.attack(a.id, 'release', 'punch', undefined, undefined, -.35)).toBe(true);
     expect(target.mechanics.health.body).toBeLessThan(80);
     const damaged = target.mechanics.health.body;
     manager.stepAll(.05, 2);

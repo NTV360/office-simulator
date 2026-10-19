@@ -1,6 +1,6 @@
 import {
-  CARE_REACH, CARE_WALK_LIMIT, MEDKIT_REACH, canUseHands, createInventory, findFirstFit, hasLineOfSight, setHotbarSlot, isSeated, medicalHealSeconds, medkitContents, mostHurtLimb, objects, placeItem, takeFromMedkit,
-  useMedicalItem, type MedicalItem, type MedkitContents, type MedkitItem, type Person, type InventoryState, type LimbHealth,
+  CARE_REACH, CARE_WALK_LIMIT, LIMB_MAX_HP, MEDKIT_REACH, canUseHands, createInventory, findFirstFit, hasLineOfSight, setHotbarSlot, isSeated, medicalHealSeconds, medkitContents, mostHurtLimb, objects, placeItem, takeFromMedkit,
+  useMedicalItem, type MedicalItem, type MedkitContents, type MedkitItem, type Person, type InventoryState, type Limb, type LimbHealth,
 } from '@office/shared';
 
 // The server's rules for the medkit box on the kitchen counter and for timed care (hold E on the hotbar item). Pure checks: they say what may
@@ -65,6 +65,8 @@ export type CareCancel = 'gone' | 'hurt' | 'hit' | 'moved' | 'range';
 export interface CareJob {
   itemId: string;
   item: MedicalItem;
+  /** The body part the medic chose; undefined means the most-hurt one when the care finishes. */
+  limb?: Limb;
   targetId: number;
   startedAt: number;
   seconds: number;
@@ -85,7 +87,7 @@ const medicalItemOf = (p: Person, itemId: string): MedicalItem | null => {
 };
 
 /** May this medic start caring for this patient (the patient may be the medic) with this inventory item? */
-export function startCare(medic: Person, itemId: string, target: Person, now: number): { ok: true; job: CareJob } | { ok: false; reason: CareRefusal } {
+export function startCare(medic: Person, itemId: string, target: Person, now: number, limb?: Limb): { ok: true; job: CareJob } | { ok: false; reason: CareRefusal } {
   const item = medicalItemOf(medic, itemId);
   if (!item) return { ok: false, reason: 'not-medical' };
   if (!canUseHands(medic.mechanics) || down(medic)) return { ok: false, reason: 'hands' };
@@ -95,11 +97,11 @@ export function startCare(medic: Person, itemId: string, target: Person, now: nu
     if (target.mechanics.health.body <= 0) return { ok: false, reason: 'target' };
     if (!inCareRange(medic, target)) return { ok: false, reason: 'too-far' };
   }
-  if (mostHurtLimb(target.mechanics.health) === null) return { ok: false, reason: 'unhurt' };
+  if (limb === undefined ? mostHurtLimb(target.mechanics.health) === null : target.mechanics.health[limb] >= LIMB_MAX_HP[limb]) return { ok: false, reason: 'unhurt' };
   return {
     ok: true,
     job: {
-      itemId, item, targetId: target.id, startedAt: now, seconds: medicalHealSeconds(item)!, from: { x: medic.pos.x, z: medic.pos.z },
+      itemId, item, limb, targetId: target.id, startedAt: now, seconds: medicalHealSeconds(item)!, from: { x: medic.pos.x, z: medic.pos.z },
       health: { medic: totalHealth(medic.mechanics.health), target: totalHealth(target.mechanics.health) },
     },
   };
@@ -125,7 +127,7 @@ export function advanceCare(job: CareJob, medic: Person, target: Person | undefi
 
 /** The care is done: what the patient's health becomes, or null if there is nothing left to heal (then nothing is used up). */
 export function finishCare(job: CareJob, medic: Person, target: Person): LimbHealth | null {
-  const limb = mostHurtLimb(target.mechanics.health);
+  const limb = job.limb ?? mostHurtLimb(target.mechanics.health);
   if (limb === null) return null;
   const healed = useMedicalItem(target.mechanics, job.item, limb, { requireHands: target === medic });
   return healed.ok ? healed.health : null;

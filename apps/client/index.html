@@ -201,8 +201,10 @@
   <button class="btn" id="fpCreator" type="button" title="Change how you look">Look</button>
   <button class="btn" id="fpExit" type="button">Exit</button>
 </section>
-<div id="fpPrompt" hidden><div id="fpLook"></div><div id="fpThrow" hidden aria-label="Throw strength"><div id="fpThrowFill"></div></div><div id="fpAttacks" hidden aria-label="Attacks"><button class="btn" id="fpPunch" type="button">Punch</button><button class="btn" id="fpKick" type="button">Kick</button></div><button class="btn" id="fpAct" type="button" hidden></button><button class="btn" id="fpObj" type="button" hidden></button><button class="btn" id="fpStore" type="button" hidden></button><button class="btn" id="fpTidy" type="button" hidden title="Put everything at your desk back where it started (T)">Tidy my desk  (T)</button></div>
+<div id="fpPrompt" hidden><div id="fpCondition" role="status" aria-live="polite" hidden></div><div id="fpLook"></div><div id="fpThrow" hidden aria-label="Throw strength"><div id="fpThrowFill"></div></div><div id="fpAttacks" hidden aria-label="Attacks"><button class="btn" id="fpPunch" type="button">Punch</button><button class="btn" id="fpKick" type="button">Kick</button></div><button class="btn" id="fpAct" type="button" hidden></button><button class="btn" id="fpInspect" type="button" hidden></button><button class="btn" id="fpObj" type="button" hidden></button><button class="btn" id="fpStore" type="button" hidden></button><button class="btn" id="fpTidy" type="button" hidden title="Put everything at your desk back where it started (T)">Tidy my desk  (T)</button></div>
 <div id="crosshair" hidden></div>
+<div id="hitVignette" aria-hidden="true"></div><div id="lowVignette" aria-hidden="true"></div>
+<div id="limbHud" hidden aria-label="Body health"></div>
 <div id="stick" hidden><div id="knob"></div></div>
 <section id="creator" hidden role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
   <div id="creatorStage">

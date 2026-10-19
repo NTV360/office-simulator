@@ -138,9 +138,10 @@ export function startOnline() {
     return true;
   }
   const sendAct = kind => { if (net.joined) send({ type: 'act', kind }); };
-  const sendAttack = (phase, kind = 'punch', side) => {
+  // `pitch` is where they look (up positive): the server picks the body part that is hit from it (shared/sim/aim.ts)
+  const sendAttack = (phase, kind = 'punch', side, pitch) => {
     if (!net.joined) return false;
-    send({ type: 'attack', phase, kind, ...(side ? { side } : {}) });
+    send({ type: 'attack', phase, kind, ...(side ? { side } : {}), ...(Number.isFinite(pitch) ? { pitch } : {}) });
     return true;
   };
   const sendCharacter = (action, target, az, lift) => {

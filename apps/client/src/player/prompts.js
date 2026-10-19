@@ -6,6 +6,7 @@ import { $ } from '../ui/dom.js';
 import { statusText } from '../ui/person.js';
 import { ctl } from './control.js';
 import { player } from './player.js';
+import { updateLimbHud } from './limb-hud.js';
 import { nearestSeat } from './seating.js';
 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,6 +38,7 @@ function updatePrompts() {
     : '';
   const text = who + hint;
   if ($('fpLook').innerHTML !== text) $('fpLook').innerHTML = text;
+  updateLimbHud();
 }
 
 export { updatePrompts };

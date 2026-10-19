@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CATS } from '@office/shared';
 import { Character, STYLES } from './pack/characters.js';
 import { mergeJoints } from './gfx.js';
+import { addLimbShells } from './limb-tint.js';
 import { addFaces, addFigma } from './parts.js';
 import { makeGuitar, makeHeldProps } from './props.js';
 
@@ -90,6 +91,11 @@ function buildBody(spec) {
   const parts = packParts(spec);
   const { root, character, geometries, hips, spine, neck, head, armL, armR, legL, legR, handL, handR, items, hold, unit, standHip, eyeY, topY, skinMeshes } = parts;
   const chest = boundsOf(spine.children.filter(o => o.isMesh));
+  const own = joint => joint.children.filter(o => o.isMesh); // (a joint's own meshes, not the hand or props hanging off it)
+  const shells = addLimbShells({
+    head: [head, head.children.filter(o => o.isMesh && skinMeshes.includes(o))], // (the face and skull, not the hair or a hat)
+     body: [spine, own(spine)], leftArm: [armL, own(armL)], rightArm: [armR, own(armR)], leftLeg: [legL, own(legL)], rightLeg: [legR, own(legR)],
+  }, boundsOf); // coloured shells shown while a body part is hurt (people/sync.js)
 
   // props are placed in world space around the resting hand, then attached so they follow it
   const held = makeHeldProps(), hand = handR.getWorldPosition(new THREE.Vector3());
@@ -102,7 +108,7 @@ function buildBody(spec) {
   const sockets = { head, torso: spine, leftHand: handL, rightHand: handR };
   return {
     root, character, hips, spine, neck, head, armL, armR, legL, legR, items, hold,
-    unit, standHip, eyeY, topY, ...held, guitar, ring, skinMeshes, sockets, geometries, faces,
+    unit, standHip, eyeY, topY, ...held, guitar, ring, skinMeshes, sockets, geometries, faces, shells,
   };
 }
 

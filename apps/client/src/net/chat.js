@@ -32,7 +32,7 @@ export function initChat({ send, sendEmote, personById }) {
   const input = el('input', { id: 'chatInput', type: 'text', maxlength: String(MAX_CHAT), autocomplete: 'off', spellcheck: 'false', placeholder: 'Say something to people nearby…', 'aria-label': 'Chat message' });
   const form = el('form', { id: 'chatForm', hidden: '' }, input);
   const button = el('button', { id: 'chatBtn', class: 'chat-tool', type: 'button', title: 'Chat with people near you (Enter)' }, 'Chat');
-  const emoteButtons = EMOTE_KINDS.map((kind, i) => el('button', { class: 'chat-tool emote', type: 'button', 'data-emote': kind, title: `${EMOTE_LABELS[kind]} (${i + 1})` }, EMOTE_LABELS[kind]));
+  const emoteButtons = EMOTE_KINDS.map((kind, i) => el('button', { class: 'chat-tool emote', type: 'button', 'data-emote': kind, title: EMOTE_LABELS[kind] }, EMOTE_LABELS[kind]));
   const historyButton = el('button', { id: 'chatHistoryBtn', class: 'chat-tool', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'chatHistory', title: 'Everything said since you came in' }, 'History');
   const tools = el('div', { id: 'chatTools' }, button, historyButton, ...emoteButtons);
   const root = el('div', { id: 'chat', hidden: '' }, log, form, tools);
@@ -126,12 +126,7 @@ export function initChat({ send, sendEmote, personById }) {
   emoteButtons.forEach((b, i) => b.addEventListener('click', () => doEmote(EMOTE_KINDS[i])));
   input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
   addEventListener('keydown', e => {
-    const digit = e.key >= '1' && e.key <= '9' ? Number(e.key) : 0;
-    if (digit > 0 && digit <= EMOTE_KINDS.length && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) { // 1 to 4: the emotes
-      const t = e.target && e.target.tagName;
-      if (t !== 'INPUT' && t !== 'TEXTAREA' && t !== 'SELECT' && !(e.target && e.target.isContentEditable) && !document.querySelector('.login-screen')) doEmote(EMOTE_KINDS[digit - 1]);
-      return;
-    }
+    // (the number keys are the hotbar: net/online.js. The emotes are the buttons only.)
     if (e.key !== 'Enter' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target && e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'BUTTON' || (e.target && e.target.isContentEditable)) return;

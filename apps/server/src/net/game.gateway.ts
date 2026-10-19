@@ -211,7 +211,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
         const manager = this.players.manager();
-        manager.attack(socket.data.accountId, msg.phase, msg.kind, manager.mechanicsNow(), msg.side);
+        manager.attack(socket.data.accountId, msg.phase, msg.kind, manager.mechanicsNow(), msg.side, msg.pitch);
         return;
       case 'grab-character': case 'release-character': case 'throw-character': {
         if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
@@ -232,7 +232,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
           if (taken && !taken.ok && msg.action === 'medkit-take' && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: MEDKIT_REFUSAL_TEXT[taken.reason] }));
           return;
         }
-        if (msg.action === 'care') { manager.careStart(accountId, msg.itemId!, msg.target); return; }
+        if (msg.action === 'care') { manager.careStart(accountId, msg.itemId!, msg.target, msg.limb); return; }
         if (msg.action === 'care-stop') { manager.careStop(accountId); return; }
         const r = manager.inventoryAction(accountId, msg.action, msg.revision, msg.itemId, msg.slot, msg.object, msg.x, msg.y);
         if (r && r.ok) {

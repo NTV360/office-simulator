@@ -125,7 +125,13 @@ try {
   const picked = await until(() => A.page.evaluate(() => document.querySelector('#inventoryHotbar [data-slot="0"]')?.classList.contains('selected') ? true : null), 5000);
   check('pressing 1 picks that slot', !!picked);
   // look along the floor, away from the medkit, so E means care and not "open the medkit"
-  await A.page.evaluate(() => { window.__sim.ctl.yaw = Math.PI / 2; window.__sim.ctl.pitch = 0; });
+  // (and away from Ben too: with a healthy player in front of her, E would try to treat him and do nothing, which depends on where the knockback left him)
+  await A.page.evaluate(() => {
+    const me = window.__sim.player.person, ben = window.__sim.people.find(p => p.name === 'med_ben');
+    const off = yaw => { let d = Math.atan2(ben.pos.x - me.pos.x, ben.pos.z - me.pos.z) - yaw; return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); };
+    window.__sim.ctl.yaw = [Math.PI / 2, -Math.PI / 2, 0, Math.PI].find(y => off(y) > 1.1) ?? Math.PI / 2;
+    window.__sim.ctl.pitch = 0;
+  });
   await sleep(600);
   const hint = await until(() => A.page.evaluate(() => { const b = document.getElementById('fpObj'); return !b.hidden || b.textContent ? (/Hold E/.test(b.textContent) ? b.textContent : null) : null; }), 6000);
   check('the page says what holding E will do', !!hint, hint ?? '');
