@@ -41,6 +41,7 @@ const thirdPersonMode = {
         ["Shift", "run"],
         ["Space", "jump"],
         ["1-4", "gun"],
+        ["R", "reload"],
         ["R-click", "aim"],
         ["Click", "shoot"],
         ["E", "use · sit"],
@@ -88,9 +89,12 @@ const thirdPersonMode = {
     const p = player.person;
     if (!p) return;
     const { dx, dz } = driveLocomotion(dt, p);
-    // the character turns toward where it walks; when seated it faces its seat
+    // the character turns toward camera aim when armed, or toward where it walks; when seated it faces its seat
     if (player.sitting) p.face = p.faceGoal = player.sitting.face;
-    else {
+    else if (player.gun != null && p.state === "player") {
+      p.faceGoal = ctl.yaw;
+      p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 18));
+    } else {
       if (dx || dz) p.faceGoal = Math.atan2(dx, dz);
       p.face += angDiff(p.face, p.faceGoal) * (1 - Math.exp(-dt * 12));
     }

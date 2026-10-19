@@ -7,6 +7,7 @@ import {
   endControl,
   tickPrompts,
 } from "../player/control.js";
+import { GUNS, selectGun } from "../player/guns.js";
 import { player, spawnPlayer } from "../player/player.js";
 import { camera } from "../render/renderer.js";
 import { $ } from "../ui/dom.js";
@@ -27,6 +28,7 @@ function enterFP() {
       ["Shift", "run"],
       ["Space", "jump"],
       ["1-4", "gun"],
+      ["R", "reload"],
       ["R-click", "aim"],
       ["Click", "shoot"],
       ["E", "use · sit"],
@@ -37,6 +39,13 @@ function enterFP() {
   });
   ctl.pitchMin = -1.2;
   ctl.pitchMax = 1.2;
+  ctl.wheelHook = (dy) => {
+    if (player.gun == null) selectGun(0);
+    else
+      selectGun(
+        (player.gun + (dy > 0 ? 1 : GUNS.length - 1)) % GUNS.length,
+      );
+  };
   eye = eyeHeight(p.body, player.sitting?.hipY);
   camera.fov = 68;
   camera.near = 0.05;

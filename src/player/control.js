@@ -4,7 +4,7 @@ import { FULL_H, LOW_H } from "../config/plan.js";
 import { renderer } from "../render/renderer.js";
 import { $, keyHints } from "../ui/dom.js";
 import { wall } from "../world/helpers.js";
-import { gunDown, gunUp, gunsShow, selectGun } from "./guns.js";
+import { gunDown, gunUp, gunsShow, reloadGun, selectGun } from "./guns.js";
 import { stepPlayer, tickJump } from "./locomotion.js";
 import { player, releaseControl } from "./player.js";
 import { updatePrompts } from "./prompts.js";
@@ -217,6 +217,7 @@ function initControl() {
     const k = e.key.toLowerCase();
     if (k === " ") e.preventDefault(); // the page scrolls on Space otherwise
     if (k >= "1" && k <= "4" && !e.repeat) selectGun(+k - 1);
+    if (k === "r" && !e.repeat) reloadGun();
     if (k === "e" && !e.repeat && !ctl.useHook?.()) toggleSit();
     if (k === "escape" && !document.pointerLockElement) exitPlay();
     if (k === "v" && !e.repeat) setView(ctl.mode === "fp" ? "third" : "fp");

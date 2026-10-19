@@ -92,7 +92,6 @@ function tick(now) {
     const you = player.person?.id === -1 ? player.person : null; // (someone you took control of is in people)
     if (you && you.state !== "player") stepPerson(you, dt); // your character in a Power Slap
     updateSlap(dt);
-    updateGuns(dt);
     updateScreens();
     updateLight();
   }
@@ -112,6 +111,7 @@ function tick(now) {
   }
   keyCam(dt);
   updateCamera(dt);
+  updateGuns(dt);
   updateGolf(dt);
   updateDarts(now, dt);
   updateMusic(now);
