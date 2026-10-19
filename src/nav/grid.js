@@ -25,10 +25,29 @@ const cellOf = (x, y) => [
   Math.floor((y - GY0) / CS),
 ];
 const BLOCK = new Uint8Array(GC * GR); // cells under a chair: walkers route around every seat, empty or not
+const TOP = new Float32Array(GC * GR).fill(Infinity); // standable top of whatever blocks the cell (metres)
 const isOpen = (i) => NAV[i] === 1 && BLOCK[i] === 0;
 const walkPx = (x, y) => {
   const [c, r] = cellOf(x, y);
   return c >= 0 && r >= 0 && c < GC && r < GR && isOpen(r * GC + c);
+};
+// Height-aware: a blocked cell is passable once the feet clear what is on it (jumping)
+const walkPxAt = (x, y, feet) => {
+  const [c, r] = cellOf(x, y);
+  return (
+    c >= 0 &&
+    r >= 0 &&
+    c < GC &&
+    r < GR &&
+    (isOpen(r * GC + c) || feet >= TOP[r * GC + c])
+  );
+};
+// Highest standable surface under the point: the obstacle top, or the floor
+const supportAt = (x, y) => {
+  const [c, r] = cellOf(x, y);
+  if (c < 0 || r < 0 || c >= GC || r >= GR) return 0;
+  const t = TOP[r * GC + c];
+  return t === Infinity ? 0 : t;
 };
 const SEAT_R = 8; // plan px (about 0.33 m): the footprint of a chair
 function blockSeat(sp) {
@@ -48,8 +67,11 @@ function blockSeat(sp) {
       if (
         Math.hypot(GX0 + (c + 0.5) * CS - px, GY0 + (r + 0.5) * CS - py) <=
         SEAT_R
-      )
-        BLOCK[r * GC + c]++;
+      ) {
+        const i = r * GC + c;
+        BLOCK[i]++;
+        TOP[i] = Math.min(TOP[i], sp.hipY); // a chair's seat is standable
+      }
 }
 function nearestWalk(c, r) {
   if (isOpen(r * GC + c)) return [c, r];
@@ -73,17 +95,16 @@ function initGrid() {
       let ok =
         inPoly(x, y, OUTER) ||
         (x > 182 && x < 265 && y > FRONT_Y - 4 && y < FRONT_Y + 43); // + the walkway outside the doors
-      if (ok)
-        for (const o of OBS)
-          if (
-            x > o[0] - MARGIN &&
-            x < o[2] + MARGIN &&
-            y > o[1] - MARGIN &&
-            y < o[3] + MARGIN
-          ) {
-            ok = false;
-            break;
-          }
+      for (const o of OBS)
+        if (
+          x > o[0] - MARGIN &&
+          x < o[2] + MARGIN &&
+          y > o[1] - MARGIN &&
+          y < o[3] + MARGIN
+        ) {
+          ok = false;
+          if (o[4] < TOP[r * GC + c]) TOP[r * GC + c] = o[4];
+        }
       NAV[r * GC + c] = ok ? 1 : 0;
     }
   for (const sp of interactables.all()) if (sp.sit) blockSeat(sp);
@@ -100,5 +121,7 @@ export {
   isOpen,
   NAV,
   nearestWalk,
+  supportAt,
   walkPx,
+  walkPxAt,
 };

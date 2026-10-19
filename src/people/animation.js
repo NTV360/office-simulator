@@ -32,9 +32,11 @@ function animKey(p) {
   if (p.state === "player")
     return player.sitting
       ? p.task?.anim || "listenSit"
-      : player.moving
-        ? "walk"
-        : p.task?.anim || "stand"; // (standing: a game's pose, ui/games.js)
+      : player.air
+        ? "jump"
+        : player.moving
+          ? "walk"
+          : p.task?.anim || "stand"; // (standing: a game's pose, ui/games.js)
   if (p.state === "walking")
     return p.riding ? "ride" : p.task?.run || p.hazel ? "run" : "walk"; // Hazel runs, or rides her tricycle
   if (p.state !== "doing" || !p.task) return "stand";
@@ -520,6 +522,17 @@ function targetPose(p, k, T) {
       o.headX = 0.12 + Math.sin(T * 4) * 0.03;
       o.headY = Math.sin(T * 2.5) * 0.1;
       break;
+    case "jump": // Roblox-style: arms up, knees tucked
+      o.lShX = o.rShX = -2.6;
+      o.lShZ = 0.3;
+      o.rShZ = -0.3;
+      o.lEl = o.rEl = -0.2;
+      o.lHip = -0.7;
+      o.rHip = -0.35;
+      o.lKnee = 1.3;
+      o.rKnee = 1.0;
+      o.lean = 0.1;
+      break;
     default:
       o.lShX = Math.sin(T * 0.9) * 0.05;
       o.rShX = -Math.sin(T * 0.9) * 0.05;
@@ -565,7 +578,7 @@ function fightNear(p) {
       return m.spots[0].pos;
   return null;
 }
-const SNAPPY = new Set(["walk", "run", "slapHit", "slapTake"]); // poses reached quickly
+const SNAPPY = new Set(["walk", "run", "jump", "slapHit", "slapTake"]); // poses reached quickly
 function applyPose(p, dt) {
   const k = animKey(p),
     o = targetPose(p, k, p.animT),

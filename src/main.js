@@ -28,13 +28,14 @@ import { tp } from "./camera/modes/thirdPerson.js";
 import { camGoal, camState } from "./camera/state.js";
 import { toPx } from "./config/plan.js";
 import { findPath } from "./nav/astar.js";
-import { GC, GR, NAV, walkPx } from "./nav/grid.js";
+import { GC, GR, NAV, supportAt, walkPx, walkPxAt } from "./nav/grid.js";
 import { updateBumps } from "./people/bump.js";
 import { updateDizzy } from "./people/dizzy.js";
 import { roster } from "./people/roster.js";
 import { syncBody } from "./people/sync.js";
 import { fetchAttendance, fetchEmployees } from "./persistence/store.js";
 import { ctl } from "./player/control.js";
+import { stepPlayer, tickJump } from "./player/locomotion.js";
 import { player } from "./player/player.js";
 import { buildLabels, labelGroup, labelState } from "./render/labels.js";
 import { updateLight } from "./render/lighting.js";
@@ -199,6 +200,10 @@ function start(employees, attendance) {
     drawGame,
     findPath,
     walkPx,
+    walkPxAt,
+    supportAt,
+    stepPlayer,
+    tickJump,
     toPx,
     ENTRY,
     advance(n, dt = 0.05) {
