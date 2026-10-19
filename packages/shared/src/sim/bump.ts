@@ -105,7 +105,12 @@ export function updateBumps(dt: number): void {
     } else if ((p.bumpCd ?? 0) > 0) p.bumpCd = (p.bumpCd ?? 0) - dt;
   }
   for (const p of people) {
-    if (p.state !== "walking" || (p.scratch ?? 0) > 0 || (p.bumpCd ?? 0) > 0)
+    if (
+      p.state !== "walking" ||
+      (p.scratch ?? 0) > 0 ||
+      (p.down ?? 0) > 0 ||
+      (p.bumpCd ?? 0) > 0
+    )
       continue;
     for (const q of people) {
       if (q === p || q.state === "away") continue;

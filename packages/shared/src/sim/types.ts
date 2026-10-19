@@ -81,6 +81,8 @@ export interface Person {
   scratch?: number;
   /** Cooldown before this person can be stopped by a bump again. */
   bumpCd?: number;
+  /** Seconds left flat on the floor after being shot (client player/guns.js; 0/undefined = up). */
+  down?: number;
   pose: Record<string, unknown>;
   arriveAt: number;
   leaveAt: number;

@@ -22,7 +22,7 @@ function enterFP() {
   if (!player.sitting && !player.online) p.task = null;
   beginControl("fp", p, {
     title: "First person",
-    keys: "WASD or arrows to move · drag to look · Shift to run · E to sit or stand · V third person · Esc to exit",
+    keys: "WASD or arrows to move · drag to look · Shift to run · Space jump · 1-4 gun · R-click aim · Click shoot · E to sit or stand · V third person · Esc to exit",
   });
   ctl.pitchMin = -1.2;
   ctl.pitchMax = 1.2;

@@ -31,6 +31,7 @@ const HOLDING = new Set(["walk", "run", "stand"]); // poses in which a carried p
 // Hazel (the one hand-written character): she runs everywhere, and has her own movie, peek and ride poses below.
 const isHazel = (p) => p.name === HAZEL_NAME;
 function animKey(p) {
+  if (p.down > 0) return "down"; // shot: flat on the floor, outranks everything
   const posture = p.mechanics?.posture;
   // A held character is attached to another player's hands; show the carried
   // ragdoll pose instead of an ordinary walking/standing animation.
@@ -56,7 +57,9 @@ function animKey(p) {
         ? "crouch"
         : player.moving
           ? "walk"
-          : "stand";
+          : player.gun != null
+            ? "aim" // a toy gun is out (player/guns.js): sight down the arm
+            : "stand";
   if (p.state === "controlled")
     return p.task?.kind === "playerSit" || posture === "seated"
       ? p.task?.anim || "listenSit"
@@ -551,6 +554,25 @@ function targetPose(p, k, T) {
       o.lean = 0.06;
       o.headX = 0.12 + Math.sin(T * 4) * 0.03;
       o.headY = Math.sin(T * 2.5) * 0.1;
+      break;
+    case "down": // shot: flat on their back for a couple of seconds
+      o.hipY = POSE_HIP - p.body.standHip + 0.12;
+      o.lean = -1.35;
+      o.lHip = o.rHip = -1.5;
+      o.lShX = o.rShX = -0.3;
+      o.lShZ = 1.1;
+      o.rShZ = -1.1;
+      o.lEl = o.rEl = -0.1;
+      o.headX = -0.25;
+      o.headY = 0.4;
+      break;
+    case "aim": // gun drawn, right arm levelled forward
+      o.rShX = -1.45;
+      o.rShZ = -0.12;
+      o.rEl = -0.08;
+      o.lShZ = 0.16;
+      o.headY = -0.1;
+      o.lean = 0.04;
       break;
     case "jump": // Roblox-style: arms up, knees tucked
       o.lShX = o.rShX = -2.6;

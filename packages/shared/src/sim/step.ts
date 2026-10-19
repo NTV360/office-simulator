@@ -63,7 +63,7 @@ export function stepPerson(p: Person, dt: number): void {
     return;
   }
   p.animT += dt * Math.min(sim.speed, 2.5);
-  if ((p.scratch ?? 0) > 0) return; // stopped for a scratch-head beat after a bump (sim/bump.ts)
+  if ((p.scratch ?? 0) > 0 || (p.down ?? 0) > 0) return; // stopped: a scratch-head beat after a bump (sim/bump.ts), or flat after a shot (client guns)
   if (p.state === "walking" && p.path) reroute(p);
   if (p.state === "walking" && p.path) {
     let step = p.speed * dt * sim.speed * (p.task?.run ? 2.4 : 1),
