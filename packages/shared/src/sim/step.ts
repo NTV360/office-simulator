@@ -2,6 +2,7 @@ import { findPath } from "../nav/astar";
 import { navVersion, walkPx } from "../nav/grid";
 import { OX, OY, S } from "../plan";
 import { angDiff } from "../util";
+import { updateBumps } from "./bump";
 import { arriveNow, newDay } from "./day";
 import type { Spot } from "./interactables";
 import { live, tickLive } from "./live";
@@ -73,6 +74,18 @@ export function stepPerson(p: Person, dt: number): void {
         dz = tg.z - p.pos.z,
         d = Math.hypot(dx, dz);
       if (d > 0.02) p.faceGoal = Math.atan2(dx, dz);
+      if (
+        d < 0.45 &&
+        people.some(
+          (q) =>
+            q !== p &&
+            q.state !== "away" &&
+            Math.hypot(q.pos.x - tg.x, q.pos.z - tg.z) < 0.35,
+        )
+      ) {
+        p.pi++; // the waypoint has a body on it: p can never touch it through the no-overlap clamp, so beside it counts
+        continue;
+      }
       if (d <= step) {
         p.pos.x = tg.x;
         p.pos.z = tg.z;
@@ -87,7 +100,8 @@ export function stepPerson(p: Person, dt: number): void {
       }
     }
     p.walkPhase += moved * 4.6;
-    // hard rule: never overlap another person, whatever the path or the bump cooldown allowed
+    // hard rule: never overlap another person, whatever the path or the bump cooldown allowed — but a push must
+    // not shove someone into a wall or furniture cell, and at the last waypoint being beside it counts as there
     for (const q of people) {
       if (q === p || q.state === "away") continue;
       const dx = p.pos.x - q.pos.x,
@@ -95,9 +109,28 @@ export function stepPerson(p: Person, dt: number): void {
         d = Math.hypot(dx, dz);
       if (d < 0.3) {
         const nx = d > 1e-6 ? dx / d : 1,
-          nz = d > 1e-6 ? dz / d : 0;
-        p.pos.x = q.pos.x + nx * 0.3;
-        p.pos.z = q.pos.z + nz * 0.3;
+          nz = d > 1e-6 ? dz / d : 0,
+          px = q.pos.x + nx * 0.3,
+          pz = q.pos.z + nz * 0.3;
+        if (walkPx(px / S + OX, pz / S + OY)) {
+          p.pos.x = px;
+          p.pos.z = pz;
+        }
+        if (q.state !== "walking") {
+          // pressed up against somebody settled on the route: edge along them toward p's heading, like slipping
+          // behind a seated colleague — pushing straight back every tick would pin p in place forever
+          const hx = Math.sin(p.faceGoal),
+            hz = Math.cos(p.faceGoal),
+            tx = -nz,
+            tz = nx,
+            sg = tx * hx + tz * hz >= 0 ? 1 : -1,
+            sx = p.pos.x + tx * sg * 0.04,
+            sz = p.pos.z + tz * sg * 0.04;
+          if (walkPx(sx / S + OX, sz / S + OY)) {
+            p.pos.x = sx;
+            p.pos.z = sz;
+          }
+        }
       }
     }
     // gentle avoidance while in open floor
@@ -118,6 +151,10 @@ export function stepPerson(p: Person, dt: number): void {
         }
       }
     }
+    const end = p.path[p.path.length - 1];
+    if (Math.hypot(end.x - p.pos.x, end.z - p.pos.z) < 0.7)
+      p.pi = p.path.length; // a crowd or a pile of sidesteps can keep someone a step short of the goal itself:
+    // next to it is there — arrive snaps to the spot anyway, so leftover waypoints do not matter
     if (p.pi >= p.path.length) arrive(p);
   } else if (p.state === "doing") {
     // a break starting stops desk work right away (once per break), so people get up and play

@@ -48,6 +48,7 @@ function animKey(p) {
   )
     return `attack-${attack.kind}`;
   if (p.scratch > 0) return "scratch"; // stopped for a bump: the scratch-head beat (shared sim/bump.ts)
+  if (p.mechanics?.locomotion === "jump") return "jump";
   if (isLocalPlayer(p))
     return player.sitting || posture === "seated"
       ? p.task?.anim || "listenSit"
@@ -543,6 +544,25 @@ function targetPose(p, k, T) {
       o.lShX = Math.sin(T * 1.3) * 0.1;
       o.headX = Math.sin(T * 4.4) * 0.05;
       break;
+    case "scratch":
+      o.rShX = -2.1;
+      o.rShZ = -0.25;
+      o.rEl = -2.3 + Math.sin(T * 9) * 0.25;
+      o.lean = 0.06;
+      o.headX = 0.12 + Math.sin(T * 4) * 0.03;
+      o.headY = Math.sin(T * 2.5) * 0.1;
+      break;
+    case "jump": // Roblox-style: arms up, knees tucked
+      o.lShX = o.rShX = -2.6;
+      o.lShZ = 0.3;
+      o.rShZ = -0.3;
+      o.lEl = o.rEl = -0.2;
+      o.lHip = -0.7;
+      o.rHip = -0.35;
+      o.lKnee = 1.3;
+      o.rKnee = 1.0;
+      o.lean = 0.1;
+      break;
     default:
       o.lShX = Math.sin(T * 0.9) * 0.05;
       o.rShX = -Math.sin(T * 0.9) * 0.05;
@@ -625,7 +645,11 @@ function applyPose(p, dt) {
       1 -
       Math.exp(
         -dt *
-          (k === "walk" || k === "run" ? 22 : k.startsWith("attack-") ? 40 : 9),
+          (k === "walk" || k === "run" || k === "jump"
+            ? 22
+            : k.startsWith("attack-")
+              ? 40
+              : 9),
       );
   for (const j of JOINTS)
     c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;
