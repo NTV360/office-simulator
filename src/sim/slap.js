@@ -1,5 +1,6 @@
 import { SLAP_LATE, SLAP_ROUNDS, SLAP_TIME, koChance } from '../config/slap.js';
 import { pick, rnd, shuffle } from '../core/util.js';
+import { recordKill } from '../player/guns.js';
 import { addLog, people } from './state.js';
 import { arrive, endTask, goDo, goExit, placeNow, putBucketBack } from './tasks.js';
 import { ENTRY } from '../world/entrance.js';
@@ -80,6 +81,7 @@ function slapHit(m, power, ko) {
 }
 function slapEnd(m, winner, how) {
   Object.assign(m, { phase: 'end', t: 0, winner, how, waiting: false });
+  if (how === 'ko' && winner !== null && m.fighters?.[winner]) recordKill(m.fighters[winner]);
   const [w, l] = winner === null ? m.names : [m.names[winner], m.names[1 - winner]], them = l === 'You' ? 'you' : l;
   addLog(how === 'ko' ? `${w} knocked out ${them} in a Power Slap` : how === 'draw' ? `${w} and ${them} drew a Power Slap` : `${w} beat ${them} in a Power Slap on points`);
 }
