@@ -1,10 +1,12 @@
 import { NEVER, isHelper } from "@office/shared";
 import * as THREE from "three";
 import { follow, following, setView, viewId } from "../camera/controller.js";
-import { isLocalPlayer } from "../player/player.js";
+import { isLocalPlayer, player, takeControl } from "../player/player.js";
 import { scene } from "../render/renderer.js";
 import { fillAvatar } from "./avatar.js";
+import { openCreator } from "./creator.js";
 import { $ } from "./dom.js";
+import { renderSlapButton } from "./slap.js";
 import { describeStatus, fmt } from "./status-text.js";
 
 /* ================= Selection + UI ================= */

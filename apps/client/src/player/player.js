@@ -11,6 +11,8 @@ import {
   takeControl as simTakeControl,
   slap,
   slapTakeOver,
+  toPx,
+  walkPx,
 } from "@office/shared";
 import { buildBody, disposeBody } from "../character/rig.js";
 import { peopleGroup } from "../people/group.js";
@@ -106,12 +108,19 @@ function takeControl(p) {
   releaseControl();
   player.own = player.person;
   if (player.own) player.own.body.root.visible = false;
+  const spot = p.task?.spot;
   if (p.task?.slap)
     for (const m of slap.matches) {
       const side = m.fighters?.indexOf(p) ?? -1;
       if (side >= 0) slapTakeOver(m, side);
     }
-  else simTakeControl(p);
+  else {
+    simTakeControl(p);
+    if (spot?.sit && spot.approach && !walkPx(...toPx(p.pos))) {
+      p.pos.x = spot.approach.x;
+      p.pos.z = spot.approach.z;
+    }
+  }
   player.person = p;
   player.sitting = null;
   player.moving = false;
