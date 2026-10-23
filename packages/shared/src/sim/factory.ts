@@ -14,8 +14,8 @@ import { HAZEL_NAME, applyHazel } from "./hazel";
 import { helperIdentity } from "./helper";
 import { interactables, type Spot } from "./interactables";
 import { createInventory } from "./inventory";
-import { liveSchedule, usesAttendance } from "./live";
-import { hasSlot, isAi } from "./person";
+import { live, liveSchedule } from "./live";
+import { hasSlot, isAi, isHelper } from "./person";
 import { newProps } from "./props";
 import {
   allocateDesks,
@@ -385,7 +385,7 @@ export function setStaffCount(requested: number): number {
   while (count() < target) {
     const p = makeStaff();
     if (!p) break;
-    if (sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50)
+    if (!p.absent && sim.t < p.leaveAt - 30 && sim.t > 7 * 60 + 50)
       p.arriveAt = sim.t + rnd(0.1, 4);
   }
   while (count() > target) {
@@ -412,5 +412,5 @@ export function scheduleDay(p: Person): void {
   p.arrivedAt = null;
   p.coffees = 0;
   if (p.name === HAZEL_NAME) p.leaveAt = Math.min(DAY_END - 3, end + 62); // Hazel is always the last one out
-  if (usesAttendance() && p.userId) liveSchedule(p); // Live: real clock-in and clock-out times instead
+  if (live.mode === "live" && !isHelper(p)) liveSchedule(p); // Live: real clock-in and clock-out times only (no fallback staff without attendance)
 }
