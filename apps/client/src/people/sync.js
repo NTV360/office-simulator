@@ -69,7 +69,7 @@ function syncBody(p, dt) {
     p.mechanics?.posture === "crouching" ? p.mechanics.crouchLevel || 0 : 0;
   let jumpY = 0;
   if (p.mechanics?.locomotion === "jump") {
-    if (p._buf) {
+    if (p._buf && !isLocalPlayer(p)) {
       // Online snapshots carry the authoritative vertical velocity. Derive the
       // ballistic height from it instead of integrating the same velocity once
       // per render frame (which makes jump height depend on display refresh rate).
@@ -82,8 +82,8 @@ function syncBody(p, dt) {
       );
       jumpY = Math.max(0, JUMP.velocity * elapsed - 4.9 * elapsed * elapsed);
     } else {
-      // Offline the authoritative sim already integrates pos.y through the arc
-      // (and lands on furniture) — adding a second integration would double it.
+      // Offline (and for the local steered player) pos.y is already integrated through
+      // the arc and onto furniture tops — adding a second integration would double it.
       jumpY = 0;
     }
     p._jumpY = jumpY;

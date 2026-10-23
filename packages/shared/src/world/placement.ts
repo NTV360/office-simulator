@@ -147,6 +147,9 @@ let fixedTops: readonly FixedTop[] = [];
 /** The fixed tops of the office, from the layout data (`loadLayout` sets them). A jumping person can stand on them too. */
 export function setFixedTops(tops: readonly FixedTop[]): void {
   fixedTops = tops;
+  for (const isl of DESK_ISLANDS)
+    setTopRect(isl.rect[0], isl.rect[1], isl.rect[2], isl.rect[3], DESK_TOP);
+  setTopRect(351.8, 1061.1, 437.3, 1083.3, 0.9);
   for (const t of tops) setTopRect(t[0], t[1], t[2], t[3], t[4]);
 }
 

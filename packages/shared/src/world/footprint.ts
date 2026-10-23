@@ -1,6 +1,6 @@
-import { setBlocker, type ObstacleRect } from "../nav/grid";
-import { toPx } from "../plan";
-import { shapeOf } from "./catalogue";
+import { setBlocker, setChairTop, type ObstacleRect } from "../nav/grid";
+import { S, toPx } from "../plan";
+import { CATALOGUE, shapeOf } from "./catalogue";
 import type { WorldObject } from "./objects";
 
 // Where an item that blocks walking (a table, a sofa, a cabinet) stands on the walk grid: its footprint, a rectangle in plan pixels, turned
@@ -25,10 +25,22 @@ export function footprintOf(o: WorldObject): ObstacleRect | null {
 /** Put this item's footprint on the walk grid where it is now (or take it off). An upright item with a top (a chair seat,
  *  a table, a sofa) is a surface a jumper can land on, so its height is stamped on the walk grid with the footprint. */
 export const refreshFootprint = (o: WorldObject): void => {
-  const top = o.q === null ? shapeOf(o).top?.y : undefined;
-  setBlocker(
-    o.index,
-    footprintOf(o),
-    top === undefined ? undefined : o.y + top,
-  );
+  const shape = shapeOf(o);
+  const top = o.q === null ? shape.top?.y : undefined;
+  const foot = footprintOf(o);
+  setBlocker(o.index, foot, top === undefined ? undefined : o.y + top);
+  if (
+    !foot &&
+    !o.removed &&
+    o.carriedBy === null &&
+    o.q === null &&
+    shape.top &&
+    CATALOGUE[o.type]?.rests === "floor"
+  ) {
+    const [cx, cy] = toPx(o);
+    const r = Math.max(6, Math.max(shape.top.hw, shape.top.hd) / S + 2);
+    setChairTop(o.index, [cx - r, cy - r, cx + r, cy + r], o.y + shape.top.y);
+  } else {
+    setChairTop(o.index, null);
+  }
 };

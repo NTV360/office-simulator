@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { M } from "../../render/materials.js";
 import { attachToObject } from "../../render/objects.js";
 import { SCREENS, registerScreen } from "../../render/screens.js";
-import { addObs, addTop, box, frame, staticRoot } from "../helpers.js";
+import { addObs, box, frame, staticRoot } from "../helpers.js";
 import { placeLater, placeObject, placeObjectLocal } from "../objects.js";
 import { N, SO, mkSpot } from "./basics.js";
 import { buildTrike } from "./trike.js";
@@ -90,7 +90,6 @@ function island(def, tags, gap = SEAT_GAP) {
     [x1, y1, x2, y2] = def.rect;
   let seatNo = 0;
   addObs(x1, y1, x2, y2);
-  addTop(x1, y1, x2, y2, 0.76);
   const cx = wx((x1 + x2) / 2),
     cz = wz((y1 + y2) / 2),
     w = (x2 - x1) * S,

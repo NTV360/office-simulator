@@ -38,10 +38,35 @@ export const walkPx = (x: number, y: number): boolean => {
 /** Standable height per cell (metres): a desk top or chair seat a jumping person can land on and walk across. 0 = none.
  *  Walls, glass and other full-height obstacles never get one, so they stay unjumpable. */
 const TOP = new Float32Array(GC * GR);
-/** Standable tops of movable items (a chair seat, a sofa): keyed by the item's blocker key, so moving the item moves its top. */
+/** Standable tops of movable items (a table, a sofa): keyed by the item's blocker key, so moving the item moves its top. */
 const ITOP = new Float32Array(GC * GR);
-const ITOP_KEY = new Int32Array(GC * GR).fill(-1);
+/** Standable tops of floor chairs and stools (which do not block NAV, but support a jumping person). */
+const CTOP = new Float32Array(GC * GR);
+/** 1 where a cell is outside the floor outline or within MARGIN of a solid (untopped) fixed obstacle such as a wall. */
+const SOLID = new Uint8Array(GC * GR);
+/** Count of unjumpable movable items (plants, floor TVs, whiteboards) blocking each cell. */
+const SOLID_BLOCKS = new Uint16Array(GC * GR);
 const topCells = new Map<number, { cells: number[]; h: number }>();
+const chairCells = new Map<number, { cells: number[]; h: number }>();
+let lastObstacles: readonly ObstacleRect[] = [];
+const topRects: Array<readonly [number, number, number, number, number]> = [];
+
+const isFloorInside = (x: number, y: number): boolean =>
+  inPoly(x, y, OUTER) ||
+  (x > 182 && x < 265 && y > FRONT_Y - 4 && y < FRONT_Y + 43);
+
+function isToppedObstacle(o: ObstacleRect): boolean {
+  for (const t of topRects) {
+    if (
+      Math.abs(o[0] - t[0]) < 1.5 &&
+      Math.abs(o[1] - t[1]) < 1.5 &&
+      Math.abs(o[2] - t[2]) < 1.5 &&
+      Math.abs(o[3] - t[3]) < 1.5
+    )
+      return true;
+  }
+  return false;
+}
 
 /** Feet-aware walk check: any blocked cell is passable once the feet clear its standable top — a desk, a counter or a
  *  chair seat. Cells with no top (walls, glass, plants, things resting on furniture) stay solid whatever the height. */
@@ -50,19 +75,22 @@ export function walkPxAt(x: number, y: number, feet = 0): boolean {
   if (c < 0 || r < 0 || c >= GC || r >= GR) return false;
   const i = r * GC + c;
   if (NAV[i] === 1) return true;
+  if (SOLID[i] || SOLID_BLOCKS[i]) return false;
   const t = Math.max(TOP[i], ITOP[i]);
   return t > 0 && feet >= t - 1e-6;
 }
 
-/** The surface under a person on this cell: the standable top of a blocked cell, else the floor. */
-export function supportAt(x: number, y: number): number {
+/** The surface under a person on this cell: the standable top of a blocked cell (or a chair seat when jumping onto it), else the floor. */
+export function supportAt(x: number, y: number, feet = 0): number {
   const [c, r] = cellOf(x, y);
   if (c < 0 || r < 0 || c >= GC || r >= GR) return 0;
   const i = r * GC + c;
-  return NAV[i] === 1 ? 0 : Math.max(TOP[i], ITOP[i]);
+  const base = NAV[i] === 1 ? 0 : Math.max(TOP[i], ITOP[i]);
+  const ct = CTOP[i];
+  return ct > base && feet >= ct - 0.15 ? ct : base;
 }
 
-/** Register a standable top over a rectangle (plan px): every cell it covers gets the highest height seen. */
+/** Register a standable top over a rectangle (plan px): every cell its obstacle blocks (including MARGIN, clear of walls) gets the highest height seen. */
 export function setTopRect(
   x1: number,
   y1: number,
@@ -70,24 +98,42 @@ export function setTopRect(
   y2: number,
   h: number,
 ): void {
-  const c0 = Math.max(0, Math.floor((x1 - GX0) / CS)),
-    c1 = Math.min(GC - 1, Math.floor((x2 - GX0) / CS));
-  const r0 = Math.max(0, Math.floor((y1 - GY0) / CS)),
-    r1 = Math.min(GR - 1, Math.floor((y2 - GY0) / CS));
+  topRects.push([x1, y1, x2, y2, h]);
+  const c0 = Math.max(0, Math.floor((x1 - MARGIN - GX0) / CS - 0.5)),
+    c1 = Math.min(GC - 1, Math.ceil((x2 + MARGIN - GX0) / CS - 0.5));
+  const r0 = Math.max(0, Math.floor((y1 - MARGIN - GY0) / CS - 0.5)),
+    r1 = Math.min(GR - 1, Math.ceil((y2 + MARGIN - GY0) / CS - 0.5));
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++) {
       const x = GX0 + (c + 0.5) * CS,
         y = GY0 + (r + 0.5) * CS,
         i = r * GC + c;
       if (
-        x >= x1 &&
-        x <= x2 &&
-        y >= y1 &&
-        y <= y2 &&
+        x > x1 - MARGIN &&
+        x < x2 + MARGIN &&
+        y > y1 - MARGIN &&
+        y < y2 + MARGIN &&
         BASE[i] === 0 &&
-        h > TOP[i]
-      )
-        TOP[i] = h;
+        isFloorInside(x, y)
+      ) {
+        let hitSolid = false;
+        for (const o of lastObstacles) {
+          if (
+            x > o[0] - MARGIN &&
+            x < o[2] + MARGIN &&
+            y > o[1] - MARGIN &&
+            y < o[3] + MARGIN &&
+            !isToppedObstacle(o)
+          ) {
+            hitSolid = true;
+            break;
+          }
+        }
+        if (!hitSolid) {
+          SOLID[i] = 0;
+          if (h > TOP[i]) TOP[i] = h;
+        }
+      }
     }
 }
 export function nearestWalk(c: number, r: number): [number, number] | null {
@@ -116,13 +162,13 @@ export const navVersion = (): number => version;
 
 /** Fill the walkable-cell grid from the floor outline and the fixed furniture the world built. Items that block are added with `setBlocker`. */
 export function initGrid(obstacles: readonly ObstacleRect[]): void {
+  lastObstacles = obstacles;
+  topRects.length = 0;
   for (let r = 0; r < GR; r++)
     for (let c = 0; c < GC; c++) {
       const x = GX0 + (c + 0.5) * CS,
         y = GY0 + (r + 0.5) * CS;
-      let ok =
-        inPoly(x, y, OUTER) ||
-        (x > 182 && x < 265 && y > FRONT_Y - 4 && y < FRONT_Y + 43); // + the walkway outside the doors
+      let ok = isFloorInside(x, y);
       if (ok)
         for (const o of obstacles)
           if (
@@ -134,16 +180,30 @@ export function initGrid(obstacles: readonly ObstacleRect[]): void {
             ok = false;
             break;
           }
-      BASE[r * GC + c] = ok ? 1 : 0;
+      const i = r * GC + c;
+      BASE[i] = ok ? 1 : 0;
+      SOLID[i] = ok ? 0 : 1;
     }
   NAV.set(BASE);
   BLOCKS.fill(0);
+  SOLID_BLOCKS.fill(0);
   blockers.clear();
   TOP.fill(0); // standable tops come in again after the grid, through setTopRect / refreshFootprint
   ITOP.fill(0);
-  ITOP_KEY.fill(-1);
+  CTOP.fill(0);
   topCells.clear();
+  chairCells.clear();
   version++;
+}
+
+function recomputeItop(cells: readonly number[]): void {
+  for (const i of cells) {
+    let best = 0;
+    for (const entry of topCells.values()) {
+      if (entry.h > best && entry.cells.includes(i)) best = entry.h;
+    }
+    ITOP[i] = best;
+  }
 }
 
 /**
@@ -175,10 +235,11 @@ export function setBlocker(
           cells.push(r * GC + c);
       }
   }
+  const h = top !== undefined && top > 0 ? top : 0;
   const oldTops = topCells.get(key);
   if (
     old &&
-    oldTops?.h === top &&
+    oldTops?.h === h &&
     old.length === cells.length &&
     old.every((v, i) => v === cells[i])
   )
@@ -194,35 +255,53 @@ export function setBlocker(
   }
   if (cells.length) blockers.set(key, cells);
   else blockers.delete(key);
-  // the standable top the item carries: stamped on the footprint itself (not the margin), moved or cleared with it
   if (oldTops) {
-    for (const i of oldTops.cells)
-      if (ITOP_KEY[i] === key) {
-        ITOP[i] = 0;
-        ITOP_KEY[i] = -1;
-      }
     topCells.delete(key);
+    if (oldTops.h > 0) recomputeItop(oldTops.cells);
+    else for (const i of oldTops.cells) SOLID_BLOCKS[i]--;
   }
-  if (rect && top !== undefined && top > 0) {
-    const tcs: number[] = [];
-    const c0 = Math.max(0, Math.floor((rect[0] - GX0) / CS)),
-      c1 = Math.min(GC - 1, Math.floor((rect[2] - GX0) / CS)),
-      r0 = Math.max(0, Math.floor((rect[1] - GY0) / CS)),
-      r1 = Math.min(GR - 1, Math.floor((rect[3] - GY0) / CS));
-    for (let r = r0; r <= r1; r++)
-      for (let c = c0; c <= c1; c++) {
-        const x = GX0 + (c + 0.5) * CS,
-          y = GY0 + (r + 0.5) * CS;
-        if (x >= rect[0] && x <= rect[2] && y >= rect[1] && y <= rect[3]) {
-          const i = r * GC + c;
-          if (top >= ITOP[i]) {
-            ITOP[i] = top;
-            ITOP_KEY[i] = key;
-          }
-          tcs.push(i);
-        }
-      }
-    topCells.set(key, { cells: tcs, h: top });
+  if (cells.length) {
+    topCells.set(key, { cells, h });
+    if (h > 0) {
+      for (const i of cells) if (h > ITOP[i]) ITOP[i] = h;
+    } else {
+      for (const i of cells) SOLID_BLOCKS[i]++;
+    }
   }
   version++;
+}
+
+/** Stamp a chair or stool's standable top onto CTOP without blocking NAV. */
+export function setChairTop(
+  key: number,
+  rect: ObstacleRect | null,
+  top?: number,
+): void {
+  const old = chairCells.get(key);
+  if (old) {
+    chairCells.delete(key);
+    for (const i of old.cells) {
+      let best = 0;
+      for (const entry of chairCells.values())
+        if (entry.h > best && entry.cells.includes(i)) best = entry.h;
+      CTOP[i] = best;
+    }
+  }
+  if (!rect || top === undefined || top <= 0) return;
+  const cells: number[] = [];
+  const c0 = Math.max(0, Math.floor((rect[0] - GX0) / CS - 0.5)),
+    c1 = Math.min(GC - 1, Math.ceil((rect[2] - GX0) / CS - 0.5));
+  const r0 = Math.max(0, Math.floor((rect[1] - GY0) / CS - 0.5)),
+    r1 = Math.min(GR - 1, Math.ceil((rect[3] - GY0) / CS - 0.5));
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++) {
+      const x = GX0 + (c + 0.5) * CS,
+        y = GY0 + (r + 0.5) * CS;
+      if (x >= rect[0] && x <= rect[2] && y >= rect[1] && y <= rect[3]) {
+        const i = r * GC + c;
+        if (top > CTOP[i]) CTOP[i] = top;
+        cells.push(i);
+      }
+    }
+  if (cells.length) chairCells.set(key, { cells, h: top });
 }

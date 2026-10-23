@@ -462,7 +462,7 @@ export function stepDriven(
     if (mechanics.locomotion === "jump") {
       mechanics.verticalVelocity -= 9.8 * dt;
       p.pos.y = Math.max(0, p.pos.y + mechanics.verticalVelocity * dt);
-      const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY);
+      const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY, p.pos.y || 0);
       if (
         (mechanics.verticalVelocity <= 0 && p.pos.y <= sup) ||
         tick >= mechanics.jumpUntil
@@ -517,7 +517,7 @@ export function stepDriven(
     mechanics.verticalVelocity -= 9.8 * dt;
     p.pos.y = Math.max(0, p.pos.y + mechanics.verticalVelocity * dt);
     // land on the surface under the feet (the floor, a desk top, a chair seat), coming down or when the hop clock runs out
-    const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY);
+    const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY, p.pos.y || 0);
     if (
       (mechanics.verticalVelocity <= 0 && p.pos.y <= sup) ||
       tick >= mechanics.jumpUntil
@@ -554,8 +554,17 @@ export function stepDriven(
   p.face = p.faceGoal = live.heading;
   p.walkPhase += moved * 4.6;
   // the surface under the feet: the floor or a furniture top. Walking off a ledge turns into a fall (same 'jump' state, no upward velocity)
-  const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY);
-  if (mechanics.grounded) {
+  const sup = supportAt(p.pos.x / S + OX, p.pos.z / S + OY, p.pos.y || 0);
+  if (mechanics.locomotion === "jump") {
+    if (mechanics.verticalVelocity <= 0 && p.pos.y <= sup + 1e-4) {
+      p.pos.y = sup;
+      mechanics.locomotion = "grid";
+      mechanics.grounded = true;
+      mechanics.verticalVelocity = 0;
+    } else if (p.pos.y < sup) {
+      p.pos.y = sup;
+    }
+  } else if (mechanics.grounded) {
     if (p.pos.y > sup + 1e-6) {
       mechanics.grounded = false;
       mechanics.locomotion = "jump";

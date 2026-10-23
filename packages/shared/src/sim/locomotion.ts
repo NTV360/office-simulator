@@ -1,10 +1,11 @@
-import { walkPxAt } from "../nav/grid";
+import { supportAt, walkPx, walkPxAt } from "../nav/grid";
 import { OX, OY, S } from "../plan";
 
 /** What stepPlayer needs to know about a person. */
 export interface Walker {
   pos: { x: number; y?: number; z: number };
   state?: string;
+  mechanics?: { locomotion?: string; verticalVelocity?: number };
 }
 
 /**
@@ -20,10 +21,16 @@ export function stepPlayer(
 ): number {
   const ox = p.pos.x,
     oz = p.pos.z,
-    feet = p.pos.y || 0,
-    free0 = !walkPxAt(ox / S + OX, oz / S + OY, feet);
+    rawFeet = p.pos.y || 0,
+    jumping = p.mechanics?.locomotion === "jump",
+    vy = p.mechanics?.verticalVelocity ?? 0,
+    feet = jumping && (vy > 0 || rawFeet > 0.12) ? rawFeet + 0.26 : rawFeet,
+    curSup = supportAt(ox / S + OX, oz / S + OY, rawFeet),
+    effFeet = jumping ? Math.max(feet, curSup) : feet,
+    free0 = !walkPxAt(ox / S + OX, oz / S + OY, effFeet);
   const ok = (x: number, z: number) =>
-    free0 || walkPxAt(x / S + OX, z / S + OY, feet);
+    walkPxAt(x / S + OX, z / S + OY, effFeet) ||
+    (free0 && walkPx(x / S + OX, z / S + OY));
   if (ok(ox + dx, oz + dz)) {
     p.pos.x += dx;
     p.pos.z += dz;
@@ -31,6 +38,7 @@ export function stepPlayer(
   else if (ok(ox, oz + dz)) p.pos.z += dz;
   for (const q of others) {
     if (q === p || q.state === "away") continue;
+    if (Math.abs((p.pos.y || 0) - (q.pos.y || 0)) > 0.45) continue;
     const ddx = p.pos.x - q.pos.x,
       ddz = p.pos.z - q.pos.z,
       d = Math.hypot(ddx, ddz);

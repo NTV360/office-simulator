@@ -269,6 +269,100 @@ function isEditableTarget(target) {
   );
 }
 
+const JUMP_VEL = 6.8;
+const JUMP_GRAV_UP = 20;
+const JUMP_GRAV_DOWN = 24;
+const COYOTE_TIME = 0.12;
+const JUMP_BUFFER = 0.14;
+
+function stepJumpPreMove(p, dt, jump) {
+  const mechanics = p.mechanics;
+  if (jump && !mechanics.jumpHeld && player.sitting) standUp(p);
+  if (jump && !mechanics.jumpHeld) p._jumpBuffer = JUMP_BUFFER;
+  else if (!jump) p._jumpBuffer = 0;
+  else if ((p._jumpBuffer ?? 0) > 0)
+    p._jumpBuffer = Math.max(0, p._jumpBuffer - dt);
+
+  if (mechanics.grounded && !p._jumping) p._coyoteTime = COYOTE_TIME;
+  else if ((p._coyoteTime ?? 0) > 0)
+    p._coyoteTime = Math.max(0, p._coyoteTime - dt);
+
+  const canJumpNow =
+    !player.sitting &&
+    canMove(mechanics) &&
+    mechanics.posture !== "prone" &&
+    ((mechanics.grounded && !p._jumping) ||
+      ((p._coyoteTime ?? 0) > 0 && (p._jumpVy ?? 0) <= 0));
+  const wantsJump =
+    (jump && !mechanics.jumpHeld) ||
+    (p._jumpBuffer ?? 0) > 0 ||
+    (jump && mechanics.grounded && !p._jumping);
+
+  if (canJumpNow && wantsJump) {
+    p._jumping = true;
+    p._jumpVy = JUMP_VEL;
+    p._coyoteTime = 0;
+    p._jumpBuffer = 0;
+    mechanics.locomotion = "jump";
+    mechanics.grounded = false;
+    mechanics.verticalVelocity = JUMP_VEL;
+    mechanics.jumpUntil =
+      (p._predictionTick ?? 0) + Math.ceil(JUMP.duration / Math.max(dt, 0.001));
+  }
+  mechanics.jumpHeld = jump;
+  p._predictionTick = (p._predictionTick ?? 0) + 1;
+
+  if (p._jumping || mechanics.locomotion === "jump") {
+    p._jumping = true;
+    mechanics.locomotion = "jump";
+    mechanics.grounded = false;
+    const vy = p._jumpVy ?? mechanics.verticalVelocity ?? 0;
+    const grav = vy > 0 ? JUMP_GRAV_UP : JUMP_GRAV_DOWN;
+    const nextVy = vy - grav * dt;
+    p._jumpVy = nextVy;
+    mechanics.verticalVelocity = nextVy;
+    p.pos.y = Math.max(0, (p.pos.y || 0) + nextVy * dt);
+  }
+}
+
+function stepJumpPostMove(p, dt) {
+  const mechanics = p.mechanics;
+  if (player.sitting) {
+    p.pos.y = 0;
+    p._jumping = false;
+    p._jumpVy = 0;
+    return;
+  }
+  const sup = supportAt(...toPx(p.pos), p.pos.y || 0);
+  if (p._jumping || mechanics.locomotion === "jump") {
+    const vy = p._jumpVy ?? mechanics.verticalVelocity ?? 0;
+    if (vy <= 0 && (p.pos.y || 0) <= sup + 1e-4) {
+      p.pos.y = sup;
+      p._jumping = false;
+      p._jumpVy = 0;
+      p._coyoteTime = COYOTE_TIME;
+      mechanics.locomotion = "grid";
+      mechanics.grounded = true;
+      mechanics.verticalVelocity = 0;
+    } else if ((p.pos.y || 0) < sup) {
+      p.pos.y = sup;
+    }
+  } else if (mechanics.grounded) {
+    if ((p.pos.y || 0) > sup + 1e-4) {
+      p._jumping = true;
+      p._jumpVy = 0;
+      p._coyoteTime = COYOTE_TIME;
+      mechanics.grounded = false;
+      mechanics.locomotion = "jump";
+      mechanics.verticalVelocity = 0;
+      mechanics.jumpUntil =
+        (p._predictionTick ?? 0) + Math.ceil(10 / Math.max(dt, 0.001));
+    } else {
+      p.pos.y = sup;
+    }
+  }
+}
+
 // Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
 function driveLocomotion(dt, p) {
   if (p.state !== "controlled" && !player.online) {
@@ -294,7 +388,8 @@ function driveLocomotion(dt, p) {
   p._lookPitch = ctl.pitch;
   const crouch = keys.has("control") || keys.has("ctrl");
   const prone = keys.has("z");
-  const jump = keys.has(" ") || keys.has("space");
+  const jump = keys.has(" ") || keys.has("space") || !!ctl.jumpPressed;
+  ctl.jumpPressed = false;
   const mechanics = p.mechanics;
   if (crouch) {
     mechanics.posture = "crouching";
@@ -309,39 +404,7 @@ function driveLocomotion(dt, p) {
   if (prone && !mechanics.proneHeld)
     mechanics.posture = mechanics.posture === "prone" ? "standing" : "prone";
   mechanics.proneHeld = prone;
-  if (
-    jump &&
-    !mechanics.jumpHeld &&
-    mechanics.grounded &&
-    (mechanics.jumpUntil === 0 ||
-      (p._predictionTick ?? 0) >=
-        mechanics.jumpUntil + Math.ceil(JUMP.cooldown / Math.max(dt, 0.001))) &&
-    canMove(mechanics) &&
-    mechanics.posture !== "prone"
-  ) {
-    mechanics.locomotion = "jump";
-    mechanics.grounded = false;
-    mechanics.verticalVelocity = JUMP.velocity;
-    mechanics.jumpUntil =
-      (p._predictionTick ?? 0) + Math.ceil(JUMP.duration / Math.max(dt, 0.001));
-  }
-  mechanics.jumpHeld = jump;
-  p._predictionTick = (p._predictionTick ?? 0) + 1;
-  if (mechanics.locomotion === "jump") {
-    mechanics.verticalVelocity -= 9.8 * dt;
-    p.pos.y = Math.max(0, (p.pos.y || 0) + mechanics.verticalVelocity * dt);
-    // land on the surface under the feet (the floor, a desk top, a chair seat), coming down or when the hop clock runs out
-    const sup = supportAt(...toPx(p.pos));
-    if (
-      (mechanics.verticalVelocity <= 0 && p.pos.y <= sup) ||
-      p._predictionTick >= mechanics.jumpUntil
-    ) {
-      p.pos.y = sup;
-      mechanics.locomotion = "grid";
-      mechanics.grounded = true;
-      mechanics.verticalVelocity = 0;
-    }
-  }
+  stepJumpPreMove(p, dt, jump);
   const len = Math.hypot(f, r);
   let moved = 0,
     dx = 0,
@@ -361,19 +424,11 @@ function driveLocomotion(dt, p) {
       rz = Math.sin(ctl.yaw);
     dx = ((fx * f + rx * r) / len) * sp;
     dz = ((fz * f + rz * r) / len) * sp;
-    moved = stepPlayer(p, dx, dz, people);
+    const steps = Math.max(1, Math.ceil(sp / 0.12));
+    for (let i = 0; i < steps; i++)
+      moved += stepPlayer(p, dx / steps, dz / steps, people);
   }
-  // the surface under the feet: the floor or a furniture top. Walking off a ledge turns into a fall (same 'jump' state, no upward velocity)
-  const support = supportAt(...toPx(p.pos));
-  if (mechanics.grounded) {
-    if ((p.pos.y || 0) > support + 1e-6) {
-      mechanics.grounded = false;
-      mechanics.locomotion = "jump";
-      mechanics.verticalVelocity = 0;
-      mechanics.jumpUntil =
-        (p._predictionTick ?? 0) + Math.ceil(10 / Math.max(dt, 0.001));
-    } else p.pos.y = support;
-  }
+  stepJumpPostMove(p, dt);
   player.moving = moved > 1e-4;
   p.walkPhase += moved * 4.6;
   p.animT += dt;
@@ -427,7 +482,8 @@ function driveOnline(dt, p) {
   const run = keys.has("shift");
   const crouch = keys.has("control") || keys.has("ctrl");
   const prone = keys.has("z");
-  const jump = keys.has(" ") || keys.has("space");
+  const jump = keys.has(" ") || keys.has("space") || !!ctl.jumpPressed;
+  ctl.jumpPressed = false;
   const struggle = keys.has("x");
   const seat = p.task && p.task.kind === "playerSit" ? p.task.spot : null;
   if (seat && !player.sitting) {
@@ -465,34 +521,7 @@ function driveOnline(dt, p) {
       mechanics.posture = mechanics.posture === "prone" ? "standing" : "prone";
   }
   mechanics.proneHeld = prone;
-  if (
-    jump &&
-    !mechanics.jumpHeld &&
-    mechanics.grounded &&
-    (mechanics.jumpUntil === 0 ||
-      (p._predictionTick ?? 0) >=
-        mechanics.jumpUntil + Math.ceil(JUMP.cooldown / Math.max(dt, 0.001))) &&
-    canMove(mechanics) &&
-    mechanics.posture !== "prone"
-  ) {
-    mechanics.locomotion = "jump";
-    mechanics.grounded = false;
-    mechanics.verticalVelocity = JUMP.velocity;
-    mechanics.jumpUntil =
-      (p._predictionTick ?? 0) + Math.ceil(JUMP.duration / Math.max(dt, 0.001));
-  }
-  mechanics.jumpHeld = jump;
-  p._predictionTick = (p._predictionTick ?? 0) + 1;
-  if (mechanics.locomotion === "jump")
-    mechanics.verticalVelocity -= 9.8 * elapsed;
-  if (
-    mechanics.locomotion === "jump" &&
-    p._predictionTick >= mechanics.jumpUntil
-  ) {
-    mechanics.locomotion = "grid";
-    mechanics.grounded = true;
-    mechanics.verticalVelocity = 0;
-  }
+  stepJumpPreMove(p, elapsed, jump);
   let moved = 0;
   const stick = Math.hypot(mx, mz);
   // The server walks you in real time; use elapsed wall time (up to a quarter second) so a slow frame does not lag behind it.
@@ -504,7 +533,7 @@ function driveOnline(dt, p) {
       postureSpeedFactor(mechanics.posture, mechanics.crouchLevel) *
       Math.min(1, stick) *
       elapsed;
-    const steps = Math.max(1, Math.ceil(speed / 0.25));
+    const steps = Math.max(1, Math.ceil(speed / 0.12));
     for (let i = 0; i < steps; i++)
       moved += stepPlayer(
         p,
@@ -514,6 +543,7 @@ function driveOnline(dt, p) {
       );
     if (moved > 0) player.online.movedNow();
   }
+  stepJumpPostMove(p, elapsed);
   player.moving =
     moved > 1e-4 ||
     (seat === null && performance.now() - player.online.lastMovedAt < 150);
@@ -640,6 +670,10 @@ function initControl() {
   addEventListener("keydown", (e) => {
     if (!ctl.active || isEditableTarget(e.target)) return;
     const k = e.key.toLowerCase();
+    if (k === " " || k === "space") {
+      e.preventDefault();
+      if (!e.repeat) ctl.jumpPressed = true;
+    }
     if (k >= "1" && k <= "4" && !e.repeat) selectGun(+k - 1);
     if (k === "r" && !e.repeat) reloadGun();
     if (k === "e" && !e.repeat) {
