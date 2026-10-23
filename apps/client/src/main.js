@@ -3,13 +3,16 @@ import "./styles/chat.css";
 import "./styles/controls.css";
 import "./styles/creator.css";
 import "./styles/first-person.css";
+import "./styles/games.css";
 import "./styles/hud.css";
+import "./styles/interact.css";
 import "./styles/ledger.css";
 import "./styles/login.css";
 import "./styles/person.css";
 import "./styles/reset.css";
 import "./styles/responsive.css";
 import "./styles/search.css";
+import "./styles/slap.css";
 import "./styles/tokens.css";
 import "./styles/ui-toggle.css";
 import "./styles/veil.css";
@@ -36,6 +39,7 @@ import {
   spotsToLayout,
   stepSim,
   toPx,
+  updateSlap,
   walkPx,
 } from "@office/shared";
 import { bootstrap } from "./bootstrap.js";
@@ -51,6 +55,7 @@ import { camGoal, camState } from "./camera/state.js";
 import { buildBody, disposeBody } from "./character/rig.js";
 import { fingerprint, screenMismatches } from "./debug.js";
 import { startOnline } from "./net/online.js";
+import { updateDizzy } from "./people/dizzy.js";
 import { peopleGroup } from "./people/group.js";
 import { updateScreens } from "./people/screens.js";
 import { syncBody } from "./people/sync.js";
@@ -62,9 +67,13 @@ import { updateLight } from "./render/lighting.js";
 import { addObjectView, objectDrawCalls } from "./render/objects.js";
 import { camera, renderer, scene } from "./render/renderer.js";
 import { creator } from "./ui/creator.js";
+import { updateGames } from "./ui/games.js";
+import { updateInteract } from "./ui/interact.js";
 import { renderUI } from "./ui/ledger.js";
 import { select, selected, selRing } from "./ui/person.js";
+import { updateSlapCard } from "./ui/slap.js";
 import { awardsScreen } from "./world/furniture/awards.js";
+import { onAir, updateChannels } from "./world/furniture/channels.js";
 import { showLesson } from "./world/furniture/conference.js";
 import { updateDarts } from "./world/furniture/darts.js";
 import { updateDiningTv } from "./world/furniture/diningTv.js";
@@ -107,6 +116,7 @@ function tick(now) {
   last = now;
   if (live) {
     live.frame(dt, now);
+    updateSlap(dt); // the server referees; this advances poses, dizzy timers and the card clock for the matches it told us about
     updateScreens();
     updateLight();
   } // the server runs the simulation; paused or not, keep drawing
@@ -132,10 +142,15 @@ function tick(now) {
   updateBucket(people);
   keyCam(dt);
   updateCamera(dt);
-  updateGolf();
-  updateDarts(now);
+  updateGolf(dt);
+  updateDarts(now, dt);
   updateMusic(now);
   updateKitchen(dt);
+  updateDizzy(dt);
+  updateSlapCard();
+  updateInteract(dt);
+  updateGames(dt);
+  updateChannels(dt); // TVs someone changed the channel on (ui/interact.js)
   showLesson(lessonOf(meetings.find((m) => m.room === 1)?.topic ?? ""));
   // the lounge TV: the game while someone plays, the office awards otherwise (world/furniture/awards.js)
   {
@@ -144,7 +159,7 @@ function tick(now) {
       (ctl.active && player.sitting?.game);
     const m = gaming ? gameMat : awardsScreen();
     if (loungeTV.material !== m) loungeTV.material = m;
-    if (gaming) drawGame(dt);
+    if (gaming || onAir("game")) drawGame(dt);
   }
   updateDiningTv(
     dt,

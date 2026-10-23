@@ -3,10 +3,14 @@ import {
   ENTRY,
   createInventory,
   defaultCharacterMechanics,
+  handBack,
   newProps,
   normalizePlayerSpec,
   normalizeSpec,
   people,
+  takeControl as simTakeControl,
+  slap,
+  slapTakeOver,
 } from "@office/shared";
 import { buildBody, disposeBody } from "../character/rig.js";
 import { peopleGroup } from "../people/group.js";
@@ -22,11 +26,14 @@ import { N } from "../world/furniture/basics.js";
 // server says. `controlling` is true while a first or third person camera is steering it.
 const player = {
   person: null,
+  own: null, // your own character while you walk as someone else (takeControl, offline)
   spec: normalizeSpec(DEFAULT_SPEC),
   sitting: null,
   moving: false,
   online: null,
   controlling: false,
+  lookAt: null, // who is in the middle of the screen while walking around (player/prompts.js)
+  aim: null, // a TV or whiteboard in reach there, that E uses (ui/interact.js)
   gun: 0,
 }; // gun: which toy gun the number keys picked (player/guns.js); null for none
 
@@ -91,6 +98,39 @@ function setPlayerSpec(raw) {
   return player.spec;
 }
 
+// Walk as someone in the office instead of as your own character (ui/person.js "Take control", offline only; or
+// a side of a fight, ui/slap.js). The sim does the state surgery (shared sim/takeover.ts): whatever they were doing
+// stops — a fight goes on, with you slapping for them.
+function takeControl(p) {
+  if (player.online || player.person === p) return;
+  releaseControl();
+  player.own = player.person;
+  if (player.own) player.own.body.root.visible = false;
+  if (p.task?.slap)
+    for (const m of slap.matches) {
+      const side = m.fighters?.indexOf(p) ?? -1;
+      if (side >= 0) slapTakeOver(m, side);
+    }
+  else simTakeControl(p);
+  player.person = p;
+  player.sitting = null;
+  player.moving = false;
+}
+// Let go of whoever you control (leaving first/third person): they get on with their day, and your own
+// character is back where you left it.
+function releaseControl() {
+  const p = player.person;
+  if (!p || p.id === -1) return;
+  for (const m of slap.matches) {
+    const side = m.fighters?.indexOf(p) ?? -1;
+    if (side >= 0 && m.mine === side) slapTakeOver(m, null);
+  }
+  if (!p.task?.slap) handBack(p);
+  player.person = player.own;
+  player.own = null;
+  if (player.person) player.person.body.root.visible = true;
+}
+
 // Keep the look between visits in this browser (the private office; online the look is the account's, on the server).
 function savePlayerSpec() {
   saveLocalSpec(player.spec);
@@ -105,7 +145,9 @@ export {
   initPlayer,
   isLocalPlayer,
   player,
+  releaseControl,
   savePlayerSpec,
   setPlayerSpec,
   spawnPlayer,
+  takeControl,
 };

@@ -7,8 +7,9 @@ import { arriveNow, newDay } from "./day";
 import type { Spot } from "./interactables";
 import { live, tickLive } from "./live";
 import { tickMeetings, tryMeeting } from "./meetings";
-import { isDriven, isHelper } from "./person";
+import { isHelper } from "./person";
 import { DAY_END, breakIndex } from "./schedule";
+import { slapArgue, updateSlap } from "./slap";
 import { CLOCK, people, sim } from "./state";
 import { arrive, chooseNext, returnFromToilet } from "./tasks";
 import type { Person } from "./types";
@@ -53,7 +54,7 @@ function reroute(p: Person): void {
 }
 
 export function stepPerson(p: Person, dt: number): void {
-  if (isDriven(p)) return;
+  if (p.state === "controlled") return; // a human drives them — unless a task (a Power Slap) has taken over: then the sim walks them anyway
   if (p.state === "away") {
     if (p.toiletUntil) {
       if (sim.t >= p.toiletUntil) returnFromToilet(p);
@@ -168,7 +169,7 @@ export function stepPerson(p: Person, dt: number): void {
     }
     if (sim.t >= p.until) {
       const wasExit = p.task?.kind === "exit";
-      if (!wasExit) chooseNext(p);
+      if (!wasExit && !slapArgue(p)) chooseNext(p); // an argument over code can end in a Power Slap (sim/slap.ts)
     }
   } else if (p.state === "idle") {
     if (!isHelper(p) || sim.t >= p.until) chooseNext(p);
@@ -203,4 +204,5 @@ export function stepSim(dt: number): void {
   if (sim.t >= DAY_END) newDay();
   updateBumps(dt);
   for (const p of people) stepPerson(p, dt);
+  updateSlap(dt);
 }

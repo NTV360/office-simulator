@@ -15,10 +15,10 @@ import {
 import { setView } from "../camera/controller.js";
 import { keys } from "../camera/input.js";
 import { renderer } from "../render/renderer.js";
-import { $ } from "../ui/dom.js";
+import { $, keyHints } from "../ui/dom.js";
 import { wall } from "../world/helpers.js";
 import { gunDown, gunUp, gunsShow, reloadGun, selectGun } from "./guns.js";
-import { player } from "./player.js";
+import { player, releaseControl } from "./player.js";
 import { updatePrompts } from "./prompts.js";
 import { standUp, toggleSit } from "./seating.js";
 
@@ -43,6 +43,7 @@ const ctl = {
   keyHook: null,
   wheelHook: null,
   pickupHook: null, // a mode can claim extra keys / the mouse wheel; objects may claim E
+  useHook: null, // E uses what you aim at (ui/interact.js); it returns false when there is nothing, and E sits or stands
   attackPress: null,
   attackKind: null,
   attackPointerId: null,
@@ -70,8 +71,10 @@ function beginControl(mode, p, hud) {
   $("fpPrompt").hidden = false;
   $("fpAttacks").hidden = !player.online?.attack;
   $("fpMode").textContent = hud.title;
-  $("fpKeys").textContent = hud.keys;
-  $("fpWho").textContent = "Walking as you";
+  keyHints($("fpKeys"), hud.keys);
+  $("fpWho").textContent =
+    p.id === -1 ? "Walking as you" : `Walking as ${p.name}`;
+  $("fpCreator").hidden = p.id !== -1; // the look you can change is your own character's
   gunsShow(true);
 }
 const PLAY_VIEWS = new Set(["fp", "third"]);
@@ -83,6 +86,7 @@ function endControl(nextId) {
     standUp(p); // (online you stay in your seat until you stand up)
   releaseSticks();
   player.controlling = false;
+  if (!PLAY_VIEWS.has(nextId)) releaseControl(); // whoever you took control of gets on with their day
   document.body.classList.remove(ctl.mode);
   ctl.pickupHook?.(false);
   Object.assign(ctl, {
@@ -265,6 +269,12 @@ function isEditableTarget(target) {
 
 // Read keys + stick, turn the camera heading with arrow keys, and move the player. Returns what happened.
 function driveLocomotion(dt, p) {
+  if (p.state !== "controlled" && !player.online) {
+    // in a Power Slap the sim moves them (sim/slap.ts); someone you control may be sent home (a new day)
+    player.moving = false;
+    if (!p.task?.slap) exitPlay();
+    return { moved: 0, dx: 0, dz: 0 };
+  }
   if (player.online) return driveOnline(dt, p);
   let f = 0,
     r = 0,
@@ -614,12 +624,20 @@ function initControl() {
     if (k >= "1" && k <= "4" && !e.repeat) selectGun(+k - 1);
     if (k === "r" && !e.repeat) reloadGun();
     if (k === "e" && !e.repeat) {
-      const handled = ctl.pickupHook?.(true) || ctl.keyHook?.(k, true);
+      const handled =
+        ctl.pickupHook?.(true) || ctl.useHook?.() || ctl.keyHook?.(k, true);
       if (!handled) toggleSit();
     } else if (ctl.keyHook && !e.repeat) ctl.keyHook(k, true);
     if (k === "escape" && !document.pointerLockElement) exitPlay();
     if (k === "v" && !e.repeat) setView(ctl.mode === "fp" ? "third" : "fp");
+    if (k === "alt") {
+      e.preventDefault();
+      if (!e.repeat) toggleCursor();
+    }
   });
+  addEventListener("keyup", (e) => {
+    if (ctl.active && e.key === "Alt") e.preventDefault();
+  }); // not the browser's menu
   addEventListener("keyup", (e) => {
     if (e.key.toLowerCase() === "e") ctl.pickupHook?.(false);
   });
@@ -627,6 +645,18 @@ function initControl() {
 // Stop steering the player; the camera stays free-orbiting around them.
 function exitPlay() {
   if (ctl.active) setView("free");
+}
+
+// Alt frees the mouse (to click the cards on screen: a fight's buttons, the walk bar) and takes it back again.
+// Clicking the floor takes it back too.
+function toggleCursor() {
+  try {
+    if (document.pointerLockElement) document.exitPointerLock();
+    else if (!ctl.coarse && el.requestPointerLock) {
+      const r = el.requestPointerLock();
+      if (r && r.catch) r.catch(() => {});
+    }
+  } catch (_) {}
 }
 
 export {

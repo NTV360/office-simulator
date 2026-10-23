@@ -31,9 +31,42 @@ export interface Task {
   until?: number;
   meeting?: Meeting;
   partner?: Person;
+  /** The Power Slap match this task belongs to (sim/slap.ts). */
+  slap?: SlapMatch | null;
   onStart?: (p: Person) => void;
   onEnd?: (p: Person) => void;
   ended?: boolean;
+}
+
+/** One Power Slap fight: phases 'gather' (heading to the table), 'wind' (a slapper winds up), 'after' (the hit lands) or 'end'. */
+export interface SlapMatch {
+  id: number | string;
+  /** Refereed by the server between two people online; the client only follows its events. */
+  online: boolean;
+  names: [string, string];
+  /** The office people fighting (null when they are not in this office: an online fight only followed on the card). */
+  fighters: [Person, Person] | null;
+  spots: [Spot, Spot];
+  phase: "gather" | "wind" | "after" | "end";
+  /** Seconds into the phase (real seconds). */
+  t: number;
+  /** Slaps taken so far. */
+  turn: number;
+  /** Who slaps this turn: 0 or 1. */
+  slapper: 0 | 1;
+  power: [number, number];
+  last: number;
+  ko: boolean;
+  winner: 0 | 1 | null;
+  how: "ko" | "points" | "draw" | null;
+  /** Which fighter the user slaps for with the power meter, or null. */
+  mine: 0 | 1 | null;
+  /** Waiting on the user's meter. */
+  waiting: boolean;
+  /** Who came in just for it (goes home when it ends). */
+  away: [boolean, boolean];
+  /** What an argument was about, when a chat or whiteboard discussion turned into this. */
+  reason: string | null;
 }
 
 export interface Meeting {
@@ -83,6 +116,8 @@ export interface Person {
   bumpCd?: number;
   /** Seconds left flat on the floor after being shot (client player/guns.js; 0/undefined = up). */
   down?: number;
+  /** Seeing birds for a moment after a slap that did not knock them down (sim/slap.ts; the client draws them). */
+  dizzy?: boolean;
   pose: Record<string, unknown>;
   arriveAt: number;
   leaveAt: number;

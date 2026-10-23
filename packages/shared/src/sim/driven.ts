@@ -574,7 +574,13 @@ export function stepAllDriven(
 ): void {
   const staleTicks = Math.max(2, Math.ceil(INPUT_STALE_SECONDS / dt)); // a quarter of a second, whatever the tick rate
   for (const p of people) {
-    if (p.controller !== "account" || characterHolds.getHolder(p.id)) continue;
+    // a task (a Power Slap) can take over a human's person: the sim drives them then, not their inputs
+    if (
+      p.controller !== "account" ||
+      p.state !== "controlled" ||
+      characterHolds.getHolder(p.id)
+    )
+      continue;
     stepDriven(p, inputs.get(p.id) ?? null, dt, tick, people, staleTicks);
   }
 }

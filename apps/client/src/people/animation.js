@@ -492,6 +492,122 @@ function targetPose(p, k, T) {
       o.headX = 0.05;
       break;
     }
+    case "putter": {
+      // you at the mini golf (ui/games.js): the putter swing follows the power you hold
+      const ph = p.task.swing,
+        sw = ph < 1.2 ? Math.sin((ph / 1.2) * TAU) * 0.32 : 0;
+      o.lean = 0.32;
+      o.lShX = -0.42;
+      o.rShX = -0.42;
+      o.lShZ = -0.22 + sw;
+      o.rShZ = 0.22 + sw;
+      o.lEl = o.rEl = -0.12;
+      o.lHip = o.rHip = -0.12;
+      o.lKnee = o.rKnee = 0.22;
+      o.hipY = 0.85;
+      o.headX = 0.45;
+      if (ph > 0.6 && ph < 3) {
+        o.headY = 0.9;
+        o.headX = 0.15;
+      }
+      break;
+    }
+    case "drawBoard": {
+      // you at a whiteboard (ui/interact.js): the pen hand up on the board, moving while you draw
+      const d = p.task.drawing;
+      o.rShX = -1.75 + (d ? Math.sin(T * 9) * 0.12 : 0);
+      o.rShZ = -0.15 + (d ? Math.cos(T * 7) * 0.15 : 0);
+      o.rEl = -0.45;
+      o.lShX = -0.15;
+      o.lEl = -0.3;
+      o.headX = -0.12;
+      o.lean = 0.03;
+      break;
+    }
+    case "dartAim": {
+      // you at the dartboard (ui/games.js): a dart held up by your eye, and for a moment after `throwT` the throw
+      const t = p.task.throwT;
+      o.lShX = -0.3;
+      o.lEl = -0.6;
+      o.headX = -0.05;
+      o.lean = 0.04;
+      if (t < 0.3) {
+        const k = t / 0.3;
+        o.rShX = -1.75 + k * 0.45;
+        o.rEl = -1.7 + k * 1.45;
+        o.lean = 0.1;
+      } else {
+        o.rShX = -1.75;
+        o.rEl = -1.85;
+        o.rShZ = -0.1;
+      }
+      break;
+    }
+    // Power Slap (sim/slap.ts): squared up, winding up and swinging the right hand across, taking it with the hands
+    // behind the back (the head snaps round, harder for a harder slap), seeing birds, knocked down flat
+    case "slapReady":
+      o.lShZ = 0.2;
+      o.rShZ = -0.2;
+      o.lEl = o.rEl = -0.5;
+      o.hipY = 0.87 + Math.sin(T * 5) * 0.008;
+      o.headX = -0.05;
+      break;
+    case "slapWind":
+      o.rShX = 0.55;
+      o.rShZ = -1.35;
+      o.rEl = -0.35;
+      o.lShX = -0.2;
+      o.lShZ = 0.25;
+      o.lean = -0.06;
+      o.headX = -0.05;
+      break;
+    case "slapHit":
+      o.rShX = -1.45;
+      o.rShZ = 0.55;
+      o.rEl = -0.05;
+      o.lShX = 0.25;
+      o.lShZ = 0.2;
+      o.lean = 0.14;
+      break;
+    case "slapBrace":
+      o.lShX = o.rShX = 0.6;
+      o.lShZ = 0.12;
+      o.rShZ = -0.12;
+      o.lEl = o.rEl = -0.3;
+      o.headX = -0.12;
+      break;
+    case "slapTake": {
+      const s = 0.5 + p.task.slap.last * 0.7;
+      o.lShX = o.rShX = 0.6;
+      o.lShZ = 0.12;
+      o.rShZ = -0.12;
+      o.lEl = o.rEl = -0.3;
+      o.headY = -s;
+      o.headX = 0.25;
+      o.lean = -0.2 - s * 0.1;
+      o.hipY = 0.86;
+      break;
+    }
+    case "slapDizzy":
+      o.lShX = o.rShX = 0.45;
+      o.lShZ = 0.3;
+      o.rShZ = -0.3;
+      o.lEl = o.rEl = -0.2;
+      o.headY = Math.sin(T * 6) * 0.35;
+      o.headX = 0.1 + Math.cos(T * 6) * 0.12;
+      o.lean = Math.sin(T * 3) * 0.1;
+      break;
+    case "slapKO":
+      o.hipY = POSE_HIP - p.body.standHip + 0.12;
+      o.lean = -1.35;
+      o.lHip = o.rHip = -1.5;
+      o.lShX = o.rShX = -0.3;
+      o.lShZ = 1.1;
+      o.rShZ = -1.1;
+      o.lEl = o.rEl = -0.1;
+      o.headX = -0.25;
+      o.headY = 0.4;
+      break;
     case "drinkSit": {
       sit();
       o.lShX = -0.5;

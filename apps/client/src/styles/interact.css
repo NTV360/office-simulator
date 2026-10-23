@@ -1,0 +1,50 @@
+/* Using things while walking around (ui/interact.js): the whiteboard's pens, and the instrument you sit at.
+   Both sit at the bottom centre, where the walk prompt is (hidden meanwhile). */
+#boardBar{left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 12px 10px 16px;max-width:calc(100vw - 32px);box-sizing:border-box;z-index:3}
+.pens{display:flex;gap:8px}
+.pen{width:28px;height:28px;padding:0;border-radius:50%;border:2px solid var(--panel);background:var(--pen);box-shadow:0 0 0 1px var(--line);cursor:pointer;display:grid;place-items:center;color:var(--ink)}
+.pen[data-pen="0"]{--pen:#25323d}
+.pen[data-pen="1"]{--pen:#2f6fd6}
+.pen[data-pen="2"]{--pen:#c8302c}
+.pen[data-pen="3"]{--pen:#2a8a4a}
+.pen.eraser{--pen:var(--chip)}
+.pen svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pen[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.pen:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+body.drawing #fpPrompt,body.drawing #crosshair,body.playing #fpAct{display:none!important}
+body.drawing #stage canvas{cursor:crosshair}
+
+/* the instrument you sit at: a dark deck like the music corner's keyboard itself, whatever the theme */
+#instPanel{--deck:#161b21;--deck-raised:#232a32;--deck-line:#323b45;--deck-ink:#e8edf1;--deck-muted:#8e9ba6;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(620px,calc(100vw - 32px));box-sizing:border-box;padding:12px 14px 14px;display:flex;flex-direction:column;gap:12px;z-index:3;background:var(--deck);border-color:var(--deck-line);color:var(--deck-ink);color-scheme:dark}
+#instPanel kbd{background:var(--deck-raised);border-color:var(--deck-line);color:var(--deck-ink)}
+.inst-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#instTitle{color:var(--deck-muted)}
+#instHint{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--deck-muted)}
+#instHint span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+#instHint kbd+kbd{margin-left:-3px}
+/* the keys: white ones in a row, black ones over the gaps (placed by ui/interact.js); click or tap them too */
+#pianoKeys{position:relative;display:flex;height:128px;padding:6px 6px 0;border-radius:10px;background:#0b0e12;box-shadow:inset 0 3px 8px rgba(0,0,0,.6);user-select:none;touch-action:none}
+.wk,.bk{display:flex;align-items:flex-end;justify-content:center;cursor:pointer;transition:transform .06s,background .06s}
+.wk{flex:1;margin-right:2px;padding-bottom:10px;border-radius:0 0 6px 6px;background:linear-gradient(#f4f3ee,#fdfdfa 70%,#e6e4dc);box-shadow:inset 0 -4px 0 #d6d3c9}
+.wk:last-child{margin-right:0}
+.bk{position:absolute;top:6px;z-index:1;width:5.4%;height:60%;margin-left:-2.7%;padding-bottom:8px;border-radius:0 0 5px 5px;background:linear-gradient(#323a43,#12171c);box-shadow:inset 0 -4px 0 #05080a,0 3px 4px rgba(0,0,0,.45)}
+#pianoKeys kbd{min-width:0;height:auto;padding:0;border:0;background:none;font-size:10.5px}
+#pianoKeys .wk kbd{color:#6b7782}
+#pianoKeys .bk kbd{color:#b7c2cb;font-size:9.5px}
+.wk.on{background:linear-gradient(color-mix(in srgb,var(--accent) 55%,#fff),color-mix(in srgb,var(--accent) 30%,#fff));box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--accent) 60%,#000);transform:translateY(2px)}
+.bk.on{background:var(--accent);box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--accent) 60%,#000);transform:translateY(2px)}
+#pianoKeys .on kbd{color:#0b1a22}
+/* chords: keycap tiles, the number key in the corner */
+#guitarChords{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.chord{position:relative;display:grid;place-items:center;height:62px;padding:0;border:1px solid var(--deck-line);border-bottom-width:4px;border-radius:10px;background:var(--deck-raised);color:var(--deck-ink);cursor:pointer;transition:transform .06s}
+.chord:hover{border-color:#47525e}
+.chord b{font:800 18px/1 var(--f-display)}
+#instPanel .chord kbd{position:absolute;top:6px;left:6px;min-width:16px;height:16px;padding:0 4px;font-size:9.5px;border-bottom-width:1px}
+.chord.on{background:var(--accent);border-color:var(--accent);border-bottom-width:1px;color:#0b1a22;transform:translateY(3px)}
+@media (max-width:760px){#pianoKeys{height:100px}#guitarChords{grid-template-columns:repeat(4,1fr)}}
+@media (prefers-reduced-motion: reduce){.wk,.bk,.chord{transition:none}.wk.on,.bk.on,.chord.on{transform:none}}
+#boardDone{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px}
+#boardDone kbd{background:color-mix(in srgb,var(--accent-ink) 22%,var(--accent));border-color:transparent;color:var(--accent-ink)}
+.board-hint{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.board-hint span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+@media (max-width:760px){.board-hint{display:none}}

@@ -36,7 +36,20 @@ const thirdPersonMode = {
     if (!player.sitting && !player.online) p.task = null;
     beginControl("tp", p, {
       title: "Third person",
-      keys: "WASD move · drag look · wheel zoom · C swap shoulder · Shift run · Space jump · 1-4 gun · R reload · R-click aim · Click shoot · E sit · V first person · Esc exit",
+      keys: [
+        ["WASD", "move"],
+        ["Shift", "run"],
+        ["Space", "jump"],
+        ["1-4", "gun"],
+        ["R", "reload"],
+        ["R-click", "aim"],
+        ["Click", "shoot"],
+        ["E", "use · sit"],
+        ["C", "shoulder"],
+        ["V", "1st person"],
+        ["Alt", "cursor"],
+        ["Esc", "exit"],
+      ],
     });
     ctl.pitchMin = -0.75;
     ctl.pitchMax = 0.7;

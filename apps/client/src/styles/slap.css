@@ -1,0 +1,64 @@
+/* Power Slap (ui/slap.js): the fight card at the top centre, under the search, read like a fight game's tale of
+   the tape (each side's slap power fills toward the middle), and the dock pop-up's list. */
+#slapCard{--side-a:var(--accent);--side-b:var(--slap);top:calc(66px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(380px,calc(100vw - 32px));box-sizing:border-box;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px;z-index:3}
+#slapMsg{font:600 13px/1.4 var(--f-body)}
+#slapBoard{display:flex;flex-direction:column;gap:10px}
+.slap-acts{display:flex;flex-wrap:wrap;gap:6px}
+.slap-acts .btn{flex:1 1 auto}
+.slap-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+#slapRound{font:500 10.5px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+
+/* Simulate: picking who takes them on */
+#slapPick{display:flex;flex-direction:column;gap:8px}
+.slap-pick-title{font:800 15px/1.2 var(--f-display);letter-spacing:.01em}
+#slapPickNo{width:28px;height:28px;margin:-4px -4px 0 0;background:transparent;border-color:transparent;color:var(--muted)}
+#slapPickNo:hover{background:var(--chip);border-color:var(--line);color:var(--ink)}
+.slap-pick-row{display:flex;gap:6px}
+#slapWho{flex:1;min-width:0;font:500 13px var(--f-body);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:8px}
+#slapWho:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#slapPick .pop-note{max-width:none}
+
+/* the tape: name, power bar and points per side, "vs" between */
+.slap-tape{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px}
+.slap-side{display:grid;gap:6px;min-width:0;transition:opacity .3s ease-out}
+.slap-side.dim{opacity:.5}
+#slapSideB{text-align:right}
+.slap-name{font:800 16px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slap-bar{display:block;height:6px;border-radius:3px;background:var(--chip);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.slap-bar i{display:block;height:100%;transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+#slapBarA{background:var(--side-a)}
+#slapBarB{background:var(--side-b);transform-origin:right}
+.slap-pts{font:500 11px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.06em;color:var(--muted)}
+.slap-vs{font:800 11px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+#slapState{font:500 13px/1.35 var(--f-body);text-align:center;color:var(--muted)}
+#slapState.big{font:800 17px/1.2 var(--f-display);letter-spacing:.03em;color:var(--ink)}
+
+/* the power meter: the marker runs back and forth; stop it past the KO mark (config/slap.js) for a chance at a knockout */
+#slapMeterRow{display:flex;align-items:center;gap:10px;padding-top:6px}
+#slapMeter{--ko:55%;position:relative;flex:1;height:14px;border-radius:7px;background:linear-gradient(90deg,#5ab57a,#f2b43c var(--ko),#e8673a calc(var(--ko) + 15%),var(--side-b));box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+#slapMeter::before{content:'';position:absolute;left:var(--ko);top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:1px;background:var(--ink);opacity:.45}
+#slapMeter::after{content:'KO';position:absolute;left:calc(var(--ko) + 5px);top:-15px;font:600 9px/1 var(--f-mono);letter-spacing:.14em;color:var(--muted)}
+#slapMark{position:absolute;top:-5px;bottom:-5px;left:0;width:5px;margin-left:-2.5px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px var(--panel)}
+#slapGo{min-width:84px;padding:10px 14px;font:800 13px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;background:var(--slap);border-color:var(--slap);color:var(--slap-ink)}
+#slapGo:hover{filter:brightness(1.08)}
+
+/* each slap jolts the card; a knockout harder */
+@keyframes slap-jolt{25%{translate:-5px 0;rotate:-.6deg}55%{translate:4px 0;rotate:.4deg}80%{translate:-2px 0}100%{translate:0;rotate:0deg}}
+@keyframes slap-jolt-ko{15%{translate:-9px 2px;rotate:-1.4deg}35%{translate:8px -1px;rotate:1deg}55%{translate:-5px 0;rotate:-.5deg}75%{translate:3px 0}100%{translate:0;rotate:0deg}}
+#slapCard.jolt{animation:slap-jolt .3s ease-out}
+#slapCard.jolt-ko{animation:slap-jolt-ko .55s ease-out}
+@media (prefers-reduced-motion: reduce){#slapCard.jolt,#slapCard.jolt-ko{animation:none}.slap-bar i,.slap-side{transition:none}}
+
+/* the dock pop-up: who you are online, and who else is */
+#slapMe{flex:1;min-width:0;font:500 12.5px var(--f-body);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:7px 8px}
+#slapMe:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#slapOnline{list-style:none;margin:0;padding:0;display:grid;gap:2px;max-height:220px;overflow-y:auto}
+#slapOnline:empty{display:none}
+#slapOnline li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0 4px 2px;font-size:13px}
+#slapOnline li span::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#5ab57a;margin-right:8px;vertical-align:1px}
+
+/* walking around: under the walk bar; narrower screens: under the clock card, then full width */
+body.fp #slapCard,body.tp #slapCard{top:calc(84px + env(safe-area-inset-top,0px))}
+@media (max-width:1060px){#slapCard{left:16px;transform:none;top:calc(232px + env(safe-area-inset-top,0px))}}
+@media (max-width:760px){#slapCard{left:12px;right:12px;width:auto;top:calc(124px + env(safe-area-inset-top,0px))}}

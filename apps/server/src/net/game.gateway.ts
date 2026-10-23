@@ -1,24 +1,42 @@
-import { Inject, Logger } from '@nestjs/common';
-import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
-import type { Server, Socket } from 'socket.io';
-import { DecodeError, PROTOCOL_VERSION, REFUSAL_TEXT, addLog, decodeClient, encode, sim, simEvents, type ClientMessage, type WorldObject } from '@office/shared';
-import type { ObjectResult } from '../play/object-actions';
-import { addressKey } from '../auth/http';
-import { parseTrustProxy } from '../app.config';
-import { AuthProvider } from '../auth/auth.provider';
-import type { SessionEnd } from '../auth/auth.service';
-import { TicketService } from '../auth/tickets';
-import { ChatService, type SayResult } from '../play/chat';
-import { MEDKIT_REFUSAL_TEXT } from '../play/medical-care';
-import type { PlayerNote } from '../play/player-manager';
-import { EmoteService } from '../play/emotes';
-import { PlayService } from '../play/play.service';
-import { WorldService } from '../world/world.service';
-import { Broadcaster } from './broadcaster';
+import { Inject, Logger } from "@nestjs/common";
+import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
+  WebSocketGateway,
+  WebSocketServer,
+} from "@nestjs/websockets";
+import {
+  DecodeError,
+  PROTOCOL_VERSION,
+  REFUSAL_TEXT,
+  addLog,
+  decodeClient,
+  encode,
+  sim,
+  simEvents,
+  type ClientMessage,
+  type WorldObject,
+} from "@office/shared";
+import type { Server, Socket } from "socket.io";
+import { parseTrustProxy } from "../app.config";
+import { AuthProvider } from "../auth/auth.provider";
+import type { SessionEnd } from "../auth/auth.service";
+import { addressKey } from "../auth/http";
+import { TicketService } from "../auth/tickets";
+import { ChatService, type SayResult } from "../play/chat";
+import { EmoteService } from "../play/emotes";
+import { MEDKIT_REFUSAL_TEXT } from "../play/medical-care";
+import type { ObjectResult } from "../play/object-actions";
+import { PlayService } from "../play/play.service";
+import type { PlayerNote } from "../play/player-manager";
+import { SlapService } from "../play/slap";
+import { WorldService } from "../world/world.service";
+import { Broadcaster } from "./broadcaster";
 
 /** The one Socket.IO event both sides use; its payload is always one binary protocol message. */
-export const WIRE_EVENT = 'm';
-const PLAYING = 'playing';
+export const WIRE_EVENT = "m";
+const PLAYING = "playing";
 
 export interface GatewayOptions {
   /** A client must say hello (with a valid ticket) within this long or it is dropped. */
@@ -35,7 +53,9 @@ export interface GatewayOptions {
   /** How long after a connection goes away "X left" is put in the activity log (and not at all if they are back by then). */
   leaveLogMs: number;
 }
-export const gatewayOptions = (env: Record<string, string | undefined>): GatewayOptions => ({
+export const gatewayOptions = (
+  env: Record<string, string | undefined>,
+): GatewayOptions => ({
   helloTimeoutMs: Number(env.HELLO_TIMEOUT_MS) || 5000,
   maxClients: Number(env.MAX_CLIENTS) || 200,
   maxUnjoinedPerAddress: Number(env.MAX_UNJOINED_PER_ADDRESS) || 20,
@@ -47,15 +67,19 @@ export const gatewayOptions = (env: Record<string, string | undefined>): Gateway
 
 // websocket only (no HTTP long-polling), no per-message compression (the payload is already compact), small input limit
 @WebSocketGateway({
-  path: '/socket.io',
-  transports: ['websocket'],
+  path: "/socket.io",
+  transports: ["websocket"],
   perMessageDeflate: false,
   maxHttpBufferSize: 8 * 1024,
-  cors: process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN.split(',') } : false,
+  cors: process.env.CORS_ORIGIN
+    ? { origin: process.env.CORS_ORIGIN.split(",") }
+    : false,
 })
-export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server!: Server;
-  private readonly log = new Logger('Gateway');
+  private readonly log = new Logger("Gateway");
   private broadcaster!: Broadcaster;
   /** Objects that moved during the tick, sent after its snapshot (index -> object: one message each, the latest pose). */
   private readonly movedThisTick = new Map<number, WorldObject>();
@@ -81,52 +105,105 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   afterInit(): void {
     const world = this.worlds.world;
-    this.emotes = new EmoteService({ personOf: id => this.players.manager().speaker(id)?.personId ?? null });
+    this.emotes = new EmoteService({
+      personOf: (id) => this.players.manager().speaker(id)?.personId ?? null,
+    });
     this.chat = new ChatService({
-      speaker: id => this.players.manager().speaker(id),
+      speaker: (id) => this.players.manager().speaker(id),
       hearers: () => this.players.manager().hearers(),
-      muted: async id => (await this.auth.require().accountById(id))?.muted ?? false,
+      muted: async (id) =>
+        (await this.auth.require().accountById(id))?.muted ?? false,
     });
     this.broadcaster = new Broadcaster({ tickRate: world.options.tickRate });
-    this.teardown.push(simEvents.on('personAdded', p => this.broadcast(this.broadcaster.joined(p))));
-    this.teardown.push(simEvents.on('personRemoved', p => this.broadcast(this.broadcaster.left(p.id))));
-    this.teardown.push(simEvents.on('personUpdated', p => this.broadcast(this.broadcaster.joined(p)))); // who drives them, their name or look changed
-    this.teardown.push(this.players.onKick((accountId, reason) => this.kickAccount(accountId, reason)));
-    this.teardown.push(this.players.onNotify((accountId, note) => this.noteTo(accountId, note)));
+    new SlapService().attach(this.server); // Power Slap challenges and matches ride their own 'slap:*' events next to the 'm' channel
+    this.teardown.push(
+      simEvents.on("personAdded", (p) =>
+        this.broadcast(this.broadcaster.joined(p)),
+      ),
+    );
+    this.teardown.push(
+      simEvents.on("personRemoved", (p) =>
+        this.broadcast(this.broadcaster.left(p.id)),
+      ),
+    );
+    this.teardown.push(
+      simEvents.on("personUpdated", (p) =>
+        this.broadcast(this.broadcaster.joined(p)),
+      ),
+    ); // who drives them, their name or look changed
+    this.teardown.push(
+      this.players.onKick((accountId, reason) =>
+        this.kickAccount(accountId, reason),
+      ),
+    );
+    this.teardown.push(
+      this.players.onNotify((accountId, note) => this.noteTo(accountId, note)),
+    );
     // a chair or a mug was moved: everybody sees it, once per tick and after that tick's snapshot. (Sent at once, they went out ahead of the
     // snapshot every tick while anything moved, and a snapshot is volatile: with data still queued it is dropped, so while somebody carried
     // something nobody's position reached anybody.)
-    this.teardown.push(simEvents.on('objectMoved', o => { this.movedThisTick.set(o.index, o); }));
-    this.teardown.push(simEvents.on('announce', text => this.broadcast(encode({ type: 'event', kind: 'announce', simTime: sim.t, text }))));
-    this.teardown.push(this.auth.onSessionEnd(e => this.onSessionEnd(e)));
-    this.sweepTimer = setInterval(() => { if (!this.destroyed) void this.sweep(); }, this.options.sweepMs);
+    this.teardown.push(
+      simEvents.on("objectMoved", (o) => {
+        this.movedThisTick.set(o.index, o);
+      }),
+    );
+    this.teardown.push(
+      simEvents.on("announce", (text) =>
+        this.broadcast(
+          encode({ type: "event", kind: "announce", simTime: sim.t, text }),
+        ),
+      ),
+    );
+    this.teardown.push(this.auth.onSessionEnd((e) => this.onSessionEnd(e)));
+    this.sweepTimer = setInterval(() => {
+      if (!this.destroyed) void this.sweep();
+    }, this.options.sweepMs);
     this.sweepTimer.unref();
-    this.teardown.push(world.onTick(tick => {
-      if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
-        this.server.to(PLAYING).volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
-        this.sendAcks(tick);
-      } else this.broadcaster.snapshot(tick); // keep change tracking moving even with nobody watching
-      for (const o of this.movedThisTick.values()) {
-        const definition = !this.objectDefinitionsSent.has(o.index);
-        this.broadcast(this.broadcaster.objectMoved(o, definition));
-        if (definition) this.objectDefinitionsSent.add(o.index);
-      }
-      this.movedThisTick.clear();
-      for (const e of this.broadcaster.events()) this.broadcast(e);
-    }));
+    this.teardown.push(
+      world.onTick((tick) => {
+        if (this.server.sockets.adapter.rooms.get(PLAYING)?.size) {
+          this.server
+            .to(PLAYING)
+            .volatile.emit(WIRE_EVENT, this.broadcaster.snapshot(tick)); // a client that is behind skips it
+          this.sendAcks(tick);
+        } else this.broadcaster.snapshot(tick); // keep change tracking moving even with nobody watching
+        for (const o of this.movedThisTick.values()) {
+          const definition = !this.objectDefinitionsSent.has(o.index);
+          this.broadcast(this.broadcaster.objectMoved(o, definition));
+          if (definition) this.objectDefinitionsSent.add(o.index);
+        }
+        this.movedThisTick.clear();
+        for (const e of this.broadcaster.events()) this.broadcast(e);
+      }),
+    );
   }
 
   handleConnection(socket: Socket): void {
-    if (this.server.engine.clientsCount > this.options.maxClients) { this.kick(socket, 'the server is full'); return; }
+    if (this.server.engine.clientsCount > this.options.maxClients) {
+      this.kick(socket, "the server is full");
+      return;
+    }
     const address = this.addressOf(socket);
     socket.data.address = address;
-    if (this.unjoinedFrom(address) > this.options.maxUnjoinedPerAddress) { this.kick(socket, 'too many connections from your address'); return; }
+    if (this.unjoinedFrom(address) > this.options.maxUnjoinedPerAddress) {
+      this.kick(socket, "too many connections from your address");
+      return;
+    }
     // There is no useful handshake when the authoritative account store is unavailable. Refuse it now rather than allowing a
     // busy event loop to turn the intended availability error into the misleading hello-timeout error.
-    if (!this.auth.available) { this.kick(socket, 'accounts are not available on this server'); return; }
-    const timer = setTimeout(() => { this.helloTimers.delete(timer); this.kick(socket, 'no hello'); }, this.options.helloTimeoutMs);
+    if (!this.auth.available) {
+      this.kick(socket, "accounts are not available on this server");
+      return;
+    }
+    const timer = setTimeout(() => {
+      this.helloTimers.delete(timer);
+      this.kick(socket, "no hello");
+    }, this.options.helloTimeoutMs);
     this.helloTimers.add(timer);
-    socket.once('disconnect', () => { clearTimeout(timer); this.helloTimers.delete(timer); });
+    socket.once("disconnect", () => {
+      clearTimeout(timer);
+      this.helloTimers.delete(timer);
+    });
     socket.data.timer = timer;
     socket.on(WIRE_EVENT, (data: unknown) => this.onMessage(socket, data));
   }
@@ -139,7 +216,10 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.players.manager().detach(id); // their person stays for the grace period, then goes back to autopilot
         // "left" is said a few seconds later, and not at all if they are back by then (a blink of the network is not news)
         const name = socket.data.username as string;
-        const timer = setTimeout(() => { this.leaveTimers.delete(id); addLog(`${name} left`); }, this.options.leaveLogMs);
+        const timer = setTimeout(() => {
+          this.leaveTimers.delete(id);
+          addLog(`${name} left`);
+        }, this.options.leaveLogMs);
         timer.unref();
         this.leaveTimers.set(id, timer);
       }
@@ -154,123 +234,289 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   private onMessage(socket: Socket, data: unknown): void {
     try {
-      if (this.tooFast(socket)) { this.kick(socket, 'too many messages'); return; }
+      if (this.tooFast(socket)) {
+        this.kick(socket, "too many messages");
+        return;
+      }
       let msg: ClientMessage;
       try {
-        if (!(data instanceof Uint8Array)) throw new DecodeError('messages are binary');
+        if (!(data instanceof Uint8Array))
+          throw new DecodeError("messages are binary");
         msg = decodeClient(data);
       } catch (err) {
-        this.kick(socket, err instanceof DecodeError ? `bad message: ${err.message}` : 'bad message');
+        this.kick(
+          socket,
+          err instanceof DecodeError
+            ? `bad message: ${err.message}`
+            : "bad message",
+        );
         return;
       }
       this.handle(socket, msg);
     } catch (err) {
       // whatever went wrong, it must never take the server down
-      this.log.error(`message handler failed: ${err instanceof Error ? err.message : String(err)}`);
-      this.kick(socket, 'server error');
+      this.log.error(
+        `message handler failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      this.kick(socket, "server error");
     }
   }
 
   /** A one-second window counter per client. */
   private tooFast(socket: Socket): boolean {
-    const now = Date.now(), w = socket.data.window as { start: number; n: number } | undefined;
-    if (!w || now - w.start >= 1000) { socket.data.window = { start: now, n: 1 }; return false; }
-    return ++w.n > (socket.data.joined ? this.options.maxJoinedMessagesPerSecond : this.options.maxMessagesPerSecond);
+    const now = Date.now(),
+      w = socket.data.window as { start: number; n: number } | undefined;
+    if (!w || now - w.start >= 1000) {
+      socket.data.window = { start: now, n: 1 };
+      return false;
+    }
+    return (
+      ++w.n >
+      (socket.data.joined
+        ? this.options.maxJoinedMessagesPerSecond
+        : this.options.maxMessagesPerSecond)
+    );
   }
 
   private handle(socket: Socket, msg: ClientMessage): void {
     switch (msg.type) {
-      case 'hello':
+      case "hello":
         void this.join(socket, msg.version, msg.ticket);
         return;
-      case 'ping':
-        socket.emit(WIRE_EVENT, encode({ type: 'pong', ts: msg.ts }));
+      case "ping":
+        socket.emit(WIRE_EVENT, encode({ type: "pong", ts: msg.ts }));
         return;
-      case 'input':
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        this.players.manager().setInput(socket.data.accountId, msg, this.worlds.world.tick);
-        return;
-      case 'say':
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        void this.say(socket, msg.text);
-        return;
-      case 'emote': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.emotes.play(socket.data.accountId, msg.kind);
-        if (r.ok) this.broadcast(encode({ type: 'emoted', from: r.from, kind: r.kind })); // everybody who is playing sees it
-        return;
-      }
-      case 'act':
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        this.players.manager().act(socket.data.accountId, msg.kind, this.worlds.world.tick, this.worlds.world.options.tickRate);
-        return;
-      case 'attack':
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const manager = this.players.manager();
-        manager.attack(socket.data.accountId, msg.phase, msg.kind, manager.mechanicsNow(), msg.side, msg.pitch);
-        return;
-      case 'grab-character': case 'release-character': case 'throw-character': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const m = this.players.manager();
-        const r = msg.type === 'grab-character' ? m.grabCharacter(socket.data.accountId, msg.target, msg.az, msg.lift)
-          : msg.type === 'release-character' ? m.releaseCharacter(socket.data.accountId) : m.throwCharacter(socket.data.accountId);
-        if (r && !r.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: `Character hold refused: ${r.reason}` }));
-        return;
-      }
-      case 'inventory': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
-        if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const manager = this.players.manager(), accountId = socket.data.accountId;
-        // the medkit and timed care answer through `noteTo` (what it holds, how the care is going), not with an inventory snapshot
-        if (msg.action === 'medkit-open' || msg.action === 'medkit-take') {
-          const taken = msg.action === 'medkit-open' ? manager.medkitOpen(accountId, msg.object!) : manager.medkitTake(accountId, msg.revision, msg.object!, msg.kit!);
-          if (taken && !taken.ok && msg.action === 'medkit-take' && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: MEDKIT_REFUSAL_TEXT[taken.reason] }));
+      case "input":
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
           return;
         }
-        if (msg.action === 'care') { manager.careStart(accountId, msg.itemId!, msg.target, msg.limb); return; }
-        if (msg.action === 'care-stop') { manager.careStop(accountId); return; }
-        const r = manager.inventoryAction(accountId, msg.action, msg.revision, msg.itemId, msg.slot, msg.object, msg.x, msg.y);
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        this.players
+          .manager()
+          .setInput(socket.data.accountId, msg, this.worlds.world.tick);
+        return;
+      case "say":
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        void this.say(socket, msg.text);
+        return;
+      case "emote": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const r = this.emotes.play(socket.data.accountId, msg.kind);
+        if (r.ok)
+          this.broadcast(
+            encode({ type: "emoted", from: r.from, kind: r.kind }),
+          ); // everybody who is playing sees it
+        return;
+      }
+      case "act":
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        this.players
+          .manager()
+          .act(
+            socket.data.accountId,
+            msg.kind,
+            this.worlds.world.tick,
+            this.worlds.world.options.tickRate,
+          );
+        return;
+      case "attack":
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const manager = this.players.manager();
+        manager.attack(
+          socket.data.accountId,
+          msg.phase,
+          msg.kind,
+          manager.mechanicsNow(),
+          msg.side,
+          msg.pitch,
+        );
+        return;
+      case "grab-character":
+      case "release-character":
+      case "throw-character": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const m = this.players.manager();
+        const r =
+          msg.type === "grab-character"
+            ? m.grabCharacter(
+                socket.data.accountId,
+                msg.target,
+                msg.az,
+                msg.lift,
+              )
+            : msg.type === "release-character"
+              ? m.releaseCharacter(socket.data.accountId)
+              : m.throwCharacter(socket.data.accountId);
+        if (r && !r.ok && socket.connected)
+          socket.emit(
+            WIRE_EVENT,
+            encode({
+              type: "event",
+              kind: "notice",
+              simTime: sim.t,
+              text: `Character hold refused: ${r.reason}`,
+            }),
+          );
+        return;
+      }
+      case "inventory": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
+        if (this.byAccount.get(socket.data.accountId) !== socket) return;
+        const manager = this.players.manager(),
+          accountId = socket.data.accountId;
+        // the medkit and timed care answer through `noteTo` (what it holds, how the care is going), not with an inventory snapshot
+        if (msg.action === "medkit-open" || msg.action === "medkit-take") {
+          const taken =
+            msg.action === "medkit-open"
+              ? manager.medkitOpen(accountId, msg.object!)
+              : manager.medkitTake(
+                  accountId,
+                  msg.revision,
+                  msg.object!,
+                  msg.kit!,
+                );
+          if (
+            taken &&
+            !taken.ok &&
+            msg.action === "medkit-take" &&
+            socket.connected
+          )
+            socket.emit(
+              WIRE_EVENT,
+              encode({
+                type: "event",
+                kind: "notice",
+                simTime: sim.t,
+                text: MEDKIT_REFUSAL_TEXT[taken.reason],
+              }),
+            );
+          return;
+        }
+        if (msg.action === "care") {
+          manager.careStart(accountId, msg.itemId!, msg.target, msg.limb);
+          return;
+        }
+        if (msg.action === "care-stop") {
+          manager.careStop(accountId);
+          return;
+        }
+        const r = manager.inventoryAction(
+          accountId,
+          msg.action,
+          msg.revision,
+          msg.itemId,
+          msg.slot,
+          msg.object,
+          msg.x,
+          msg.y,
+        );
         if (r && r.ok) {
-          if ('object' in r) {
+          if ("object" in r) {
             const definition = !this.objectDefinitionsSent.has(r.object.index);
             this.broadcast(this.broadcaster.objectMoved(r.object, definition));
             if (definition) this.objectDefinitionsSent.add(r.object.index);
           }
-          const person = this.players.manager().personFor(socket.data.accountId);
-          if (person) socket.emit(WIRE_EVENT, this.broadcaster.ownerUpdate(person, this.worlds.world.tick));
-        } else if (r && !r.ok && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: 'Inventory action refused.' }));
+          const person = this.players
+            .manager()
+            .personFor(socket.data.accountId);
+          if (person)
+            socket.emit(
+              WIRE_EVENT,
+              this.broadcaster.ownerUpdate(person, this.worlds.world.tick),
+            );
+        } else if (r && !r.ok && socket.connected)
+          socket.emit(
+            WIRE_EVENT,
+            encode({
+              type: "event",
+              kind: "notice",
+              simTime: sim.t,
+              text: "Inventory action refused.",
+            }),
+          );
         return;
       }
-      case 'hold': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+      case "hold": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        this.players.manager().holdObject(socket.data.accountId, msg.turn, msg.raise); // (nothing to tell: everybody sees how it is held)
+        this.players
+          .manager()
+          .holdObject(socket.data.accountId, msg.turn, msg.raise); // (nothing to tell: everybody sees how it is held)
         return;
       }
-      case 'drop': case 'throw': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+      case "drop":
+      case "throw": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
         if (this.byAccount.get(socket.data.accountId) !== socket) return;
-        const r = this.players.manager().dropObject(socket.data.accountId, this.worlds.world.tick, this.worlds.world.options.tickRate, msg.type === 'throw' ? { power: msg.power, yaw: msg.yaw, pitch: msg.pitch } : null);
+        const r = this.players
+          .manager()
+          .dropObject(
+            socket.data.accountId,
+            this.worlds.world.tick,
+            this.worlds.world.options.tickRate,
+            msg.type === "throw"
+              ? { power: msg.power, yaw: msg.yaw, pitch: msg.pitch }
+              : null,
+          );
         this.objectNotice(socket, r, false);
         return;
       }
-      case 'grab': case 'place': case 'reset': {
-        if (!socket.data.joined) { this.kick(socket, 'say hello first'); return; }
+      case "grab":
+      case "place":
+      case "reset": {
+        if (!socket.data.joined) {
+          this.kick(socket, "say hello first");
+          return;
+        }
         if (this.byAccount.get(socket.data.accountId) !== socket) return; // (an old connection of the same account)
-        const m = this.players.manager(), id = socket.data.accountId, tick = this.worlds.world.tick, rate = this.worlds.world.options.tickRate;
-        const r = msg.type === 'grab' ? m.grabObject(id, msg.object, tick, rate, msg.at)
-          : msg.type === 'place' ? m.placeObject(id, msg.x, msg.z, msg.rot, tick, rate)
-          : m.resetObjects(id, msg.scope, msg.object, tick, rate);
-        this.objectNotice(socket, r, msg.type === 'reset' && msg.scope === 'station');
+        const m = this.players.manager(),
+          id = socket.data.accountId,
+          tick = this.worlds.world.tick,
+          rate = this.worlds.world.options.tickRate;
+        const r =
+          msg.type === "grab"
+            ? m.grabObject(id, msg.object, tick, rate, msg.at)
+            : msg.type === "place"
+              ? m.placeObject(id, msg.x, msg.z, msg.rot, tick, rate)
+              : m.resetObjects(id, msg.scope, msg.object, tick, rate);
+        this.objectNotice(
+          socket,
+          r,
+          msg.type === "reset" && msg.scope === "station",
+        );
         return;
       }
       default:
-        this.kick(socket, 'unexpected message');
+        this.kick(socket, "unexpected message");
     }
   }
 
@@ -278,68 +524,151 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private noteTo(accountId: number, note: PlayerNote): void {
     const socket = this.byAccount.get(accountId);
     if (!socket || !socket.connected) return;
-    socket.emit(WIRE_EVENT, encode({ type: 'event', kind: note.kind, simTime: sim.t, text: note.text }));
-    const person = note.owner ? this.players.manager().personFor(accountId) : undefined;
-    if (person) socket.emit(WIRE_EVENT, this.broadcaster.ownerUpdate(person, this.worlds.world.tick));
+    socket.emit(
+      WIRE_EVENT,
+      encode({
+        type: "event",
+        kind: note.kind,
+        simTime: sim.t,
+        text: note.text,
+      }),
+    );
+    const person = note.owner
+      ? this.players.manager().personFor(accountId)
+      : undefined;
+    if (person)
+      socket.emit(
+        WIRE_EVENT,
+        this.broadcaster.ownerUpdate(person, this.worlds.world.tick),
+      );
   }
 
   /** Tell one player why what they did with an object was refused (what worked tells everybody, through the object message). */
-  private objectNotice(socket: Socket, r: ObjectResult | null, station: boolean): void {
-    const text = r === null ? null : !r.ok ? REFUSAL_TEXT[r.reason] : station && r.changed === 0 ? 'Your desk is already as it started.' : null;
-    if (text && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text }));
+  private objectNotice(
+    socket: Socket,
+    r: ObjectResult | null,
+    station: boolean,
+  ): void {
+    const text =
+      r === null
+        ? null
+        : !r.ok
+          ? REFUSAL_TEXT[r.reason]
+          : station && r.changed === 0
+            ? "Your desk is already as it started."
+            : null;
+    if (text && socket.connected)
+      socket.emit(
+        WIRE_EVENT,
+        encode({ type: "event", kind: "notice", simTime: sim.t, text }),
+      );
   }
 
   /** Admit a client that has said hello: right version, a valid one-time ticket, a live session, an enabled account. */
-  private async join(socket: Socket, version: number, ticket: string): Promise<void> {
+  private async join(
+    socket: Socket,
+    version: number,
+    ticket: string,
+  ): Promise<void> {
     if (socket.data.joined || socket.data.joining) return;
     socket.data.joining = true;
     let attachedId: number | undefined;
     try {
-      if (version !== PROTOCOL_VERSION) { this.kick(socket, `protocol version ${version}, the server speaks ${PROTOCOL_VERSION}`); return; }
-      if (!this.auth.available) { this.kick(socket, 'accounts are not available on this server'); return; }
+      if (version !== PROTOCOL_VERSION) {
+        this.kick(
+          socket,
+          `protocol version ${version}, the server speaks ${PROTOCOL_VERSION}`,
+        );
+        return;
+      }
+      if (!this.auth.available) {
+        this.kick(socket, "accounts are not available on this server");
+        return;
+      }
       const redeemed = this.tickets.redeem(ticket); // used up now, whatever happens next
-      if (!redeemed) { this.kick(socket, 'invalid or expired ticket'); return; }
+      if (!redeemed) {
+        this.kick(socket, "invalid or expired ticket");
+        return;
+      }
       // From here on this socket belongs to that account and session, so a logout that lands while we are still checking
       // (the awaits below) can find it and end it.
       socket.data.accountId = redeemed.accountId;
       socket.data.sessionHash = redeemed.sessionHash;
       const auth = this.auth.require();
-      if (!(await auth.sessionAlive(redeemed.sessionHash))) { this.kick(socket, 'your session has ended; log in again'); return; }
+      if (!(await auth.sessionAlive(redeemed.sessionHash))) {
+        this.kick(socket, "your session has ended; log in again");
+        return;
+      }
       const account = await auth.accountById(redeemed.accountId);
-      if (!account || account.disabled) { this.kick(socket, 'your session has ended; log in again'); return; }
-      if (account.mustChangePassword) { this.kick(socket, 'choose your own password first'); return; } // (a ticket minted before an admin reset the password)
-      if (!socket.connected || socket.data.ended) { if (socket.connected) this.kick(socket, 'you have been logged out'); return; } // they left, or were logged out, while we were checking
+      if (!account || account.disabled) {
+        this.kick(socket, "your session has ended; log in again");
+        return;
+      }
+      if (account.mustChangePassword) {
+        this.kick(socket, "choose your own password first");
+        return;
+      } // (a ticket minted before an admin reset the password)
+      if (!socket.connected || socket.data.ended) {
+        if (socket.connected) this.kick(socket, "you have been logged out");
+        return;
+      } // they left, or were logged out, while we were checking
 
       // one connection per account: a second login takes over, so nobody drives a character from two tabs
       const old = this.byAccount.get(account.id);
-      if (old && old !== socket) { this.byAccount.delete(account.id); this.kick(old, 'you logged in from somewhere else'); }
+      if (old && old !== socket) {
+        this.byAccount.delete(account.id);
+        this.kick(old, "you logged in from somewhere else");
+      }
       socket.data.username = account.username;
 
       // take over the account's person (or make a guest). A reconnect within the grace period gets the same person back.
       const person = await this.players.manager().attach(account);
       attachedId = account.id;
-      if (!socket.connected || socket.data.ended) { this.players.manager().detach(account.id); if (socket.connected) this.kick(socket, 'you have been logged out'); return; }
+      if (!socket.connected || socket.data.ended) {
+        this.players.manager().detach(account.id);
+        if (socket.connected) this.kick(socket, "you have been logged out");
+        return;
+      }
       // the check above ran before the wait: two connections admitted at the same moment both found nobody here. Whoever finishes
       // last wins; the one that was already in is dropped, so an account never has two live connections.
       const prior = this.byAccount.get(account.id);
-      if (prior && prior !== socket) { this.byAccount.delete(account.id); this.kick(prior, 'you logged in from somewhere else'); }
+      if (prior && prior !== socket) {
+        this.byAccount.delete(account.id);
+        this.kick(prior, "you logged in from somewhere else");
+      }
       this.byAccount.set(account.id, socket);
-      if (socket.data.timer) { clearTimeout(socket.data.timer); this.helloTimers.delete(socket.data.timer); socket.data.timer = null; }
+      if (socket.data.timer) {
+        clearTimeout(socket.data.timer);
+        this.helloTimers.delete(socket.data.timer);
+        socket.data.timer = null;
+      }
       socket.data.joined = true;
       socket.join(PLAYING);
-      socket.emit(WIRE_EVENT, this.broadcaster.welcome(this.worlds.world.tick, person.id));
+      socket.emit(
+        WIRE_EVENT,
+        this.broadcaster.welcome(this.worlds.world.tick, person.id),
+      );
       const quick = this.leaveTimers.get(account.id);
-      if (quick) { clearTimeout(quick); this.leaveTimers.delete(account.id); } else addLog(`${account.username} joined`); // (everybody sees it in the activity log)
+      if (quick) {
+        clearTimeout(quick);
+        this.leaveTimers.delete(account.id);
+      } else addLog(`${account.username} joined`); // (everybody sees it in the activity log)
     } catch (err) {
-      this.log.error(`joining failed: ${err instanceof Error ? err.message : String(err)}`);
-      if (attachedId !== undefined && this.byAccount.get(attachedId) !== socket) this.players.manager().detach(attachedId); // do not leave a session with nobody behind it
-      this.kick(socket, 'server error');
+      this.log.error(
+        `joining failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      if (attachedId !== undefined && this.byAccount.get(attachedId) !== socket)
+        this.players.manager().detach(attachedId); // do not leave a session with nobody behind it
+      this.kick(socket, "server error");
     } finally {
       socket.data.joining = false;
     }
   }
 
-  private readonly lastAck = new Map<number, { seq: number; x: number; z: number }>();
+  private readonly lastAck = new Map<
+    number,
+    { seq: number; x: number; z: number }
+  >();
 
   /**
    * Tell each player where their own person is and which of their inputs the server has used (for prediction). Sent when something
@@ -352,27 +681,59 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const a = manager.ackFor(accountId);
       if (!a) continue;
       const last = this.lastAck.get(accountId);
-      const changed = !last || last.seq !== a.seq || last.x !== a.x || last.z !== a.z;
+      const changed =
+        !last || last.seq !== a.seq || last.x !== a.x || last.z !== a.z;
       if (!changed && tick % this.worlds.world.options.tickRate !== 0) continue;
       this.lastAck.set(accountId, { seq: a.seq, x: a.x, z: a.z });
-      socket.emit(WIRE_EVENT, encode({ type: 'ack', tick, ...a })); // (not volatile: right after the snapshot write the transport is busy and a volatile message would be dropped)
+      socket.emit(WIRE_EVENT, encode({ type: "ack", tick, ...a })); // (not volatile: right after the snapshot write the transport is busy and a volatile message would be dropped)
     }
-    if (this.lastAck.size > this.byAccount.size + 50) for (const id of this.lastAck.keys()) if (!this.byAccount.has(id)) this.lastAck.delete(id);
+    if (this.lastAck.size > this.byAccount.size + 50)
+      for (const id of this.lastAck.keys())
+        if (!this.byAccount.has(id)) this.lastAck.delete(id);
   }
 
   /** A chat line: sent to the speaker and whoever is within range; a refusal is explained to the speaker alone. */
   private async say(socket: Socket, text: string): Promise<void> {
     if (this.byAccount.get(socket.data.accountId) !== socket) return; // (a connection that has been taken over or is going away is not heard)
     let result: SayResult;
-    try { result = await this.chat.say(socket.data.accountId, text); } catch (err) { this.log.error(`chat failed: ${err instanceof Error ? err.message : String(err)}`); return; }
+    try {
+      result = await this.chat.say(socket.data.accountId, text);
+    } catch (err) {
+      this.log.error(
+        `chat failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return;
+    }
     if (!result.ok) {
-      const notice = result.reason === 'rate' ? 'You are chatting too fast. Wait a few seconds.' : result.reason === 'muted' ? 'An admin has muted you: nobody can see what you type.' : null;
-      if (notice && socket.connected) socket.emit(WIRE_EVENT, encode({ type: 'event', kind: 'notice', simTime: sim.t, text: notice }));
+      const notice =
+        result.reason === "rate"
+          ? "You are chatting too fast. Wait a few seconds."
+          : result.reason === "muted"
+            ? "An admin has muted you: nobody can see what you type."
+            : null;
+      if (notice && socket.connected)
+        socket.emit(
+          WIRE_EVENT,
+          encode({
+            type: "event",
+            kind: "notice",
+            simTime: sim.t,
+            text: notice,
+          }),
+        );
       return;
     }
     if (this.byAccount.get(socket.data.accountId) !== socket) return; // (taken over or logged out while the line was being checked)
-    const bytes = encode({ type: 'chat', from: result.from, name: result.name, text: result.text });
-    for (const accountId of result.to) { const s = this.byAccount.get(accountId); if (s && s.data.joined) s.emit(WIRE_EVENT, bytes); }
+    const bytes = encode({
+      type: "chat",
+      from: result.from,
+      name: result.name,
+      text: result.text,
+    });
+    for (const accountId of result.to) {
+      const s = this.byAccount.get(accountId);
+      if (s && s.data.joined) s.emit(WIRE_EVENT, bytes);
+    }
   }
 
   /** A logout, a password change or a disabled account ends the connections that session opened. */
@@ -381,10 +742,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     for (const socket of this.server.sockets.sockets.values()) {
       if (socket.data.accountId !== e.accountId) continue;
       const mine = socket.data.sessionHash as string | undefined;
-      const affected = e.hash !== undefined ? mine === e.hash : e.except !== undefined ? mine !== e.except : true;
+      const affected =
+        e.hash !== undefined
+          ? mine === e.hash
+          : e.except !== undefined
+            ? mine !== e.except
+            : true;
       if (!affected) continue;
       socket.data.ended = true;
-      if (socket.data.joined) this.kick(socket, 'you have been logged out');
+      if (socket.data.joined) this.kick(socket, "you have been logged out");
     }
   }
 
@@ -400,8 +766,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const hash = socket.data.sessionHash as string | undefined;
       if (!socket.data.joined || !hash) continue;
       try {
-        if (!(await auth.sessionAlive(hash))) { this.kick(socket, 'your session has ended; log in again'); dropped++; }
-      } catch { /* a database hiccup must not drop anyone: try again next time */ }
+        if (!(await auth.sessionAlive(hash))) {
+          this.kick(socket, "your session has ended; log in again");
+          dropped++;
+        }
+      } catch {
+        /* a database hiccup must not drop anyone: try again next time */
+      }
     }
     return dropped;
   }
@@ -409,9 +780,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   /** The address a connection really comes from: with proxies in front (TRUST_PROXY), the one the nearest proxy reports. */
   private addressOf(socket: Socket): string {
     const trust = parseTrustProxy(process.env.TRUST_PROXY);
-    const forwarded = socket.handshake.headers['x-forwarded-for'];
-    if (typeof trust === 'number' && trust > 0 && typeof forwarded === 'string') {
-      const hops = forwarded.split(',').map(s => s.trim()).filter(Boolean);
+    const forwarded = socket.handshake.headers["x-forwarded-for"];
+    if (
+      typeof trust === "number" &&
+      trust > 0 &&
+      typeof forwarded === "string"
+    ) {
+      const hops = forwarded
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const at = hops[hops.length - trust];
       if (at) return addressKey(at);
     }
@@ -420,18 +798,24 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   private unjoinedFrom(address: string): number {
     let n = 0;
-    for (const s of this.server.sockets.sockets.values()) if (!s.data.joined && s.data.address === address) n++;
+    for (const s of this.server.sockets.sockets.values())
+      if (!s.data.joined && s.data.address === address) n++;
     return n;
   }
 
   /** How many accounts are connected (used by tests and the status page). */
-  get connectedAccounts(): number { return this.byAccount.size; }
+  get connectedAccounts(): number {
+    return this.byAccount.size;
+  }
 
   /** Stop the periodic check (the app is shutting down). */
   onModuleDestroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (this.sweepTimer) { clearInterval(this.sweepTimer); this.sweepTimer = null; }
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+      this.sweepTimer = null;
+    }
     for (const t of this.leaveTimers.values()) clearTimeout(t);
     this.leaveTimers.clear();
     for (const t of this.helloTimers) clearTimeout(t);
@@ -439,11 +823,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     for (const remove of this.teardown.splice(0)) remove();
   }
 
-  private broadcast(bytes: Uint8Array): void { this.server.to(PLAYING).emit(WIRE_EVENT, bytes); }
+  private broadcast(bytes: Uint8Array): void {
+    this.server.to(PLAYING).emit(WIRE_EVENT, bytes);
+  }
 
   private kick(socket: Socket, reason: string): void {
     this.log.debug(`kick: ${reason}`);
-    socket.emit(WIRE_EVENT, encode({ type: 'kick', reason }));
+    socket.emit(WIRE_EVENT, encode({ type: "kick", reason }));
     socket.disconnect(true);
   }
 }

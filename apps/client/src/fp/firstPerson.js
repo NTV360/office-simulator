@@ -23,7 +23,19 @@ function enterFP() {
   if (!player.sitting && !player.online) p.task = null;
   beginControl("fp", p, {
     title: "First person",
-    keys: "WASD or arrows to move · drag to look · Shift to run · Space jump · 1-4/wheel gun · R reload · R-click aim · Click shoot · E to sit or stand · V third person · Esc to exit",
+    keys: [
+      ["WASD", "move"],
+      ["Shift", "run"],
+      ["Space", "jump"],
+      ["1-4 wheel", "gun"],
+      ["R", "reload"],
+      ["R-click", "aim"],
+      ["Click", "shoot"],
+      ["E", "use · sit"],
+      ["V", "3rd person"],
+      ["Alt", "cursor"],
+      ["Esc", "exit"],
+    ],
   });
   ctl.pitchMin = -1.2;
   ctl.pitchMax = 1.2;
