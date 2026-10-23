@@ -11,6 +11,8 @@ import {
   people,
   postureSpeedFactor,
   stepPlayer,
+  supportAt,
+  toPx,
 } from "@office/shared";
 import { setView } from "../camera/controller.js";
 import { keys } from "../camera/input.js";
@@ -325,14 +327,20 @@ function driveLocomotion(dt, p) {
   }
   mechanics.jumpHeld = jump;
   p._predictionTick = (p._predictionTick ?? 0) + 1;
-  if (mechanics.locomotion === "jump") mechanics.verticalVelocity -= 9.8 * dt;
-  if (
-    mechanics.locomotion === "jump" &&
-    p._predictionTick >= mechanics.jumpUntil
-  ) {
-    mechanics.locomotion = "grid";
-    mechanics.grounded = true;
-    mechanics.verticalVelocity = 0;
+  if (mechanics.locomotion === "jump") {
+    mechanics.verticalVelocity -= 9.8 * dt;
+    p.pos.y = Math.max(0, (p.pos.y || 0) + mechanics.verticalVelocity * dt);
+    // land on the surface under the feet (the floor, a desk top, a chair seat), coming down or when the hop clock runs out
+    const sup = supportAt(...toPx(p.pos));
+    if (
+      (mechanics.verticalVelocity <= 0 && p.pos.y <= sup) ||
+      p._predictionTick >= mechanics.jumpUntil
+    ) {
+      p.pos.y = sup;
+      mechanics.locomotion = "grid";
+      mechanics.grounded = true;
+      mechanics.verticalVelocity = 0;
+    }
   }
   const len = Math.hypot(f, r);
   let moved = 0,
@@ -354,6 +362,17 @@ function driveLocomotion(dt, p) {
     dx = ((fx * f + rx * r) / len) * sp;
     dz = ((fz * f + rz * r) / len) * sp;
     moved = stepPlayer(p, dx, dz, people);
+  }
+  // the surface under the feet: the floor or a furniture top. Walking off a ledge turns into a fall (same 'jump' state, no upward velocity)
+  const support = supportAt(...toPx(p.pos));
+  if (mechanics.grounded) {
+    if ((p.pos.y || 0) > support + 1e-6) {
+      mechanics.grounded = false;
+      mechanics.locomotion = "jump";
+      mechanics.verticalVelocity = 0;
+      mechanics.jumpUntil =
+        (p._predictionTick ?? 0) + Math.ceil(10 / Math.max(dt, 0.001));
+    } else p.pos.y = support;
   }
   player.moving = moved > 1e-4;
   p.walkPhase += moved * 4.6;

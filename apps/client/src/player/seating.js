@@ -1,4 +1,4 @@
-import { interactables, seatUnusable, sitFree } from "@office/shared";
+import { interactables, seatUnusable, sitFree, slap } from "@office/shared";
 import { ctl } from "./control.js";
 import { player } from "./player.js";
 import { updatePrompts } from "./prompts.js";
